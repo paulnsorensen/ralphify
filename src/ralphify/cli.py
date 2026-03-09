@@ -10,6 +10,7 @@ from typing import Optional
 import typer
 from rich import print as rprint
 
+from ralphify import __version__
 from ralphify.detector import detect_project
 
 app = typer.Typer()
@@ -23,8 +24,17 @@ BANNER = """\
 """
 
 
+def _version_callback(value: bool) -> None:
+    if value:
+        rprint(f"ralphify {__version__}")
+        raise typer.Exit()
+
+
 @app.callback(invoke_without_command=True)
-def main_callback(ctx: typer.Context) -> None:
+def main_callback(
+    ctx: typer.Context,
+    version: bool = typer.Option(False, "--version", "-V", help="Show version and exit.", callback=_version_callback, is_eager=True),
+) -> None:
     """Harness toolkit for autonomous AI coding loops."""
     rprint(BANNER)
     if ctx.invoked_subcommand is None:

@@ -3,6 +3,7 @@ from unittest.mock import patch, MagicMock
 
 from typer.testing import CliRunner
 
+from ralphify import __version__
 from ralphify.cli import app, CONFIG_FILENAME, RALPH_TOML_TEMPLATE, PROMPT_TEMPLATE, _format_duration
 
 runner = CliRunner()
@@ -14,6 +15,18 @@ def _ok(*args, **kwargs):
 
 def _fail(*args, **kwargs):
     return subprocess.CompletedProcess(args=args, returncode=1)
+
+
+class TestVersion:
+    def test_version_flag(self):
+        result = runner.invoke(app, ["--version"])
+        assert result.exit_code == 0
+        assert f"ralphify {__version__}" in result.output
+
+    def test_version_short_flag(self):
+        result = runner.invoke(app, ["-V"])
+        assert result.exit_code == 0
+        assert f"ralphify {__version__}" in result.output
 
 
 class TestInit:
