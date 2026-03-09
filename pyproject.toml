@@ -8,6 +8,9 @@ dependencies = ["typer>=0.9", "rich>=13.0"]
 [project.scripts]
 ralph = "ralphify:main"
 
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
