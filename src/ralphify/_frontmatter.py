@@ -3,9 +3,6 @@ from collections.abc import Iterator
 from pathlib import Path
 
 
-MAX_OUTPUT_LEN = 5000
-
-
 def parse_frontmatter(text: str) -> tuple[dict, str]:
     """Parse a markdown file with optional YAML-like frontmatter.
 

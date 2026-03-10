@@ -2,7 +2,8 @@ import subprocess
 from pathlib import Path
 from unittest.mock import patch
 
-from ralphify._frontmatter import MAX_OUTPUT_LEN, parse_frontmatter
+from ralphify._frontmatter import parse_frontmatter
+from ralphify._output import MAX_OUTPUT_LEN
 from ralphify.checks import (
     Check,
     CheckResult,

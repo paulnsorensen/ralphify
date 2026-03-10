@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ralphify._frontmatter import MAX_OUTPUT_LEN
+MAX_OUTPUT_LEN = 5000
 
 
 def collect_output(

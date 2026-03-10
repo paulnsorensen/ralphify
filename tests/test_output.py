@@ -1,5 +1,4 @@
-from ralphify._frontmatter import MAX_OUTPUT_LEN
-from ralphify._output import collect_output, truncate_output
+from ralphify._output import MAX_OUTPUT_LEN, collect_output, truncate_output
 
 
 class TestCollectOutput:
