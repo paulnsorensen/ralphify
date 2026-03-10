@@ -2,7 +2,7 @@ import subprocess
 from pathlib import Path
 from unittest.mock import patch
 
-from ralphify._runner import RunResult, run_command
+from ralphify._runner import run_command
 
 _MOCK_SUBPROCESS = "ralphify._runner.subprocess.run"
 
