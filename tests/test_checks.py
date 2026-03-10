@@ -12,6 +12,8 @@ from ralphify.checks import (
     run_all_checks,
 )
 
+_MOCK_SUBPROCESS = "ralphify._runner.subprocess.run"
+
 
 class TestParseFrontmatter:
     def test_basic_frontmatter(self):
@@ -211,7 +213,7 @@ class TestRunCheck:
             failure_instruction=str(kwargs.get("failure_instruction", "Fix it.")),
         )
 
-    @patch("ralphify.checks.subprocess.run")
+    @patch(_MOCK_SUBPROCESS)
     def test_passing_check(self, mock_run):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="ok\n", stderr=""
@@ -224,7 +226,7 @@ class TestRunCheck:
         assert "ok" in result.output
         assert result.timed_out is False
 
-    @patch("ralphify.checks.subprocess.run")
+    @patch(_MOCK_SUBPROCESS)
     def test_failing_check(self, mock_run):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[], returncode=1, stdout="", stderr="error\n"
@@ -236,7 +238,7 @@ class TestRunCheck:
         assert result.exit_code == 1
         assert "error" in result.output
 
-    @patch("ralphify.checks.subprocess.run")
+    @patch(_MOCK_SUBPROCESS)
     def test_timeout(self, mock_run):
         mock_run.side_effect = subprocess.TimeoutExpired(cmd="echo", timeout=60)
         check = self._make_check()
@@ -246,7 +248,7 @@ class TestRunCheck:
         assert result.timed_out is True
         assert result.exit_code == -1
 
-    @patch("ralphify.checks.subprocess.run")
+    @patch(_MOCK_SUBPROCESS)
     def test_uses_command_with_shlex(self, mock_run):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="", stderr=""
@@ -258,7 +260,7 @@ class TestRunCheck:
         call_args = mock_run.call_args
         assert call_args.args[0] == ["ruff", "check", "--fix", "."]
 
-    @patch("ralphify.checks.subprocess.run")
+    @patch(_MOCK_SUBPROCESS)
     def test_uses_script_when_set(self, mock_run):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="", stderr=""
@@ -271,7 +273,7 @@ class TestRunCheck:
         call_args = mock_run.call_args
         assert call_args.args[0] == [str(script_path)]
 
-    @patch("ralphify.checks.subprocess.run")
+    @patch(_MOCK_SUBPROCESS)
     def test_cwd_is_project_root(self, mock_run):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="", stderr=""
@@ -281,7 +283,7 @@ class TestRunCheck:
 
         assert mock_run.call_args.kwargs["cwd"] == Path("/my/project")
 
-    @patch("ralphify.checks.subprocess.run")
+    @patch(_MOCK_SUBPROCESS)
     def test_timeout_passed_to_subprocess(self, mock_run):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="", stderr=""
@@ -291,7 +293,7 @@ class TestRunCheck:
 
         assert mock_run.call_args.kwargs["timeout"] == 120
 
-    @patch("ralphify.checks.subprocess.run")
+    @patch(_MOCK_SUBPROCESS)
     def test_combines_stdout_and_stderr(self, mock_run):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="out\n", stderr="err\n"
@@ -304,7 +306,7 @@ class TestRunCheck:
 
 
 class TestRunAllChecks:
-    @patch("ralphify.checks.subprocess.run")
+    @patch(_MOCK_SUBPROCESS)
     def test_runs_all_checks(self, mock_run):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="", stderr=""

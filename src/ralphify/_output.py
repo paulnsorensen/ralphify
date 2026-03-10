@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from ralphify._frontmatter import MAX_OUTPUT_LEN
+
 
 def collect_output(
     stdout: str | bytes | None,
@@ -15,3 +17,10 @@ def collect_output(
         if stream:
             parts.append(stream if isinstance(stream, str) else stream.decode("utf-8", errors="replace"))
     return "".join(parts)
+
+
+def truncate_output(text: str, max_len: int = MAX_OUTPUT_LEN) -> str:
+    """Truncate *text* to *max_len* characters, appending an indicator if trimmed."""
+    if len(text) > max_len:
+        return text[:max_len] + "\n... (truncated)"
+    return text

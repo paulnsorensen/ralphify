@@ -1,4 +1,5 @@
-from ralphify._output import collect_output
+from ralphify._frontmatter import MAX_OUTPUT_LEN
+from ralphify._output import collect_output, truncate_output
 
 
 class TestCollectOutput:
@@ -39,3 +40,25 @@ class TestCollectOutput:
         result = collect_output(b"hello\xff\n", None)
         assert "hello" in result
         assert "\ufffd" in result  # replacement character
+
+
+class TestTruncateOutput:
+    def test_short_text_unchanged(self):
+        assert truncate_output("hello") == "hello"
+
+    def test_empty_string(self):
+        assert truncate_output("") == ""
+
+    def test_exact_limit_unchanged(self):
+        text = "x" * MAX_OUTPUT_LEN
+        assert truncate_output(text) == text
+
+    def test_over_limit_truncated(self):
+        text = "x" * (MAX_OUTPUT_LEN + 100)
+        result = truncate_output(text)
+        assert len(result) < len(text)
+        assert result.endswith("... (truncated)")
+
+    def test_custom_max_len(self):
+        result = truncate_output("hello world", max_len=5)
+        assert result == "hello\n... (truncated)"

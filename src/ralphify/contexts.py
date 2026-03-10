@@ -1,11 +1,10 @@
 import re
-import shlex
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from ralphify._frontmatter import MAX_OUTPUT_LEN, find_run_script, parse_frontmatter
-from ralphify._output import collect_output
+from ralphify._frontmatter import find_run_script, parse_frontmatter
+from ralphify._output import truncate_output
+from ralphify._runner import run_command
 from ralphify.resolver import resolve_placeholders
 
 
@@ -69,34 +68,22 @@ def discover_contexts(root: Path = Path(".")) -> list[Context]:
 
 def run_context(context: Context, project_root: Path) -> ContextResult:
     """Run a single context command and return the result."""
-    if context.script:
-        cmd = [str(context.script)]
-    elif context.command:
-        cmd = shlex.split(context.command)
-    else:
+    if not context.script and not context.command:
         # Static-only context, no command to run
         return ContextResult(context=context, output="", success=True)
 
-    try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            cwd=project_root,
-            timeout=context.timeout,
-        )
-        return ContextResult(
-            context=context,
-            output=collect_output(result.stdout, result.stderr),
-            success=result.returncode == 0,
-        )
-    except subprocess.TimeoutExpired as e:
-        return ContextResult(
-            context=context,
-            output=collect_output(e.stdout, e.stderr),
-            success=False,
-            timed_out=True,
-        )
+    r = run_command(
+        script=context.script,
+        command=context.command,
+        cwd=project_root,
+        timeout=context.timeout,
+    )
+    return ContextResult(
+        context=context,
+        output=r.output,
+        success=r.success,
+        timed_out=r.timed_out,
+    )
 
 
 def run_all_contexts(contexts: list[Context], project_root: Path) -> list[ContextResult]:
@@ -111,9 +98,7 @@ def _render_context(result: ContextResult) -> str:
     if result.context.static_content:
         parts.append(result.context.static_content)
 
-    output = result.output
-    if len(output) > MAX_OUTPUT_LEN:
-        output = output[:MAX_OUTPUT_LEN] + "\n... (truncated)"
+    output = truncate_output(result.output)
 
     if output.strip():
         parts.append(output.strip())

@@ -1,11 +1,10 @@
-import shlex
-import subprocess
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
-from ralphify._frontmatter import MAX_OUTPUT_LEN, find_run_script, parse_frontmatter
-from ralphify._output import collect_output
+from ralphify._frontmatter import find_run_script, parse_frontmatter
+from ralphify._output import truncate_output
+from ralphify._runner import run_command
 
 
 @dataclass
@@ -70,33 +69,19 @@ def discover_checks(root: Path = Path(".")) -> list[Check]:
 
 def run_check(check: Check, project_root: Path) -> CheckResult:
     """Run a single check and return the result."""
-    if check.script:
-        cmd = [str(check.script)]
-    else:
-        cmd = shlex.split(check.command)
-
-    try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            cwd=project_root,
-            timeout=check.timeout,
-        )
-        return CheckResult(
-            check=check,
-            passed=result.returncode == 0,
-            exit_code=result.returncode,
-            output=collect_output(result.stdout, result.stderr),
-        )
-    except subprocess.TimeoutExpired as e:
-        return CheckResult(
-            check=check,
-            passed=False,
-            exit_code=-1,
-            output=collect_output(e.stdout, e.stderr),
-            timed_out=True,
-        )
+    r = run_command(
+        script=check.script,
+        command=check.command,
+        cwd=project_root,
+        timeout=check.timeout,
+    )
+    return CheckResult(
+        check=check,
+        passed=r.success,
+        exit_code=r.exit_code,
+        output=r.output,
+        timed_out=r.timed_out,
+    )
 
 
 def run_all_checks(checks: list[Check], project_root: Path) -> list[CheckResult]:
@@ -123,9 +108,7 @@ def format_check_failures(results: list[CheckResult]) -> str:
         else:
             parts.append(f"**Exit code:** {r.exit_code}")
 
-        output = r.output
-        if len(output) > MAX_OUTPUT_LEN:
-            output = output[:MAX_OUTPUT_LEN] + "\n... (truncated)"
+        output = truncate_output(r.output)
 
         if output.strip():
             parts.append(f"\n```\n{output.strip()}\n```\n")

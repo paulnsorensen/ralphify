@@ -13,6 +13,8 @@ from ralphify.contexts import (
     _render_context,
 )
 
+_MOCK_SUBPROCESS = "ralphify._runner.subprocess.run"
+
 
 class TestDiscoverContexts:
     def test_no_contexts_dir(self, tmp_path):
@@ -149,7 +151,7 @@ class TestRunContext:
             static_content=str(kwargs.get("static_content", "")),
         )
 
-    @patch("ralphify.contexts.subprocess.run")
+    @patch(_MOCK_SUBPROCESS)
     def test_successful_command(self, mock_run):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="output\n", stderr=""
@@ -161,7 +163,7 @@ class TestRunContext:
         assert "output" in result.output
         assert result.timed_out is False
 
-    @patch("ralphify.contexts.subprocess.run")
+    @patch(_MOCK_SUBPROCESS)
     def test_failing_command(self, mock_run):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[], returncode=1, stdout="", stderr="error\n"
@@ -172,7 +174,7 @@ class TestRunContext:
         assert result.success is False
         assert "error" in result.output
 
-    @patch("ralphify.contexts.subprocess.run")
+    @patch(_MOCK_SUBPROCESS)
     def test_timeout(self, mock_run):
         mock_run.side_effect = subprocess.TimeoutExpired(cmd="echo", timeout=30)
         ctx = self._make_context()
@@ -188,7 +190,7 @@ class TestRunContext:
         assert result.success is True
         assert result.output == ""
 
-    @patch("ralphify.contexts.subprocess.run")
+    @patch(_MOCK_SUBPROCESS)
     def test_uses_script_when_set(self, mock_run):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="from script\n", stderr=""
@@ -200,7 +202,7 @@ class TestRunContext:
         call_args = mock_run.call_args
         assert call_args.args[0] == [str(script_path)]
 
-    @patch("ralphify.contexts.subprocess.run")
+    @patch(_MOCK_SUBPROCESS)
     def test_uses_command_with_shlex(self, mock_run):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="", stderr=""
@@ -211,7 +213,7 @@ class TestRunContext:
         call_args = mock_run.call_args
         assert call_args.args[0] == ["git", "log", "--oneline", "-10"]
 
-    @patch("ralphify.contexts.subprocess.run")
+    @patch(_MOCK_SUBPROCESS)
     def test_cwd_is_project_root(self, mock_run):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="", stderr=""
@@ -221,7 +223,7 @@ class TestRunContext:
 
         assert mock_run.call_args.kwargs["cwd"] == Path("/my/project")
 
-    @patch("ralphify.contexts.subprocess.run")
+    @patch(_MOCK_SUBPROCESS)
     def test_timeout_passed_to_subprocess(self, mock_run):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="", stderr=""
@@ -231,7 +233,7 @@ class TestRunContext:
 
         assert mock_run.call_args.kwargs["timeout"] == 15
 
-    @patch("ralphify.contexts.subprocess.run")
+    @patch(_MOCK_SUBPROCESS)
     def test_combines_stdout_and_stderr(self, mock_run):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="out\n", stderr="err\n"
@@ -244,7 +246,7 @@ class TestRunContext:
 
 
 class TestRunAllContexts:
-    @patch("ralphify.contexts.subprocess.run")
+    @patch(_MOCK_SUBPROCESS)
     def test_runs_all_contexts(self, mock_run):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="ok\n", stderr=""
