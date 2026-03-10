@@ -1,11 +1,11 @@
 import re
 import shlex
 import subprocess
-import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
 from ralphify.checks import parse_check_md
+from ralphify.resolver import resolve_placeholders
 
 
 @dataclass
@@ -154,33 +154,4 @@ def resolve_contexts(prompt: str, results: list[ContextResult]) -> str:
         if rendered:
             available[r.context.name] = rendered
 
-    if not available:
-        return prompt
-
-    placed: set[str] = set()
-    has_named = False
-
-    def _replace_named(match: re.Match) -> str:
-        nonlocal has_named
-        has_named = True
-        name = match.group(1)
-        if name in available:
-            placed.add(name)
-            return available[name]
-        return ""
-
-    result = _NAMED_PATTERN.sub(_replace_named, prompt)
-
-    has_bulk = _BULK_PATTERN.search(result) is not None
-
-    remaining = [content for name, content in sorted(available.items()) if name not in placed]
-    bulk_text = "\n\n".join(remaining)
-
-    if has_bulk:
-        result = _BULK_PATTERN.sub(bulk_text, result)
-    elif not has_named and not has_bulk:
-        # No placeholders found at all → append
-        if bulk_text:
-            result = result + "\n\n" + bulk_text
-
-    return result
+    return resolve_placeholders(prompt, available, _NAMED_PATTERN, _BULK_PATTERN)
