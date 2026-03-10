@@ -14,6 +14,7 @@ _console = Console(highlight=False)
 rprint = _console.print
 
 from ralphify import __version__
+from ralphify.checks import discover_checks, run_all_checks, format_check_failures
 from ralphify.detector import detect_project
 
 app = typer.Typer()
@@ -164,6 +165,16 @@ def status() -> None:
         issues.append("command")
         rprint(f"[red]✗[/red] Command '{command}' not found on PATH")
 
+    checks = discover_checks()
+    if checks:
+        rprint(f"\n[bold]Checks:[/bold]  {len(checks)} found")
+        for check in checks:
+            cmd_display = str(check.script.name) if check.script else check.command or "?"
+            icon = "[green]✓[/green]" if check.enabled else "[dim]○[/dim]"
+            rprint(f"  {icon} {check.name:<18} {cmd_display}")
+    else:
+        rprint(f"\n[bold]Checks:[/bold]  [dim]none[/dim]")
+
     if issues:
         rprint(f"\n[red]Not ready.[/red] Fix the issues above before running.")
         raise typer.Exit(1)
@@ -182,6 +193,28 @@ def _format_duration(seconds: float) -> str:
     hours = minutes // 60
     mins = minutes % 60
     return f"{hours}h {mins}m"
+
+
+def _print_check_summary(results: list) -> None:
+    """Print a summary line for check results."""
+    passed = sum(1 for r in results if r.passed)
+    failed = sum(1 for r in results if not r.passed)
+    timed = sum(1 for r in results if r.timed_out)
+
+    parts = []
+    if passed:
+        parts.append(f"{passed} passed")
+    if failed:
+        parts.append(f"{failed} failed")
+    rprint(f"  [bold]Checks:[/bold] {', '.join(parts)}")
+
+    for r in results:
+        if r.passed:
+            rprint(f"    [green]✓[/green] {r.check.name}")
+        elif r.timed_out:
+            rprint(f"    [yellow]⏱[/yellow] {r.check.name} (timed out)")
+        else:
+            rprint(f"    [red]✗[/red] {r.check.name} (exit {r.exit_code})")
 
 
 @app.command()
@@ -226,6 +259,12 @@ def run(
     failed = 0
     timed_out = 0
 
+    check_failures_text = ""
+    checks = discover_checks()
+    if checks:
+        enabled = [c for c in checks if c.enabled]
+        rprint(f"[dim]Checks: {len(enabled)} enabled[/dim]")
+
     try:
         iteration = 0
         while True:
@@ -235,6 +274,8 @@ def run(
 
             rprint(f"\n[bold blue]── Iteration {iteration} ──[/bold blue]")
             prompt = prompt_path.read_text()
+            if check_failures_text:
+                prompt = prompt + "\n\n" + check_failures_text
 
             start = time.monotonic()
             iteration_timed_out = False
@@ -301,6 +342,13 @@ def run(
                     if stop_on_error:
                         rprint("[red]Stopping due to --stop-on-error.[/red]")
                         break
+
+            if checks:
+                enabled_checks = [c for c in checks if c.enabled]
+                if enabled_checks:
+                    check_results = run_all_checks(enabled_checks, Path("."))
+                    _print_check_summary(check_results)
+                    check_failures_text = format_check_failures(check_results)
 
             if delay > 0 and (n is None or iteration < n):
                 rprint(f"[dim]Waiting {delay}s...[/dim]")

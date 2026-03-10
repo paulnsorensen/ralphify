@@ -1,9 +1,11 @@
 import subprocess
+from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 from typer.testing import CliRunner
 
 from ralphify import __version__
+from ralphify.checks import Check, CheckResult
 from ralphify.cli import app, CONFIG_FILENAME, RALPH_TOML_TEMPLATE, PROMPT_TEMPLATE, _format_duration
 
 runner = CliRunner()
@@ -471,3 +473,169 @@ class TestFormatDuration:
     def test_hours(self):
         assert _format_duration(3600) == "1h 0m"
         assert _format_duration(5400) == "1h 30m"
+
+
+def _setup_check(tmp_path, name="ruff-lint", command="ruff check .", enabled=True,
+                 body="Fix lint errors."):
+    """Helper to create a check directory with CHECK.md."""
+    check_dir = tmp_path / ".ralph" / "checks" / name
+    check_dir.mkdir(parents=True, exist_ok=True)
+    enabled_str = "true" if enabled else "false"
+    (check_dir / "CHECK.md").write_text(
+        f"---\ncommand: {command}\nenabled: {enabled_str}\n---\n{body}"
+    )
+    return check_dir
+
+
+class TestStatusChecks:
+    @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
+    def test_no_checks_dir(self, mock_which, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
+        (tmp_path / "PROMPT.md").write_text("prompt")
+
+        result = runner.invoke(app, ["status"])
+        assert result.exit_code == 0
+        assert "none" in result.output
+        assert "Ready to run" in result.output
+
+    @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
+    def test_found_checks(self, mock_which, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
+        (tmp_path / "PROMPT.md").write_text("prompt")
+        _setup_check(tmp_path, "ruff-lint", "ruff check .")
+        _setup_check(tmp_path, "typecheck", "mypy .")
+
+        result = runner.invoke(app, ["status"])
+        assert result.exit_code == 0
+        assert "2 found" in result.output
+        assert "ruff-lint" in result.output
+        assert "typecheck" in result.output
+
+    @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
+    def test_disabled_check_display(self, mock_which, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
+        (tmp_path / "PROMPT.md").write_text("prompt")
+        _setup_check(tmp_path, "enabled-check", "echo ok", enabled=True)
+        _setup_check(tmp_path, "disabled-check", "echo skip", enabled=False)
+
+        result = runner.invoke(app, ["status"])
+        assert result.exit_code == 0
+        assert "2 found" in result.output
+
+
+def _make_check_result(name="lint", passed=True, exit_code=0, output="ok\n",
+                       timed_out=False, failure_instruction=""):
+    """Helper to create a CheckResult for tests."""
+    check = Check(
+        name=name,
+        path=Path("/fake"),
+        command="echo",
+        script=None,
+        failure_instruction=failure_instruction,
+    )
+    return CheckResult(
+        check=check,
+        passed=passed,
+        exit_code=exit_code,
+        output=output,
+        timed_out=timed_out,
+    )
+
+
+class TestRunChecks:
+    @patch("ralphify.cli.run_all_checks")
+    @patch("ralphify.cli.subprocess.run", side_effect=_ok)
+    def test_checks_run_after_iteration(self, mock_agent, mock_run_checks, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
+        (tmp_path / "PROMPT.md").write_text("test prompt")
+        _setup_check(tmp_path, "lint", "ruff check .")
+
+        mock_run_checks.return_value = [_make_check_result()]
+
+        result = runner.invoke(app, ["run", "-n", "1"])
+        assert result.exit_code == 0
+        assert mock_run_checks.call_count == 1
+        assert "1 passed" in result.output
+
+    @patch("ralphify.cli.run_all_checks")
+    @patch("ralphify.cli.subprocess.run", side_effect=_ok)
+    def test_failure_text_appended_to_next_prompt(self, mock_agent, mock_run_checks, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
+        (tmp_path / "PROMPT.md").write_text("base prompt")
+        _setup_check(tmp_path, "lint", "ruff check .", body="Fix lint errors.")
+
+        mock_run_checks.return_value = [
+            _make_check_result(
+                passed=False, exit_code=1, output="error: bad code\n",
+                failure_instruction="Fix lint errors.",
+            )
+        ]
+
+        result = runner.invoke(app, ["run", "-n", "2"])
+        assert result.exit_code == 0
+
+        # First iteration gets base prompt only
+        first_call_input = mock_agent.call_args_list[0].kwargs["input"]
+        assert first_call_input == "base prompt"
+
+        # Second iteration gets check failure appended
+        second_call_input = mock_agent.call_args_list[1].kwargs["input"]
+        assert "base prompt" in second_call_input
+        assert "Check Failures" in second_call_input
+        assert "bad code" in second_call_input
+        assert "Fix lint errors." in second_call_input
+
+    @patch("ralphify.cli.run_all_checks")
+    @patch("ralphify.cli.subprocess.run", side_effect=_fail)
+    def test_checks_run_even_when_agent_fails(self, mock_agent, mock_run_checks, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
+        (tmp_path / "PROMPT.md").write_text("prompt")
+        _setup_check(tmp_path, "lint", "ruff check .")
+
+        mock_run_checks.return_value = [_make_check_result()]
+
+        result = runner.invoke(app, ["run", "-n", "1"])
+        assert result.exit_code == 0
+        assert mock_run_checks.call_count == 1
+
+    @patch("ralphify.cli.run_all_checks")
+    @patch("ralphify.cli.subprocess.run", side_effect=_ok)
+    def test_check_failure_does_not_trigger_stop_on_error(self, mock_agent, mock_run_checks, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
+        (tmp_path / "PROMPT.md").write_text("prompt")
+        _setup_check(tmp_path, "lint", "ruff check .")
+
+        mock_run_checks.return_value = [
+            _make_check_result(passed=False, exit_code=1, output="fail\n")
+        ]
+
+        # Agent succeeds, but check fails — should NOT stop
+        result = runner.invoke(app, ["run", "-n", "2", "--stop-on-error"])
+        assert result.exit_code == 0
+        # Both iterations should run (agent didn't fail)
+        assert mock_agent.call_count == 2
+
+    @patch("ralphify.cli.run_all_checks")
+    @patch("ralphify.cli.subprocess.run", side_effect=_ok)
+    def test_disabled_checks_not_run(self, mock_agent, mock_run_checks, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
+        (tmp_path / "PROMPT.md").write_text("prompt")
+        _setup_check(tmp_path, "enabled", "echo ok", enabled=True)
+        _setup_check(tmp_path, "disabled", "echo skip", enabled=False)
+
+        mock_run_checks.return_value = [_make_check_result()]
+
+        result = runner.invoke(app, ["run", "-n", "1"])
+        assert result.exit_code == 0
+        # run_all_checks is called with only enabled checks
+        checks_arg = mock_run_checks.call_args.args[0]
+        assert len(checks_arg) == 1
+        assert checks_arg[0].name == "enabled"
