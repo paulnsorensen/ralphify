@@ -71,6 +71,8 @@ extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/computerlovetech/ralphify
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/ralphify/
 
 nav:
   - Home: index.md

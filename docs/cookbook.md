@@ -791,6 +791,150 @@ on:
 
 ---
 
+## Increase test coverage
+
+Systematically improve test coverage by having the agent write tests for uncovered modules, one at a time.
+
+### Configuration
+
+**`ralph.toml`**
+
+```toml
+[agent]
+command = "claude"
+args = ["-p", "--dangerously-skip-permissions"]
+prompt = "PROMPT.md"
+```
+
+**`PROMPT.md`**
+
+```markdown
+# Prompt
+
+You are an autonomous test-writing agent running in a loop. Each iteration
+starts with a fresh context. Your progress lives in the code and git.
+
+{{ contexts.coverage }}
+
+Read the coverage report above. Find the module with the lowest coverage
+that has meaningful logic worth testing. Write thorough tests for that
+module — cover the happy path, edge cases, and error conditions.
+
+## Rules
+
+- One module per iteration — write all tests for it, then move on
+- Write tests that verify behavior, not implementation details
+- Do NOT modify source code to make it easier to test — test it as-is
+- Do NOT use mocks unless testing external dependencies (APIs, databases)
+- Run the full test suite before committing to check for regressions
+- Commit with `test: add tests for <module name>`
+- Skip modules that already have 90%+ coverage
+
+{{ instructions }}
+```
+
+### Checks
+
+**`.ralph/checks/tests/CHECK.md`**
+
+```markdown
+---
+command: uv run pytest -x
+timeout: 120
+enabled: true
+---
+Fix all failing tests. Do not skip or delete existing tests.
+If a new test is failing, the test is likely wrong — fix the test,
+not the source code.
+```
+
+**`.ralph/checks/coverage-threshold/CHECK.md`**
+
+This check ensures overall coverage doesn't decrease. Use a `run.sh` script since we need shell features (pipes, exit codes based on output):
+
+```markdown
+---
+timeout: 120
+enabled: true
+---
+Coverage has dropped below the minimum threshold. Check which tests
+are missing and add them. Do not lower the threshold.
+```
+
+**`.ralph/checks/coverage-threshold/run.sh`**
+
+```bash
+#!/bin/bash
+set -e
+
+# Run coverage and check minimum threshold (adjust percentage as needed)
+uv run pytest --cov=src --cov-report=term-missing --cov-fail-under=80
+```
+
+### Context
+
+**`.ralph/contexts/coverage/CONTEXT.md`**
+
+This context shows the agent which modules need tests:
+
+```markdown
+---
+timeout: 60
+enabled: true
+---
+## Current test coverage
+```
+
+**`.ralph/contexts/coverage/run.sh`**
+
+```bash
+#!/bin/bash
+# Show per-module coverage so the agent can pick the lowest-covered module
+uv run pytest --cov=src --cov-report=term-missing -q 2>/dev/null || true
+```
+
+!!! note "Why `|| true`?"
+    Context commands that fail (non-zero exit) produce no output. Appending `|| true` ensures the coverage report is captured even when some tests are currently failing.
+
+### Setup commands
+
+```bash
+ralph init
+ralph new check tests
+ralph new check coverage-threshold
+ralph new context coverage
+```
+
+Create the `run.sh` scripts:
+
+```bash
+# Coverage threshold check script
+cat > .ralph/checks/coverage-threshold/run.sh << 'EOF'
+#!/bin/bash
+set -e
+uv run pytest --cov=src --cov-report=term-missing --cov-fail-under=80
+EOF
+chmod +x .ralph/checks/coverage-threshold/run.sh
+
+# Coverage context script
+cat > .ralph/contexts/coverage/run.sh << 'EOF'
+#!/bin/bash
+uv run pytest --cov=src --cov-report=term-missing -q 2>/dev/null || true
+EOF
+chmod +x .ralph/contexts/coverage/run.sh
+```
+
+Edit the CHECK.md and CONTEXT.md files to match the contents above, then run:
+
+```bash
+ralph run -n 5 --log-dir ralph_logs
+```
+
+!!! tip "Adapt the coverage command"
+    Replace `--cov=src` with the path to your source code. For Node.js, swap `pytest --cov` for `npx jest --coverage` or `npx c8 report`. The pattern works the same — the context shows what's uncovered, the check enforces a minimum threshold.
+
+---
+
 ## Static context (no command)
 
 Contexts don't need a command — you can use them for static text that you want to inject without editing the prompt file.
