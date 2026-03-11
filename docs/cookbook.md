@@ -455,6 +455,119 @@ When both a `command` in frontmatter and a `run.*` script exist, the script take
 
 ---
 
+## Running in GitHub Actions
+
+Run ralphify as a GitHub Actions workflow — useful for automated bug fixing, documentation generation, or scheduled code maintenance.
+
+### Workflow
+
+Create `.github/workflows/ralph-loop.yml`:
+
+```yaml
+name: Ralph Loop
+
+on:
+  workflow_dispatch:
+    inputs:
+      iterations:
+        description: "Number of iterations to run"
+        default: "5"
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  loop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tools
+        run: |
+          pip install ralphify
+          npm install -g @anthropic-ai/claude-code
+
+      - name: Run ralph loop
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          ralph run \
+            -n ${{ inputs.iterations }} \
+            --stop-on-error \
+            --timeout 300 \
+            --log-dir ralph-logs
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ralph-logs
+          path: ralph-logs/
+
+      - name: Push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --staged --quiet || git commit -m "chore: apply changes from ralph loop"
+          git push
+```
+
+### Key settings for CI
+
+| Setting | Why |
+|---|---|
+| `-n 5` | Cap iterations to control cost and runtime |
+| `--stop-on-error` | Stop immediately if the agent fails instead of burning credits |
+| `--timeout 300` | Kill stuck iterations after 5 minutes |
+| `--log-dir ralph-logs` | Capture output so you can debug via artifacts |
+
+### Tips for CI usage
+
+**Store your API key as a repository secret.** Go to Settings → Secrets and variables → Actions and add `ANTHROPIC_API_KEY`. Never hardcode keys in the workflow file.
+
+**Use `workflow_dispatch` for manual control.** This lets you choose how many iterations to run each time. You can also add a `schedule` trigger for recurring loops:
+
+```yaml
+on:
+  schedule:
+    - cron: "0 9 * * 1-5"  # 9 AM UTC on weekdays
+  workflow_dispatch:
+    inputs:
+      iterations:
+        default: "5"
+        type: string
+```
+
+**Create a PR instead of pushing directly.** For safer workflows, open a pull request so you can review the agent's changes before merging:
+
+```yaml
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="ralph/run-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b "$BRANCH"
+          git add -A
+          git diff --staged --quiet && exit 0
+          git commit -m "chore: apply changes from ralph loop"
+          git push -u origin "$BRANCH"
+          gh pr create \
+            --title "Ralph loop: automated changes" \
+            --body "Automated changes from ralph loop run." \
+            --base main
+```
+
+!!! note "Adapt for your agent"
+    This example uses Claude Code, but ralphify works with any CLI that reads stdin. Replace the agent install step and environment variables to match your agent. See [Using a different agent](cli.md#using-a-different-agent).
+
+---
+
 ## Static context (no command)
 
 Contexts don't need a command — you can use them for static text that you want to inject without editing the prompt file.

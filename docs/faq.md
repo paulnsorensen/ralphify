@@ -51,6 +51,8 @@ ralph run -n 5 --stop-on-error --timeout 300 --log-dir artifacts/ralph-logs
 
 Make sure the agent CLI is installed and authenticated in your CI environment. Use `-n` and `--stop-on-error` to keep runs bounded.
 
+See [Running in GitHub Actions](cookbook.md#running-in-github-actions) for a complete workflow you can copy into your repo.
+
 ## Usage
 
 ### Can I edit the prompt while the loop is running?
