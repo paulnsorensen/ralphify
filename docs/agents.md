@@ -74,7 +74,7 @@ prompt = "PROMPT.md"
 ```toml
 [agent]
 command = "bash"
-args = ["-c", "aider --yes-always --no-auto-commits --model claude-3-5-sonnet-20241022 --message \"$(cat -)\""]
+args = ["-c", "aider --yes-always --no-auto-commits --model claude-sonnet-4-6 --message \"$(cat -)\""]
 prompt = "PROMPT.md"
 ```
 

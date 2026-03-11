@@ -935,6 +935,188 @@ ralph run -n 5 --log-dir ralph_logs
 
 ---
 
+## Codebase migration
+
+Automate systematic, file-by-file migrations — JavaScript to TypeScript, Python 2 to 3, CommonJS to ESM, or any codebase-wide transformation. The agent migrates one file per iteration, checks validate the result, and a context tracks progress.
+
+This recipe shows a JavaScript-to-TypeScript migration. Adapt the commands and rules for your specific migration.
+
+### Configuration
+
+**`ralph.toml`**
+
+```toml
+[agent]
+command = "claude"
+args = ["-p", "--dangerously-skip-permissions"]
+prompt = "PROMPT.md"
+```
+
+**`PROMPT.md`**
+
+```markdown
+# Prompt
+
+You are an autonomous migration agent running in a loop. Each iteration
+starts with a fresh context. Your progress lives in the code and git.
+
+{{ contexts.migration-status }}
+{{ contexts.git-log }}
+
+Migrate one JavaScript file to TypeScript per iteration. Pick the file
+with the fewest dependencies on other unmigrated files (leaf nodes first).
+
+## Rules
+
+- One file per iteration — rename `.js` → `.ts` (or `.tsx`), add types, fix imports
+- Do NOT use `any` — write proper types for all function signatures and variables
+- Do NOT change behavior — the migration must be a pure type-layer addition
+- Update import paths in other files that reference the migrated file
+- Run the type checker and fix all errors before committing
+- Run tests to verify nothing broke
+- Commit with `refactor: migrate <filename> to TypeScript`
+- If all `.js` files are migrated, do nothing and exit cleanly
+
+{{ instructions }}
+```
+
+### Checks
+
+**`.ralph/checks/01-typecheck/CHECK.md`**
+
+```markdown
+---
+command: npx tsc --noEmit
+timeout: 120
+enabled: true
+---
+Fix all type errors introduced by the migration. Do not use `any` or
+`// @ts-ignore`. Write proper types for every function, parameter,
+and return value.
+```
+
+**`.ralph/checks/02-tests/CHECK.md`**
+
+```markdown
+---
+command: npm test
+timeout: 180
+enabled: true
+---
+The migration broke a test. The file's behavior must not change during
+migration — only types are added. Revert any accidental behavior changes
+and fix the type errors differently.
+```
+
+**`.ralph/checks/03-lint/CHECK.md`**
+
+```markdown
+---
+command: npx eslint . --ext .ts,.tsx,.js,.jsx
+timeout: 60
+enabled: true
+---
+Fix all lint errors. Do not disable rules with eslint-disable comments.
+```
+
+### Contexts
+
+**`.ralph/contexts/migration-status/CONTEXT.md`**
+
+Use a script to show which files still need migrating:
+
+```markdown
+---
+timeout: 15
+enabled: true
+---
+## Migration progress
+```
+
+**`.ralph/contexts/migration-status/run.sh`**
+
+```bash
+#!/bin/bash
+# Count remaining .js files vs .ts files in the source directory
+JS_COUNT=$(find src -name '*.js' -o -name '*.jsx' | wc -l | tr -d ' ')
+TS_COUNT=$(find src -name '*.ts' -o -name '*.tsx' | wc -l | tr -d ' ')
+TOTAL=$((JS_COUNT + TS_COUNT))
+
+echo "Files migrated: $TS_COUNT / $TOTAL"
+echo "Remaining .js files: $JS_COUNT"
+echo ""
+
+if [ "$JS_COUNT" -gt 0 ]; then
+    echo "Files still to migrate:"
+    find src -name '*.js' -o -name '*.jsx' | sort
+fi
+```
+
+**`.ralph/contexts/git-log/CONTEXT.md`**
+
+```markdown
+---
+command: git log --oneline -10
+timeout: 10
+enabled: true
+---
+## Recent commits
+```
+
+### Setup commands
+
+```bash
+ralph init
+ralph new check 01-typecheck
+ralph new check 02-tests
+ralph new check 03-lint
+ralph new context migration-status
+ralph new context git-log
+```
+
+Create the migration status script:
+
+```bash
+cat > .ralph/contexts/migration-status/run.sh << 'SCRIPT'
+#!/bin/bash
+JS_COUNT=$(find src -name '*.js' -o -name '*.jsx' | wc -l | tr -d ' ')
+TS_COUNT=$(find src -name '*.ts' -o -name '*.tsx' | wc -l | tr -d ' ')
+TOTAL=$((JS_COUNT + TS_COUNT))
+echo "Files migrated: $TS_COUNT / $TOTAL"
+echo "Remaining .js files: $JS_COUNT"
+echo ""
+if [ "$JS_COUNT" -gt 0 ]; then
+    echo "Files still to migrate:"
+    find src -name '*.js' -o -name '*.jsx' | sort
+fi
+SCRIPT
+chmod +x .ralph/contexts/migration-status/run.sh
+```
+
+Edit each CHECK.md and CONTEXT.md to match the contents above, then run:
+
+```bash
+ralph run -n 3 --log-dir ralph_logs   # test with a few files first
+```
+
+Review the first 3 migrations, then scale up:
+
+```bash
+ralph run --log-dir ralph_logs --stop-on-error
+```
+
+!!! tip "Adapt for other migrations"
+    This pattern works for any systematic codebase transformation:
+
+    - **Python 2 → 3**: Replace the type checker with `python -m py_compile`, add a `pyupgrade` check, update the context to count `print` statements or other Python 2 patterns
+    - **CommonJS → ESM**: Check for remaining `require()` calls, validate with a bundler build
+    - **REST → GraphQL**: Track endpoints migrated vs remaining, validate with schema checks
+    - **Class components → hooks**: Count class components remaining, run tests after each conversion
+
+    The key ingredients are always the same: a context that shows what's left, checks that validate each step, and a prompt that tells the agent to do one file at a time.
+
+---
+
 ## Static context (no command)
 
 Contexts don't need a command — you can use them for static text that you want to inject without editing the prompt file.
