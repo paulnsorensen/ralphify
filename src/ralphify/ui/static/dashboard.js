@@ -1257,6 +1257,10 @@ function NewRunModal() {
         setPromptsLoaded(true);
       })
       .catch(() => setPromptsLoaded(true));
+
+    const onKey = (e) => { if (e.key === 'Escape') showNewRunModal.value = false; };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
   }, []);
 
   const selectPrompt = (name) => {
