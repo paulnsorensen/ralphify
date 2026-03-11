@@ -51,6 +51,9 @@ The body text below the frontmatter is the **failure instruction** — it gets i
 | `timeout` | int | `60` | Max seconds before the check is killed |
 | `enabled` | bool | `true` | Set to `false` to skip without deleting |
 
+!!! warning "Checks need a command or script"
+    A check must have either a `command` in its frontmatter or an executable `run.*` script in its directory. Checks that have neither are **skipped with a warning** during discovery. If `ralph status` shows fewer checks than you expect, verify each check has a command or script configured.
+
 ### Command parsing
 
 Commands are split with Python's `shlex.split()` and executed **directly** — not through a shell. This means:
@@ -216,6 +219,9 @@ Always use type hints on function signatures.
 Keep functions under 30 lines.
 Never use print() for logging — use the logging module.
 ```
+
+!!! note "Empty instructions are excluded"
+    Instructions with no body text (only frontmatter) are silently excluded from prompt injection, even when `enabled: true`. If an instruction isn't appearing in your prompt, make sure it has content below the frontmatter.
 
 ### Frontmatter fields
 

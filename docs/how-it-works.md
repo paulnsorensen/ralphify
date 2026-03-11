@@ -336,7 +336,7 @@ The loop runs until one of these conditions:
 
 - **Iteration limit**: `-n 5` stops after 5 iterations
 - **Ctrl+C**: Graceful shutdown — the current iteration is interrupted and a summary is printed
-- **`--stop-on-error`**: Stops if the agent exits with a non-zero code
+- **`--stop-on-error`**: Stops if the agent exits with a non-zero code or times out
 
 When the loop ends, ralphify prints a summary:
 
