@@ -1288,16 +1288,12 @@ function NewRunModal() {
 
   const handleSubmit = () => {
     const body = {
-      command: 'claude',
-      args: ['-p', '--dangerously-skip-permissions'],
-      prompt_file: selectedPrompt ? '' : 'PROMPT.md',
       prompt_name: selectedPrompt || null,
       prompt_text: promptMode === 'adhoc' ? adhocText : null,
       max_iterations: maxIterations ? parseInt(maxIterations) : null,
       delay: parseFloat(delay) || 0,
       timeout: timeout ? parseFloat(timeout) : null,
       stop_on_error: stopOnError,
-      project_dir: '.',
     };
     createRun(body);
   };

@@ -1,6 +1,7 @@
 """REST endpoints for run lifecycle management."""
 from __future__ import annotations
 
+import tomllib
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException  # ty: ignore[unresolved-import]
@@ -10,6 +11,23 @@ from ralphify.engine import RunConfig
 from ralphify.manager import RunManager
 from ralphify.prompts import resolve_prompt_name
 from ralphify.ui.models import RunCreate, RunResponse, RunSettingsUpdate
+
+_CONFIG_FILENAME = "ralph.toml"
+
+
+def _load_agent_config(project_dir: str) -> dict:
+    """Read ``[agent]`` from ralph.toml so the UI never hard-codes command/args."""
+    config_path = Path(project_dir) / _CONFIG_FILENAME
+    if not config_path.exists():
+        raise HTTPException(
+            status_code=400,
+            detail=f"{_CONFIG_FILENAME} not found in project directory.",
+        )
+    with open(config_path, "rb") as f:
+        toml_cfg = tomllib.load(f)
+    agent = toml_cfg.get("agent", {})
+    return {"command": agent.get("command", "claude"), "args": agent.get("args", [])}
+
 
 router = APIRouter()
 
@@ -38,6 +56,16 @@ def _run_response(managed) -> RunResponse:
 async def create_run(body: RunCreate) -> RunResponse:
     """Create and start a new run."""
     mgr = _get_manager()
+
+    # Default command/args from ralph.toml when not provided by the client.
+    command = body.command
+    args = body.args if body.args is not None else []
+    if command is None:
+        agent_cfg = _load_agent_config(body.project_dir)
+        command = agent_cfg["command"]
+        if body.args is None:
+            args = agent_cfg["args"]
+
     prompt_file = body.prompt_file
     resolved_name: str | None = None
     if body.prompt_name:
@@ -49,8 +77,8 @@ async def create_run(body: RunCreate) -> RunResponse:
         prompt_file = str(found.path / PROMPT_MARKER)
         resolved_name = found.name
     config = RunConfig(
-        command=body.command,
-        args=body.args,
+        command=command,
+        args=args,
         prompt_file=prompt_file,
         prompt_text=body.prompt_text,
         prompt_name=resolved_name,

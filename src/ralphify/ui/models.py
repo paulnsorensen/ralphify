@@ -4,8 +4,8 @@ from pydantic import BaseModel  # ty: ignore[unresolved-import]
 
 
 class RunCreate(BaseModel):
-    command: str
-    args: list[str] = []
+    command: str | None = None
+    args: list[str] | None = None
     prompt_file: str = "PROMPT.md"
     prompt_text: str | None = None
     prompt_name: str | None = None
