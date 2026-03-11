@@ -401,6 +401,27 @@ curl -X DELETE http://127.0.0.1:8765/api/projects/$PROJECT/primitives/checks/typ
 
 Returns `204 No Content` on success.
 
+#### Test a check
+
+Run a single check immediately and get the result — useful for validating a
+check command before starting a full run.
+
+```bash
+curl -X POST http://127.0.0.1:8765/api/projects/$PROJECT/primitives/checks/tests/test
+```
+
+```json
+{
+  "passed": true,
+  "exit_code": 0,
+  "output": "4 passed in 1.23s\n",
+  "timed_out": false,
+  "duration": 1.45
+}
+```
+
+Returns `404` if the check does not exist.
+
 ### WebSocket
 
 Connect to `/api/ws` for live event streaming:
