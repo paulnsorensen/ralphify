@@ -65,8 +65,8 @@ Pick the most impactful improvement and make it this iteration.
 - Remove misleading or outdated comments
 
 ### 7. Improve AI agent documentation
-- Keep `CLAUDE.md` and `agent_docs/` accurate and useful
-- Update `CODEBASE_MAP.md` if the structure has changed
+- Keep `CLAUDE.md` and `docs/contributing/` accurate and useful
+- Update `docs/contributing/codebase-map.md` if the structure has changed
 - Call out traps and cross-module dependencies
 - Make it easier for an agent to orient itself and work effectively
 
