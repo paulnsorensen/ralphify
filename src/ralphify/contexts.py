@@ -95,23 +95,12 @@ def run_all_contexts(contexts: list[Context], project_root: Path) -> list[Contex
     return [run_context(ctx, project_root) for ctx in contexts]
 
 
-def _render_context(result: ContextResult) -> str:
-    """Render a single context result into text for prompt injection."""
-    parts = []
-
-    if result.context.static_content:
-        parts.append(result.context.static_content)
-
-    output = truncate_output(result.output)
-
-    if output.strip():
-        parts.append(output.strip())
-
-    return "\n".join(parts)
-
-
 def resolve_contexts(prompt: str, results: list[ContextResult]) -> str:
     """Replace context placeholders in a prompt string.
+
+    Each context result is rendered by combining its static content (if any)
+    with its truncated command output, then injected into the prompt via
+    :func:`resolve_placeholders`.
 
     Callers are responsible for passing only the results they want
     resolved (the engine pre-filters via ``_discover_enabled_primitives``).
@@ -122,7 +111,13 @@ def resolve_contexts(prompt: str, results: list[ContextResult]) -> str:
     """
     available: dict[str, str] = {}
     for r in results:
-        rendered = _render_context(r)
+        parts = []
+        if r.context.static_content:
+            parts.append(r.context.static_content)
+        output = truncate_output(r.output)
+        if output.strip():
+            parts.append(output.strip())
+        rendered = "\n".join(parts)
         if rendered:
             available[r.context.name] = rendered
 

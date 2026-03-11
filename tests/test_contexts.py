@@ -10,7 +10,6 @@ from ralphify.contexts import (
     resolve_contexts,
     run_context,
     run_all_contexts,
-    _render_context,
 )
 
 _MOCK_SUBPROCESS = "ralphify._runner.subprocess.run"
@@ -260,41 +259,45 @@ class TestRunAllContexts:
         assert mock_run.call_count == 2
 
 
-class TestRenderContext:
-    def _make_result(self, static_content="", output="", success=True):
+class TestContextRendering:
+    """Test context rendering (static content + command output) via resolve_contexts."""
+
+    def _make_result(self, name="test", static_content="", output="", success=True):
         ctx = Context(
-            name="test",
+            name=name,
             path=Path("/fake"),
             command="echo",
             static_content=static_content,
         )
         return ContextResult(context=ctx, output=output, success=success)
 
+    def _render_via_resolve(self, static_content="", output=""):
+        """Render a context through resolve_contexts with a named placeholder."""
+        result = self._make_result(static_content=static_content, output=output)
+        return resolve_contexts("{{ contexts.test }}", [result])
+
     def test_static_and_output(self):
-        result = self._make_result(static_content="Header:", output="data\n")
-        rendered = _render_context(result)
+        rendered = self._render_via_resolve(static_content="Header:", output="data\n")
         assert "Header:" in rendered
         assert "data" in rendered
 
     def test_static_only(self):
-        result = self._make_result(static_content="Just static.", output="")
-        rendered = _render_context(result)
+        rendered = self._render_via_resolve(static_content="Just static.", output="")
         assert rendered == "Just static."
 
     def test_output_only(self):
-        result = self._make_result(static_content="", output="dynamic output\n")
-        rendered = _render_context(result)
+        rendered = self._render_via_resolve(static_content="", output="dynamic output\n")
         assert rendered == "dynamic output"
 
-    def test_empty_context(self):
+    def test_empty_context_not_injected(self):
         result = self._make_result(static_content="", output="")
-        rendered = _render_context(result)
-        assert rendered == ""
+        prompt = "Base prompt."
+        rendered = resolve_contexts(prompt, [result])
+        assert rendered == prompt
 
     def test_output_truncation(self):
         long_output = "x" * (MAX_OUTPUT_LEN + 1000)
-        result = self._make_result(output=long_output)
-        rendered = _render_context(result)
+        rendered = self._render_via_resolve(output=long_output)
         assert "truncated" in rendered
         assert len(rendered) < len(long_output)
 
