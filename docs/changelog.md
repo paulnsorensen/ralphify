@@ -24,6 +24,8 @@ All notable changes to ralphify are documented here.
 - **Contributor docs** — new `docs/contributing/` section with a codebase map, replacing the old `agent_docs/` directory.
 - **Iterations API endpoint** — `GET /api/runs/{run_id}/iterations` returns persisted iteration data with per-check results, enabling History tab drill-downs and custom reporting.
 - **Persistent run history** — the dashboard stores run history, iterations, and check results in a SQLite database at `~/.ralph/ui.db` that survives across restarts.
+- **Keyboard shortcuts in dashboard** — press Cmd+S / Ctrl+S to save changes in primitive editors and create forms. Escape closes the New Run modal.
+- **History runs API endpoint** — `GET /api/history/runs` returns all persisted runs from the SQLite store, enabling custom history queries and reporting.
 
 ### Fixed
 

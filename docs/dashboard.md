@@ -255,6 +255,18 @@ open it and the overlay to close it. Controls and spacing tighten further below
   <figcaption>On phones, the sidebar collapses and the layout stacks vertically.</figcaption>
 </figure>
 
+## Keyboard shortcuts
+
+The dashboard supports keyboard shortcuts for common actions:
+
+| Shortcut | Where | Action |
+|---|---|---|
+| <kbd>Cmd+S</kbd> / <kbd>Ctrl+S</kbd> | Primitive editor | Save changes to the current primitive |
+| <kbd>Cmd+S</kbd> / <kbd>Ctrl+S</kbd> | Create primitive form | Create the new primitive |
+| <kbd>Escape</kbd> | New Run modal | Close the modal |
+
+The save shortcut works in both the edit and create views of the Configure tab — press <kbd>Cmd+S</kbd> (Mac) or <kbd>Ctrl+S</kbd> (Windows/Linux) instead of clicking the Save or Create button.
+
 ## REST API
 
 The dashboard exposes a REST API you can use to script runs, manage primitives,
@@ -423,6 +435,49 @@ Each iteration includes:
 | `returncode` | int\|null         | Agent exit code (`null` if timed out or still running)   |
 | `duration`   | string\|null      | Formatted duration (e.g. `"52.3s"`)                      |
 | `checks`     | array\|null       | Per-check results, or `null` if no checks ran            |
+
+#### List past runs (history)
+
+Retrieve all persisted runs from the SQLite store — these survive dashboard
+restarts. This is what powers the History tab.
+
+```bash
+curl http://127.0.0.1:8765/api/history/runs
+```
+
+```json
+[
+  {
+    "run_id": "a1b2c3d4",
+    "status": "completed",
+    "command": "claude",
+    "prompt_file": "PROMPT.md",
+    "started_at": "2026-03-11T14:23:01",
+    "stopped_at": "2026-03-11T14:35:12",
+    "iterations": 5,
+    "completed": 4,
+    "failed": 1,
+    "timed_out": 0
+  }
+]
+```
+
+Each run includes:
+
+| Field        | Type         | Description                                    |
+|--------------|--------------|------------------------------------------------|
+| `run_id`     | string       | Unique run identifier                          |
+| `status`     | string       | `"running"`, `"completed"`, `"stopped"`, etc.  |
+| `command`    | string       | Agent command used                             |
+| `prompt_file`| string       | Path to the prompt file                        |
+| `started_at` | string\|null | ISO 8601 start timestamp                       |
+| `stopped_at` | string\|null | ISO 8601 stop timestamp                        |
+| `iterations` | int          | Total iterations executed                      |
+| `completed`  | int          | Iterations that succeeded                      |
+| `failed`     | int          | Iterations that failed                         |
+| `timed_out`  | int          | Iterations that timed out                      |
+
+Runs are returned newest-first. Combine with the [iterations endpoint](#get-iterations-for-a-run) to drill into a specific run's details.
 
 ### Primitives
 

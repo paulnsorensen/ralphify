@@ -227,6 +227,18 @@ Frontmatter `command` values are split with `shlex` and run **directly** (no she
 
 ---
 
+## Dashboard keyboard shortcuts
+
+| Shortcut | Where | Action |
+|---|---|---|
+| <kbd>Cmd+S</kbd> / <kbd>Ctrl+S</kbd> | Primitive editor | Save changes |
+| <kbd>Cmd+S</kbd> / <kbd>Ctrl+S</kbd> | Create primitive form | Create the primitive |
+| <kbd>Escape</kbd> | New Run modal | Close the modal |
+
+See [Web Dashboard](dashboard.md#keyboard-shortcuts) for details.
+
+---
+
 ## Prompt assembly order
 
 Each iteration assembles the prompt in this order:
