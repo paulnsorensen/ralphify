@@ -21,6 +21,49 @@ INSTRUCTION_MARKER = "INSTRUCTION.md"
 PROMPT_MARKER = "PROMPT.md"
 
 
+# Type coercion for known frontmatter fields.
+# To add a new typed field, add an entry here — no other changes needed.
+_FIELD_COERCIONS: dict[str, object] = {
+    "timeout": int,
+    "enabled": lambda v: v.lower() in ("true", "yes", "1"),
+}
+
+
+def _parse_kv_lines(lines: list[str]) -> dict:
+    """Parse flat ``key: value`` lines with type coercion for known fields."""
+    result: dict = {}
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if ":" not in line:
+            continue
+        key, _, value = line.partition(":")
+        key = key.strip()
+        value = value.strip()
+        coerce = _FIELD_COERCIONS.get(key)
+        result[key] = coerce(value) if coerce else value
+    return result
+
+
+def _extract_frontmatter_block(text: str) -> tuple[list[str], str]:
+    """Split text into frontmatter lines and body at ``---`` delimiters.
+
+    Returns ``([], text)`` when no valid frontmatter block is found.
+    """
+    lines = text.split("\n")
+    start = None
+    for i, line in enumerate(lines):
+        if line.strip() == "---":
+            if start is None:
+                start = i
+            else:
+                fm_lines = lines[start + 1 : i]
+                body = "\n".join(lines[i + 1 :]).strip()
+                return fm_lines, body
+    return [], text
+
+
 def parse_frontmatter(text: str) -> tuple[dict, str]:
     """Parse a markdown file with optional YAML-like frontmatter.
 
@@ -31,39 +74,11 @@ def parse_frontmatter(text: str) -> tuple[dict, str]:
 
     Returns ``(frontmatter_dict, body_text)``.
     """
-    frontmatter: dict = {}
-    body = text
-
-    stripped = text.strip()
-    if stripped.startswith("---"):
-        lines = text.split("\n")
-        # Find the opening ---
-        start = None
-        for i, line in enumerate(lines):
-            if line.strip() == "---":
-                if start is None:
-                    start = i
-                else:
-                    # Found closing ---
-                    fm_lines = lines[start + 1 : i]
-                    body = "\n".join(lines[i + 1 :]).strip()
-                    for fm_line in fm_lines:
-                        fm_line = fm_line.strip()
-                        if not fm_line or fm_line.startswith("#"):
-                            continue
-                        if ":" not in fm_line:
-                            continue
-                        key, _, value = fm_line.partition(":")
-                        key = key.strip()
-                        value = value.strip()
-                        # Type coercion
-                        if key == "timeout":
-                            frontmatter[key] = int(value)
-                        elif key == "enabled":
-                            frontmatter[key] = value.lower() in ("true", "yes", "1")
-                        else:
-                            frontmatter[key] = value
-                    break
+    if text.strip().startswith("---"):
+        fm_lines, body = _extract_frontmatter_block(text)
+        frontmatter = _parse_kv_lines(fm_lines)
+    else:
+        frontmatter, body = {}, text
 
     body = re.sub(r"<!--.*?-->", "", body, flags=re.DOTALL).strip()
     return frontmatter, body
