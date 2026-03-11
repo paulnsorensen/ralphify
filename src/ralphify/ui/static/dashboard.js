@@ -133,8 +133,20 @@ function handleEvent(event) {
   }
 
   else if (type === 'run_stopped') {
-    const status = data.reason === 'completed' ? 'completed' : 'stopped';
+    const status = data.reason === 'completed' ? 'completed'
+                 : data.reason === 'error' ? 'failed'
+                 : 'stopped';
     updateRun(run_id, { status, ...data });
+    if (data.reason === 'error') {
+      showToast('Run failed — check the timeline for details.', 'error');
+    }
+  }
+
+  else if (type === 'log_message') {
+    // Store log messages so they can be displayed in the iteration panel
+    if (data.level === 'error' && data.message) {
+      updateRun(run_id, r => ({ lastError: data.message }));
+    }
   }
 
   else if (type === 'run_paused') {
@@ -504,9 +516,11 @@ function RunOverview({ run }) {
     ? (isHealthy
         ? 'All looking good — your agent is making progress.'
         : `Pass rate is ${passRate}%. Check the health sparklines below for stuck checks.`)
-    : (run.status === 'completed'
+    : run.status === 'failed'
+        ? (run.lastError || `Run failed after ${total} iterations.`)
+    : run.status === 'completed'
         ? `Run completed with ${passRate}% pass rate across ${total} iterations.`
-        : `Run ${run.status}. ${total} iterations completed.`);
+        : `Run ${run.status}. ${total} iterations completed.`;
 
   return html`
     <div class="run-overview">

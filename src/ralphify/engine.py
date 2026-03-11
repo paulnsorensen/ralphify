@@ -285,6 +285,11 @@ def _execute_agent(
     except subprocess.TimeoutExpired as e:
         if log_path_dir:
             log_file = _write_log(log_path_dir, iteration, e.stdout, e.stderr)
+    except FileNotFoundError:
+        raise FileNotFoundError(
+            f"Agent command not found: {config.command!r}. "
+            f"Check the [agent] command in ralph.toml."
+        )
 
     elapsed = time.monotonic() - start
     duration = format_duration(elapsed)
@@ -484,11 +489,22 @@ def run_loop(
 
     except KeyboardInterrupt:
         pass
+    except Exception as exc:
+        state.status = RunStatus.FAILED
+        emitter.emit(Event(
+            type=EventType.LOG_MESSAGE,
+            run_id=state.run_id,
+            data={"message": f"Run crashed: {exc}", "level": "error"},
+        ))
 
     if state.status == RunStatus.RUNNING:
         state.status = RunStatus.COMPLETED
 
-    reason = "user_requested" if state.status == RunStatus.STOPPED else "completed"
+    reason = (
+        "error" if state.status == RunStatus.FAILED
+        else "user_requested" if state.status == RunStatus.STOPPED
+        else "completed"
+    )
     total = state.completed + state.failed
     emitter.emit(Event(
         type=EventType.RUN_STOPPED,
