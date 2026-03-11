@@ -197,7 +197,7 @@ class TestSaveEvent:
             await store.save_event(_make_event(event_type="run_started"))
             await store.save_event(_make_event(
                 event_type="check_passed",
-                data={"iteration": 1, "check_name": "pytest", "exit_code": 0, "timed_out": False},
+                data={"iteration": 1, "name": "pytest", "exit_code": 0, "timed_out": False},
             ))
 
             checks = await store.get_check_results("run-001", 1)
@@ -215,7 +215,7 @@ class TestSaveEvent:
             await store.save_event(_make_event(event_type="run_started"))
             await store.save_event(_make_event(
                 event_type="check_failed",
-                data={"iteration": 2, "check_name": "mypy", "exit_code": 1, "timed_out": False},
+                data={"iteration": 2, "name": "mypy", "exit_code": 1, "timed_out": False},
             ))
 
             checks = await store.get_check_results("run-001", 2)
@@ -295,12 +295,12 @@ class TestQueryHelpers:
             # Checks for iteration 1
             await store.save_event(_make_event(
                 event_type="check_passed",
-                data={"iteration": 1, "check_name": "pytest", "exit_code": 0},
+                data={"iteration": 1, "name": "pytest", "exit_code": 0},
             ))
             # Checks for iteration 2
             await store.save_event(_make_event(
                 event_type="check_failed",
-                data={"iteration": 2, "check_name": "mypy", "exit_code": 1},
+                data={"iteration": 2, "name": "mypy", "exit_code": 1},
             ))
 
             checks_1 = await store.get_check_results("run-001", 1)

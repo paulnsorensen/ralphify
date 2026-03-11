@@ -354,34 +354,31 @@ def _run_checks_phase(
 
     check_results = run_all_checks(enabled_checks, project_root)
 
+    # Build per-result data once; reused for both per-check and summary events.
+    results_data: list[dict] = []
     for cr in check_results:
+        result = {
+            "name": cr.check.name,
+            "passed": cr.passed,
+            "exit_code": cr.exit_code,
+            "timed_out": cr.timed_out,
+        }
+        results_data.append(result)
         emitter.emit(Event(
             type=EventType.CHECK_PASSED if cr.passed else EventType.CHECK_FAILED,
             run_id=state.run_id,
-            data={
-                "iteration": iteration,
-                "check_name": cr.check.name,
-                "exit_code": cr.exit_code,
-                "timed_out": cr.timed_out,
-            },
+            data={"iteration": iteration, **result},
         ))
 
+    passed = sum(1 for r in results_data if r["passed"])
     emitter.emit(Event(
         type=EventType.CHECKS_COMPLETED,
         run_id=state.run_id,
         data={
             "iteration": iteration,
-            "passed": sum(1 for r in check_results if r.passed),
-            "failed": sum(1 for r in check_results if not r.passed),
-            "results": [
-                {
-                    "name": r.check.name,
-                    "passed": r.passed,
-                    "exit_code": r.exit_code,
-                    "timed_out": r.timed_out,
-                }
-                for r in check_results
-            ],
+            "passed": passed,
+            "failed": len(results_data) - passed,
+            "results": results_data,
         },
     ))
 

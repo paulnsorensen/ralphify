@@ -228,7 +228,7 @@ class Store:
             (
                 run_id,
                 iteration,
-                data.get("check_name", ""),
+                data.get("name", ""),
                 1 if event_type == EventType.CHECK_PASSED else 0,
                 data.get("exit_code"),
                 1 if data.get("timed_out") else 0,
