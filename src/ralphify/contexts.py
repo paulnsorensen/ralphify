@@ -53,15 +53,15 @@ def discover_contexts(root: Path = Path(".")) -> list[Context]:
     """Discover contexts in root/.ralph/contexts/ directories."""
     return [
         Context(
-            name=entry.name,
-            path=entry,
-            command=frontmatter.get("command"),
-            script=find_run_script(entry),
-            timeout=frontmatter.get("timeout", _DEFAULT_TIMEOUT),
-            enabled=frontmatter.get("enabled", True),
-            static_content=body,
+            name=prim.path.name,
+            path=prim.path,
+            command=prim.frontmatter.get("command"),
+            script=find_run_script(prim.path),
+            timeout=prim.frontmatter.get("timeout", _DEFAULT_TIMEOUT),
+            enabled=prim.frontmatter.get("enabled", True),
+            static_content=prim.body,
         )
-        for entry, frontmatter, body in discover_primitives(root, "contexts", CONTEXT_MARKER)
+        for prim in discover_primitives(root, "contexts", CONTEXT_MARKER)
     ]
 
 

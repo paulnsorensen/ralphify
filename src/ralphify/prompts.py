@@ -32,13 +32,13 @@ def discover_prompts(root: Path = Path(".")) -> list[Prompt]:
     """
     return [
         Prompt(
-            name=entry.name,
-            path=entry,
-            description=frontmatter.get("description", ""),
-            enabled=frontmatter.get("enabled", True),
-            content=body,
+            name=prim.path.name,
+            path=prim.path,
+            description=prim.frontmatter.get("description", ""),
+            enabled=prim.frontmatter.get("enabled", True),
+            content=prim.body,
         )
-        for entry, frontmatter, body in discover_primitives(root, "prompts", PROMPT_MARKER)
+        for prim in discover_primitives(root, "prompts", PROMPT_MARKER)
     ]
 
 

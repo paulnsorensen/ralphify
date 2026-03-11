@@ -57,23 +57,23 @@ def discover_checks(root: Path = Path(".")) -> list[Check]:
     are skipped with a warning.  Defaults: ``timeout=_DEFAULT_TIMEOUT``, ``enabled=True``.
     """
     checks = []
-    for entry, frontmatter, body in discover_primitives(root, "checks", CHECK_MARKER):
-        script = find_run_script(entry)
-        command = frontmatter.get("command")
+    for prim in discover_primitives(root, "checks", CHECK_MARKER):
+        script = find_run_script(prim.path)
+        command = prim.frontmatter.get("command")
 
         if not script and not command:
-            warnings.warn(f"Check '{entry.name}' has neither a run.* script nor a command — skipping")
+            warnings.warn(f"Check '{prim.path.name}' has neither a run.* script nor a command — skipping")
             continue
 
         checks.append(
             Check(
-                name=entry.name,
-                path=entry,
+                name=prim.path.name,
+                path=prim.path,
                 command=command,
                 script=script,
-                timeout=frontmatter.get("timeout", _DEFAULT_TIMEOUT),
-                enabled=frontmatter.get("enabled", True),
-                failure_instruction=body,
+                timeout=prim.frontmatter.get("timeout", _DEFAULT_TIMEOUT),
+                enabled=prim.frontmatter.get("enabled", True),
+                failure_instruction=prim.body,
             )
         )
 

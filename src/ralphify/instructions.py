@@ -35,12 +35,12 @@ def discover_instructions(root: Path = Path(".")) -> list[Instruction]:
     """
     return [
         Instruction(
-            name=entry.name,
-            path=entry,
-            enabled=frontmatter.get("enabled", True),
-            content=body,
+            name=prim.path.name,
+            path=prim.path,
+            enabled=prim.frontmatter.get("enabled", True),
+            content=prim.body,
         )
-        for entry, frontmatter, body in discover_primitives(root, "instructions", INSTRUCTION_MARKER)
+        for prim in discover_primitives(root, "instructions", INSTRUCTION_MARKER)
     ]
 
 
