@@ -5,3 +5,4 @@ dist/
 .venv/
 .claude/
 .codex/
+site/

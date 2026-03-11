@@ -1,0 +1,9 @@
+site_name: Ralphify
+site_description: Harness toolkit for autonomous AI coding loops
+site_url: https://computerlovetech.github.io/ralphify/
+repo_url: https://github.com/computerlovetech/ralphify
+
+nav:
+  - Home: index.md
+  - Primitives: primitives.md
+  - CLI Reference: cli.md
