@@ -66,5 +66,6 @@ Read the full writeup: [Ralph Wiggum as a "software engineer"](https://ghuntley.
 
 ## Next steps
 
+- [Writing Your Prompt](prompts.md) — how to write prompts that produce useful work
 - [Primitives](primitives.md) — add checks, contexts, and instructions to your loop
 - [CLI Reference](cli.md) — all commands and options
