@@ -1,3 +1,12 @@
+"""Template placeholder resolution shared by contexts and instructions.
+
+Handles three placement strategies:
+
+1. **Named** — ``{{ kind.name }}`` inserts a specific primitive's content.
+2. **Bulk** — ``{{ kind }}`` inserts all remaining primitives (alphabetically).
+3. **Implicit** — when no placeholders exist, all content is appended to the end.
+"""
+
 import re
 
 

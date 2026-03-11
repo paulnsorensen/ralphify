@@ -1,3 +1,13 @@
+"""Parse YAML frontmatter from primitive markdown files and discover primitives.
+
+All three primitive types (checks, contexts, instructions) store their
+configuration in markdown files with ``---``-delimited frontmatter.
+This module provides the shared parsing and directory-scanning logic.
+
+HTML comments in the body are stripped so users can leave notes that
+don't leak into the assembled prompt.
+"""
+
 import re
 from collections.abc import Iterator
 from pathlib import Path

@@ -1,3 +1,11 @@
+"""Discover and run validation checks after each loop iteration.
+
+Checks are scripts or commands in ``.ralph/checks/<name>/`` that validate
+the agent's work (tests, linters, type checkers).  When a check fails its
+output and failure instruction are formatted for injection into the next
+iteration's prompt, creating a self-healing feedback loop.
+"""
+
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
@@ -9,6 +17,13 @@ from ralphify._runner import run_command
 
 @dataclass
 class Check:
+    """A validation check discovered from ``.ralph/checks/<name>/CHECK.md``.
+
+    Either *command* or *script* must be set.  If both exist, *script* wins.
+    The *failure_instruction* (body text from CHECK.md) is appended to the
+    prompt when the check fails, guiding the agent toward a fix.
+    """
+
     name: str
     path: Path
     command: str | None
@@ -20,6 +35,12 @@ class Check:
 
 @dataclass
 class CheckResult:
+    """Outcome of running a single :class:`Check`.
+
+    *passed* is ``True`` when the command exits with code 0.
+    *exit_code* is ``-1`` when the check timed out.
+    """
+
     check: Check
     passed: bool
     exit_code: int

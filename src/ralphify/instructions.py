@@ -1,3 +1,11 @@
+"""Discover and resolve static instruction text injected into each prompt.
+
+Instructions are reusable rules in ``.ralph/instructions/<name>/`` that get
+injected into the prompt every iteration — for example coding standards or
+git conventions.  Unlike contexts, they have no command; their content is
+the body text of the INSTRUCTION.md file.
+"""
+
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -7,6 +15,12 @@ from ralphify.resolver import resolve_placeholders
 
 @dataclass
 class Instruction:
+    """A static instruction discovered from ``.ralph/instructions/<name>/INSTRUCTION.md``.
+
+    The *content* is the body text below the frontmatter.  Instructions with
+    empty content are silently excluded from prompt injection even if enabled.
+    """
+
     name: str
     path: Path
     enabled: bool = True

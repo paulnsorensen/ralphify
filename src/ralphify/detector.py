@@ -1,3 +1,10 @@
+"""Auto-detect project type from manifest files.
+
+Used during ``ralph init`` to report the detected language ecosystem.
+Checks for common manifest files (package.json, pyproject.toml, etc.)
+and returns a short label like "python" or "node".
+"""
+
 from pathlib import Path
 
 

@@ -1,3 +1,8 @@
+"""Ralphify — a minimal harness for running autonomous AI coding loops.
+
+Exposes the ``ralph`` CLI entry point and the package version.
+"""
+
 from importlib.metadata import PackageNotFoundError, version
 
 try:

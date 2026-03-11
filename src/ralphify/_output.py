@@ -1,3 +1,9 @@
+"""Combine and truncate subprocess output for prompt injection.
+
+Output from checks and contexts is capped at :data:`MAX_OUTPUT_LEN`
+characters (5 000) to avoid blowing up the agent's context window.
+"""
+
 from __future__ import annotations
 
 MAX_OUTPUT_LEN = 5000

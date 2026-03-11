@@ -1,3 +1,10 @@
+"""Execute shell commands and scripts with timeout and output capture.
+
+Used by checks and contexts to run their configured command or ``run.*``
+script.  All commands run with ``cwd`` set to the project root, regardless
+of where the primitive directory is located.
+"""
+
 from __future__ import annotations
 
 import shlex

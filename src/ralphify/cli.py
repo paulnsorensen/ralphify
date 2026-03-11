@@ -1,3 +1,10 @@
+"""CLI commands for ralphify — init, run, status, and scaffold new primitives.
+
+This is the main module.  The ``run`` command implements the core autonomous
+loop: read prompt, resolve contexts and instructions, pipe to the agent,
+run checks, and repeat.
+"""
+
 import shutil
 import subprocess
 import sys

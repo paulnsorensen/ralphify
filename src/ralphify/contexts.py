@@ -1,3 +1,10 @@
+"""Discover and run dynamic data contexts injected before each iteration.
+
+Contexts live in ``.ralph/contexts/<name>/`` and provide fresh data to the
+prompt each loop — for example recent git history or current test status.
+A context can run a command/script, provide static text, or both.
+"""
+
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -9,6 +16,13 @@ from ralphify.resolver import resolve_placeholders
 
 @dataclass
 class Context:
+    """A dynamic data context discovered from ``.ralph/contexts/<name>/CONTEXT.md``.
+
+    A context may have a *command* or *script* (whose stdout is captured),
+    *static_content* (the body text from CONTEXT.md), or both.  When both
+    are present the static content appears first, followed by the command output.
+    """
+
     name: str
     path: Path
     command: str | None = None
@@ -20,6 +34,13 @@ class Context:
 
 @dataclass
 class ContextResult:
+    """Outcome of running a single :class:`Context`.
+
+    *output* contains the command's stdout (empty string for static-only
+    contexts).  *success* is ``True`` when the command exits with code 0
+    or when no command was configured.
+    """
+
     context: Context
     output: str
     success: bool
