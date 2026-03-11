@@ -1,6 +1,7 @@
 """REST endpoints for run lifecycle management."""
 from __future__ import annotations
 
+import json
 import tomllib
 from pathlib import Path
 
@@ -180,6 +181,28 @@ _ITERATION_STATUS_LABELS: dict[str, str] = {
     "timed_out": "timeout",
     "started": "running",
 }
+
+
+@router.get("/runs/{run_id}/iterations/{iteration}/activity")
+async def get_iteration_activity(
+    run_id: str, iteration: int, store: Store = Depends(_get_store),
+) -> list[dict]:
+    """Return persisted agent activity events for a specific iteration.
+
+    Each item is a raw stream-json object from the agent subprocess,
+    suitable for feeding directly into the frontend ActivityStream parser.
+    """
+    rows = await store.get_activity_for_iteration(run_id, iteration)
+    result = []
+    for row in rows:
+        try:
+            data = json.loads(row["data"])
+            raw = data.get("raw")
+            if raw:
+                result.append(raw)
+        except (json.JSONDecodeError, KeyError):
+            continue
+    return result
 
 
 @router.get("/runs/{run_id}/iterations")

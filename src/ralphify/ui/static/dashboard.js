@@ -1042,12 +1042,42 @@ function parseActivityEntries(rawEvents) {
   return entries;
 }
 
+// Track which iteration activity has been loaded from persistence
+const _loadedActivity = new Set();
+
 function ActivityStream({ runId, iteration }) {
   const runAct = agentActivity.value[runId] || {};
   const rawEvents = runAct[iteration] || [];
   const scrollRef = useRef(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const [expandedTools, setExpandedTools] = useState({});
+  const [loading, setLoading] = useState(false);
+
+  // Load persisted activity for historical (non-running) iterations
+  useEffect(() => {
+    if (!runId || iteration == null) return;
+    if (rawEvents.length > 0) return;
+    const key = `${runId}:${iteration}`;
+    if (_loadedActivity.has(key)) return;
+    const runIters = iterations.value[runId] || [];
+    const iterData = runIters.find(it => it.iteration === iteration);
+    if (!iterData || iterData.status === 'running') return;
+
+    _loadedActivity.add(key);
+    setLoading(true);
+    api('GET', `/runs/${runId}/iterations/${iteration}/activity`)
+      .then(data => {
+        if (data && data.length > 0) {
+          const cur = agentActivity.value[runId] || {};
+          agentActivity.value = {
+            ...agentActivity.value,
+            [runId]: { ...cur, [iteration]: data },
+          };
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [runId, iteration, rawEvents.length]);
 
   const entries = parseActivityEntries(rawEvents);
 
@@ -1067,6 +1097,20 @@ function ActivityStream({ runId, iteration }) {
   const toggleTool = useCallback((idx) => {
     setExpandedTools(prev => ({ ...prev, [idx]: !prev[idx] }));
   }, []);
+
+  if (loading) return html`
+    <div class="activity-stream">
+      <div class="activity-stream-header">
+        <div class="activity-stream-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+          </svg>
+          Agent Activity
+          <span class="activity-count">loading...</span>
+        </div>
+      </div>
+    </div>
+  `;
 
   if (rawEvents.length === 0) return null;
 

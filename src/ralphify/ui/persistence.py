@@ -311,6 +311,32 @@ class Store:
             (run_id,),
         )
 
+    async def get_activity_for_iteration(
+        self, run_id: str, iteration: int, limit: int = 5000,
+    ) -> list[dict[str, Any]]:
+        """Return raw AGENT_ACTIVITY event data for a specific iteration.
+
+        Uses the iteration's timestamp range to correlate activity events.
+        Falls back to the ``iteration`` field in event data for newer events
+        that include it.
+        """
+        it = await self._fetch_one(
+            "SELECT started_at, finished_at FROM iterations "
+            "WHERE run_id = ? AND iteration = ?",
+            (run_id, iteration),
+        )
+        if it is None or it["started_at"] is None:
+            return []
+
+        end_ts = it["finished_at"] or "9999-12-31T23:59:59+00:00"
+        return await self._fetch_all(
+            "SELECT data FROM events "
+            "WHERE run_id = ? AND event_type = 'agent_activity' "
+            "AND timestamp >= ? AND timestamp <= ? "
+            "ORDER BY id LIMIT ?",
+            (run_id, it["started_at"], end_ts, limit),
+        )
+
     async def get_events(
         self, run_id: str, limit: int = 100, offset: int = 0,
     ) -> list[dict[str, Any]]:

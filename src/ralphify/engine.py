@@ -178,7 +178,7 @@ def _execute_agent(
         if _is_claude_command(cmd):
             agent = run_agent_streaming(
                 cmd, prompt, config.timeout, log_path_dir, state.iteration,
-                on_activity=lambda data: emit(EventType.AGENT_ACTIVITY, {"raw": data}),
+                on_activity=lambda data: emit(EventType.AGENT_ACTIVITY, {"raw": data, "iteration": state.iteration}),
             )
         else:
             agent = run_agent(
