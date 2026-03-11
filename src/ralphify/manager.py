@@ -46,6 +46,11 @@ class RunManager:
         self._runs: dict[str, ManagedRun] = {}
         self._lock = threading.Lock()
 
+    def _get_run(self, run_id: str) -> ManagedRun:
+        """Look up a run by ID under the lock. Raises ``KeyError`` if missing."""
+        with self._lock:
+            return self._runs[run_id]
+
     def create_run(self, config: RunConfig) -> ManagedRun:
         """Create a new run from *config* and register it.
 
@@ -66,8 +71,7 @@ class RunManager:
         The thread calls :func:`engine.run_loop` with a fanout emitter
         that broadcasts events to the run's queue and any extra listeners.
         """
-        with self._lock:
-            managed = self._runs[run_id]
+        managed = self._get_run(run_id)
         all_emitters: list[EventEmitter] = [managed.emitter] + managed._extra_emitters
         fanout = _FanoutEmitter(all_emitters)
         thread = threading.Thread(
@@ -81,21 +85,15 @@ class RunManager:
 
     def stop_run(self, run_id: str) -> None:
         """Signal the run to stop after the current iteration finishes."""
-        with self._lock:
-            managed = self._runs[run_id]
-        managed.state.request_stop()
+        self._get_run(run_id).state.request_stop()
 
     def pause_run(self, run_id: str) -> None:
         """Pause the run between iterations until :meth:`resume_run` is called."""
-        with self._lock:
-            managed = self._runs[run_id]
-        managed.state.request_pause()
+        self._get_run(run_id).state.request_pause()
 
     def resume_run(self, run_id: str) -> None:
         """Resume a paused run."""
-        with self._lock:
-            managed = self._runs[run_id]
-        managed.state.request_resume()
+        self._get_run(run_id).state.request_resume()
 
     def list_runs(self) -> list[ManagedRun]:
         """Return a snapshot of all registered runs."""
