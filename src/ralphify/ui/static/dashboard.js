@@ -20,6 +20,7 @@ const showNewRunModal = signal(false);
 const preSelectedPrompt = signal(null);
 const activeTab = signal('runs');  // runs | configure | history
 const toastMessage = signal(null);  // { text, type: 'error' | 'info' }
+const sidebarOpen = signal(false);  // mobile sidebar drawer
 
 const activeRun = computed(() => runs.value.find(r => r.run_id === activeRunId.value));
 
@@ -309,14 +310,20 @@ function Sidebar() {
   const recent = runs.value.filter(r => ['completed', 'stopped', 'failed'].includes(r.status));
 
   return html`
-    <div class="sidebar">
+    ${sidebarOpen.value && html`<div class="sidebar-overlay" onClick=${() => sidebarOpen.value = false}></div>`}
+    <div class="sidebar ${sidebarOpen.value ? 'open' : ''}">
       <div class="sidebar-header">
         <div class="sidebar-header-inner">
           <div class="logo-mark">R</div>
           <h1>Ralphify</h1>
           <span class="version">UI</span>
+          <button class="sidebar-close-btn" onClick=${() => sidebarOpen.value = false} aria-label="Close menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
+            </svg>
+          </button>
         </div>
-        <button class="sidebar-new-run-btn" onClick=${() => showNewRunModal.value = true}>
+        <button class="sidebar-new-run-btn" onClick=${() => { showNewRunModal.value = true; sidebarOpen.value = false; }}>
           + New Run
         </button>
       </div>
@@ -348,7 +355,7 @@ function RunCard({ run }) {
   const displayTitle = run.prompt_name || shortId;
 
   return html`
-    <div class="run-card ${isActive ? 'active' : ''}" onClick=${() => selectRun(run.run_id)}>
+    <div class="run-card ${isActive ? 'active' : ''}" onClick=${() => { selectRun(run.run_id); sidebarOpen.value = false; }}>
       <div class="run-badge ${run.status}"></div>
       <div class="run-card-info">
         <div class="run-card-title">${displayTitle}</div>
@@ -470,6 +477,11 @@ function EmptyState() {
 function ControlsBar({ run }) {
   return html`
     <div class="controls-bar">
+      <button class="hamburger-btn" onClick=${() => sidebarOpen.value = !sidebarOpen.value} aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
       ${run ? html`<${RunControls} run=${run} />` : html`
         <div class="controls-bar-hint">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

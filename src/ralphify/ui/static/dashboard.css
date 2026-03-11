@@ -2257,3 +2257,503 @@ body {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* ── Hamburger button (hidden on desktop) ─────────────────────────── */
+
+.hamburger-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  border-radius: var(--radius);
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+
+.hamburger-btn:hover {
+  background: var(--primary-light);
+}
+
+/* ── Sidebar close button (hidden on desktop) ─────────────────────── */
+
+.sidebar-close-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  border-radius: var(--radius);
+  margin-left: auto;
+  transition: all 0.15s ease;
+}
+
+.sidebar-close-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+/* ── Sidebar overlay (hidden on desktop) ──────────────────────────── */
+
+.sidebar-overlay {
+  display: none;
+}
+
+/* ── Responsive: Tablet (≤ 900px) ─────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .hamburger-btn {
+    display: flex;
+  }
+
+  .sidebar-close-btn {
+    display: flex;
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(28, 23, 48, 0.45);
+    backdrop-filter: blur(2px);
+    z-index: 199;
+    animation: fade-in 0.2s ease;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: none;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .controls-bar {
+    padding: 0 16px;
+    gap: 8px;
+  }
+
+  .controls-run-name {
+    max-width: 140px;
+    font-size: 13px;
+  }
+
+  .controls-stats {
+    gap: 10px;
+  }
+
+  .controls-stat-label {
+    font-size: 10px;
+  }
+
+  .content {
+    padding: 16px;
+  }
+
+  .tabs {
+    padding: 0 16px;
+  }
+
+  .run-overview-body {
+    padding: 16px;
+    gap: 20px;
+  }
+
+  .run-progress-ring {
+    width: 80px;
+    height: 80px;
+  }
+
+  .run-progress-ring svg {
+    width: 80px;
+    height: 80px;
+  }
+
+  .run-progress-pct {
+    font-size: 18px;
+  }
+
+  .run-stats-grid {
+    gap: 16px;
+  }
+
+  .run-stat-value {
+    font-size: 22px;
+  }
+
+  .prim-overview-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .prim-kind-card {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .history-card {
+    padding: 14px 16px;
+    gap: 12px;
+  }
+
+  .modal-new-run {
+    width: min(540px, calc(100vw - 32px));
+  }
+
+  .empty-state-steps {
+    flex-direction: column;
+    max-width: 320px;
+  }
+}
+
+/* ── Responsive: Mobile (≤ 600px) ─────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .controls-bar {
+    height: 50px;
+    padding: 0 12px;
+    gap: 6px;
+  }
+
+  .controls-separator {
+    display: none;
+  }
+
+  .controls-run-name {
+    max-width: 100px;
+    font-size: 12px;
+  }
+
+  .run-status-badge {
+    font-size: 10px;
+    padding: 2px 7px;
+  }
+
+  .controls-stats {
+    gap: 8px;
+  }
+
+  .controls-stat-value {
+    font-size: 12px;
+  }
+
+  .controls-stat-label {
+    font-size: 9px;
+  }
+
+  .connection-status {
+    display: none;
+  }
+
+  .btn-sm {
+    display: none;
+  }
+
+  .tabs {
+    padding: 0 12px;
+    gap: 0;
+  }
+
+  .tab {
+    font-size: 12px;
+    padding: 10px 12px;
+    gap: 4px;
+  }
+
+  .tab svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .content {
+    padding: 12px;
+  }
+
+  /* Run overview */
+  .run-overview-header {
+    padding: 14px 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .run-overview-header h2 {
+    font-size: 16px;
+  }
+
+  .run-overview-body {
+    flex-direction: column;
+    align-items: center;
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .run-progress-ring {
+    width: 72px;
+    height: 72px;
+  }
+
+  .run-progress-ring svg {
+    width: 72px;
+    height: 72px;
+  }
+
+  .run-progress-pct {
+    font-size: 16px;
+  }
+
+  .run-progress-sub {
+    font-size: 10px;
+  }
+
+  .run-stats-grid {
+    width: 100%;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .run-stat {
+    align-items: center;
+    min-width: 60px;
+  }
+
+  .run-stat-value {
+    font-size: 20px;
+  }
+
+  .run-stat-label {
+    font-size: 11px;
+  }
+
+  .run-overview-hint {
+    font-size: 12px;
+    padding: 10px 16px;
+  }
+
+  /* Timeline */
+  .timeline {
+    padding: 12px;
+  }
+
+  .timeline-block {
+    min-width: 32px;
+    height: 32px;
+    font-size: 11px;
+  }
+
+  /* Iteration panel */
+  .iteration-panel {
+    margin-bottom: 12px;
+  }
+
+  .iteration-header {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 14px 16px;
+  }
+
+  .iteration-body {
+    padding: 14px 16px;
+  }
+
+  /* Configure */
+  .prim-overview-header h2 {
+    font-size: 20px;
+  }
+
+  .prim-overview-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .prim-kind-card {
+    padding: 14px;
+  }
+
+  .prim-kind-card-desc {
+    font-size: 11px;
+  }
+
+  .registry-teaser {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+    padding: 20px 16px;
+  }
+
+  .registry-teaser-badge {
+    align-self: center;
+  }
+
+  /* Primitive editor */
+  .prim-editor-header {
+    padding: 14px 16px;
+  }
+
+  .prim-editor-body {
+    padding: 14px 16px;
+  }
+
+  .prim-editor-actions {
+    padding: 14px 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .prim-field-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .prim-kind-title-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* History */
+  .history-view-header h2 {
+    font-size: 20px;
+  }
+
+  .history-card {
+    flex-wrap: wrap;
+    padding: 14px 16px;
+    gap: 10px;
+  }
+
+  .history-card-status-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+
+  .history-card-body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .history-card-stats {
+    display: none;
+  }
+
+  .history-card-rate {
+    order: 3;
+    width: 100%;
+  }
+
+  .history-rate-bar {
+    flex: 1;
+  }
+
+  .history-card-arrow {
+    display: none;
+  }
+
+  /* Empty state */
+  .empty-state {
+    padding: 24px 16px;
+    gap: 10px;
+  }
+
+  .empty-state-text {
+    font-size: 18px;
+  }
+
+  .empty-state-hint {
+    font-size: 13px;
+  }
+
+  .empty-state-steps {
+    flex-direction: column;
+    max-width: 280px;
+    gap: 10px;
+  }
+
+  .step-card {
+    padding: 14px 12px;
+  }
+
+  /* Modal — near full screen on mobile */
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal-new-run {
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    animation: slide-up 0.25s ease;
+  }
+
+  .modal-header-row {
+    padding: 20px 16px 0;
+  }
+
+  .modal-section {
+    padding: 12px 16px;
+  }
+
+  .modal-settings {
+    padding: 0 16px 12px;
+  }
+
+  .modal-new-run .modal-actions {
+    padding: 12px 16px 20px;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .prompt-card {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .prompt-card-name {
+    font-size: 13px;
+  }
+
+  .prompt-card-desc {
+    font-size: 11px;
+  }
+
+  /* Check health */
+  .check-health {
+    padding: 14px 16px;
+  }
+
+  .check-health-name {
+    min-width: 80px;
+    font-size: 11px;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
