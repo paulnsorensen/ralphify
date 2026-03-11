@@ -287,5 +287,6 @@ your-project/
 ## Next steps
 
 - [Writing Your Prompt](prompts.md) — prompt anatomy, patterns, and tips for getting better results
+- [Cookbook](cookbook.md) — complete example setups for Python, TypeScript, bug fixing, and docs
 - [Primitives](primitives.md) — full reference for checks, contexts, and instructions
 - [CLI Reference](cli.md) — all commands and options
