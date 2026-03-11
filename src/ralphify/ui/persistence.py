@@ -104,87 +104,108 @@ class Store:
             (run_id, event_type, json.dumps(data), timestamp),
         )
 
-        # Upsert materialized views based on event type
-        if event_type == "run_started":
-            await self._db.execute(
-                "INSERT OR IGNORE INTO runs (run_id) VALUES (?)",
-                (run_id,),
-            )
-            await self._db.execute(
-                "UPDATE runs SET status = 'running', started_at = ?, "
-                "command = ?, prompt_file = ? WHERE run_id = ?",
-                (
-                    timestamp,
-                    data.get("command", ""),
-                    data.get("prompt_file", ""),
-                    run_id,
-                ),
-            )
-
-        elif event_type == "run_stopped":
-            await self._db.execute(
-                "UPDATE runs SET status = ?, stopped_at = ?, "
-                "completed = ?, failed = ?, timed_out = ? WHERE run_id = ?",
-                (
-                    data.get("reason", "stopped"),
-                    timestamp,
-                    data.get("completed", 0),
-                    data.get("failed", 0),
-                    data.get("timed_out", 0),
-                    run_id,
-                ),
-            )
-
-        elif event_type == "iteration_started":
-            iteration = data.get("iteration", 0)
-            await self._db.execute(
-                "INSERT INTO iterations (run_id, iteration, status, started_at) "
-                "VALUES (?, ?, 'started', ?)",
-                (run_id, iteration, timestamp),
-            )
-            await self._db.execute(
-                "UPDATE runs SET iterations = ? WHERE run_id = ?",
-                (iteration, run_id),
-            )
-
-        elif event_type in (
-            "iteration_completed",
-            "iteration_failed",
-            "iteration_timed_out",
-        ):
-            iteration = data.get("iteration", 0)
-            status = event_type.replace("iteration_", "")
-            await self._db.execute(
-                "UPDATE iterations SET status = ?, returncode = ?, "
-                "duration = ?, finished_at = ? "
-                "WHERE run_id = ? AND iteration = ?",
-                (
-                    status,
-                    data.get("returncode"),
-                    data.get("duration"),
-                    timestamp,
-                    run_id,
-                    iteration,
-                ),
-            )
-
-        elif event_type in ("check_passed", "check_failed"):
-            iteration = data.get("iteration", 0)
-            await self._db.execute(
-                "INSERT INTO check_results "
-                "(run_id, iteration, check_name, passed, exit_code, timed_out) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (
-                    run_id,
-                    iteration,
-                    data.get("check_name", ""),
-                    1 if event_type == "check_passed" else 0,
-                    data.get("exit_code"),
-                    1 if data.get("timed_out") else 0,
-                ),
-            )
+        # Upsert materialized views via dispatch
+        handler = self._event_handlers.get(event_type)
+        if handler:
+            await handler(self, event_type, run_id, data, timestamp)
 
         await self._db.commit()
+
+    async def _on_run_started(
+        self, event_type: str, run_id: str, data: dict[str, Any], timestamp: str,
+    ) -> None:
+        assert self._db is not None
+        await self._db.execute(
+            "INSERT OR IGNORE INTO runs (run_id) VALUES (?)",
+            (run_id,),
+        )
+        await self._db.execute(
+            "UPDATE runs SET status = 'running', started_at = ?, "
+            "command = ?, prompt_file = ? WHERE run_id = ?",
+            (timestamp, data.get("command", ""), data.get("prompt_file", ""), run_id),
+        )
+
+    async def _on_run_stopped(
+        self, event_type: str, run_id: str, data: dict[str, Any], timestamp: str,
+    ) -> None:
+        assert self._db is not None
+        await self._db.execute(
+            "UPDATE runs SET status = ?, stopped_at = ?, "
+            "completed = ?, failed = ?, timed_out = ? WHERE run_id = ?",
+            (
+                data.get("reason", "stopped"),
+                timestamp,
+                data.get("completed", 0),
+                data.get("failed", 0),
+                data.get("timed_out", 0),
+                run_id,
+            ),
+        )
+
+    async def _on_iteration_started(
+        self, event_type: str, run_id: str, data: dict[str, Any], timestamp: str,
+    ) -> None:
+        assert self._db is not None
+        iteration = data.get("iteration", 0)
+        await self._db.execute(
+            "INSERT INTO iterations (run_id, iteration, status, started_at) "
+            "VALUES (?, ?, 'started', ?)",
+            (run_id, iteration, timestamp),
+        )
+        await self._db.execute(
+            "UPDATE runs SET iterations = ? WHERE run_id = ?",
+            (iteration, run_id),
+        )
+
+    async def _on_iteration_ended(
+        self, event_type: str, run_id: str, data: dict[str, Any], timestamp: str,
+    ) -> None:
+        assert self._db is not None
+        iteration = data.get("iteration", 0)
+        status = event_type.replace("iteration_", "")
+        await self._db.execute(
+            "UPDATE iterations SET status = ?, returncode = ?, "
+            "duration = ?, finished_at = ? "
+            "WHERE run_id = ? AND iteration = ?",
+            (
+                status,
+                data.get("returncode"),
+                data.get("duration"),
+                timestamp,
+                run_id,
+                iteration,
+            ),
+        )
+
+    async def _on_check_result(
+        self, event_type: str, run_id: str, data: dict[str, Any], timestamp: str,
+    ) -> None:
+        assert self._db is not None
+        iteration = data.get("iteration", 0)
+        await self._db.execute(
+            "INSERT INTO check_results "
+            "(run_id, iteration, check_name, passed, exit_code, timed_out) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                run_id,
+                iteration,
+                data.get("check_name", ""),
+                1 if event_type == "check_passed" else 0,
+                data.get("exit_code"),
+                1 if data.get("timed_out") else 0,
+            ),
+        )
+
+    _event_handlers: dict[str, Any] = {
+        "run_started": _on_run_started,
+        "run_stopped": _on_run_stopped,
+        "iteration_started": _on_iteration_started,
+        "iteration_completed": _on_iteration_ended,
+        "iteration_failed": _on_iteration_ended,
+        "iteration_timed_out": _on_iteration_ended,
+        "check_passed": _on_check_result,
+        "check_failed": _on_check_result,
+    }
 
     # ------------------------------------------------------------------
     # Query helpers
