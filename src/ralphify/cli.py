@@ -22,7 +22,7 @@ from ralphify.contexts import discover_contexts
 from ralphify._run_types import RunConfig, RunState
 from ralphify.engine import run_loop
 from ralphify.instructions import discover_instructions
-from ralphify.prompts import discover_prompts, is_prompt_name, resolve_prompt_name
+from ralphify.prompts import discover_prompts, resolve_prompt_source
 from ralphify.detector import detect_project
 from ralphify._templates import (
     CHECK_MD_TEMPLATE,
@@ -284,41 +284,6 @@ def status() -> None:
         rprint("\n[green]Ready to run.[/green]")
 
 
-def _resolve_prompt_source(
-    *,
-    prompt_name: str | None,
-    prompt_file: str | None,
-    toml_prompt: str,
-) -> tuple[str, str | None]:
-    """Resolve which prompt file to use, returning ``(file_path, prompt_name)``.
-
-    Priority chain: positional name > --prompt-file > ralph.toml.
-    The ``toml_prompt`` value from ``ralph.toml`` may be either a file path or
-    a named prompt — names are tried first, falling back to a literal path.
-
-    Only called when no inline ``-p/--prompt`` text was provided — inline
-    text bypasses file resolution entirely (see :func:`run`).
-
-    Raises ``ValueError`` if a named prompt lookup fails.
-    """
-    if prompt_name:
-        found = resolve_prompt_name(prompt_name)
-        return str(found.path / PROMPT_MARKER), found.name
-
-    if prompt_file:
-        return prompt_file, None
-
-    # Fall back to ralph.toml agent.prompt — could be a name or a path
-    if is_prompt_name(toml_prompt):
-        try:
-            found = resolve_prompt_name(toml_prompt)
-            return str(found.path / PROMPT_MARKER), found.name
-        except ValueError:
-            return toml_prompt, None
-
-    return toml_prompt, None
-
-
 @app.command()
 def run(
     prompt_name: str | None = typer.Argument(None, help="Name of a prompt in .ralph/prompts/."),
@@ -353,7 +318,7 @@ def run(
             raise typer.Exit(1)
 
         try:
-            prompt_file_path, resolved_prompt_name = _resolve_prompt_source(
+            prompt_file_path, resolved_prompt_name = resolve_prompt_source(
                 prompt_name=prompt_name,
                 prompt_file=prompt_file,
                 toml_prompt=agent.get("prompt", "PROMPT.md"),
