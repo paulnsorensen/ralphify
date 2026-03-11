@@ -17,7 +17,8 @@ const iterations = signal({});  // run_id -> [{iteration, status, ...}]
 const checkHealth = signal({});  // run_id -> {check_name -> [pass/fail/timeout...]}
 const wsConnected = signal(false);
 const showNewRunModal = signal(false);
-const activeTab = signal('timeline');  // timeline | primitives | history
+const preSelectedPrompt = signal(null);
+const activeTab = signal('prompts');  // prompts | timeline | configure | history
 
 const activeRun = computed(() => runs.value.find(r => r.run_id === activeRunId.value));
 
@@ -167,11 +168,17 @@ async function createRun(config) {
   const run = await api('POST', '/runs', config);
   showNewRunModal.value = false;
   activeRunId.value = run.run_id;
+  activeTab.value = 'timeline';
 }
 
 async function pauseRun(run_id) { await api('POST', `/runs/${run_id}/pause`); }
 async function resumeRun(run_id) { await api('POST', `/runs/${run_id}/resume`); }
 async function stopRun(run_id) { await api('POST', `/runs/${run_id}/stop`); }
+
+function startRunWithPrompt(name) {
+  preSelectedPrompt.value = name;
+  showNewRunModal.value = true;
+}
 
 async function loadRuns() {
   try {
@@ -268,16 +275,19 @@ function Main() {
     <div class="main">
       <${ControlsBar} run=${run} />
       <div class="tabs">
+        <div class="tab ${activeTab.value === 'prompts' ? 'active' : ''}"
+             onClick=${() => activeTab.value = 'prompts'}>Prompts</div>
         <div class="tab ${activeTab.value === 'timeline' ? 'active' : ''}"
              onClick=${() => activeTab.value = 'timeline'}>Timeline</div>
-        <div class="tab ${activeTab.value === 'primitives' ? 'active' : ''}"
-             onClick=${() => activeTab.value = 'primitives'}>Primitives</div>
+        <div class="tab ${activeTab.value === 'configure' ? 'active' : ''}"
+             onClick=${() => activeTab.value = 'configure'}>Configure</div>
         <div class="tab ${activeTab.value === 'history' ? 'active' : ''}"
              onClick=${() => activeTab.value = 'history'}>History</div>
       </div>
       <div class="content">
+        ${activeTab.value === 'prompts' && html`<${PromptsView} />`}
         ${activeTab.value === 'timeline' && (!run ? html`<${EmptyState} />` : html`<${TimelineView} run=${run} />`)}
-        ${activeTab.value === 'primitives' && html`<${PrimitivesView} />`}
+        ${activeTab.value === 'configure' && html`<${PrimitivesView} />`}
         ${activeTab.value === 'history' && html`<${HistoryView} />`}
       </div>
     </div>
@@ -607,7 +617,135 @@ function CheckHealthPanel({ health }) {
   `;
 }
 
-// ── Primitives view ────────────────────────────────────────────────
+// ── Prompts view (first-class tab) ───────────────────────────────
+
+const PROMPTS_META = { label: 'Prompts', desc: 'Named task descriptions for starting runs' };
+
+function PromptsView() {
+  const [prompts, setPrompts] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [view, setView] = useState({ page: 'list' });
+
+  useEffect(() => { loadPrompts(); }, []);
+
+  async function loadPrompts() {
+    try {
+      const data = await api('GET', `/projects/${btoa('.')}/primitives`);
+      setPrompts((data || []).filter(p => p.kind === 'prompts'));
+    } catch (e) {
+      setPrompts([]);
+    }
+    setLoading(false);
+  }
+
+  if (loading) return html`<div style="color: var(--text-secondary); padding: 20px">Loading prompts...</div>`;
+
+  if (view.page === 'edit') {
+    const prim = (prompts || []).find(p => p.name === view.name);
+    if (!prim) { setView({ page: 'list' }); return null; }
+    return html`<${PrimEditForm}
+      primitive=${prim} kind="prompts" meta=${PROMPTS_META}
+      onBack=${() => setView({ page: 'list' })}
+      onSaved=${() => { loadPrompts(); setView({ page: 'list' }); }}
+    />`;
+  }
+
+  if (view.page === 'create') {
+    return html`<${PrimCreateForm}
+      kind="prompts" meta=${PROMPTS_META}
+      onBack=${() => setView({ page: 'list' })}
+      onCreated=${() => { loadPrompts(); setView({ page: 'list' }); }}
+    />`;
+  }
+
+  const allPrompts = prompts || [];
+
+  if (allPrompts.length === 0) {
+    return html`
+      <div class="prompts-empty">
+        <div class="prompts-empty-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <g stroke="url(#pig)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </g>
+            <defs>
+              <linearGradient id="pig" x1="0" y1="0" x2="24" y2="24">
+                <stop stop-color="#8B6CF0"/>
+                <stop offset="1" stop-color="#E87B4A"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div class="prompts-empty-title">No prompts yet</div>
+        <div class="prompts-empty-hint">
+          Prompts tell your agent what to build. Create your first one to get started.
+        </div>
+        <button class="btn btn-primary btn-lg" onClick=${() => setView({ page: 'create' })}>
+          + Create Your First Prompt
+        </button>
+      </div>
+    `;
+  }
+
+  return html`
+    <div class="prompts-view">
+      <div class="prompts-header">
+        <div>
+          <h2>Prompts</h2>
+          <p>Pick a prompt and run it, or create a new one.</p>
+        </div>
+        <button class="btn btn-primary" onClick=${() => setView({ page: 'create' })}>
+          + New Prompt
+        </button>
+      </div>
+      <div class="prompts-grid">
+        ${allPrompts.map(p => html`
+          <${PromptCard} key=${p.name} prompt=${p}
+            onEdit=${() => setView({ page: 'edit', name: p.name })}
+            onRun=${p.enabled ? () => startRunWithPrompt(p.name) : null} />
+        `)}
+      </div>
+    </div>
+  `;
+}
+
+function PromptCard({ prompt, onEdit, onRun }) {
+  const desc = prompt.frontmatter?.description || '';
+  const contentPreview = prompt.content
+    ? prompt.content.slice(0, 140).replace(/\n/g, ' ') + (prompt.content.length > 140 ? '\u2026' : '')
+    : '';
+
+  return html`
+    <div class="prompt-tile ${!prompt.enabled ? 'disabled' : ''}" onClick=${onEdit}>
+      <div class="prompt-tile-header">
+        <div class="prompt-tile-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <div class="prompt-tile-info">
+          <h3 class="prompt-tile-name">${prompt.name}</h3>
+          ${desc && html`<p class="prompt-tile-desc">${desc}</p>`}
+        </div>
+        ${!prompt.enabled && html`<span class="prompt-tile-badge">Disabled</span>`}
+      </div>
+      ${contentPreview && html`<div class="prompt-tile-preview">${contentPreview}</div>`}
+      <div class="prompt-tile-actions">
+        <button class="btn btn-sm" onClick=${(e) => { e.stopPropagation(); onEdit(); }}>Edit</button>
+        ${onRun && html`
+          <button class="btn btn-primary btn-sm" onClick=${(e) => { e.stopPropagation(); onRun(); }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+            Run
+          </button>
+        `}
+      </div>
+    </div>
+  `;
+}
+
+// ── Primitives view (Configure tab) ─────────────────────────────
 
 function KindIcon({ kind, size = 20 }) {
   const s = size;
@@ -633,7 +771,6 @@ const KINDS_META = {
   checks: { label: 'Checks', desc: 'Validation scripts that verify each iteration' },
   contexts: { label: 'Contexts', desc: 'Dynamic context injected into prompts' },
   instructions: { label: 'Instructions', desc: 'Static instructions prepended to prompts' },
-  prompts: { label: 'Prompts', desc: 'Named task descriptions for starting runs' },
 };
 
 function PrimitivesView() {
@@ -664,11 +801,11 @@ function PrimitivesView() {
     return html`
       <div class="prim-overview">
         <div class="prim-overview-header">
-          <h2>Primitives</h2>
-          <p>Configure the building blocks of your autonomous coding loops.</p>
+          <h2>Configure</h2>
+          <p>Set up checks, contexts, and instructions for your coding loops.</p>
         </div>
         <div class="prim-overview-grid">
-          ${['checks', 'contexts', 'instructions', 'prompts'].map(kind => {
+          ${['checks', 'contexts', 'instructions'].map(kind => {
             const meta = KINDS_META[kind];
             const count = grouped[kind].length;
             const enabledCount = grouped[kind].filter(p => p.enabled).length;
@@ -1046,7 +1183,7 @@ function HistoryView() {
 
 function NewRunModal() {
   const [promptMode, setPromptMode] = useState('named'); // 'named' | 'adhoc'
-  const [selectedPrompt, setSelectedPrompt] = useState(null);
+  const [selectedPrompt, setSelectedPrompt] = useState(preSelectedPrompt.value);
   const [adhocText, setAdhocText] = useState('');
   const [maxIterations, setMaxIterations] = useState('');
   const [delay, setDelay] = useState('0');
@@ -1057,6 +1194,7 @@ function NewRunModal() {
   const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
+    preSelectedPrompt.value = null;
     const projectDir = btoa('.');
     api('GET', `/projects/${projectDir}/primitives`)
       .then(data => {
