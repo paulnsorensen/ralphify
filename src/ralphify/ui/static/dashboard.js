@@ -264,6 +264,11 @@ async function loadRuns() {
       if (!data.find(r => r.run_id === id)) merged.push(local);
     }
     runs.value = merged;
+    // Auto-select a run on initial load if nothing is selected
+    if (!activeRunId.value && merged.length > 0) {
+      const active = merged.find(r => ['running', 'paused'].includes(r.status));
+      selectRun((active || merged[0]).run_id);
+    }
   } catch (e) { /* server may not be ready */ }
 }
 
@@ -550,7 +555,7 @@ function RunOverview({ run }) {
         ? 'All looking good — your agent is making progress.'
         : `Pass rate is ${passRate}%. Check the health sparklines below for stuck checks.`)
     : run.status === 'failed'
-        ? (run.lastError || `Run failed after ${total} iterations.`)
+        ? (run.lastError || (total > 0 ? `Run failed after ${total} iterations.` : 'Run failed.'))
     : run.status === 'completed'
         ? `Run completed with ${passRate}% pass rate across ${total} iterations.`
         : `Run ${run.status}. ${total} iterations completed.`;
