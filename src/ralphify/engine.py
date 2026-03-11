@@ -18,11 +18,7 @@ import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, NamedTuple
-from ralphify._agent import (
-    _is_claude_command,
-    run_agent_streaming as _run_agent_process_streaming,
-    run_agent as _run_agent_process,
-)
+from ralphify._agent import _is_claude_command, run_agent, run_agent_streaming
 from ralphify._events import Event, EventEmitter, EventType, NullEmitter
 from ralphify._output import format_duration
 from ralphify._run_types import RunConfig, RunState, RunStatus
@@ -180,12 +176,12 @@ def _execute_agent(
 
     try:
         if _is_claude_command(cmd):
-            agent = _run_agent_process_streaming(
+            agent = run_agent_streaming(
                 cmd, prompt, config.timeout, log_path_dir, state.iteration,
                 on_activity=lambda data: emit(EventType.AGENT_ACTIVITY, {"raw": data}),
             )
         else:
-            agent = _run_agent_process(
+            agent = run_agent(
                 cmd, prompt, config.timeout, log_path_dir, state.iteration,
             )
     except FileNotFoundError:
