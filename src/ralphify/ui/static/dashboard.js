@@ -268,21 +268,58 @@ function RunCard({ run }) {
 
 // ── Main area ──────────────────────────────────────────────────────
 
+function TabIcon({ tab, size = 16 }) {
+  const s = size;
+  if (tab === 'prompts') return html`
+    <svg width=${s} height=${s} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>`;
+  if (tab === 'timeline') return html`
+    <svg width=${s} height=${s} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>`;
+  if (tab === 'configure') return html`
+    <svg width=${s} height=${s} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>`;
+  if (tab === 'history') return html`
+    <svg width=${s} height=${s} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    </svg>`;
+  return null;
+}
+
 function Main() {
   const run = activeRun.value;
+  const activeCount = runs.value.filter(r => ['running', 'paused', 'pending'].includes(r.status)).length;
+  const historyCount = runs.value.filter(r => ['completed', 'stopped', 'failed'].includes(r.status)).length;
 
   return html`
     <div class="main">
       <${ControlsBar} run=${run} />
       <div class="tabs">
         <div class="tab ${activeTab.value === 'prompts' ? 'active' : ''}"
-             onClick=${() => activeTab.value = 'prompts'}>Prompts</div>
+             onClick=${() => activeTab.value = 'prompts'}>
+          <${TabIcon} tab="prompts" size=${15} />
+          Prompts
+        </div>
         <div class="tab ${activeTab.value === 'timeline' ? 'active' : ''}"
-             onClick=${() => activeTab.value = 'timeline'}>Timeline</div>
+             onClick=${() => activeTab.value = 'timeline'}>
+          <${TabIcon} tab="timeline" size=${15} />
+          Timeline
+          ${activeCount > 0 && html`<span class="tab-badge active">${activeCount}</span>`}
+        </div>
         <div class="tab ${activeTab.value === 'configure' ? 'active' : ''}"
-             onClick=${() => activeTab.value = 'configure'}>Configure</div>
+             onClick=${() => activeTab.value = 'configure'}>
+          <${TabIcon} tab="configure" size=${15} />
+          Configure
+        </div>
         <div class="tab ${activeTab.value === 'history' ? 'active' : ''}"
-             onClick=${() => activeTab.value = 'history'}>History</div>
+             onClick=${() => activeTab.value = 'history'}>
+          <${TabIcon} tab="history" size=${15} />
+          History
+          ${historyCount > 0 && html`<span class="tab-badge">${historyCount}</span>`}
+        </div>
       </div>
       <div class="content">
         ${activeTab.value === 'prompts' && html`<${PromptsView} />`}
@@ -344,8 +381,14 @@ function EmptyState() {
 function ControlsBar({ run }) {
   return html`
     <div class="controls-bar">
-      <button class="btn btn-primary" onClick=${() => showNewRunModal.value = true}>New Run</button>
-      ${run && html`<${RunControls} run=${run} />`}
+      ${run ? html`<${RunControls} run=${run} />` : html`
+        <div class="controls-bar-hint">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+          Select a run to see controls
+        </div>
+      `}
       <div class="connection-status">
         <div class="connection-dot ${wsConnected.value ? 'connected' : 'disconnected'}"></div>
         ${wsConnected.value ? 'Connected' : 'Disconnected'}
@@ -357,25 +400,47 @@ function ControlsBar({ run }) {
 function RunControls({ run }) {
   const isRunning = run.status === 'running';
   const isPaused = run.status === 'paused';
+  const isActive = isRunning || isPaused;
+  const displayTitle = run.prompt_name || 'Ad-hoc run';
 
   return html`
+    <div class="controls-run-name">${displayTitle}</div>
+    <span class="run-status-badge ${run.status}">${run.status}</span>
     <div class="controls-separator"></div>
     ${isRunning && html`
-      <button class="btn" onClick=${() => pauseRun(run.run_id)}>Pause</button>
+      <button class="btn btn-sm" onClick=${() => pauseRun(run.run_id)}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+        </svg>
+        Pause
+      </button>
     `}
     ${isPaused && html`
-      <button class="btn" onClick=${() => resumeRun(run.run_id)}>Resume</button>
+      <button class="btn btn-sm btn-primary" onClick=${() => resumeRun(run.run_id)}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+        Resume
+      </button>
     `}
-    ${(isRunning || isPaused) && html`
-      <button class="btn btn-danger" onClick=${() => stopRun(run.run_id)}>Stop</button>
+    ${isActive && html`
+      <button class="btn btn-sm btn-danger" onClick=${() => stopRun(run.run_id)}>Stop</button>
     `}
     <div class="controls-separator"></div>
-    <span class="controls-label">Iter</span>
-    <span class="controls-value">${run.iteration || 0}</span>
-    <span class="controls-label">Pass</span>
-    <span class="controls-value" style="color: var(--green)">${run.completed}</span>
-    <span class="controls-label">Fail</span>
-    <span class="controls-value" style="color: var(--red)">${run.failed}</span>
+    <div class="controls-stats">
+      <div class="controls-stat">
+        <span class="controls-stat-value">${run.iteration || 0}</span>
+        <span class="controls-stat-label">Iter</span>
+      </div>
+      <div class="controls-stat">
+        <span class="controls-stat-value green">${run.completed}</span>
+        <span class="controls-stat-label">Pass</span>
+      </div>
+      <div class="controls-stat">
+        <span class="controls-stat-value red">${run.failed}</span>
+        <span class="controls-stat-label">Fail</span>
+      </div>
+    </div>
   `;
 }
 
