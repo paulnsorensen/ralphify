@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
+from queue import Empty
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -13,7 +14,7 @@ from ralphify.manager import RunManager
 from ralphify.ui.api import ws as ws_module
 from ralphify.ui.api import runs as runs_module
 from ralphify.ui.api import primitives as primitives_module
-from ralphify.ui.api.ws import ws_manager, _serialize_event
+from ralphify.ui.api.ws import ws_manager
 
 
 async def _drain_events(manager: RunManager) -> None:
@@ -27,10 +28,9 @@ async def _drain_events(manager: RunManager) -> None:
             while not managed.emitter.queue.empty():
                 try:
                     event: Event = managed.emitter.queue.get_nowait()
-                except Exception:
+                except Empty:
                     break
-                data = _serialize_event(event)
-                await ws_manager.broadcast(event.run_id, data)
+                await ws_manager.broadcast(event.run_id, event.to_dict())
         await asyncio.sleep(0.05)
 
 

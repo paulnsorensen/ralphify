@@ -49,16 +49,6 @@ class WebSocketManager:
 ws_manager = WebSocketManager()
 
 
-def _serialize_event(event) -> dict:
-    """Convert an Event to a JSON-serializable dict."""
-    return {
-        "type": event.type.value,
-        "run_id": event.run_id,
-        "timestamp": event.timestamp.isoformat(),
-        "data": event.data,
-    }
-
-
 @router.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):
     await ws_manager.connect(ws)

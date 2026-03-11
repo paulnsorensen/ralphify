@@ -45,6 +45,15 @@ class Event:
     data: dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize this event to a JSON-compatible dict."""
+        return {
+            "type": self.type.value,
+            "run_id": self.run_id,
+            "timestamp": self.timestamp.isoformat(),
+            "data": self.data,
+        }
+
 
 @runtime_checkable
 class EventEmitter(Protocol):
