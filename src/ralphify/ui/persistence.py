@@ -279,6 +279,16 @@ class Store:
             (run_id, iteration),
         )
 
+    async def get_check_results_for_run(
+        self, run_id: str,
+    ) -> list[dict[str, Any]]:
+        """Return all check results for a run, ordered by iteration."""
+        return await self._fetch_all(
+            "SELECT * FROM check_results WHERE run_id = ? "
+            "ORDER BY iteration, id",
+            (run_id,),
+        )
+
     async def get_events(
         self, run_id: str, limit: int = 100, offset: int = 0,
     ) -> list[dict[str, Any]]:

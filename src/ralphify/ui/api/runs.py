@@ -173,23 +173,36 @@ async def list_history_runs(store: Store = Depends(_get_store)) -> list[dict]:
     return await store.list_runs()
 
 
+# Maps internal iteration status values to API response labels.
+_ITERATION_STATUS_LABELS: dict[str, str] = {
+    "completed": "success",
+    "failed": "failure",
+    "timed_out": "timeout",
+    "started": "running",
+}
+
+
 @router.get("/runs/{run_id}/iterations")
 async def get_iterations(run_id: str, store: Store = Depends(_get_store)) -> list[dict]:
     """Return persisted iteration data with check results for a run."""
     iters = await store.get_iterations(run_id)
-    result = []
-    for it in iters:
-        status_map = {"completed": "success", "failed": "failure", "timed_out": "timeout", "started": "running"}
-        checks_raw = await store.get_check_results(run_id, it["iteration"])
-        checks = [
-            {"name": c["check_name"], "passed": bool(c["passed"]), "exit_code": c["exit_code"], "timed_out": bool(c["timed_out"])}
-            for c in checks_raw
-        ]
-        result.append({
+
+    # Batch-fetch all check results in one query instead of one per iteration.
+    all_checks = await store.get_check_results_for_run(run_id)
+    checks_by_iter: dict[int, list[dict]] = {}
+    for c in all_checks:
+        checks_by_iter.setdefault(c["iteration"], []).append(
+            {"name": c["check_name"], "passed": bool(c["passed"]),
+             "exit_code": c["exit_code"], "timed_out": bool(c["timed_out"])}
+        )
+
+    return [
+        {
             "iteration": it["iteration"],
-            "status": status_map.get(it["status"], it["status"]),
+            "status": _ITERATION_STATUS_LABELS.get(it["status"], it["status"]),
             "returncode": it["returncode"],
             "duration": f"{it['duration']:.1f}s" if it["duration"] is not None else None,
-            "checks": checks if checks else None,
-        })
-    return result
+            "checks": checks_by_iter.get(it["iteration"]) or None,
+        }
+        for it in iters
+    ]
