@@ -288,22 +288,21 @@ def status() -> None:
 
 def _resolve_prompt_source(
     *,
-    prompt_text: str | None,
     prompt_name: str | None,
     prompt_file: str | None,
     toml_prompt: str,
 ) -> tuple[str, str | None]:
     """Resolve which prompt file to use, returning ``(file_path, prompt_name)``.
 
-    Priority chain: inline text > positional name > --prompt-file > ralph.toml.
+    Priority chain: positional name > --prompt-file > ralph.toml.
     The ``toml_prompt`` value from ``ralph.toml`` may be either a file path or
     a named prompt — names are tried first, falling back to a literal path.
 
+    Only called when no inline ``-p/--prompt`` text was provided — inline
+    text bypasses file resolution entirely (see :func:`run`).
+
     Raises ``ValueError`` if a named prompt lookup fails.
     """
-    if prompt_text:
-        return toml_prompt, None
-
     if prompt_name:
         found = resolve_prompt_name(prompt_name)
         return str(found.path / PROMPT_MARKER), found.name
@@ -346,25 +345,28 @@ def run(
     command = agent["command"]
     args = agent.get("args", [])
 
-    # Conflict: positional name + --prompt-file
-    if prompt_name and prompt_file:
-        rprint("[red]Cannot use both a prompt name and --prompt-file.[/red]")
-        raise typer.Exit(1)
+    # Inline text (-p/--prompt) bypasses file resolution entirely.
+    if prompt_text:
+        prompt_file_path = agent.get("prompt", "PROMPT.md")
+        resolved_prompt_name: str | None = None
+    else:
+        if prompt_name and prompt_file:
+            rprint("[red]Cannot use both a prompt name and --prompt-file.[/red]")
+            raise typer.Exit(1)
 
-    try:
-        prompt_file_path, resolved_prompt_name = _resolve_prompt_source(
-            prompt_text=prompt_text,
-            prompt_name=prompt_name,
-            prompt_file=prompt_file,
-            toml_prompt=agent.get("prompt", "PROMPT.md"),
-        )
-    except ValueError as e:
-        rprint(f"[red]{e}[/red]")
-        raise typer.Exit(1)
+        try:
+            prompt_file_path, resolved_prompt_name = _resolve_prompt_source(
+                prompt_name=prompt_name,
+                prompt_file=prompt_file,
+                toml_prompt=agent.get("prompt", "PROMPT.md"),
+            )
+        except ValueError as e:
+            rprint(f"[red]{e}[/red]")
+            raise typer.Exit(1)
 
-    if not prompt_text and not Path(prompt_file_path).exists():
-        rprint(f"[red]Prompt file '{prompt_file_path}' not found.[/red]")
-        raise typer.Exit(1)
+        if not Path(prompt_file_path).exists():
+            rprint(f"[red]Prompt file '{prompt_file_path}' not found.[/red]")
+            raise typer.Exit(1)
 
     if log_dir:
         rprint(f"[dim]Logging output to {log_dir}/[/dim]")
