@@ -19,7 +19,8 @@ from ralphify._console_emitter import ConsoleEmitter
 from ralphify._frontmatter import CHECK_MARKER, CONTEXT_MARKER, INSTRUCTION_MARKER, PROMPT_MARKER
 from ralphify.checks import discover_checks
 from ralphify.contexts import discover_contexts
-from ralphify.engine import RunConfig, RunState, run_loop
+from ralphify._run_types import RunConfig, RunState
+from ralphify.engine import run_loop
 from ralphify.instructions import discover_instructions
 from ralphify.prompts import discover_prompts, is_prompt_name, resolve_prompt_name
 from ralphify.detector import detect_project

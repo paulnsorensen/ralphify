@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from ralphify._frontmatter import PROMPT_MARKER
-from ralphify.engine import RunConfig
+from ralphify._run_types import RunConfig
 from ralphify.manager import ManagedRun, RunManager
 from ralphify.prompts import resolve_prompt_name
 from ralphify.ui.models import RunCreate, RunResponse, RunSettingsUpdate

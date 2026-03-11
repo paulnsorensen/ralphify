@@ -7,7 +7,7 @@ from dataclasses import replace
 from unittest.mock import patch
 
 from ralphify._events import Event, EventType, FanoutEmitter, QueueEmitter
-from ralphify.engine import RunConfig, RunStatus
+from ralphify._run_types import RunConfig, RunStatus
 from ralphify.manager import ManagedRun, RunManager
 
 _MOCK_SUBPROCESS = "ralphify.engine.subprocess.run"

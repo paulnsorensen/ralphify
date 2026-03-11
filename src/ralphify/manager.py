@@ -10,7 +10,8 @@ import uuid
 from dataclasses import dataclass, field
 
 from ralphify._events import EventEmitter, FanoutEmitter, QueueEmitter
-from ralphify.engine import RunConfig, RunState, run_loop
+from ralphify._run_types import RunConfig, RunState
+from ralphify.engine import run_loop
 
 
 @dataclass
