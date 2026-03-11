@@ -371,6 +371,24 @@ async function loadHistoryRuns() {
   try {
     const data = await api('GET', '/history/runs');
     historyRuns.value = data || [];
+    // Add recent history runs to the runs signal so they appear in the sidebar
+    const existingIds = new Set(runs.value.map(r => r.run_id));
+    const recentHistory = (data || [])
+      .filter(r => !existingIds.has(r.run_id) && ['completed', 'stopped', 'failed'].includes(r.status))
+      .slice(0, 5)
+      .map(r => ({
+        run_id: r.run_id,
+        status: r.status,
+        started_at: r.started_at,
+        iteration: r.iterations || 0,
+        completed: r.completed || 0,
+        failed: r.failed || 0,
+        timed_out: r.timed_out || 0,
+        prompt_name: r.prompt_file ? r.prompt_file.split('/').slice(-2, -1)[0] : null,
+      }));
+    if (recentHistory.length > 0) {
+      runs.value = [...runs.value, ...recentHistory];
+    }
   } catch { /* endpoint may not exist on older servers */ }
 }
 
@@ -414,7 +432,9 @@ function Toast({ text, type }) {
 
 function Sidebar() {
   const active = runs.value.filter(r => ['running', 'paused', 'pending'].includes(r.status));
-  const recent = runs.value.filter(r => ['completed', 'stopped', 'failed'].includes(r.status));
+  const recent = runs.value.filter(r => ['completed', 'stopped', 'failed'].includes(r.status))
+    .sort((a, b) => (b.started_at || '').localeCompare(a.started_at || ''))
+    .slice(0, 5);
 
   return html`
     ${sidebarOpen.value && html`<div class="sidebar-overlay" onClick=${() => sidebarOpen.value = false}></div>`}
