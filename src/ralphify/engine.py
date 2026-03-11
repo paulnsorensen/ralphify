@@ -99,6 +99,27 @@ class RunState:
         """Request re-discovery of primitives before the next iteration."""
         self._reload_requested = True
 
+    @property
+    def stop_requested(self) -> bool:
+        """Whether a stop has been requested."""
+        return self._stop_requested
+
+    @property
+    def paused(self) -> bool:
+        """Whether the run is currently paused."""
+        return not self._pause_event.is_set()
+
+    def wait_for_unpause(self, timeout: float | None = None) -> bool:
+        """Block until unpaused or timeout. Returns True if unpaused."""
+        return self._pause_event.wait(timeout=timeout)
+
+    def consume_reload_request(self) -> bool:
+        """If a reload was requested, clear the flag and return True."""
+        if self._reload_requested:
+            self._reload_requested = False
+            return True
+        return False
+
 
 def _format_duration(seconds: float) -> str:
     """Format duration in human-readable form."""
@@ -150,10 +171,10 @@ def _wait_for_resume(state: RunState, emitter: EventEmitter) -> bool:
         type=EventType.RUN_PAUSED,
         run_id=state.run_id,
     ))
-    while not state._pause_event.wait(timeout=0.25):
-        if state._stop_requested:
+    while not state.wait_for_unpause(timeout=0.25):
+        if state.stop_requested:
             break
-    if state._stop_requested:
+    if state.stop_requested:
         state.status = RunStatus.STOPPED
         emitter.emit(Event(
             type=EventType.RUN_STOPPED,
@@ -377,7 +398,7 @@ def run_loop(
 
     try:
         while True:
-            if state._stop_requested:
+            if state.stop_requested:
                 state.status = RunStatus.STOPPED
                 emitter.emit(Event(
                     type=EventType.RUN_STOPPED,
@@ -386,13 +407,12 @@ def run_loop(
                 ))
                 break
 
-            if not state._pause_event.is_set():
+            if state.paused:
                 if not _wait_for_resume(state, emitter):
                     break
 
             # Hot-reload primitives if requested mid-run
-            if state._reload_requested:
-                state._reload_requested = False
+            if state.consume_reload_request():
                 enabled_checks, enabled_contexts, enabled_instructions = (
                     _discover_enabled_primitives(config.project_root)
                 )
