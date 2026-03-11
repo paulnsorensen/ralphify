@@ -2,6 +2,12 @@
   <img src="cli-graphic.png" alt="ralphify" />
 </p>
 
+<p align="center">
+  <a href="https://pypi.org/project/ralphify/"><img src="https://img.shields.io/pypi/v/ralphify?color=blue" alt="PyPI version"></a>
+  <a href="https://pypi.org/project/ralphify/"><img src="https://img.shields.io/pypi/pyversions/ralphify" alt="Python versions"></a>
+  <a href="https://github.com/computerlovetech/ralphify/blob/main/LICENSE"><img src="https://img.shields.io/github/license/computerlovetech/ralphify" alt="License"></a>
+</p>
+
 Put your AI coding agent in a `while True` loop and let it ship.
 
 Ralphify is a minimal harness for running autonomous AI coding loops, inspired by the [Ralph Wiggum technique](https://ghuntley.com/ralph/). The idea is simple: pipe a prompt to an AI coding agent, let it do one thing, commit, and repeat. Forever. Until you hit Ctrl+C.
