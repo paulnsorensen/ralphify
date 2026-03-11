@@ -198,6 +198,46 @@ def _wait_for_resume(state: RunState, emitter: EventEmitter) -> bool:
     return True
 
 
+def _handle_loop_transitions(
+    state: RunState,
+    config: RunConfig,
+    primitives: EnabledPrimitives,
+    emitter: EventEmitter,
+) -> tuple[bool, EnabledPrimitives]:
+    """Handle stop, pause, and reload transitions at the top of each iteration.
+
+    Returns ``(True, primitives)`` if the loop should continue, or
+    ``(False, primitives)`` if the loop should exit.  When a reload is
+    consumed, the returned primitives are freshly discovered.
+    """
+    if state.stop_requested:
+        state.status = RunStatus.STOPPED
+        emitter.emit(Event(
+            type=EventType.RUN_STOPPED,
+            run_id=state.run_id,
+            data={"reason": "user_requested"},
+        ))
+        return False, primitives
+
+    if state.paused:
+        if not _wait_for_resume(state, emitter):
+            return False, primitives
+
+    if state.consume_reload_request():
+        primitives = _discover_enabled_primitives(config.project_root)
+        emitter.emit(Event(
+            type=EventType.PRIMITIVES_RELOADED,
+            run_id=state.run_id,
+            data={
+                "checks": len(primitives.checks),
+                "contexts": len(primitives.contexts),
+                "instructions": len(primitives.instructions),
+            },
+        ))
+
+    return True, primitives
+
+
 def _assemble_prompt(
     config: RunConfig,
     prompt_path: Path,
@@ -405,31 +445,11 @@ def run_loop(
 
     try:
         while True:
-            if state.stop_requested:
-                state.status = RunStatus.STOPPED
-                emitter.emit(Event(
-                    type=EventType.RUN_STOPPED,
-                    run_id=state.run_id,
-                    data={"reason": "user_requested"},
-                ))
+            should_continue, primitives = _handle_loop_transitions(
+                state, config, primitives, emitter,
+            )
+            if not should_continue:
                 break
-
-            if state.paused:
-                if not _wait_for_resume(state, emitter):
-                    break
-
-            # Hot-reload primitives if requested mid-run
-            if state.consume_reload_request():
-                primitives = _discover_enabled_primitives(config.project_root)
-                emitter.emit(Event(
-                    type=EventType.PRIMITIVES_RELOADED,
-                    run_id=state.run_id,
-                    data={
-                        "checks": len(primitives.checks),
-                        "contexts": len(primitives.contexts),
-                        "instructions": len(primitives.instructions),
-                    },
-                ))
 
             state.iteration += 1
             iteration = state.iteration
