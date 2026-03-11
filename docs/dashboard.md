@@ -42,6 +42,11 @@ ralph ui
 
 The dashboard opens at [http://127.0.0.1:8765](http://127.0.0.1:8765).
 
+<figure markdown="span">
+  ![Ralphify dashboard — Runs tab](assets/dashboard/runs-tab.png){ loading=lazy }
+  <figcaption>The Runs tab is your starting point for launching and monitoring autonomous loops.</figcaption>
+</figure>
+
 | Option    | Default       | Description              |
 |-----------|---------------|--------------------------|
 | `--port`  | `8765`        | Port to serve the UI on  |
@@ -88,6 +93,12 @@ Events stream over WebSocket, so the page updates without refreshing.
 ### Configure
 
 The Configure tab lists all checks, contexts, and instructions in your project.
+
+<figure markdown="span">
+  ![Configure tab overview](assets/dashboard/configure-tab.png){ loading=lazy }
+  <figcaption>The Configure overview shows all four primitive types with counts. Click any card to drill in.</figcaption>
+</figure>
+
 You can:
 
 - View the frontmatter and body of each primitive
@@ -96,6 +107,18 @@ You can:
 - Create new primitives
 - Edit existing ones
 - Delete primitives you no longer need
+
+Click into a primitive type to see its items and edit them inline:
+
+<figure markdown="span">
+  ![Checks list in Configure](assets/dashboard/configure-checks.png){ loading=lazy }
+  <figcaption>Drill into Checks to see each check's command and enabled status.</figcaption>
+</figure>
+
+<figure markdown="span">
+  ![Editing a check](assets/dashboard/check-editor.png){ loading=lazy }
+  <figcaption>Click a check to edit its command, timeout, failure instruction, and enabled toggle.</figcaption>
+</figure>
 
 Changes are written directly to the `.ralph/` directory on disk.
 
@@ -113,6 +136,16 @@ Click **New Run** in the sidebar to open the run modal. It lets you:
 - **Preview the prompt** — after selecting a prompt, expand the preview panel to see its full content before launching
 - **Enter an ad-hoc prompt** — toggle to ad-hoc mode and type a one-off task
 - **Configure settings** — expand the settings panel to set max iterations, delay between iterations, timeout, and stop-on-error
+
+<figure markdown="span">
+  ![New Run dialog](assets/dashboard/new-run-dialog.png){ loading=lazy }
+  <figcaption>Pick a named prompt or write an ad-hoc one. The Settings panel is collapsed by default.</figcaption>
+</figure>
+
+<figure markdown="span">
+  ![New Run with settings expanded](assets/dashboard/new-run-settings.png){ loading=lazy }
+  <figcaption>Select a prompt and expand Settings to configure iterations, delay, timeout, and stop-on-error before launching.</figcaption>
+</figure>
 
 Once a run starts, you can **pause**, **resume**, or **stop** it from the
 sidebar or the controls bar above the Timeline.
@@ -160,6 +193,11 @@ The dashboard adapts to smaller screens. On tablets and phones (below 900px
 wide), the sidebar collapses into a slide-out drawer — tap the hamburger menu to
 open it and the overlay to close it. Controls and spacing tighten further below
 600px so the dashboard remains usable on a phone.
+
+<figure markdown="span">
+  ![Mobile dashboard view](assets/dashboard/mobile-view.png){ width="360" loading=lazy }
+  <figcaption>On phones, the sidebar collapses and the layout stacks vertically.</figcaption>
+</figure>
 
 ## REST API
 
