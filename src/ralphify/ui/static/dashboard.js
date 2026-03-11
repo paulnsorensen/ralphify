@@ -360,6 +360,83 @@ function RunControls({ run }) {
   `;
 }
 
+// ── Run Overview ────────────────────────────────────────────────────
+
+function RunOverview({ run }) {
+  const total = run.completed + run.failed;
+  const passRate = total > 0 ? Math.round((run.completed / total) * 100) : 0;
+  const timedOut = run.timed_out || 0;
+  const failedOnly = run.failed - timedOut;
+
+  // SVG ring calculations
+  const radius = 40;
+  const circumference = 2 * Math.PI * radius;
+  const passOffset = total > 0 ? circumference * (1 - run.completed / total) : circumference;
+  const failOffset = total > 0 ? circumference * (1 - run.failed / total) : circumference;
+
+  // Hint text based on run state
+  const isRunning = run.status === 'running';
+  const isHealthy = run.failed === 0 || passRate >= 80;
+  const hint = isRunning
+    ? (isHealthy
+        ? 'All looking good — your agent is making progress.'
+        : `Pass rate is ${passRate}%. Check the health sparklines below for stuck checks.`)
+    : (run.status === 'completed'
+        ? `Run completed with ${passRate}% pass rate across ${total} iterations.`
+        : `Run ${run.status}. ${total} iterations completed.`);
+
+  return html`
+    <div class="run-overview">
+      <div class="run-overview-header">
+        <div class="run-overview-title">
+          <h2>${run.run_id}</h2>
+          <span class="run-status-badge ${run.status}">${run.status}</span>
+        </div>
+      </div>
+      <div class="run-overview-body">
+        <div class="run-progress-ring">
+          <svg width="96" height="96" viewBox="0 0 96 96">
+            <circle class="ring-bg" cx="48" cy="48" r="${radius}" />
+            <circle class="ring-pass" cx="48" cy="48" r="${radius}"
+                    stroke-dasharray="${circumference}"
+                    stroke-dashoffset="${passOffset}" />
+          </svg>
+          <div class="run-progress-label">
+            <span class="run-progress-pct">${total > 0 ? `${passRate}%` : '—'}</span>
+            <span class="run-progress-sub">pass rate</span>
+          </div>
+        </div>
+        <div class="run-stats-grid">
+          <div class="run-stat">
+            <span class="run-stat-value primary">${run.iteration || 0}</span>
+            <span class="run-stat-label">Iterations</span>
+          </div>
+          <div class="run-stat">
+            <span class="run-stat-value green">${run.completed}</span>
+            <span class="run-stat-label">Passed</span>
+          </div>
+          <div class="run-stat">
+            <span class="run-stat-value red">${failedOnly > 0 ? failedOnly : 0}</span>
+            <span class="run-stat-label">Failed</span>
+          </div>
+          <div class="run-stat">
+            <span class="run-stat-value yellow">${timedOut}</span>
+            <span class="run-stat-label">Timed Out</span>
+          </div>
+        </div>
+      </div>
+      <div class="run-overview-hint">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 16v-4"/>
+          <path d="M12 8h.01"/>
+        </svg>
+        ${hint}
+      </div>
+    </div>
+  `;
+}
+
 // ── Timeline view ──────────────────────────────────────────────────
 
 function TimelineView({ run }) {
@@ -369,6 +446,7 @@ function TimelineView({ run }) {
   const health = checkHealth.value[run.run_id] || {};
 
   return html`
+    <${RunOverview} run=${run} />
     <${Timeline} iterations=${runIters} selectedIteration=${selectedIter} />
     ${selected && html`<${IterationPanel} iteration=${selected} />`}
     ${Object.keys(health).length > 0 && html`<${CheckHealthPanel} health=${health} />`}
