@@ -13,6 +13,8 @@ from typing import Any
 
 import aiosqlite
 
+from ralphify._events import EventType
+
 DEFAULT_DB_PATH = Path.home() / ".ralph" / "ui.db"
 
 _SCHEMA = """\
@@ -67,9 +69,9 @@ CREATE TABLE IF NOT EXISTS events (
 # Explicit mapping avoids deriving status from event names via string
 # manipulation, which would break silently if event names changed.
 _ITERATION_STATUS: dict[str, str] = {
-    "iteration_completed": "completed",
-    "iteration_failed": "failed",
-    "iteration_timed_out": "timed_out",
+    EventType.ITERATION_COMPLETED.value: "completed",
+    EventType.ITERATION_FAILED.value: "failed",
+    EventType.ITERATION_TIMED_OUT.value: "timed_out",
 }
 
 
@@ -79,6 +81,16 @@ class Store:
     def __init__(self, db_path: Path | str | None = None) -> None:
         self._db_path = Path(db_path) if db_path else DEFAULT_DB_PATH
         self._db: aiosqlite.Connection | None = None
+        self._event_handlers: dict[str, Callable[..., Any]] = {
+            EventType.RUN_STARTED.value: self._on_run_started,
+            EventType.RUN_STOPPED.value: self._on_run_stopped,
+            EventType.ITERATION_STARTED.value: self._on_iteration_started,
+            EventType.ITERATION_COMPLETED.value: self._on_iteration_ended,
+            EventType.ITERATION_FAILED.value: self._on_iteration_ended,
+            EventType.ITERATION_TIMED_OUT.value: self._on_iteration_ended,
+            EventType.CHECK_PASSED.value: self._on_check_result,
+            EventType.CHECK_FAILED.value: self._on_check_result,
+        }
 
     async def init(self) -> None:
         """Open the database and create tables if they don't exist."""
@@ -128,7 +140,7 @@ class Store:
         # Upsert materialized views via dispatch
         handler = self._event_handlers.get(event_type)
         if handler:
-            await handler(self, event_type, run_id, data, timestamp)
+            await handler(event_type, run_id, data, timestamp)
 
         await db.commit()
 
@@ -216,17 +228,6 @@ class Store:
                 1 if data.get("timed_out") else 0,
             ),
         )
-
-    _event_handlers: dict[str, Callable[..., Any]] = {
-        "run_started": _on_run_started,
-        "run_stopped": _on_run_stopped,
-        "iteration_started": _on_iteration_started,
-        "iteration_completed": _on_iteration_ended,
-        "iteration_failed": _on_iteration_ended,
-        "iteration_timed_out": _on_iteration_ended,
-        "check_passed": _on_check_result,
-        "check_failed": _on_check_result,
-    }
 
     # ------------------------------------------------------------------
     # Query helpers

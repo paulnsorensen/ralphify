@@ -22,11 +22,21 @@ class ConsoleEmitter:
     def __init__(self, console: Console) -> None:
         self._console = console
         self._rprint = console.print
+        self._handlers: dict[EventType, Callable[[dict], None]] = {
+            EventType.RUN_STARTED: self._on_run_started,
+            EventType.ITERATION_STARTED: self._on_iteration_started,
+            EventType.ITERATION_COMPLETED: self._on_iteration_ended,
+            EventType.ITERATION_FAILED: self._on_iteration_ended,
+            EventType.ITERATION_TIMED_OUT: self._on_iteration_ended,
+            EventType.CHECKS_COMPLETED: self._on_checks_completed,
+            EventType.LOG_MESSAGE: self._on_log_message,
+            EventType.RUN_STOPPED: self._on_run_stopped,
+        }
 
     def emit(self, event: Event) -> None:
         handler = self._handlers.get(event.type)
         if handler:
-            handler(self, event.data)
+            handler(event.data)
 
     def _on_run_started(self, d: dict) -> None:
         if d.get("timeout"):
@@ -96,13 +106,3 @@ class ConsoleEmitter:
             summary += "[/green]"
             self._rprint(summary)
 
-    _handlers: dict[EventType, "Callable[[ConsoleEmitter, dict], None]"] = {
-        EventType.RUN_STARTED: _on_run_started,
-        EventType.ITERATION_STARTED: _on_iteration_started,
-        EventType.ITERATION_COMPLETED: _on_iteration_ended,
-        EventType.ITERATION_FAILED: _on_iteration_ended,
-        EventType.ITERATION_TIMED_OUT: _on_iteration_ended,
-        EventType.CHECKS_COMPLETED: _on_checks_completed,
-        EventType.LOG_MESSAGE: _on_log_message,
-        EventType.RUN_STOPPED: _on_run_stopped,
-    }
