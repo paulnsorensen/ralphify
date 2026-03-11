@@ -3163,3 +3163,231 @@ body {
   from { transform: translateY(100%); }
   to   { transform: translateY(0); }
 }
+
+/* ── Activity Stream ─────────────────────────────────────────── */
+
+.activity-stream {
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.activity-stream-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.activity-stream-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.activity-count {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.activity-stats {
+  display: flex;
+  gap: 10px;
+}
+
+.activity-stat {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.activity-stream-body {
+  max-height: 450px;
+  overflow-y: auto;
+  position: relative;
+}
+
+.activity-entry {
+  animation: fade-in 0.15s ease;
+}
+
+/* Text blocks */
+.activity-text {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.activity-text-content {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Tool call blocks */
+.activity-tool {
+  border-bottom: 1px solid var(--border);
+}
+
+.activity-tool-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.activity-tool-header:hover {
+  background: var(--bg);
+}
+
+.tool-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: white;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.tool-input {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.tool-status-indicator {
+  flex-shrink: 0;
+}
+
+.tool-spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.tool-expand-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+}
+
+.tool-expand-icon.expanded {
+  transform: rotate(180deg);
+}
+
+.activity-tool.streaming .activity-tool-header {
+  background: rgba(109, 74, 232, 0.03);
+}
+
+/* Tool result panels */
+.activity-tool-result {
+  background: #1C1730;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tool-result-content {
+  margin: 0;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  line-height: 1.5;
+  color: #c4bfdb;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.activity-tool-result-standalone {
+  background: #1C1730;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Result summary */
+.activity-result {
+  padding: 8px 14px;
+  background: rgba(69, 217, 168, 0.06);
+  border-bottom: 1px solid var(--border);
+}
+
+.activity-result-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--green);
+  font-weight: 500;
+}
+
+.result-stat {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* Scroll-to-bottom button */
+.activity-scroll-btn {
+  position: sticky;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin: 0 auto;
+  width: fit-content;
+}
+
+.activity-scroll-btn:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .activity-stream-body {
+    max-height: 300px;
+  }
+
+  .tool-input {
+    max-width: 150px;
+  }
+}

@@ -10,6 +10,7 @@ Run data types (``RunStatus``, ``RunConfig``, ``RunState``) live in
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 import time
@@ -175,6 +176,96 @@ class _AgentResult(NamedTuple):
     log_file: Path | None
 
 
+def _is_claude_command(cmd: list[str]) -> bool:
+    """Return True if the command looks like Claude Code (supports stream-json)."""
+    if not cmd:
+        return False
+    binary = Path(cmd[0]).name
+    return binary == "claude"
+
+
+def _run_agent_process_streaming(
+    cmd: list[str],
+    prompt: str,
+    timeout: float | None,
+    log_path_dir: Path | None,
+    iteration: int,
+    emit: _BoundEmitter,
+) -> _AgentResult:
+    """Run the agent subprocess with line-by-line streaming of JSON output.
+
+    Used for agents that support ``--output-format stream-json`` (e.g. Claude
+    Code).  Each JSON line is emitted as an ``AGENT_ACTIVITY`` event so the UI
+    can render a live activity feed.
+
+    Falls back gracefully if any line is not valid JSON — it is still
+    collected for logging but not emitted as a structured event.
+    """
+    stream_cmd = cmd + ["--output-format", "stream-json", "--verbose"]
+    start = time.monotonic()
+    log_file: Path | None = None
+    returncode: int | None = None
+    stdout_lines: list[str] = []
+    stderr_data = ""
+
+    try:
+        proc = subprocess.Popen(
+            stream_cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        # Send prompt and close stdin so the agent can start
+        assert proc.stdin is not None
+        proc.stdin.write(prompt)
+        proc.stdin.close()
+
+        assert proc.stdout is not None
+        deadline = (start + timeout) if timeout else None
+
+        for line in proc.stdout:
+            if deadline and time.monotonic() > deadline:
+                proc.kill()
+                proc.wait()
+                returncode = None
+                break
+            stdout_lines.append(line)
+            stripped = line.strip()
+            if not stripped:
+                continue
+            # Emit each JSON line as an AGENT_ACTIVITY event
+            try:
+                parsed = json.loads(stripped)
+                emit(EventType.AGENT_ACTIVITY, {"raw": parsed})
+            except json.JSONDecodeError:
+                pass
+            # Echo to terminal
+            sys.stdout.write(line)
+        else:
+            # stdout exhausted — process should be done
+            proc.wait()
+            returncode = proc.returncode
+
+        assert proc.stderr is not None
+        stderr_data = proc.stderr.read()
+        if stderr_data:
+            sys.stderr.write(stderr_data)
+
+    except subprocess.TimeoutExpired:
+        returncode = None
+
+    stdout_text = "".join(stdout_lines)
+    if log_path_dir:
+        log_file = _write_log(log_path_dir, iteration, stdout_text, stderr_data)
+
+    return _AgentResult(
+        returncode=returncode,
+        elapsed=time.monotonic() - start,
+        log_file=log_file,
+    )
+
+
 def _run_agent_process(
     cmd: list[str],
     prompt: str,
@@ -232,13 +323,22 @@ def _execute_agent(
 
     Updates ``state`` counters (completed / failed / timed_out) and returns
     the process return code, or ``None`` if the process timed out.
+
+    When the agent command is ``claude``, uses streaming mode to emit
+    ``AGENT_ACTIVITY`` events for each JSON line of output.  Other agents
+    fall back to the non-streaming ``subprocess.run()`` path.
     """
     cmd = [config.command] + config.args
 
     try:
-        agent = _run_agent_process(
-            cmd, prompt, config.timeout, log_path_dir, state.iteration,
-        )
+        if _is_claude_command(cmd):
+            agent = _run_agent_process_streaming(
+                cmd, prompt, config.timeout, log_path_dir, state.iteration, emit,
+            )
+        else:
+            agent = _run_agent_process(
+                cmd, prompt, config.timeout, log_path_dir, state.iteration,
+            )
     except FileNotFoundError:
         raise FileNotFoundError(
             f"Agent command not found: {config.command!r}. "

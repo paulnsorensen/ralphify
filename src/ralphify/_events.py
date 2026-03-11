@@ -85,6 +85,10 @@ class EventType(Enum):
     # Data: iteration, prompt_length (int)
     PROMPT_ASSEMBLED = "prompt_assembled"
 
+    # ── Agent activity (live streaming) ─────────────────────────
+    # Data: raw (dict — one stream-json line from the agent subprocess)
+    AGENT_ACTIVITY = "agent_activity"
+
     # ── Other ───────────────────────────────────────────────────
     # Data: checks, contexts, instructions (int counts)
     PRIMITIVES_RELOADED = "primitives_reloaded"

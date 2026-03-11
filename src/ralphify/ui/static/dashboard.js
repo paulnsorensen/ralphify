@@ -22,6 +22,7 @@ const activeTab = signal('runs');  // runs | configure | history
 const toastMessage = signal(null);  // { text, type: 'error' | 'info' }
 const sidebarOpen = signal(false);  // mobile sidebar drawer
 const historyRuns = signal([]);  // persisted runs from SQLite (survives restarts)
+const agentActivity = signal({});  // run_id -> { iteration -> [activity entries] }
 
 const activeRun = computed(() => runs.value.find(r => r.run_id === activeRunId.value));
 
@@ -244,6 +245,18 @@ function handleEvent(event) {
     if (data.level === 'error' && data.message) {
       updateRun(run_id, r => ({ lastError: data.message }));
     }
+  }
+
+  else if (type === 'agent_activity') {
+    // Append raw stream-json event to the current iteration's activity feed
+    const run = runs.value.find(r => r.run_id === run_id);
+    const iter = run?.iteration || 0;
+    const runAct = agentActivity.value[run_id] || {};
+    const iterAct = runAct[iter] || [];
+    agentActivity.value = {
+      ...agentActivity.value,
+      [run_id]: { ...runAct, [iter]: [...iterAct, data.raw] },
+    };
   }
 
   else if (type === 'run_paused') {
@@ -924,6 +937,268 @@ function Timeline({ iterations: iters, selectedIteration, run }) {
   `;
 }
 
+// ── Activity Stream ──────────────────────────────────────────────
+
+const TOOL_COLORS = {
+  Read: '#3b82f6',      // blue
+  Edit: '#8b5cf6',      // violet
+  Bash: '#E87B4A',      // orange
+  Grep: '#45D9A8',      // mint
+  Write: '#8b5cf6',     // violet
+  Glob: '#45D9A8',      // mint
+  Agent: '#6D4AE8',     // primary
+  WebFetch: '#3b82f6',  // blue
+  WebSearch: '#3b82f6', // blue
+};
+
+function parseActivityEntries(rawEvents) {
+  // Process stream-json events into displayable activity entries
+  const entries = [];
+  let currentText = '';
+  let currentTool = null;
+  let currentToolInput = '';
+  let currentToolResult = null;
+
+  for (const ev of rawEvents) {
+    if (!ev || !ev.type) continue;
+
+    // stream_event with content blocks
+    if (ev.type === 'stream_event') {
+      const se = ev.stream_event || ev.event || ev;
+
+      // content_block_start — tool_use
+      if (se.type === 'content_block_start' && se.content_block?.type === 'tool_use') {
+        // Flush any pending text
+        if (currentText.trim()) {
+          entries.push({ type: 'text', content: currentText.trim() });
+          currentText = '';
+        }
+        currentTool = {
+          name: se.content_block.name || 'Unknown',
+          input: '',
+          status: 'streaming',
+        };
+        currentToolInput = '';
+      }
+
+      // content_block_delta — input_json_delta (tool input streaming)
+      else if (se.type === 'content_block_delta' && se.delta?.type === 'input_json_delta') {
+        if (currentTool) {
+          currentToolInput += se.delta.partial_json || '';
+        }
+      }
+
+      // content_block_delta — text_delta (assistant text streaming)
+      else if (se.type === 'content_block_delta' && se.delta?.type === 'text_delta') {
+        currentText += se.delta.text || '';
+      }
+
+      // content_block_stop — finalize current block
+      else if (se.type === 'content_block_stop') {
+        if (currentTool) {
+          // Parse the accumulated JSON input to extract key info
+          let inputSummary = currentToolInput;
+          try {
+            const parsed = JSON.parse(currentToolInput);
+            inputSummary = parsed.file_path || parsed.command || parsed.pattern || parsed.file_name || parsed.content?.substring(0, 100) || currentToolInput;
+          } catch { /* use raw string */ }
+          currentTool.input = inputSummary;
+          currentTool.status = 'done';
+          entries.push({ type: 'tool', ...currentTool, result: currentToolResult });
+          currentTool = null;
+          currentToolInput = '';
+          currentToolResult = null;
+        } else if (currentText.trim()) {
+          entries.push({ type: 'text', content: currentText.trim() });
+          currentText = '';
+        }
+      }
+    }
+
+    // user message — tool result
+    else if (ev.type === 'user') {
+      const content = ev.message?.content || ev.content;
+      if (Array.isArray(content)) {
+        for (const block of content) {
+          if (block.type === 'tool_result') {
+            const resultText = typeof block.content === 'string'
+              ? block.content
+              : Array.isArray(block.content)
+                ? block.content.map(c => c.text || '').join('\n')
+                : JSON.stringify(block.content);
+            // Attach to the last tool entry if there is one
+            if (entries.length > 0 && entries[entries.length - 1].type === 'tool') {
+              entries[entries.length - 1].result = resultText;
+            } else {
+              entries.push({ type: 'tool_result', content: resultText });
+            }
+          }
+        }
+      }
+    }
+
+    // result — agent finished, includes cost/token info
+    else if (ev.type === 'result') {
+      entries.push({
+        type: 'result',
+        cost: ev.cost_usd || ev.cost,
+        duration: ev.duration_ms || ev.duration,
+        tokens: ev.total_tokens || ev.usage?.total_tokens,
+        input_tokens: ev.input_tokens || ev.usage?.input_tokens,
+        output_tokens: ev.output_tokens || ev.usage?.output_tokens,
+        session_id: ev.session_id,
+      });
+    }
+  }
+
+  // Flush any remaining text
+  if (currentText.trim()) {
+    entries.push({ type: 'text', content: currentText.trim() });
+  }
+  if (currentTool) {
+    let inputSummary = currentToolInput;
+    try {
+      const parsed = JSON.parse(currentToolInput);
+      inputSummary = parsed.file_path || parsed.command || parsed.pattern || currentToolInput;
+    } catch { /* use raw */ }
+    currentTool.input = inputSummary;
+    currentTool.status = 'streaming';
+    entries.push({ type: 'tool', ...currentTool });
+  }
+
+  return entries;
+}
+
+function ActivityStream({ runId, iteration }) {
+  const runAct = agentActivity.value[runId] || {};
+  const rawEvents = runAct[iteration] || [];
+  const scrollRef = useRef(null);
+  const [autoScroll, setAutoScroll] = useState(true);
+  const [expandedTools, setExpandedTools] = useState({});
+
+  const entries = parseActivityEntries(rawEvents);
+
+  // Auto-scroll to bottom on new entries
+  useEffect(() => {
+    if (autoScroll && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [entries.length, autoScroll]);
+
+  const handleScroll = useCallback((e) => {
+    const el = e.target;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+    setAutoScroll(atBottom);
+  }, []);
+
+  const toggleTool = useCallback((idx) => {
+    setExpandedTools(prev => ({ ...prev, [idx]: !prev[idx] }));
+  }, []);
+
+  if (rawEvents.length === 0) return null;
+
+  // Compute running totals from result entries
+  const resultEntry = entries.find(e => e.type === 'result');
+
+  return html`
+    <div class="activity-stream">
+      <div class="activity-stream-header">
+        <div class="activity-stream-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+          </svg>
+          Agent Activity
+          <span class="activity-count">${entries.filter(e => e.type === 'tool').length} tools</span>
+        </div>
+        ${resultEntry && html`
+          <div class="activity-stats">
+            ${resultEntry.cost != null && html`
+              <span class="activity-stat">$${typeof resultEntry.cost === 'number' ? resultEntry.cost.toFixed(4) : resultEntry.cost}</span>
+            `}
+            ${resultEntry.tokens != null && html`
+              <span class="activity-stat">${(resultEntry.tokens / 1000).toFixed(1)}k tok</span>
+            `}
+          </div>
+        `}
+      </div>
+      <div class="activity-stream-body" ref=${scrollRef} onScroll=${handleScroll}>
+        ${entries.map((entry, idx) => {
+          if (entry.type === 'text') {
+            return html`
+              <div key=${idx} class="activity-entry activity-text">
+                <div class="activity-text-content">${entry.content}</div>
+              </div>
+            `;
+          }
+          if (entry.type === 'tool') {
+            const color = TOOL_COLORS[entry.name] || '#6D4AE8';
+            const isExpanded = expandedTools[idx];
+            const hasResult = entry.result && entry.result.trim();
+            const isStreaming = entry.status === 'streaming';
+            return html`
+              <div key=${idx} class="activity-entry activity-tool ${isStreaming ? 'streaming' : 'done'}">
+                <div class="activity-tool-header" onClick=${() => hasResult && toggleTool(idx)}>
+                  <span class="tool-badge" style="background: ${color}">${entry.name}</span>
+                  <span class="tool-input">${entry.input || ''}</span>
+                  ${isStreaming && html`
+                    <span class="tool-status-indicator">
+                      <span class="tool-spinner"></span>
+                    </span>
+                  `}
+                  ${hasResult && html`
+                    <svg class="tool-expand-icon ${isExpanded ? 'expanded' : ''}" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                  `}
+                </div>
+                ${isExpanded && hasResult && html`
+                  <div class="activity-tool-result">
+                    <pre class="tool-result-content">${entry.result.length > 2000 ? entry.result.substring(0, 2000) + '\n... (truncated)' : entry.result}</pre>
+                  </div>
+                `}
+              </div>
+            `;
+          }
+          if (entry.type === 'tool_result') {
+            return html`
+              <div key=${idx} class="activity-entry activity-tool-result-standalone">
+                <pre class="tool-result-content">${entry.content?.length > 2000 ? entry.content.substring(0, 2000) + '\n... (truncated)' : entry.content}</pre>
+              </div>
+            `;
+          }
+          if (entry.type === 'result') {
+            return html`
+              <div key=${idx} class="activity-entry activity-result">
+                <div class="activity-result-content">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  Agent finished
+                  ${entry.cost != null && html`<span class="result-stat">$${typeof entry.cost === 'number' ? entry.cost.toFixed(4) : entry.cost}</span>`}
+                  ${entry.tokens != null && html`<span class="result-stat">${(entry.tokens / 1000).toFixed(1)}k tokens</span>`}
+                  ${entry.duration != null && html`<span class="result-stat">${(entry.duration / 1000).toFixed(1)}s</span>`}
+                </div>
+              </div>
+            `;
+          }
+          return null;
+        })}
+        ${!autoScroll && html`
+          <button class="activity-scroll-btn" onClick=${() => {
+            setAutoScroll(true);
+            if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+          }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+            Follow
+          </button>
+        `}
+      </div>
+    </div>
+  `;
+}
+
 function IterationPanel({ iteration: it }) {
   const statusClass = it.status === 'success' ? 'success' :
                       it.status === 'failure' ? 'failure' :
@@ -996,8 +1271,11 @@ function IterationPanel({ iteration: it }) {
         ${it.status === 'running' && html`
           <div style="color: var(--text-secondary); font-size: 13px; display: flex; align-items: center; gap: 8px">
             <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--primary); animation: pulse 1.5s infinite"></div>
-            Running...
+            Agent is working...
           </div>
+        `}
+        ${activeRunId.value && html`
+          <${ActivityStream} runId=${activeRunId.value} iteration=${it.iteration} />
         `}
       </div>
     </div>
@@ -1659,7 +1937,14 @@ function HistoryView() {
             : html`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`;
 
           return html`
-            <div key=${r.run_id} class="history-card" onClick=${() => { selectRun(r.run_id); activeTab.value = 'runs'; }}>
+            <div key=${r.run_id} class="history-card" onClick=${() => {
+              // Ensure the run exists in the runs signal so the Runs tab can render it
+              if (!runs.value.find(x => x.run_id === r.run_id)) {
+                runs.value = [...runs.value, r];
+              }
+              selectRun(r.run_id);
+              activeTab.value = 'runs';
+            }}>
               <div class="history-card-status-icon ${r.status}">
                 ${statusIcon}
               </div>
