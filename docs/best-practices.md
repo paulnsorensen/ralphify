@@ -228,6 +228,62 @@ The loop is running. When should you step in?
 - You need to add, remove, or reconfigure checks/contexts/instructions (these require a restart)
 - You need to manually fix something the agent can't figure out
 
+## Chain prompts for multi-phase workflows
+
+Named prompts let you break a large project into phases, each with its own focus and constraints. Instead of one prompt that tries to do everything, run specialized prompts in sequence:
+
+```bash
+ralph run implement -n 5      # Build features from the plan
+ralph run add-tests -n 3      # Write tests for the new code
+ralph run docs -n 2            # Document what was built
+```
+
+Each phase uses a prompt tuned for that job. The `implement` prompt focuses on shipping features fast. The `add-tests` prompt treats existing code as a given and writes tests for it. The `docs` prompt reads the codebase and fills documentation gaps.
+
+### Setting up the prompts
+
+```bash
+ralph new prompt implement
+ralph new prompt add-tests
+ralph new prompt docs
+```
+
+Each gets its own `PROMPT.md` in `.ralph/prompts/<name>/` with tailored instructions:
+
+```markdown
+# .ralph/prompts/implement/PROMPT.md
+---
+description: Ship features from the plan file
+enabled: true
+---
+
+Read PLAN.md and implement the next uncompleted task.
+One task per iteration. No placeholder code.
+Commit with `feat: <description>`.
+```
+
+```markdown
+# .ralph/prompts/add-tests/PROMPT.md
+---
+description: Write tests for untested code
+enabled: true
+---
+
+{{ contexts.coverage }}
+
+Find modules with low test coverage and write thorough tests.
+One module per iteration. Do NOT modify source code.
+Commit with `test: add tests for <module>`.
+```
+
+The key insight: **checks and contexts are shared across all prompts.** Your test check still validates every iteration regardless of which prompt is active. Only the instructions to the agent change.
+
+### When to use phases vs. a single prompt
+
+**Use phases when** the quality of each phase depends on the previous one completing — you want features built before you write tests for them, and tests passing before you document the behavior.
+
+**Use a single prompt when** the work is uniform — fixing bugs from a test suite, applying the same refactoring pattern across files, or writing documentation for existing code. In these cases, switching prompts adds friction without benefit.
+
 ## Common mistakes
 
 **Vague prompts.** "Improve the project" gives the agent no clear direction. Always point it at a specific task source (plan file, failing tests, issue tracker).
