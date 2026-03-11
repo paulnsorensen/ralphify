@@ -165,7 +165,7 @@ You define what "valid" means. Ralphify feeds failures back into the prompt auto
 ## Requirements
 
 - Python 3.11+
-- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) (or any agent CLI that accepts piped input)
+- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) (or [any agent CLI](agents.md) that accepts piped input)
 
 ---
 

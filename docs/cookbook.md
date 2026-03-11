@@ -567,7 +567,7 @@ on:
 ```
 
 !!! note "Adapt for your agent"
-    This example uses Claude Code, but ralphify works with any CLI that reads stdin. Replace the agent install step and environment variables to match your agent. See [Using a different agent](cli.md#using-a-different-agent).
+    This example uses Claude Code, but ralphify works with any CLI that reads stdin. Replace the agent install step and environment variables to match your agent. See [Using with Different Agents](agents.md) for setup guides.
 
 ---
 

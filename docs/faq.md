@@ -22,7 +22,7 @@ args = ["-c", "cat - | my-agent-wrapper --non-interactive"]
 prompt = "PROMPT.md"
 ```
 
-Claude Code is the default because its `-p` flag is designed for exactly this use case — reading a prompt from stdin and running non-interactively.
+Claude Code is the default because its `-p` flag is designed for exactly this use case — reading a prompt from stdin and running non-interactively. See [Using with Different Agents](agents.md) for setup guides for Aider, Codex CLI, and custom wrappers.
 
 ### Does this cost money?
 

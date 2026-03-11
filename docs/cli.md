@@ -45,7 +45,7 @@ args = ["-c", "cat - | my-agent-wrapper"]
 prompt = "PROMPT.md"
 ```
 
-The only requirement is that the command reads the prompt from stdin and exits when done.
+The only requirement is that the command reads the prompt from stdin and exits when done. See [Using with Different Agents](agents.md) for complete setup guides for popular agents and custom wrappers.
 
 ---
 
