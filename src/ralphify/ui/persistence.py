@@ -77,6 +77,16 @@ class Store:
         await self._db.executescript(_SCHEMA)
         await self._db.commit()
 
+    @property
+    def _conn(self) -> aiosqlite.Connection:
+        """Return the active database connection.
+
+        Raises ``RuntimeError`` if ``init()`` has not been called.
+        """
+        if self._db is None:
+            raise RuntimeError("Store not initialised — call init() first")
+        return self._db
+
     async def close(self) -> None:
         """Close the database connection."""
         if self._db is not None:
@@ -92,14 +102,14 @@ class Store:
 
         ``event`` should have keys: ``run_id``, ``type``, ``data``, ``timestamp``.
         """
-        assert self._db is not None
+        db = self._conn
         run_id = event["run_id"]
         event_type = event["type"]
         data = event.get("data", {})
         timestamp = event["timestamp"]
 
         # Append to events table
-        await self._db.execute(
+        await db.execute(
             "INSERT INTO events (run_id, event_type, data, timestamp) VALUES (?, ?, ?, ?)",
             (run_id, event_type, json.dumps(data), timestamp),
         )
@@ -109,17 +119,17 @@ class Store:
         if handler:
             await handler(self, event_type, run_id, data, timestamp)
 
-        await self._db.commit()
+        await db.commit()
 
     async def _on_run_started(
         self, event_type: str, run_id: str, data: dict[str, Any], timestamp: str,
     ) -> None:
-        assert self._db is not None
-        await self._db.execute(
+        db = self._conn
+        await db.execute(
             "INSERT OR IGNORE INTO runs (run_id) VALUES (?)",
             (run_id,),
         )
-        await self._db.execute(
+        await db.execute(
             "UPDATE runs SET status = 'running', started_at = ?, "
             "command = ?, prompt_file = ? WHERE run_id = ?",
             (timestamp, data.get("command", ""), data.get("prompt_file", ""), run_id),
@@ -128,8 +138,8 @@ class Store:
     async def _on_run_stopped(
         self, event_type: str, run_id: str, data: dict[str, Any], timestamp: str,
     ) -> None:
-        assert self._db is not None
-        await self._db.execute(
+        db = self._conn
+        await db.execute(
             "UPDATE runs SET status = ?, stopped_at = ?, "
             "completed = ?, failed = ?, timed_out = ? WHERE run_id = ?",
             (
@@ -145,14 +155,14 @@ class Store:
     async def _on_iteration_started(
         self, event_type: str, run_id: str, data: dict[str, Any], timestamp: str,
     ) -> None:
-        assert self._db is not None
+        db = self._conn
         iteration = data.get("iteration", 0)
-        await self._db.execute(
+        await db.execute(
             "INSERT INTO iterations (run_id, iteration, status, started_at) "
             "VALUES (?, ?, 'started', ?)",
             (run_id, iteration, timestamp),
         )
-        await self._db.execute(
+        await db.execute(
             "UPDATE runs SET iterations = ? WHERE run_id = ?",
             (iteration, run_id),
         )
@@ -160,10 +170,10 @@ class Store:
     async def _on_iteration_ended(
         self, event_type: str, run_id: str, data: dict[str, Any], timestamp: str,
     ) -> None:
-        assert self._db is not None
+        db = self._conn
         iteration = data.get("iteration", 0)
         status = event_type.replace("iteration_", "")
-        await self._db.execute(
+        await db.execute(
             "UPDATE iterations SET status = ?, returncode = ?, "
             "duration = ?, finished_at = ? "
             "WHERE run_id = ? AND iteration = ?",
@@ -180,9 +190,9 @@ class Store:
     async def _on_check_result(
         self, event_type: str, run_id: str, data: dict[str, Any], timestamp: str,
     ) -> None:
-        assert self._db is not None
+        db = self._conn
         iteration = data.get("iteration", 0)
-        await self._db.execute(
+        await db.execute(
             "INSERT INTO check_results "
             "(run_id, iteration, check_name, passed, exit_code, timed_out) "
             "VALUES (?, ?, ?, ?, ?, ?)",
@@ -213,8 +223,7 @@ class Store:
 
     async def get_run(self, run_id: str) -> dict[str, Any] | None:
         """Return a run summary dict or ``None``."""
-        assert self._db is not None
-        cursor = await self._db.execute(
+        cursor = await self._conn.execute(
             "SELECT * FROM runs WHERE run_id = ?", (run_id,)
         )
         row = await cursor.fetchone()
@@ -224,8 +233,7 @@ class Store:
 
     async def list_runs(self) -> list[dict[str, Any]]:
         """Return all runs ordered by start time descending."""
-        assert self._db is not None
-        cursor = await self._db.execute(
+        cursor = await self._conn.execute(
             "SELECT * FROM runs ORDER BY started_at DESC"
         )
         rows = await cursor.fetchall()
@@ -233,8 +241,7 @@ class Store:
 
     async def get_iterations(self, run_id: str) -> list[dict[str, Any]]:
         """Return iterations for a run ordered by iteration number."""
-        assert self._db is not None
-        cursor = await self._db.execute(
+        cursor = await self._conn.execute(
             "SELECT * FROM iterations WHERE run_id = ? ORDER BY iteration",
             (run_id,),
         )
@@ -245,8 +252,7 @@ class Store:
         self, run_id: str, iteration: int
     ) -> list[dict[str, Any]]:
         """Return check results for a specific iteration."""
-        assert self._db is not None
-        cursor = await self._db.execute(
+        cursor = await self._conn.execute(
             "SELECT * FROM check_results WHERE run_id = ? AND iteration = ? "
             "ORDER BY id",
             (run_id, iteration),
@@ -258,8 +264,7 @@ class Store:
         self, run_id: str, limit: int = 100, offset: int = 0
     ) -> list[dict[str, Any]]:
         """Return raw events for a run."""
-        assert self._db is not None
-        cursor = await self._db.execute(
+        cursor = await self._conn.execute(
             "SELECT * FROM events WHERE run_id = ? ORDER BY id LIMIT ? OFFSET ?",
             (run_id, limit, offset),
         )
