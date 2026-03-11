@@ -19,10 +19,11 @@ uv run mkdocs serve        # Preview docs at http://127.0.0.1:8000
 
 ## Project layout
 
-All source code is in `src/ralphify/`. The main file is `cli.py` — it contains the core loop, all CLI commands, and scaffold templates.
+All source code is in `src/ralphify/`. The main file is `cli.py` — it contains the CLI commands and delegates to the engine for the core loop.
 
 Key modules:
-- `cli.py` — CLI commands and the main `run()` loop
+- `cli.py` — CLI commands and the `ConsoleEmitter`
+- `_templates.py` — Scaffold templates for `ralph init` and `ralph new`
 - `_frontmatter.py` — Primitive discovery and YAML frontmatter parsing
 - `resolver.py` — Template placeholder resolution (`{{ contexts.name }}`, `{{ instructions }}`)
 - `prompts.py` — Named prompt discovery and resolution
@@ -39,7 +40,7 @@ Tests are in `tests/` with one file per module. Docs are in `docs/` using MkDocs
 
 ## Traps
 
-- Primitive marker filenames (`CHECK.md`, `CONTEXT.md`, `INSTRUCTION.md`, `PROMPT.md`) are hardcoded in each module's `discover_*()` function AND in scaffold templates in `cli.py`. Change one → update both.
+- Primitive marker filenames (`CHECK.md`, `CONTEXT.md`, `INSTRUCTION.md`, `PROMPT.md`) are hardcoded in each module's `discover_*()` function AND in scaffold templates in `_templates.py`. Change one → update both.
 - `timeout` and `enabled` frontmatter fields have special type coercion in `_frontmatter.py:parse_frontmatter()`. New typed fields need coercion logic added there.
 - Both contexts and instructions share `resolver.py:resolve_placeholders()`. Changes affect both.
 - Output is truncated to 5000 chars in `_output.py`. This is intentional.

@@ -8,7 +8,8 @@ from ralphify import __version__
 from ralphify._frontmatter import parse_frontmatter
 from ralphify.checks import Check, CheckResult
 from ralphify.contexts import Context, ContextResult
-from ralphify.cli import app, CONFIG_FILENAME, RALPH_TOML_TEMPLATE, PROMPT_TEMPLATE
+from ralphify.cli import app, CONFIG_FILENAME
+from ralphify._templates import RALPH_TOML_TEMPLATE, PROMPT_TEMPLATE
 from ralphify.engine import _format_duration
 
 runner = CliRunner()

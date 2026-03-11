@@ -24,6 +24,7 @@ src/ralphify/           # All source code
 ├── detector.py         # Auto-detect project type from manifest files
 ├── _runner.py          # Execute shell commands with timeout and capture output
 ├── _frontmatter.py     # Parse YAML frontmatter from markdown primitives, discover primitives
+├── _templates.py       # Scaffold templates for init and new commands
 ├── _events.py          # Event types and emitter protocol (NullEmitter, QueueEmitter)
 ├── _output.py          # Combine/truncate stdout+stderr
 └── ui/                 # Web UI layer (optional — not part of the core CLI)
@@ -110,14 +111,14 @@ The CLI uses a `ConsoleEmitter` (defined in `cli.py`) that renders events to the
 ## Key files to understand first
 
 1. **`engine.py`** — The core run loop. Understands `RunConfig`, `RunState`, and `EventEmitter`. This is where iteration logic lives.
-2. **`cli.py`** — All CLI commands, scaffold templates, and the `ConsoleEmitter`. Delegates to `engine.run_loop()` for the actual loop.
+2. **`cli.py`** — All CLI commands, the `ConsoleEmitter`, and prompt resolution. Delegates to `engine.run_loop()` for the actual loop. Scaffold templates live in `_templates.py`.
 3. **`_frontmatter.py`** — The primitive discovery system. Understanding `discover_primitives()` and `parse_frontmatter()` is essential for working on checks/contexts/instructions/prompts.
 4. **`resolver.py`** — Template placeholder logic shared by contexts and instructions. Small file but critical — changes here affect both.
 
 ## Traps and gotchas
 
 ### If you change the primitive marker filenames...
-The marker file names (`CHECK.md`, `CONTEXT.md`, `INSTRUCTION.md`, `PROMPT.md`) are hardcoded in each module's `discover_*()` function AND in the scaffold templates in `cli.py`. You must update both.
+The marker file names (`CHECK.md`, `CONTEXT.md`, `INSTRUCTION.md`, `PROMPT.md`) are hardcoded in each module's `discover_*()` function AND in the scaffold templates in `_templates.py`. You must update both.
 
 ### If you change frontmatter fields...
 Frontmatter parsing is in `_frontmatter.py:parse_frontmatter()` but the field names are consumed in each module's `discover_*()` function. The `timeout` and `enabled` fields get special type coercion in `parse_frontmatter()` — adding a new typed field requires updating the coercion logic there.
@@ -128,7 +129,7 @@ Add it in `cli.py`. The CLI uses Typer. The `new` subcommand group uses `app.add
 ### If you add a new primitive type...
 You need to:
 1. Create a new module (like `prompts.py`) with dataclass, discover, and resolve functions
-2. Add a scaffold template in `cli.py` and a `new` subcommand
+2. Add a scaffold template in `_templates.py` and a `new` subcommand in `cli.py`
 3. Wire it into `engine.py:run_loop()` if it affects the iteration cycle
 4. Add tests
 5. Update `docs/primitives.md`
