@@ -531,7 +531,12 @@ function RunControls({ run }) {
       </button>
     `}
     ${isActive && html`
-      <button class="btn btn-sm btn-danger" onClick=${() => stopRun(run.run_id)}>Stop</button>
+      <button class="btn btn-sm btn-danger" onClick=${() => stopRun(run.run_id)}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="4" width="16" height="16" rx="2"/>
+        </svg>
+        Stop
+      </button>
     `}
     ${isFinished && html`
       <button class="btn btn-sm btn-primary" onClick=${() => {

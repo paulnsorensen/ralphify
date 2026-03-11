@@ -2603,7 +2603,28 @@ body {
     display: none;
   }
 
-  .btn-sm {
+  .controls-stats {
+    display: none;
+  }
+
+  /* Icon-only run control buttons on mobile */
+  .controls-bar .btn-sm {
+    font-size: 0;
+    padding: 6px 8px;
+    gap: 0;
+    min-width: 32px;
+    min-height: 32px;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .controls-bar .btn-sm svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* Hide run-again button in history cards (card itself is clickable) */
+  .history-run-again-btn {
     display: none;
   }
 
