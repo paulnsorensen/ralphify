@@ -8,7 +8,10 @@ All notable changes to ralphify are documented here.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+- **Named prompts** — save reusable, task-focused prompts in `.ralph/prompts/<name>/PROMPT.md` and switch between them with `ralph run <name>`. Create with `ralph new prompt <name>`, list with `ralph prompts list`. The `prompt` field in `ralph.toml` also accepts a prompt name.
+- **`--prompt-file` / `-f` flag** — point `ralph run` at any prompt file by path, overriding `ralph.toml`.
 
 ---
 

@@ -21,7 +21,7 @@ prompt = "PROMPT.md"
 |---|---|---|---|
 | `command` | string | yes | The agent CLI executable to run |
 | `args` | list of strings | no | Arguments passed to the command |
-| `prompt` | string | yes | Path to the prompt file (relative to project root) |
+| `prompt` | string | yes | Path to a prompt file, or a [named prompt](primitives.md#prompts) name |
 
 The assembled prompt is piped to the agent command as **stdin**. The full command executed each iteration is:
 
@@ -91,18 +91,22 @@ Start the autonomous coding loop.
 
 ```bash
 ralph run                          # Run forever (Ctrl+C to stop)
+ralph run docs                     # Use the "docs" named prompt
 ralph run -n 5                     # Run 5 iterations
 ralph run -p "Fix the login bug"   # Ad-hoc prompt (no PROMPT.md needed)
+ralph run -f path/to/prompt.md     # Use a specific prompt file
 ralph run --stop-on-error          # Stop if agent exits non-zero
 ralph run --delay 10               # Wait 10s between iterations
 ralph run --timeout 300            # Kill agent after 5 minutes per iteration
 ralph run --log-dir ralph_logs     # Save output to log files
 ```
 
-| Option | Short | Default | Description |
+| Argument / Option | Short | Default | Description |
 |---|---|---|---|
+| `[PROMPT_NAME]` | | none | Name of a [named prompt](primitives.md#prompts) in `.ralph/prompts/` |
 | `-n` | | unlimited | Max number of iterations |
 | `--prompt` | `-p` | none | Ad-hoc prompt text. Overrides the prompt file |
+| `--prompt-file` | `-f` | none | Path to a prompt file. Overrides `ralph.toml` |
 | `--stop-on-error` | `-s` | off | Stop loop if agent exits non-zero or times out |
 | `--delay` | `-d` | `0` | Seconds to wait between iterations |
 | `--timeout` | `-t` | none | Max seconds per iteration |
@@ -146,6 +150,20 @@ This command checks:
 
 If everything is configured correctly, it prints "Ready to run." If not, it tells you exactly what's wrong.
 
+### `ralph prompts`
+
+Manage named prompts.
+
+#### `ralph prompts list`
+
+List all available prompts — both the root `PROMPT.md` and any named prompts in `.ralph/prompts/`.
+
+```bash
+ralph prompts list
+```
+
+Output shows enabled status, name, and description for each prompt.
+
 ### `ralph new`
 
 Scaffold new primitives. Each command creates a directory under `.ralph/` with a template file.
@@ -154,6 +172,7 @@ Scaffold new primitives. Each command creates a directory under `.ralph/` with a
 ralph new check <name>         # Create .ralph/checks/<name>/CHECK.md
 ralph new instruction <name>   # Create .ralph/instructions/<name>/INSTRUCTION.md
 ralph new context <name>       # Create .ralph/contexts/<name>/CONTEXT.md
+ralph new prompt <name>        # Create .ralph/prompts/<name>/PROMPT.md
 ```
 
 The created template files include placeholder frontmatter and comments explaining how to configure each primitive. See [Primitives](primitives.md) for full details on each type.

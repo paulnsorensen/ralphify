@@ -28,17 +28,22 @@ See [Configuration & CLI](cli.md#ralphtoml) for details.
 | `ralph init` | Create `ralph.toml` and `PROMPT.md` |
 | `ralph init --force` | Overwrite existing files |
 | `ralph run` | Start the loop (Ctrl+C to stop) |
+| `ralph run <prompt-name>` | Start the loop with a [named prompt](primitives.md#prompts) |
 | `ralph status` | Validate setup and list primitives |
+| `ralph prompts list` | List all available prompts |
 | `ralph new check <name>` | Scaffold a new check |
 | `ralph new context <name>` | Scaffold a new context |
 | `ralph new instruction <name>` | Scaffold a new instruction |
+| `ralph new prompt <name>` | Scaffold a new named prompt |
 
 ### `ralph run` options
 
-| Option | Short | Default | Description |
+| Argument / Option | Short | Default | Description |
 |---|---|---|---|
+| `[PROMPT_NAME]` | | none | Name of a named prompt in `.ralph/prompts/` |
 | `-n` | | unlimited | Max iterations |
 | `--prompt` | `-p` | none | Ad-hoc prompt text (overrides prompt file) |
+| `--prompt-file` | `-f` | none | Path to a prompt file (overrides `ralph.toml`) |
 | `--stop-on-error` | `-s` | off | Stop if agent exits non-zero or times out |
 | `--delay` | `-d` | `0` | Seconds between iterations |
 | `--timeout` | `-t` | none | Max seconds per iteration |
@@ -46,6 +51,7 @@ See [Configuration & CLI](cli.md#ralphtoml) for details.
 
 ```bash
 # Common combinations
+ralph run docs                              # Use the "docs" named prompt
 ralph run -n 1 --log-dir ralph_logs         # Single test iteration
 ralph run -n 1 -p "Fix the login bug"       # Quick one-off task
 ralph run -n 5 --stop-on-error              # Short batch, stop on failure
@@ -130,6 +136,25 @@ enabled: true   # Set false to skip (default: true)
 Instruction content goes here — injected via {{ instructions.name }} or {{ instructions }}.
 ```
 
+### Prompts
+
+Reusable task-focused prompts. Switch between tasks without editing root `PROMPT.md`.
+
+**Location:** `.ralph/prompts/<name>/PROMPT.md`
+
+```markdown
+---
+description: Improve project documentation   # Shown in `ralph prompts list`
+enabled: true                                 # Set false to hide (default: true)
+---
+Your full prompt content here, with {{ contexts }} and {{ instructions }} as usual.
+```
+
+```bash
+ralph run docs        # Run with the "docs" prompt
+ralph prompts list    # See all available prompts
+```
+
 ### Script alternative
 
 Any check or context can use an executable `run.*` script instead of a frontmatter `command`:
@@ -151,14 +176,16 @@ See [Primitives](primitives.md) for full details.
 ```
 your-project/
 ├── ralph.toml                 # Loop configuration
-├── PROMPT.md                  # Prompt file (re-read every iteration)
+├── PROMPT.md                  # Root prompt file (re-read every iteration)
 ├── .ralph/
 │   ├── checks/
 │   │   └── <name>/CHECK.md
 │   ├── contexts/
 │   │   └── <name>/CONTEXT.md
-│   └── instructions/
-│       └── <name>/INSTRUCTION.md
+│   ├── instructions/
+│   │   └── <name>/INSTRUCTION.md
+│   └── prompts/
+│       └── <name>/PROMPT.md   # Named prompts (ralph run <name>)
 └── ralph_logs/                # Iteration logs (add to .gitignore)
 ```
 

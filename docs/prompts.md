@@ -206,6 +206,38 @@ one page per iteration.
 - Commit with `docs: <what you documented>`
 ```
 
+## Named prompts for task switching
+
+If you regularly switch between different tasks — documentation, refactoring, bug fixing, test coverage — you can save each prompt as a **named prompt** instead of rewriting `PROMPT.md` every time.
+
+```bash
+ralph new prompt docs        # Create .ralph/prompts/docs/PROMPT.md
+ralph new prompt refactor    # Create .ralph/prompts/refactor/PROMPT.md
+ralph new prompt add-tests   # Create .ralph/prompts/add-tests/PROMPT.md
+```
+
+Each named prompt is a full `PROMPT.md` with its own frontmatter, content, and placeholders. Run it by name:
+
+```bash
+ralph run docs           # Use the docs prompt
+ralph run refactor -n 5  # Use refactor for 5 iterations
+```
+
+Named prompts live in `.ralph/prompts/<name>/PROMPT.md`. Add a `description` to the frontmatter so `ralph prompts list` shows what each one does:
+
+```markdown
+---
+description: Systematically increase test coverage
+enabled: true
+---
+
+# Prompt
+
+You are a test-writing agent. Each iteration starts fresh...
+```
+
+See [Primitives — Prompts](primitives.md#prompts) for the full reference.
+
 ## Tips
 
 **Start small.** Run a few iterations with `-n 3` and review the output before letting the loop run indefinitely.
