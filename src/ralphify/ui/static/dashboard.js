@@ -398,12 +398,10 @@ function RunOverview({ run }) {
     <div class="run-overview">
       <div class="run-overview-header">
         <div class="run-overview-title">
-          <h2>${run.run_id}</h2>
+          <h2>${run.prompt_name || 'Ad-hoc run'}</h2>
           <span class="run-status-badge ${run.status}">${run.status}</span>
-          ${run.prompt_name && html`
-            <span class="run-prompt-tag">${run.prompt_name}</span>
-          `}
         </div>
+        <span style="font-family: var(--font-mono); font-size: 12px; color: var(--text-muted)">${run.run_id.length > 8 ? run.run_id.slice(0, 8) : run.run_id}</span>
       </div>
       <div class="run-overview-body">
         <div class="run-progress-ring">
@@ -954,24 +952,92 @@ function PrimCreateForm({ kind, meta, onBack, onCreated }) {
 function HistoryView() {
   const completedRuns = runs.value.filter(r => ['completed', 'stopped', 'failed'].includes(r.status));
 
-  return html`
-    <div class="history-panel">
-      <div class="history-header">Run History</div>
-      ${completedRuns.length === 0 && html`
-        <div style="padding: 16px; color: var(--text-muted); font-size: 12px">No completed runs yet.</div>
-      `}
-      ${completedRuns.map(r => html`
-        <div key=${r.run_id} class="run-summary-card" onClick=${() => { activeRunId.value = r.run_id; activeTab.value = 'timeline'; }}>
-          <div class="run-badge ${r.status}"></div>
-          <div>
-            <div class="run-summary-id">${r.run_id}</div>
-            <div class="run-summary-stats">
-              ${r.completed + r.failed} iterations \u00b7 ${r.completed} passed \u00b7 ${r.failed} failed
-            </div>
-          </div>
-          <div class="run-summary-time">${r.status}</div>
+  if (completedRuns.length === 0) {
+    return html`
+      <div class="history-empty">
+        <div class="history-empty-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <g stroke="url(#hig)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </g>
+            <defs>
+              <linearGradient id="hig" x1="0" y1="0" x2="24" y2="24">
+                <stop stop-color="#8B6CF0"/>
+                <stop offset="1" stop-color="#E87B4A"/>
+              </linearGradient>
+            </defs>
+          </svg>
         </div>
-      `)}
+        <div class="history-empty-title">No completed runs yet</div>
+        <div class="history-empty-hint">
+          Completed, stopped, and failed runs will appear here so you can review past results.
+        </div>
+        <button class="btn btn-primary" onClick=${() => showNewRunModal.value = true}>
+          + Start Your First Run
+        </button>
+      </div>
+    `;
+  }
+
+  return html`
+    <div>
+      <div class="history-view-header">
+        <h2>Run History</h2>
+        <p>${completedRuns.length} completed run${completedRuns.length !== 1 ? 's' : ''}</p>
+      </div>
+      <div class="history-grid">
+        ${completedRuns.map(r => {
+          const total = r.completed + r.failed;
+          const passRate = total > 0 ? Math.round((r.completed / total) * 100) : 0;
+          const shortId = r.run_id.length > 8 ? r.run_id.slice(0, 8) : r.run_id;
+          const displayTitle = r.prompt_name || 'Ad-hoc run';
+          const rateColor = passRate >= 80 ? 'var(--green)' : passRate >= 50 ? 'var(--yellow)' : 'var(--red)';
+
+          const statusIcon = r.status === 'completed'
+            ? html`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+            : r.status === 'failed'
+            ? html`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>`
+            : html`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`;
+
+          return html`
+            <div key=${r.run_id} class="history-card" onClick=${() => { activeRunId.value = r.run_id; activeTab.value = 'timeline'; }}>
+              <div class="history-card-status-icon ${r.status}">
+                ${statusIcon}
+              </div>
+              <div class="history-card-body">
+                <div class="history-card-title">${displayTitle}</div>
+                <div class="history-card-meta">
+                  <span class="history-card-meta-id">${shortId}</span>
+                  <span>\u00b7</span>
+                  <span>${total} iteration${total !== 1 ? 's' : ''}</span>
+                  <span class="history-status-badge ${r.status}">${r.status}</span>
+                </div>
+              </div>
+              <div class="history-card-stats">
+                <div class="history-stat">
+                  <span class="history-stat-value green">${r.completed}</span>
+                  <span class="history-stat-label">Pass</span>
+                </div>
+                <div class="history-stat">
+                  <span class="history-stat-value red">${r.failed}</span>
+                  <span class="history-stat-label">Fail</span>
+                </div>
+              </div>
+              <div class="history-card-rate">
+                <span class="history-rate-pct" style="color: ${rateColor}">${total > 0 ? `${passRate}%` : '\u2014'}</span>
+                <div class="history-rate-bar">
+                  <div class="history-rate-bar-fill" style="width: ${passRate}%; background: ${rateColor}"></div>
+                </div>
+                <span class="history-rate-label">Pass rate</span>
+              </div>
+              <svg class="history-card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </div>
+          `;
+        })}
+      </div>
     </div>
   `;
 }
