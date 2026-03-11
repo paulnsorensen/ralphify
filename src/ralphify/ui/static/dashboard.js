@@ -18,7 +18,7 @@ const checkHealth = signal({});  // run_id -> {check_name -> [pass/fail/timeout.
 const wsConnected = signal(false);
 const showNewRunModal = signal(false);
 const preSelectedPrompt = signal(null);
-const activeTab = signal('prompts');  // prompts | timeline | configure | history
+const activeTab = signal('runs');  // runs | configure | history
 
 const activeRun = computed(() => runs.value.find(r => r.run_id === activeRunId.value));
 
@@ -168,7 +168,7 @@ async function createRun(config) {
   const run = await api('POST', '/runs', config);
   showNewRunModal.value = false;
   activeRunId.value = run.run_id;
-  activeTab.value = 'timeline';
+  activeTab.value = 'runs';
 }
 
 async function pauseRun(run_id) { await api('POST', `/runs/${run_id}/pause`); }
@@ -270,11 +270,7 @@ function RunCard({ run }) {
 
 function TabIcon({ tab, size = 16 }) {
   const s = size;
-  if (tab === 'prompts') return html`
-    <svg width=${s} height=${s} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-    </svg>`;
-  if (tab === 'timeline') return html`
+  if (tab === 'runs') return html`
     <svg width=${s} height=${s} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
     </svg>`;
@@ -298,15 +294,10 @@ function Main() {
     <div class="main">
       <${ControlsBar} run=${run} />
       <div class="tabs">
-        <div class="tab ${activeTab.value === 'prompts' ? 'active' : ''}"
-             onClick=${() => activeTab.value = 'prompts'}>
-          <${TabIcon} tab="prompts" size=${15} />
-          Prompts
-        </div>
-        <div class="tab ${activeTab.value === 'timeline' ? 'active' : ''}"
-             onClick=${() => activeTab.value = 'timeline'}>
-          <${TabIcon} tab="timeline" size=${15} />
-          Timeline
+        <div class="tab ${activeTab.value === 'runs' ? 'active' : ''}"
+             onClick=${() => activeTab.value = 'runs'}>
+          <${TabIcon} tab="runs" size=${15} />
+          Runs
           ${activeCount > 0 && html`<span class="tab-badge active">${activeCount}</span>`}
         </div>
         <div class="tab ${activeTab.value === 'configure' ? 'active' : ''}"
@@ -322,9 +313,8 @@ function Main() {
         </div>
       </div>
       <div class="content">
-        ${activeTab.value === 'prompts' && html`<${PromptsView} />`}
-        ${activeTab.value === 'timeline' && (!run ? html`<${EmptyState} />` : html`<${TimelineView} run=${run} />`)}
-        ${activeTab.value === 'configure' && html`<${PrimitivesView} />`}
+        ${activeTab.value === 'runs' && (!run ? html`<${EmptyState} />` : html`<${TimelineView} run=${run} />`)}
+        ${activeTab.value === 'configure' && html`<${ConfigureView} />`}
         ${activeTab.value === 'history' && html`<${HistoryView} />`}
       </div>
     </div>
@@ -854,12 +844,13 @@ function KindIcon({ kind, size = 20 }) {
 }
 
 const KINDS_META = {
+  prompts: { label: 'Prompts', desc: 'Named task descriptions for starting runs' },
   checks: { label: 'Checks', desc: 'Validation scripts that verify each iteration' },
   contexts: { label: 'Contexts', desc: 'Dynamic context injected into prompts' },
   instructions: { label: 'Instructions', desc: 'Static instructions prepended to prompts' },
 };
 
-function PrimitivesView() {
+function ConfigureView() {
   const [primitives, setPrimitives] = useState(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState({ page: 'overview' });
@@ -888,10 +879,10 @@ function PrimitivesView() {
       <div class="prim-overview">
         <div class="prim-overview-header">
           <h2>Configure</h2>
-          <p>Set up checks, contexts, and instructions for your coding loops.</p>
+          <p>Set up prompts, checks, contexts, and instructions for your coding loops.</p>
         </div>
         <div class="prim-overview-grid">
-          ${['checks', 'contexts', 'instructions'].map(kind => {
+          ${['prompts', 'checks', 'contexts', 'instructions'].map(kind => {
             const meta = KINDS_META[kind];
             const count = grouped[kind].length;
             const enabledCount = grouped[kind].filter(p => p.enabled).length;
@@ -913,6 +904,20 @@ function PrimitivesView() {
               </button>
             `;
           })}
+        </div>
+        <div class="registry-teaser">
+          <div class="registry-teaser-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+          </div>
+          <div class="registry-teaser-body">
+            <div class="registry-teaser-title">Ralphify Registry</div>
+            <div class="registry-teaser-desc">Browse and install community prompts, checks, and more from the official Ralphify Registry.</div>
+          </div>
+          <span class="registry-teaser-badge">Coming Soon</span>
         </div>
       </div>
     `;
@@ -1224,7 +1229,7 @@ function HistoryView() {
             : html`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`;
 
           return html`
-            <div key=${r.run_id} class="history-card" onClick=${() => { activeRunId.value = r.run_id; activeTab.value = 'timeline'; }}>
+            <div key=${r.run_id} class="history-card" onClick=${() => { activeRunId.value = r.run_id; activeTab.value = 'runs'; }}>
               <div class="history-card-status-icon ${r.status}">
                 ${statusIcon}
               </div>
