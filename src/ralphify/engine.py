@@ -200,64 +200,60 @@ def _run_agent_process_streaming(
 
     Falls back gracefully if any line is not valid JSON — it is still
     collected for logging but not emitted as a structured event.
+
+    Timeout is enforced manually between line reads (``Popen`` has no
+    built-in timeout on iteration).  A ``try/finally`` ensures the child
+    process is cleaned up even on unexpected errors.
     """
     stream_cmd = cmd + ["--output-format", "stream-json", "--verbose"]
     start = time.monotonic()
-    log_file: Path | None = None
-    returncode: int | None = None
+    deadline = (start + timeout) if timeout else None
     stdout_lines: list[str] = []
     stderr_data = ""
+    returncode: int | None = None
 
+    proc = subprocess.Popen(
+        stream_cmd,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
     try:
-        proc = subprocess.Popen(
-            stream_cmd,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-        # Send prompt and close stdin so the agent can start
-        assert proc.stdin is not None
-        proc.stdin.write(prompt)
-        proc.stdin.close()
+        # Send prompt and close stdin so the agent can start.
+        proc.stdin.write(prompt)  # type: ignore[union-attr]
+        proc.stdin.close()  # type: ignore[union-attr]
 
-        assert proc.stdout is not None
-        deadline = (start + timeout) if timeout else None
-
-        for line in proc.stdout:
+        for line in proc.stdout:  # type: ignore[union-attr]
             if deadline and time.monotonic() > deadline:
                 proc.kill()
                 proc.wait()
-                returncode = None
                 break
             stdout_lines.append(line)
             stripped = line.strip()
-            if not stripped:
-                continue
-            # Emit each JSON line as an AGENT_ACTIVITY event
-            try:
-                parsed = json.loads(stripped)
-                emit(EventType.AGENT_ACTIVITY, {"raw": parsed})
-            except json.JSONDecodeError:
-                pass
-            # Echo to terminal
+            if stripped:
+                try:
+                    parsed = json.loads(stripped)
+                    emit(EventType.AGENT_ACTIVITY, {"raw": parsed})
+                except json.JSONDecodeError:
+                    pass
             sys.stdout.write(line)
         else:
             # stdout exhausted — process should be done
             proc.wait()
             returncode = proc.returncode
 
-        assert proc.stderr is not None
-        stderr_data = proc.stderr.read()
+        stderr_data = proc.stderr.read()  # type: ignore[union-attr]
         if stderr_data:
             sys.stderr.write(stderr_data)
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait()
 
-    except subprocess.TimeoutExpired:
-        returncode = None
-
-    stdout_text = "".join(stdout_lines)
+    log_file: Path | None = None
     if log_path_dir:
-        log_file = _write_log(log_path_dir, iteration, stdout_text, stderr_data)
+        log_file = _write_log(log_path_dir, iteration, "".join(stdout_lines), stderr_data)
 
     return _AgentResult(
         returncode=returncode,
