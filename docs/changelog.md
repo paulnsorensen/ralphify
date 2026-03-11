@@ -6,6 +6,14 @@ description: Ralphify release history — new features, bug fixes, and breaking 
 
 All notable changes to ralphify are documented here.
 
+## Unreleased
+
+### Added
+
+- **Ad-hoc prompts** — `ralph run -p "Fix the login bug"` passes a prompt directly on the command line, bypassing `PROMPT.md` entirely. Useful for quick one-off tasks. Placeholders (contexts and instructions) resolve as normal.
+
+---
+
 ## 0.1.3 — 2026-03-10
 
 The primitives release. Checks, contexts, and instructions turn the basic loop into a self-healing feedback system.

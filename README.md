@@ -44,6 +44,12 @@ ralph run       # Starts the loop (Ctrl+C to stop)
 
 That's it. Two commands.
 
+Or skip setup entirely with an ad-hoc prompt:
+
+```bash
+ralph run -n 1 -p "Add type hints to all public functions in src/"
+```
+
 ### What `ralph init` creates
 
 **`ralph.toml`** — tells ralphify what command to run:
@@ -64,6 +70,7 @@ Reads the prompt, pipes it to the agent, waits for it to finish, then does it ag
 ```bash
 ralph run          # Run forever
 ralph run -n 10    # Run 10 iterations then stop
+ralph run -p "Fix the login bug"   # Ad-hoc prompt, no PROMPT.md needed
 ```
 
 ## The technique
