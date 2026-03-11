@@ -68,7 +68,41 @@ ralph --help     # Show help
 | Option | Short | Description |
 |---|---|---|
 | `--version` | `-V` | Show version and exit |
+| `--install-completion` | | Install tab completion for your current shell |
+| `--show-completion` | | Print the completion script (for manual setup) |
 | `--help` | | Show help and exit |
+
+### Shell completion
+
+Ralphify supports tab completion for commands, options, and prompt names. Install it once and it persists across sessions:
+
+=== "Bash"
+
+    ```bash
+    ralph --install-completion bash
+    ```
+
+=== "Zsh"
+
+    ```bash
+    ralph --install-completion zsh
+    ```
+
+=== "Fish"
+
+    ```bash
+    ralph --install-completion fish
+    ```
+
+After installing, restart your shell (or `source` your profile). Then you can tab-complete:
+
+```bash
+ralph r<TAB>          # → ralph run
+ralph run --t<TAB>    # → ralph run --timeout
+ralph new c<TAB>      # → ralph new check
+```
+
+If you prefer to install manually, use `--show-completion` to print the script and add it to your shell config yourself.
 
 ### `ralph init`
 

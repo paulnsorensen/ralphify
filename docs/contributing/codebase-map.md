@@ -26,6 +26,7 @@ src/ralphify/           # All source code
 ├── prompts.py          # Named prompt discovery and resolution
 ├── resolver.py         # Template placeholder resolution (shared by contexts + instructions)
 ├── detector.py         # Auto-detect project type from manifest files
+├── _run_types.py       # RunConfig, RunState, RunStatus — shared data types for the engine
 ├── _runner.py          # Execute shell commands with timeout and capture output
 ├── _frontmatter.py     # Parse YAML frontmatter from markdown primitives, discover primitives
 ├── _templates.py       # Scaffold templates for init and new commands
@@ -118,10 +119,11 @@ The CLI uses a `ConsoleEmitter` (defined in `_console_emitter.py`) that renders 
 
 ## Key files to understand first
 
-1. **`engine.py`** — The core run loop. Understands `RunConfig`, `RunState`, and `EventEmitter`. This is where iteration logic lives.
-2. **`cli.py`** — All CLI commands and prompt resolution. Delegates to `engine.run_loop()` for the actual loop. Scaffold templates live in `_templates.py`. Terminal event rendering lives in `_console_emitter.py`.
-3. **`_frontmatter.py`** — The primitive discovery system. Understanding `discover_primitives()` and `parse_frontmatter()` is essential for working on checks/contexts/instructions/prompts.
-4. **`resolver.py`** — Template placeholder logic shared by contexts and instructions. Small file but critical — changes here affect both.
+1. **`engine.py`** — The core run loop. Uses `RunConfig` and `RunState` (from `_run_types.py`) and `EventEmitter`. This is where iteration logic lives.
+2. **`_run_types.py`** — `RunConfig`, `RunState`, and `RunStatus`. These are the shared data types used by the engine, CLI, manager, and UI. Separated so modules that only need the types don't pull in execution logic.
+3. **`cli.py`** — All CLI commands and prompt resolution. Delegates to `engine.run_loop()` for the actual loop. Scaffold templates live in `_templates.py`. Terminal event rendering lives in `_console_emitter.py`.
+4. **`_frontmatter.py`** — The primitive discovery system. Understanding `discover_primitives()` and `parse_frontmatter()` is essential for working on checks/contexts/instructions/prompts.
+5. **`resolver.py`** — Template placeholder logic shared by contexts and instructions. Small file but critical — changes here affect both.
 
 ## Traps and gotchas
 

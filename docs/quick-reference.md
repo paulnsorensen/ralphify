@@ -36,6 +36,7 @@ See [Configuration & CLI](cli.md#ralphtoml) for details.
 | `ralph new instruction <name>` | Scaffold a new instruction |
 | `ralph new prompt <name>` | Scaffold a new named prompt |
 | `ralph ui` | Launch the [web dashboard](dashboard.md) |
+| `ralph --install-completion` | Install [shell tab completion](cli.md#shell-completion) |
 
 ### `ralph run` options
 
