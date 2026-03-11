@@ -15,16 +15,18 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+from typing import NamedTuple
 from ralphify._events import Event, EventEmitter, EventType, NullEmitter
 from ralphify._output import collect_output
 from ralphify.checks import (
+    Check,
     discover_checks,
     format_check_failures,
     run_all_checks,
 )
-from ralphify.contexts import discover_contexts, resolve_contexts, run_all_contexts
+from ralphify.contexts import Context, discover_contexts, resolve_contexts, run_all_contexts
 from ralphify._frontmatter import parse_frontmatter
-from ralphify.instructions import discover_instructions, resolve_instructions
+from ralphify.instructions import Instruction, discover_instructions, resolve_instructions
 
 
 class RunStatus(Enum):
@@ -147,18 +149,25 @@ def _write_log(
     return log_file
 
 
-def _discover_enabled_primitives(
-    root: Path,
-) -> tuple[list, list, list]:
+class EnabledPrimitives(NamedTuple):
+    """The enabled checks, contexts, and instructions for a project."""
+
+    checks: list[Check]
+    contexts: list[Context]
+    instructions: list[Instruction]
+
+
+def _discover_enabled_primitives(root: Path) -> EnabledPrimitives:
     """Discover all primitives and return only the enabled ones.
 
     Centralises the discover-then-filter pattern so every call site uses
     consistent filtering logic.
     """
-    enabled_checks = [c for c in discover_checks(root) if c.enabled]
-    enabled_contexts = [c for c in discover_contexts(root) if c.enabled]
-    enabled_instructions = [i for i in discover_instructions(root) if i.enabled]
-    return enabled_checks, enabled_contexts, enabled_instructions
+    return EnabledPrimitives(
+        checks=[c for c in discover_checks(root) if c.enabled],
+        contexts=[c for c in discover_contexts(root) if c.enabled],
+        instructions=[i for i in discover_instructions(root) if i.enabled],
+    )
 
 
 def _wait_for_resume(state: RunState, emitter: EventEmitter) -> bool:
@@ -192,8 +201,8 @@ def _wait_for_resume(state: RunState, emitter: EventEmitter) -> bool:
 def _assemble_prompt(
     config: RunConfig,
     prompt_path: Path,
-    enabled_contexts: list,
-    enabled_instructions: list,
+    enabled_contexts: list[Context],
+    enabled_instructions: list[Instruction],
     check_failures_text: str,
     iteration: int,
     state: RunState,
@@ -300,7 +309,7 @@ def _execute_agent(
 
 
 def _run_checks_phase(
-    enabled_checks: list,
+    enabled_checks: list[Check],
     project_root: Path,
     state: RunState,
     iteration: int,
@@ -378,17 +387,15 @@ def run_loop(
     cmd = [config.command] + config.args
 
     check_failures_text = ""
-    enabled_checks, enabled_contexts, enabled_instructions = (
-        _discover_enabled_primitives(config.project_root)
-    )
+    primitives = _discover_enabled_primitives(config.project_root)
 
     emitter.emit(Event(
         type=EventType.RUN_STARTED,
         run_id=state.run_id,
         data={
-            "checks": len(enabled_checks),
-            "contexts": len(enabled_contexts),
-            "instructions": len(enabled_instructions),
+            "checks": len(primitives.checks),
+            "contexts": len(primitives.contexts),
+            "instructions": len(primitives.instructions),
             "max_iterations": config.max_iterations,
             "timeout": config.timeout,
             "delay": config.delay,
@@ -413,16 +420,14 @@ def run_loop(
 
             # Hot-reload primitives if requested mid-run
             if state.consume_reload_request():
-                enabled_checks, enabled_contexts, enabled_instructions = (
-                    _discover_enabled_primitives(config.project_root)
-                )
+                primitives = _discover_enabled_primitives(config.project_root)
                 emitter.emit(Event(
                     type=EventType.PRIMITIVES_RELOADED,
                     run_id=state.run_id,
                     data={
-                        "checks": len(enabled_checks),
-                        "contexts": len(enabled_contexts),
-                        "instructions": len(enabled_instructions),
+                        "checks": len(primitives.checks),
+                        "contexts": len(primitives.contexts),
+                        "instructions": len(primitives.instructions),
                     },
                 ))
 
@@ -439,7 +444,7 @@ def run_loop(
             ))
 
             prompt = _assemble_prompt(
-                config, prompt_path, enabled_contexts, enabled_instructions,
+                config, prompt_path, primitives.contexts, primitives.instructions,
                 check_failures_text, iteration, state, emitter,
             )
 
@@ -455,9 +460,9 @@ def run_loop(
                 ))
                 break
 
-            if enabled_checks:
+            if primitives.checks:
                 check_failures_text = _run_checks_phase(
-                    enabled_checks, config.project_root, state, iteration, emitter,
+                    primitives.checks, config.project_root, state, iteration, emitter,
                 )
 
             # Delay between iterations
