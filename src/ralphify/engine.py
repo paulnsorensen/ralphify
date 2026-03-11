@@ -6,20 +6,25 @@ from both CLI and UI contexts.
 
 Run data types (``RunStatus``, ``RunConfig``, ``RunState``) live in
 ``_run_types.py`` so modules that only need types don't import the engine.
+
+Agent subprocess execution (streaming and blocking modes, log writing) is
+in ``_agent.py`` so this module can focus on orchestration.
 """
 
 from __future__ import annotations
 
-import json
-import subprocess
-import sys
 import time
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, NamedTuple
+from ralphify._agent import (
+    _is_claude_command,
+    run_agent_streaming as _run_agent_process_streaming,
+    run_agent as _run_agent_process,
+)
 from ralphify._events import Event, EventEmitter, EventType, NullEmitter
-from ralphify._output import collect_output, format_duration
+from ralphify._output import format_duration
 from ralphify._run_types import RunConfig, RunState, RunStatus
 from ralphify.checks import (
     Check,
@@ -36,19 +41,6 @@ from ralphify.contexts import (
 )
 from ralphify._frontmatter import parse_frontmatter
 from ralphify.instructions import Instruction, discover_instructions, resolve_instructions
-
-
-def _write_log(
-    log_path_dir: Path,
-    iteration: int,
-    stdout: str | bytes | None,
-    stderr: str | bytes | None,
-) -> Path:
-    """Write iteration output to a timestamped log file and return the path."""
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    log_file = log_path_dir / f"{iteration:03d}_{timestamp}.log"
-    log_file.write_text(collect_output(stdout, stderr))
-    return log_file
 
 
 class EnabledPrimitives(NamedTuple):
@@ -168,146 +160,6 @@ def _assemble_prompt(
     return prompt
 
 
-class _AgentResult(NamedTuple):
-    """Result of running the agent subprocess."""
-
-    returncode: int | None  # None means timed out
-    elapsed: float
-    log_file: Path | None
-
-
-def _is_claude_command(cmd: list[str]) -> bool:
-    """Return True if the command looks like Claude Code (supports stream-json)."""
-    if not cmd:
-        return False
-    binary = Path(cmd[0]).name
-    return binary == "claude"
-
-
-def _run_agent_process_streaming(
-    cmd: list[str],
-    prompt: str,
-    timeout: float | None,
-    log_path_dir: Path | None,
-    iteration: int,
-    emit: _BoundEmitter,
-) -> _AgentResult:
-    """Run the agent subprocess with line-by-line streaming of JSON output.
-
-    Used for agents that support ``--output-format stream-json`` (e.g. Claude
-    Code).  Each JSON line is emitted as an ``AGENT_ACTIVITY`` event so the UI
-    can render a live activity feed.
-
-    Falls back gracefully if any line is not valid JSON — it is still
-    collected for logging but not emitted as a structured event.
-
-    Timeout is enforced manually between line reads (``Popen`` has no
-    built-in timeout on iteration).  A ``try/finally`` ensures the child
-    process is cleaned up even on unexpected errors.
-    """
-    stream_cmd = cmd + ["--output-format", "stream-json", "--verbose"]
-    start = time.monotonic()
-    deadline = (start + timeout) if timeout else None
-    stdout_lines: list[str] = []
-    stderr_data = ""
-    returncode: int | None = None
-
-    proc = subprocess.Popen(
-        stream_cmd,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    try:
-        # Send prompt and close stdin so the agent can start.
-        proc.stdin.write(prompt)  # type: ignore[union-attr]
-        proc.stdin.close()  # type: ignore[union-attr]
-
-        for line in proc.stdout:  # type: ignore[union-attr]
-            if deadline and time.monotonic() > deadline:
-                proc.kill()
-                proc.wait()
-                break
-            stdout_lines.append(line)
-            stripped = line.strip()
-            if stripped:
-                try:
-                    parsed = json.loads(stripped)
-                    emit(EventType.AGENT_ACTIVITY, {"raw": parsed})
-                except json.JSONDecodeError:
-                    pass
-            sys.stdout.write(line)
-        else:
-            # stdout exhausted — process should be done
-            proc.wait()
-            returncode = proc.returncode
-
-        stderr_data = proc.stderr.read()  # type: ignore[union-attr]
-        if stderr_data:
-            sys.stderr.write(stderr_data)
-    finally:
-        if proc.poll() is None:
-            proc.kill()
-            proc.wait()
-
-    log_file: Path | None = None
-    if log_path_dir:
-        log_file = _write_log(log_path_dir, iteration, "".join(stdout_lines), stderr_data)
-
-    return _AgentResult(
-        returncode=returncode,
-        elapsed=time.monotonic() - start,
-        log_file=log_file,
-    )
-
-
-def _run_agent_process(
-    cmd: list[str],
-    prompt: str,
-    timeout: float | None,
-    log_path_dir: Path | None,
-    iteration: int,
-) -> _AgentResult:
-    """Run the agent subprocess, optionally write logs, and return the result.
-
-    When *log_path_dir* is set, output is captured, written to a log file,
-    then echoed to stdout/stderr so the user still sees it live.  When unset,
-    output streams directly to the terminal (no capture overhead).
-
-    Returns ``returncode=None`` when the process times out.
-    Raises ``FileNotFoundError`` if the command binary does not exist.
-    """
-    start = time.monotonic()
-    log_file: Path | None = None
-    returncode: int | None = None
-
-    try:
-        result = subprocess.run(
-            cmd,
-            input=prompt,
-            text=True,
-            timeout=timeout,
-            capture_output=bool(log_path_dir),
-        )
-        if log_path_dir:
-            log_file = _write_log(log_path_dir, iteration, result.stdout, result.stderr)
-            if result.stdout:
-                sys.stdout.write(result.stdout)
-            if result.stderr:
-                sys.stderr.write(result.stderr)
-        returncode = result.returncode
-    except subprocess.TimeoutExpired as e:
-        if log_path_dir:
-            log_file = _write_log(log_path_dir, iteration, e.stdout, e.stderr)
-
-    return _AgentResult(
-        returncode=returncode,
-        elapsed=time.monotonic() - start,
-        log_file=log_file,
-    )
-
-
 def _execute_agent(
     prompt: str,
     config: RunConfig,
@@ -329,7 +181,8 @@ def _execute_agent(
     try:
         if _is_claude_command(cmd):
             agent = _run_agent_process_streaming(
-                cmd, prompt, config.timeout, log_path_dir, state.iteration, emit,
+                cmd, prompt, config.timeout, log_path_dir, state.iteration,
+                on_activity=lambda data: emit(EventType.AGENT_ACTIVITY, {"raw": data}),
             )
         else:
             agent = _run_agent_process(

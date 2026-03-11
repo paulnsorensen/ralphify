@@ -18,7 +18,7 @@ The core loop is simple. The complexity lives in **prompt assembly** — resolvi
 src/ralphify/           # All source code
 ├── __init__.py         # Version detection + app entry point
 ├── cli.py              # CLI commands (init, run, status, new, prompts) — delegates to engine for the loop
-├── engine.py           # Core run loop with structured event emission (extracted from cli.py)
+├── engine.py           # Core run loop orchestration with structured event emission
 ├── manager.py          # Multi-run orchestration for the UI layer (concurrent runs via threads)
 ├── checks.py           # Discover and run validation checks, format failures
 ├── contexts.py         # Discover and run dynamic data contexts, resolve into prompt
@@ -26,8 +26,9 @@ src/ralphify/           # All source code
 ├── prompts.py          # Named prompt discovery and resolution
 ├── resolver.py         # Template placeholder resolution (shared by contexts + instructions)
 ├── detector.py         # Auto-detect project type from manifest files
+├── _agent.py           # Run agent subprocesses (streaming + blocking modes, log writing)
 ├── _run_types.py       # RunConfig, RunState, RunStatus — shared data types for the engine
-├── _runner.py          # Execute shell commands with timeout and capture output
+├── _runner.py          # Execute shell commands with timeout and capture output (checks/contexts)
 ├── _frontmatter.py     # Parse YAML frontmatter from markdown primitives, discover primitives
 ├── _templates.py       # Scaffold templates for init and new commands
 ├── _console_emitter.py # Rich console renderer for run-loop events (ConsoleEmitter)

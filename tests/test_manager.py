@@ -10,7 +10,7 @@ from ralphify._events import Event, EventType, FanoutEmitter, QueueEmitter
 from ralphify._run_types import RunConfig, RunStatus
 from ralphify.manager import ManagedRun, RunManager
 
-_MOCK_SUBPROCESS = "ralphify.engine.subprocess.run"
+_MOCK_SUBPROCESS = "ralphify._agent.subprocess.run"
 
 
 def _make_config(tmp_path, **overrides):
