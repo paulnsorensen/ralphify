@@ -14,6 +14,8 @@ from ralphify._runner import run_command
 from ralphify.resolver import resolve_placeholders
 
 
+_DEFAULT_TIMEOUT = 30
+
 @dataclass
 class Context:
     """A dynamic data context discovered from ``.ralph/contexts/<name>/CONTEXT.md``.
@@ -27,7 +29,7 @@ class Context:
     path: Path
     command: str | None = None
     script: Path | None = None
-    timeout: int = 30
+    timeout: int = _DEFAULT_TIMEOUT
     enabled: bool = True
     static_content: str = ""
 
@@ -55,7 +57,7 @@ def discover_contexts(root: Path = Path(".")) -> list[Context]:
             path=entry,
             command=frontmatter.get("command"),
             script=find_run_script(entry),
-            timeout=frontmatter.get("timeout", 30),
+            timeout=frontmatter.get("timeout", _DEFAULT_TIMEOUT),
             enabled=frontmatter.get("enabled", True),
             static_content=body,
         )

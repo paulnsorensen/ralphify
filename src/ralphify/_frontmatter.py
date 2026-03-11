@@ -13,12 +13,13 @@ from collections.abc import Callable, Iterator
 from pathlib import Path
 
 
-# Single source of truth for primitive marker filenames.
-# Every module that needs a marker name should import from here.
+# Single source of truth for well-known filenames.
+# Every module that needs a marker or config name should import from here.
 CHECK_MARKER = "CHECK.md"
 CONTEXT_MARKER = "CONTEXT.md"
 INSTRUCTION_MARKER = "INSTRUCTION.md"
 PROMPT_MARKER = "PROMPT.md"
+CONFIG_FILENAME = "ralph.toml"
 
 # Pre-compiled pattern to strip HTML comments from body text.
 _HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)

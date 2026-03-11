@@ -15,6 +15,8 @@ from ralphify._output import truncate_output
 from ralphify._runner import run_command
 
 
+_DEFAULT_TIMEOUT = 60
+
 @dataclass
 class Check:
     """A validation check discovered from ``.ralph/checks/<name>/CHECK.md``.
@@ -28,7 +30,7 @@ class Check:
     path: Path
     command: str | None
     script: Path | None
-    timeout: int = 60
+    timeout: int = _DEFAULT_TIMEOUT
     enabled: bool = True
     failure_instruction: str = ""
 
@@ -52,7 +54,7 @@ def discover_checks(root: Path = Path(".")) -> list[Check]:
     """Scan ``.ralph/checks/`` for subdirectories containing a ``CHECK.md``.
 
     Checks without both a ``run.*`` script and a ``command`` in frontmatter
-    are skipped with a warning.  Defaults: ``timeout=60``, ``enabled=True``.
+    are skipped with a warning.  Defaults: ``timeout=_DEFAULT_TIMEOUT``, ``enabled=True``.
     """
     checks = []
     for entry, frontmatter, body in discover_primitives(root, "checks", CHECK_MARKER):
@@ -69,7 +71,7 @@ def discover_checks(root: Path = Path(".")) -> list[Check]:
                 path=entry,
                 command=command,
                 script=script,
-                timeout=frontmatter.get("timeout", 60),
+                timeout=frontmatter.get("timeout", _DEFAULT_TIMEOUT),
                 enabled=frontmatter.get("enabled", True),
                 failure_instruction=body,
             )

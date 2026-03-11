@@ -16,7 +16,7 @@ from rich.console import Console
 
 from ralphify import __version__
 from ralphify._console_emitter import ConsoleEmitter
-from ralphify._frontmatter import CHECK_MARKER, CONTEXT_MARKER, INSTRUCTION_MARKER, PROMPT_MARKER
+from ralphify._frontmatter import CHECK_MARKER, CONFIG_FILENAME, CONTEXT_MARKER, INSTRUCTION_MARKER, PROMPT_MARKER
 from ralphify.checks import discover_checks
 from ralphify.contexts import discover_contexts
 from ralphify._run_types import RunConfig, RunState
@@ -149,9 +149,6 @@ def main_callback(
         _print_banner()
         rprint(ctx.get_help())
         raise typer.Exit()
-
-CONFIG_FILENAME = "ralph.toml"
-
 
 def _load_config() -> dict:
     """Load and return the ralph.toml config, exiting if not found."""

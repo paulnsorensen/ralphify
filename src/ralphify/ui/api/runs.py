@@ -6,22 +6,19 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from ralphify._frontmatter import PROMPT_MARKER
+from ralphify._frontmatter import CONFIG_FILENAME, PROMPT_MARKER
 from ralphify._run_types import RunConfig
 from ralphify.manager import ManagedRun, RunManager
 from ralphify.prompts import resolve_prompt_name
 from ralphify.ui.models import RunCreate, RunResponse, RunSettingsUpdate
 
-_CONFIG_FILENAME = "ralph.toml"
-
-
 def _load_agent_config(project_dir: str) -> dict:
     """Read ``[agent]`` from ralph.toml so the UI never hard-codes command/args."""
-    config_path = Path(project_dir) / _CONFIG_FILENAME
+    config_path = Path(project_dir) / CONFIG_FILENAME
     if not config_path.exists():
         raise HTTPException(
             status_code=400,
-            detail=f"{_CONFIG_FILENAME} not found in project directory.",
+            detail=f"{CONFIG_FILENAME} not found in project directory.",
         )
     with open(config_path, "rb") as f:
         toml_cfg = tomllib.load(f)
