@@ -36,6 +36,8 @@ See [Configuration & CLI](cli.md#ralphtoml) for details.
 | `ralph new instruction <name>` | Scaffold a new instruction |
 | `ralph new prompt <name>` | Scaffold a new named prompt |
 | `ralph ui` | Launch the [web dashboard](dashboard.md) |
+| `ralph ui --port 9000` | Dashboard on a custom port |
+| `ralph ui --host 0.0.0.0` | Expose dashboard on network |
 | `ralph --install-completion` | Install [shell tab completion](cli.md#shell-completion) |
 
 ### `ralph run` options
@@ -59,6 +61,20 @@ ralph run -n 1 -p "Fix the login bug"       # Quick one-off task
 ralph run -n 5 --stop-on-error              # Short batch, stop on failure
 ralph run --timeout 300 --log-dir ralph_logs # Production run with safety net
 ```
+
+### Prompt source priority
+
+When multiple prompt sources are specified, the first match wins:
+
+| Priority | Source | Example |
+|---|---|---|
+| 1 | `-p` flag (inline text) | `ralph run -p "Fix the bug"` |
+| 2 | Positional name | `ralph run docs` |
+| 3 | `-f` flag (file path) | `ralph run -f path/to/prompt.md` |
+| 4 | `ralph.toml` `prompt` field | Can be a named prompt or a file path |
+| 5 | Fallback | `PROMPT.md` in the project root |
+
+See [How It Works — Prompt assembly](how-it-works.md#prompt-assembly) for details.
 
 ---
 
