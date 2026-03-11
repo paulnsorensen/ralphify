@@ -34,20 +34,6 @@ class RunResponse(BaseModel):
     prompt_name: str | None = None
 
 
-class IterationResponse(BaseModel):
-    iteration: int
-    returncode: int | None = None
-    duration: float | None = None
-    detail: str | None = None
-
-
-class CheckResultResponse(BaseModel):
-    name: str
-    passed: bool
-    exit_code: int
-    timed_out: bool = False
-
-
 class PrimitiveResponse(BaseModel):
     kind: str
     name: str

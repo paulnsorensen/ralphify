@@ -40,6 +40,17 @@ def _decode_project_dir(encoded: str) -> Path:
         raise HTTPException(status_code=400, detail="Invalid base64 project_dir")
 
 
+def _resolve_kind(kind: str) -> tuple:
+    """Look up *kind* in the registry, raising 400 if unknown.
+
+    Returns ``(discover_fn, marker_filename)``.
+    """
+    try:
+        return _KIND_MAP[kind]
+    except KeyError:
+        raise HTTPException(status_code=400, detail=f"Unknown kind: {kind}")
+
+
 def _primitive_to_response(prim, kind: str) -> PrimitiveResponse:
     """Convert a discovered primitive to a response model."""
     marker = _KIND_MAP[kind][1]
@@ -78,10 +89,8 @@ async def list_primitives(project_dir: str) -> list[PrimitiveResponse]:
 )
 async def get_primitive(project_dir: str, kind: str, name: str) -> PrimitiveResponse:
     """Read a specific primitive."""
-    if kind not in _KIND_MAP:
-        raise HTTPException(status_code=400, detail=f"Unknown kind: {kind}")
+    discover_fn, _marker = _resolve_kind(kind)
     root = _decode_project_dir(project_dir)
-    discover_fn, _marker = _KIND_MAP[kind]
     for prim in discover_fn(root):
         if prim.name == name:
             return _primitive_to_response(prim, kind)
@@ -96,10 +105,8 @@ async def update_primitive(
     project_dir: str, kind: str, name: str, body: PrimitiveUpdate
 ) -> PrimitiveResponse:
     """Update a primitive's content and/or frontmatter."""
-    if kind not in _KIND_MAP:
-        raise HTTPException(status_code=400, detail=f"Unknown kind: {kind}")
+    _discover_fn, marker = _resolve_kind(kind)
     root = _decode_project_dir(project_dir)
-    _discover_fn, marker = _KIND_MAP[kind]
     marker_file = root / ".ralph" / kind / name / marker
     if not marker_file.exists():
         raise HTTPException(status_code=404, detail="Primitive not found")
@@ -131,15 +138,13 @@ async def create_primitive(
     The primitive name is derived from the frontmatter 'name' field,
     which must be present.
     """
-    if kind not in _KIND_MAP:
-        raise HTTPException(status_code=400, detail=f"Unknown kind: {kind}")
+    _discover_fn, marker = _resolve_kind(kind)
     if not body.frontmatter or "name" not in body.frontmatter:
         raise HTTPException(
             status_code=400,
             detail="frontmatter must include a 'name' field",
         )
     root = _decode_project_dir(project_dir)
-    _discover_fn, marker = _KIND_MAP[kind]
     name = body.frontmatter["name"]
     prim_dir = root / ".ralph" / kind / name
     if prim_dir.exists():
@@ -163,8 +168,7 @@ async def create_primitive(
 @router.delete("/projects/{project_dir}/primitives/{kind}/{name}", status_code=204)
 async def delete_primitive(project_dir: str, kind: str, name: str) -> None:
     """Delete a primitive directory."""
-    if kind not in _KIND_MAP:
-        raise HTTPException(status_code=400, detail=f"Unknown kind: {kind}")
+    _resolve_kind(kind)
     root = _decode_project_dir(project_dir)
     prim_dir = root / ".ralph" / kind / name
     if not prim_dir.exists():
