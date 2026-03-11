@@ -8,9 +8,25 @@ All notable changes to ralphify are documented here.
 
 ## Unreleased
 
+Nothing yet.
+
+---
+
+## 0.1.4 — 2026-03-11
+
+Ad-hoc prompts, better discoverability, and expanded cookbook recipes.
+
 ### Added
 
 - **Ad-hoc prompts** — `ralph run -p "Fix the login bug"` passes a prompt directly on the command line, bypassing `PROMPT.md` entirely. Useful for quick one-off tasks. Placeholders (contexts and instructions) resolve as normal.
+- **Test coverage cookbook recipe** — step-by-step setup for systematically increasing test coverage with a coverage context, threshold check, and focused prompt.
+- **Rust and Go cookbook recipes** — complete copy-pasteable setups for `cargo test`/`cargo clippy`/`cargo fmt` and `go test`/`go vet` workflows.
+
+### Improved
+
+- Page descriptions and search plugin for better SEO — docs pages now have meta descriptions and the search separates on dots and dashes.
+- `-p`/`--prompt` flag surfaced in README quickstart and CLI reference so new users discover it faster.
+- Comprehensive docstrings on all public functions and classes for contributors and AI agents working in the codebase.
 
 ---
 
