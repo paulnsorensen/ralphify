@@ -70,6 +70,10 @@ plugins:
   - search:
       separator: '[\s\-\.]+'
       lang: en
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: timeago
+      fallback_to_build_date: true
 
 extra_css:
   - stylesheets/extra.css
