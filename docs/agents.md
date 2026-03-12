@@ -49,6 +49,24 @@ npm install -g @anthropic-ai/claude-code
 !!! info "Why `--dangerously-skip-permissions`?"
     Without this flag, Claude Code pauses to ask for approval before editing files, running commands, or making commits. In an autonomous loop, nobody is there to approve — so the agent would hang forever. Checks act as your guardrails instead.
 
+### Automatic streaming mode
+
+When ralphify detects that the agent command is `claude`, it automatically adds `--output-format stream-json --verbose` to the command. You don't need to add these flags yourself — they're injected at runtime.
+
+This enables ralphify to:
+
+- Parse Claude Code's structured JSON output line by line
+- Track agent activity in real time (used by the upcoming web dashboard)
+- Extract the final result text from the agent's response
+
+The flags are appended to whatever `args` you configure in `ralph.toml`, so the actual command executed each iteration is:
+
+```
+claude -p --dangerously-skip-permissions --output-format stream-json --verbose
+```
+
+This is transparent — your logs and terminal output work the same way. If you're debugging and want to see exactly what Claude Code receives, the `--verbose` flag means the agent's internal tool calls and reasoning are included in the log files when using `--log-dir`.
+
 ## Aider
 
 [Aider](https://aider.chat) is an AI pair-programming tool that works with multiple LLM providers. It supports a message flag that accepts the prompt directly.

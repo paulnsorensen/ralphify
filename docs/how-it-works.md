@@ -268,6 +268,9 @@ echo "<assembled prompt>" | claude -p --dangerously-skip-permissions
 
 Ralphify waits for the process to finish. If `--timeout` is set and the agent exceeds it, the process is killed and the iteration is marked as timed out.
 
+!!! note "Claude Code streaming"
+    When the agent command is `claude`, ralphify automatically adds `--output-format stream-json --verbose` and reads output line by line as structured JSON. This enables real-time activity tracking without any extra configuration. See [Claude Code: Automatic streaming mode](agents.md#automatic-streaming-mode) for details.
+
 ### Logging
 
 When `--log-dir` is set, each iteration's stdout and stderr are captured and written to a timestamped log file (e.g., `001_20250115-142301.log`). The output is replayed to the terminal after the iteration completes — you'll still see everything, but not until the agent finishes.
