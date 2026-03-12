@@ -6,8 +6,6 @@ description: Full reference for ralphify's four primitives — checks (post-iter
 
 Primitives are reusable building blocks that extend your loop. They live in the `.ralphify/` directory and are automatically discovered by ralphify.
 
-There are four kinds:
-
 | Primitive | Purpose | Runs when |
 |---|---|---|
 | [Checks](#checks) | Validate the agent's work (tests, linters) | After each iteration |
@@ -25,17 +23,7 @@ Checks run **after** each iteration to validate what the agent did. If a check f
 ralph new check my-tests
 ```
 
-This creates `.ralphify/checks/my-tests/CHECK.md`:
-
-```markdown
----
-command: ruff check .
-timeout: 60
-enabled: true
----
-```
-
-Edit the frontmatter to set your validation command:
+Edit `.ralphify/checks/my-tests/CHECK.md`:
 
 ```markdown
 ---
@@ -46,7 +34,7 @@ enabled: true
 Fix all failing tests. Do not skip or delete tests.
 ```
 
-The body text below the frontmatter is the **failure instruction** — it gets included in the prompt alongside the check output when the check fails. Use it to tell the agent how you want failures handled.
+The body text below the frontmatter is the **failure instruction** — it gets included in the prompt alongside the check output when the check fails.
 
 ### Frontmatter fields
 
@@ -56,34 +44,24 @@ The body text below the frontmatter is the **failure instruction** — it gets i
 | `timeout` | int | `60` | Max seconds before the check is killed |
 | `enabled` | bool | `true` | Set to `false` to skip without deleting |
 
-!!! warning "Checks need a command or script"
-    A check must have either a `command` in its frontmatter or an executable `run.*` script in its directory. Checks that have neither are **skipped with a warning** during discovery. If `ralph status` shows fewer checks than you expect, verify each check has a command or script configured.
+A check must have either a `command` in its frontmatter or an executable `run.*` script in its directory. Checks that have neither are skipped with a warning.
 
 ### Command parsing
 
 Commands are split with Python's `shlex.split()` and executed **directly** — not through a shell. This means:
 
-- Simple commands work as expected: `uv run pytest -x`, `npm test`, `ruff check .`
-- Shell features like **pipes** (`|`), **redirections** (`2>&1`, `>`), **chaining** (`&&`, `||`), and **variable expansion** (`$VAR`) do **not** work
-- Arguments with spaces need quoting: `pytest "tests/my dir/"` works correctly
+- Simple commands work: `uv run pytest -x`, `npm test`, `ruff check .`
+- Shell features like pipes (`|`), redirections (`>`), chaining (`&&`), and variable expansion (`$VAR`) do **not** work
 
-If you need shell features, use a [script](#using-a-script-instead-of-a-command) instead.
+If you need shell features, use a script instead.
 
 ### Using a script instead of a command
 
-Instead of a `command` in frontmatter, you can place an executable script named `run.*` (e.g. `run.sh`, `run.py`) in the check directory:
-
-```
-.ralphify/checks/my-tests/
-├── CHECK.md
-└── run.sh
-```
-
-If both a `command` and a `run.*` script exist, the script takes precedence. Scripts and commands always run with the **project root** as the working directory, not the primitive's directory.
+Place an executable script named `run.*` (e.g. `run.sh`, `run.py`) in the check directory. If both a `command` and a `run.*` script exist, the script takes precedence. Scripts run with the **project root** as the working directory.
 
 ### How check failures appear in the prompt
 
-When a check fails, ralphify appends a section like this to the next iteration's prompt:
+When a check fails, ralphify appends this to the next iteration's prompt:
 
 ````markdown
 ## Check Failures
@@ -102,7 +80,7 @@ Fix all failing tests. Do not skip or delete tests.
 
 ## Contexts
 
-Contexts inject **dynamic data** into the prompt before each iteration. Use them to give the agent fresh information like recent git history, open issues, or file listings.
+Contexts inject **dynamic data** into the prompt before each iteration — recent git history, test status, file listings, etc.
 
 ### Creating a context
 
@@ -110,21 +88,7 @@ Contexts inject **dynamic data** into the prompt before each iteration. Use them
 ralph new context git-log
 ```
 
-This creates `.ralphify/contexts/git-log/CONTEXT.md`:
-
-```markdown
----
-command: git log --oneline -10
-timeout: 30
-enabled: true
----
-```
-
-The command runs each iteration and its stdout is injected into the prompt.
-
-### Static content
-
-The body below the frontmatter is **static content** that gets included above the command output:
+Edit `.ralphify/contexts/git-log/CONTEXT.md`:
 
 ```markdown
 ---
@@ -133,55 +97,41 @@ timeout: 30
 enabled: true
 ---
 ## Recent commits
-
-Here are the latest commits for reference:
 ```
 
-A context can also be purely static (no command) — just omit the `command` field and write the content in the body.
+The command runs each iteration and its stdout is injected into the prompt. The body text appears above the command output as a label. A context can also be purely static (no command) — just omit the `command` field.
 
 ### Frontmatter fields
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `command` | string | — | Command whose stdout is captured (see [command parsing](#command-parsing)) |
+| `command` | string | — | Command whose stdout is captured |
 | `timeout` | int | `30` | Max seconds before the command is killed |
 | `enabled` | bool | `true` | Set to `false` to skip without deleting |
 
-### Using a script instead of a command
+Scripts work the same way as checks — place a `run.*` script in the context directory.
 
-Just like checks, you can place an executable script named `run.*` (e.g. `run.sh`, `run.py`) in the context directory instead of using a `command` in frontmatter:
-
-```
-.ralphify/contexts/project-info/
-├── CONTEXT.md
-└── run.sh
-```
-
-If both a `command` and a `run.*` script exist, the script takes precedence. Scripts and commands always run with the **project root** as the working directory.
-
-This is useful for contexts that need more complex logic than a single shell command — for example, querying an API, combining multiple data sources, or running a Python script that formats output.
+Context output is injected **regardless of the command's exit code**. Commands like `pytest --tb=line -q` exit non-zero but produce exactly the output you want.
 
 ### Placement in the prompt
 
-By default, all context output is appended to the end of the prompt. To control where it appears, use placeholders in your `RALPH.md`:
+By default, all context output is appended to the end of the prompt. Control placement with placeholders in your `RALPH.md`:
 
 ```markdown
-# Prompt
-
 {{ contexts.git-log }}
 
-Work on the next task from the plan.
+Work on the next task.
 
 {{ contexts }}
 ```
 
-- `{{ contexts.git-log }}` — places that specific context's output here
+- `{{ contexts.git-log }}` — places that specific context here
 - `{{ contexts }}` — places all remaining contexts (those not already placed by name)
 - If no placeholders are found, all context output is appended to the end
 
 ## Instructions
 
-Instructions inject **static text** into the prompt. Use them for reusable rules, style guides, or constraints that you want to add or remove without editing the ralph file.
+Instructions inject **static text** into the prompt — reusable rules, style guides, or constraints you can toggle without editing the ralph file.
 
 ### Creating an instruction
 
@@ -189,15 +139,7 @@ Instructions inject **static text** into the prompt. Use them for reusable rules
 ralph new instruction code-style
 ```
 
-This creates `.ralphify/instructions/code-style/INSTRUCTION.md`:
-
-```markdown
----
-enabled: true
----
-```
-
-Write your instruction content in the body:
+Edit `.ralphify/instructions/code-style/INSTRUCTION.md`:
 
 ```markdown
 ---
@@ -208,37 +150,15 @@ Keep functions under 30 lines.
 Never use print() for logging — use the logging module.
 ```
 
-!!! note "Empty instructions are excluded"
-    Instructions with no body text (only frontmatter) are silently excluded from prompt injection, even when `enabled: true`. If an instruction isn't appearing in your prompt, make sure it has content below the frontmatter.
-
-### Frontmatter fields
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `enabled` | bool | `true` | Set to `false` to skip without deleting |
+Instructions with no body text are silently excluded, even when `enabled: true`.
 
 ### Placement in the prompt
 
-Same rules as contexts:
-
-- `{{ instructions.code-style }}` — places that specific instruction here
-- `{{ instructions }}` — places all remaining instructions
-- If no placeholders are found, all instructions are appended to the end
+Same rules as contexts: `{{ instructions.code-style }}` for specific placement, `{{ instructions }}` for all remaining, or appended to the end if no placeholders.
 
 ## Ralphs
 
-Ralphs are **reusable, named ralph files** that let you switch between different tasks without editing your root `RALPH.md`. Instead of maintaining one ralph and rewriting it each time you change focus, you create named ralphs and select the one you want at run time.
-
-### When to use named ralphs
-
-Named ralphs are useful when you have multiple recurring tasks for the same project:
-
-- A `docs` ralph for documentation improvements
-- A `refactor` ralph for cleaning up code
-- A `add-tests` ralph for increasing test coverage
-- A `bug-fix` ralph for systematic bug fixing
-
-Each ralph can have its own placeholders, constraints, and workflow — tailored to that specific job.
+Named ralphs let you switch between different tasks without editing your root `RALPH.md`. Create a `docs` ralph, a `refactor` ralph, and a `bug-fix` ralph — select the one you need at run time.
 
 ### Creating a ralph
 
@@ -246,18 +166,7 @@ Each ralph can have its own placeholders, constraints, and workflow — tailored
 ralph new ralph docs
 ```
 
-This creates `.ralphify/ralphs/docs/RALPH.md`:
-
-```markdown
----
-description: Describe what this ralph does
-enabled: true
----
-
-Your prompt content here.
-```
-
-Edit it with your task-specific prompt:
+Edit `.ralphify/ralphs/docs/RALPH.md`:
 
 ```markdown
 ---
@@ -265,194 +174,70 @@ description: Improve project documentation
 enabled: true
 ---
 
-# Ralph
-
 You are a documentation agent. Each iteration starts fresh.
 
-Read the codebase and existing docs. Find the biggest gap between
-what the code can do and what the docs explain. Write or improve
-one page per iteration.
-
-- Search before creating new files
-- No placeholder content — full, accurate writing only
-- Verify code examples actually work
-- Commit with `docs: <what you documented>`
+Read the codebase and existing docs. Find the biggest gap and improve one page per iteration.
 
 {{ contexts }}
 {{ instructions }}
 ```
 
-### Frontmatter fields
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `description` | string | `""` | Short description shown in `ralph status` |
-| `enabled` | bool | `true` | Set to `false` to hide without deleting |
-
 ### Running a named ralph
-
-Pass the ralph name as the first argument to `ralph run`:
 
 ```bash
 ralph run docs           # Use the "docs" ralph
 ralph run refactor -n 5  # Use "refactor" for 5 iterations
 ```
 
-You can also set a default ralph in `ralph.toml`:
+You can also set a default in `ralph.toml`:
 
 ```toml
 [agent]
-command = "claude"
-args = ["-p", "--dangerously-skip-permissions"]
 ralph = "docs"   # Name of a ralph in .ralphify/ralphs/
 ```
 
-When `ralph` is set to a name (no `/` or `.` in the value), ralphify looks for `.ralphify/ralphs/<name>/RALPH.md` first, then falls back to treating it as a file path.
-
-### Listing ralphs
-
-Use `ralph status` to see all discovered ralphs with their enabled status and descriptions.
-
 ### Priority chain
 
-When you run `ralph run`, the prompt is resolved in this order (first match wins):
+When resolving the prompt (first match wins):
 
-1. **`-p` flag** — inline ad-hoc prompt text
-2. **Positional argument** — `ralph run <name>` looks up `.ralphify/ralphs/<name>/RALPH.md`
-3. **`--prompt-file` / `-f` flag** — explicit path to a prompt file
-4. **`ralph.toml` `ralph` field** — can be a name or a file path
-5. **Fallback** — `RALPH.md` in the project root
-
-Named ralphs support all the same features as the root `RALPH.md`: context and instruction placeholders resolve as normal, and check failures are appended after each iteration.
-
-Named ralphs also support [ralph-scoped primitives](#ralph-scoped-primitives) — checks, contexts, and instructions that only apply when running that specific ralph.
+1. `-p` flag — inline ad-hoc prompt text
+2. Positional argument — `ralph run <name>` looks up `.ralphify/ralphs/<name>/RALPH.md`
+3. `--prompt-file` / `-f` flag — explicit path to a prompt file
+4. `ralph.toml` `ralph` field — can be a name or a file path
+5. Fallback — `RALPH.md` in the project root
 
 ## Ralph-scoped primitives
 
-When you use [named ralphs](#ralphs), you can attach checks, contexts, and instructions **to a specific ralph**. These ralph-scoped primitives live inside the ralph's directory and are merged with your global primitives when that ralph runs.
-
-### Why use them
-
-Different tasks need different validation. A documentation ralph might need a `mkdocs build` check but not a `cargo test` check. A refactoring ralph might need stricter lint rules. Ralph-scoped primitives let you customize the loop per task without cluttering the global `.ralphify/` directory.
-
-### Creating ralph-scoped primitives
-
-Use the `--ralph` flag with `ralph new` to scaffold a primitive inside a named ralph's directory:
+Named ralphs can have their own checks, contexts, and instructions that only apply when running that ralph. Create them with the `--ralph` flag:
 
 ```bash
 ralph new check docs-build --ralph docs
 ralph new context doc-coverage --ralph docs
-ralph new instruction writing-style --ralph docs
 ```
 
-This creates the primitive inside `.ralphify/ralphs/docs/` instead of the global `.ralphify/` directory.
-
-### Directory structure
-
-Place primitive directories inside the named ralph's directory, using the same `checks/`, `contexts/`, `instructions/` layout:
+These live inside the ralph's directory:
 
 ```
 .ralphify/ralphs/docs/
 ├── RALPH.md
-├── checks/
-│   └── docs-build/
-│       └── CHECK.md          ← only runs with the "docs" ralph
-├── contexts/
-│   └── doc-coverage/
-│       └── CONTEXT.md        ← only injected with the "docs" ralph
-└── instructions/
-    └── writing-style/
-        └── INSTRUCTION.md    ← only included with the "docs" ralph
+├── checks/docs-build/CHECK.md
+└── contexts/doc-coverage/CONTEXT.md
 ```
 
-### How merging works
-
-When you run `ralph run docs`, ralphify discovers both global and ralph-scoped primitives, then merges them:
-
-1. **Global primitives** from `.ralphify/checks/`, `.ralphify/contexts/`, `.ralphify/instructions/` are loaded first
-2. **Ralph-scoped primitives** from `.ralphify/ralphs/docs/checks/`, etc. are loaded next
-3. If a local primitive has the **same name** as a global one, the **local version wins**
-4. Enabled filtering happens **after** the merge — a disabled local primitive can suppress a global one
-
-This means you can:
-
-- **Add** ralph-specific primitives that only run for that ralph
-- **Override** a global primitive by creating a local one with the same name
-- **Suppress** a global primitive by creating a disabled local one with the same name
-
-### With ad-hoc prompts
-
-Ralph-scoped primitives only apply when running a named ralph. Ad-hoc prompts (`ralph run -p "..."`) use global primitives only, since there is no ralph directory to scan.
+When you run `ralph run docs`, global primitives and ralph-scoped primitives are merged. If a local primitive has the same name as a global one, the local version wins. A disabled local primitive suppresses a global one with the same name.
 
 ## Behavior notes
 
-Important runtime behaviors that affect how you design and organize your primitives.
-
 ### Execution order
 
-Primitives are discovered and executed in **alphabetical order by directory name**. This applies to checks, contexts, and instructions alike.
-
-If execution order matters — for example, you want a fast lint check to run before a slow test suite — use number prefixes:
-
-```
-.ralphify/checks/
-├── 01-lint/          ← runs first (fast feedback)
-│   └── CHECK.md
-├── 02-typecheck/     ← runs second
-│   └── CHECK.md
-└── 03-tests/         ← runs last (slowest)
-    └── CHECK.md
-```
-
-All checks run regardless of whether earlier checks pass or fail — there is no short-circuiting.
-
-### Naming
-
-A primitive's name is its **directory name**, not a field in frontmatter. The name `tests` comes from the directory `.ralphify/checks/tests/`, not from anything inside `CHECK.md`. This name is used in:
-
-- `ralph status` output
-- Check failure headings in the prompt
-- Placeholder references like `{{ contexts.git-log }}`
-
-### Frontmatter format
-
-Frontmatter uses a simplified `key: value` format — **not full YAML**. Each line is one field:
-
-```markdown
----
-command: uv run pytest -x
-timeout: 120
-enabled: true
----
-```
-
-Limitations:
-
-- No nested structures, lists, or multi-line values
-- Lines starting with `#` are treated as comments and ignored
-- Only `timeout` (coerced to int) and `enabled` (coerced to bool) have type coercion — all other fields are strings
-- Values for `enabled` are truthy if they match `true`, `yes`, or `1` (case-insensitive)
-
-### Context command failures
-
-Context output is injected into the prompt **regardless of the command's exit code**. Even if a context command exits non-zero, its stdout and stderr are still captured and included. This is intentional — commands like `pytest --tb=line -q` often exit non-zero (because tests are failing) but produce exactly the output you want the agent to see.
-
-If a context command produces no output at all, only its static content (the body below the frontmatter) is injected. If it has neither output nor static content, it contributes nothing to the prompt.
+Primitives run in **alphabetical order by directory name**. To control order, use number prefixes: `01-lint/`, `02-typecheck/`, `03-tests/`. All checks run regardless of whether earlier checks pass or fail.
 
 ### What's re-read vs. fixed at startup
 
-| What | When it's loaded | Editable while running? |
+| What | When loaded | Editable while running? |
 |---|---|---|
-| `RALPH.md` | Every iteration | Yes — edits take effect next iteration |
-| Context command output | Every iteration | Yes — commands re-run each time |
-| Context/instruction config | Startup only | No — restart the loop |
-| Check config | Startup only | No — restart the loop |
-| New/removed primitives | Startup only | No — restart the loop |
+| `RALPH.md` | Every iteration | Yes |
+| Context command output | Every iteration | Yes |
+| Primitive config (checks, contexts, instructions) | Startup only | No — restart the loop |
 
-`RALPH.md` is the primary way to steer the agent in real time. To add or modify primitives, stop the loop (`Ctrl+C`) and restart.
-
-### Disabled primitives
-
-Setting `enabled: false` skips the primitive during execution. Disabled primitives still appear in `ralph status` — they're just not run. This makes it easy to toggle primitives on and off without deleting directories.
-
-Use `ralph status` to see all discovered primitives and whether they're enabled.
+`RALPH.md` is the primary way to steer the agent in real time.
