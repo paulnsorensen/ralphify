@@ -29,27 +29,7 @@ The assembled prompt is piped to the agent command as **stdin**. The full comman
 <command> <args...> < assembled_prompt
 ```
 
-### Using a different agent
-
-Ralphify works with any CLI that reads a prompt from stdin. To use a different agent, change the `command` and `args` fields:
-
-```toml
-# Claude Code (default)
-[agent]
-command = "claude"
-args = ["-p", "--dangerously-skip-permissions"]
-ralph = "RALPH.md"
-```
-
-```toml
-# Any custom script that reads stdin
-[agent]
-command = "bash"
-args = ["-c", "cat - | my-agent-wrapper"]
-ralph = "RALPH.md"
-```
-
-The only requirement is that the command reads the prompt from stdin and exits when done. See [Using with Different Agents](agents.md) for complete setup guides for popular agents and custom wrappers.
+See [Using with Different Agents](agents.md) for setup guides for other agents.
 
 ---
 
@@ -74,35 +54,11 @@ ralph --help     # Show help
 
 ### Shell completion
 
-Ralphify supports tab completion for commands, options, and prompt names. Install it once and it persists across sessions:
-
-=== "Bash"
-
-    ```bash
-    ralph --install-completion bash
-    ```
-
-=== "Zsh"
-
-    ```bash
-    ralph --install-completion zsh
-    ```
-
-=== "Fish"
-
-    ```bash
-    ralph --install-completion fish
-    ```
-
-After installing, restart your shell (or `source` your profile). Then you can tab-complete:
-
 ```bash
-ralph r<TAB>          # → ralph run
-ralph run --t<TAB>    # → ralph run --timeout
-ralph new c<TAB>      # → ralph new check
+ralph --install-completion bash   # or zsh, fish
 ```
 
-If you prefer to install manually, use `--show-completion` to print the script and add it to your shell config yourself.
+Restart your shell after installing. Use `--show-completion` to print the script for manual setup.
 
 ### `ralph init`
 
@@ -146,27 +102,7 @@ ralph run --log-dir ralph_logs     # Save output to log files
 | `--timeout` | `-t` | none | Max seconds per iteration |
 | `--log-dir` | `-l` | none | Directory for iteration log files |
 
-Options can be combined:
-
-```bash
-ralph run -n 10 --timeout 300 --log-dir ralph_logs --stop-on-error
-```
-
-#### Ad-hoc prompts
-
-Use `-p` to pass a prompt directly on the command line, bypassing the ralph file entirely:
-
-```bash
-ralph run -n 1 -p "Add type hints to all public functions in src/"
-```
-
-This is useful for quick one-off tasks where you don't want to create or edit a `RALPH.md`. The ad-hoc prompt still supports placeholders — contexts and instructions resolve as normal:
-
-```bash
-ralph run -n 1 -p "{{ contexts.git-log }}\n\nFix the failing test."
-```
-
-When `-p` is provided, `RALPH.md` doesn't need to exist.
+Ad-hoc prompts (`-p`) still resolve context and instruction placeholders. When `-p` is provided, `RALPH.md` doesn't need to exist.
 
 ### `ralph status`
 
