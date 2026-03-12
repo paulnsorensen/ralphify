@@ -192,17 +192,16 @@ def _assemble_prompt(
     return prompt
 
 
-def _execute_agent(
+def _run_agent_phase(
     prompt: str,
     config: RunConfig,
     state: RunState,
     log_path_dir: Path | None,
     emit: _BoundEmitter,
 ) -> int | None:
-    """Run the agent subprocess and emit the result event.
+    """Run the agent subprocess, update state counters, and emit the result event.
 
-    Updates ``state`` counters (completed / failed / timed_out) and returns
-    the process return code, or ``None`` if the process timed out.
+    Returns the process return code, or ``None`` if the process timed out.
 
     Delegates to :func:`~ralphify._agent.execute_agent`, which auto-selects
     streaming or blocking mode based on the agent command.
@@ -326,7 +325,7 @@ def _run_iteration(
     )
     emit(EventType.PROMPT_ASSEMBLED, {"iteration": iteration, "prompt_length": len(prompt)})
 
-    returncode = _execute_agent(
+    returncode = _run_agent_phase(
         prompt, config, state, log_path_dir, emit,
     )
 
