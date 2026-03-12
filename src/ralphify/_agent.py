@@ -116,7 +116,6 @@ def run_agent_streaming(
                     on_activity(parsed)
                 except json.JSONDecodeError:
                     pass
-            sys.stdout.write(line)
 
         if not timed_out:
             # stdout exhausted — process finished normally.
@@ -124,8 +123,6 @@ def run_agent_streaming(
             returncode = proc.returncode
 
         stderr_data = proc.stderr.read()
-        if stderr_data:
-            sys.stderr.write(stderr_data)
     finally:
         if proc.poll() is None:
             proc.kill()
