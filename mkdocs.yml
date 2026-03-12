@@ -96,7 +96,6 @@ nav:
     - Configuration & CLI: cli.md
     - Python API: api.md
   - Help:
-    - FAQ: faq.md
     - Troubleshooting: troubleshooting.md
     - Changelog: changelog.md
   - Contributing:

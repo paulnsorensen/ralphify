@@ -89,8 +89,7 @@ docs/
 ├── cookbook.md            # Complete copy-pasteable setups
 ├── primitives.md         # Checks, contexts, instructions reference
 ├── cli.md                # Configuration and CLI reference
-├── faq.md                # Common questions
-├── troubleshooting.md    # Debugging guide
+├── troubleshooting.md    # Troubleshooting and FAQ
 ├── contributing/         # Contributor docs (this section)
 │   ├── index.md          # This page
 │   └── codebase-map.md   # Architecture and module guide

@@ -242,6 +242,29 @@ cat ralph_logs/001_*.log
 
 By default, agent output goes directly to the terminal. If you're using `--log-dir`, output is captured and then replayed — you'll still see it, but only after the iteration completes.
 
+## Common questions
+
+### Can I run multiple loops in parallel?
+
+Yes, but they should work on **separate branches** to avoid git conflicts:
+
+```bash
+# Terminal 1
+git checkout -b feature-a && ralph run
+
+# Terminal 2
+git checkout -b feature-b && ralph run
+```
+
+### What files should I commit?
+
+| File / directory | Commit? | Why |
+|---|---|---|
+| `ralph.toml` | **Yes** | Loop configuration |
+| `RALPH.md` | **Yes** | The prompt |
+| `.ralphify/` | **Yes** | Checks, contexts, instructions |
+| `ralph_logs/` | **No** | Iteration logs — add to `.gitignore` |
+
 ## Getting more help
 
 1. Run `ralph status` to validate your full setup
