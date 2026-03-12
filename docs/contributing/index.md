@@ -84,7 +84,6 @@ The `--strict` flag treats warnings as errors. The CI pipeline uses this flag, s
 ```
 docs/
 ├── index.md              # Landing page
-├── why-ralphify.md       # Design philosophy and comparison to alternatives
 ├── getting-started.md    # Step-by-step tutorial
 ├── how-it-works.md       # Iteration lifecycle and prompt assembly
 ├── ralphs.md             # Ralph writing guide

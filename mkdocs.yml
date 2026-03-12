@@ -88,7 +88,6 @@ extra:
 nav:
   - Home: index.md
   - Guide:
-    - Why Ralphify?: why-ralphify.md
     - Getting Started: getting-started.md
     - How It Works: how-it-works.md
     - Writing Your Ralph: ralphs.md
