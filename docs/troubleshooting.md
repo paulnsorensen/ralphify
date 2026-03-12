@@ -14,13 +14,7 @@ You haven't initialized the project yet. Run `ralph init` in your project direct
 
 ### "Command 'claude' not found on PATH"
 
-The agent CLI isn't installed or isn't in your shell's PATH. Verify by running the command directly:
-
-```bash
-claude --version
-```
-
-If it's installed but not found, check that your PATH includes the directory where it's installed. Run `ralph status` to confirm — it checks whether the configured command is on PATH.
+The agent CLI isn't installed or isn't in your shell's PATH. Verify by running `claude --version` directly. If it's installed but not found, check your PATH. `ralph status` also checks this.
 
 ### "Not ready" from `ralph status`
 
@@ -197,19 +191,7 @@ Same rules apply for `{{ instructions.name }}`.
 
 ### Context command failing
 
-Run the context command manually:
-
-```bash
-# Check what command is configured
-cat .ralphify/contexts/git-log/CONTEXT.md
-
-# Run it directly
-git log --oneline -10
-```
-
-Context output is injected into the prompt **regardless of exit code** — even if the command exits non-zero, its stdout and stderr are still captured and included. This is intentional: commands like `pytest` often exit non-zero (because tests are failing) but still produce useful output the agent should see.
-
-If the command produces no output at all, check that it runs correctly outside of ralphify. If it times out, increase the `timeout` value in the context's frontmatter.
+Run the context command manually to verify it produces output. Note that context output is injected **regardless of exit code** — commands like `pytest` exit non-zero but still produce useful output. If the command produces no output at all, check that it runs correctly outside of ralphify.
 
 ### Some contexts are missing from the prompt
 
