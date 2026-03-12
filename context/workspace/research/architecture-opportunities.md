@@ -673,6 +673,95 @@ The public API is designed around two use cases: (1) running a loop from code (`
 
 For alphify (non-technical user wrapper), the critical path is use case 1 via `RunManager`. This path is well-served: `RunManager.create_run()` → `start_run()` → drain `QueueEmitter.queue`. The gaps (API1-API5) matter more for a "power library consumer" building custom tooling around ralphify's primitives.
 
+### CLI Bridge Layer Analysis (`cli.py`)
+
+`cli.py` (349 lines) is the translation layer between user intent and engine configuration. It performs six distinct jobs: banner display, config loading, prompt resolution, primitive scaffolding, status reporting, and RunConfig construction. This section traces how each function operates and identifies where the bridge introduces friction, divergence, or silent misbehavior.
+
+#### The `run()` Command: Intent-to-Config Translation
+
+The `run()` function (`cli.py:281-346`) is the most complex CLI command. Its responsibility is:
+1. Load TOML config (`_load_config()`)
+2. Resolve which prompt source to use (4 paths — traced in the CLI Resolution section above)
+3. Construct `RunConfig` with the merged result of TOML values + CLI flags
+4. Create `RunState` and `ConsoleEmitter`
+5. Call `run_loop(config, state, emitter)`
+
+**CL1: No exit code propagation.** `run_loop()` returns `None` (`engine.py:316`). The `run()` CLI command at `cli.py:346` calls it and returns implicitly. After the loop, `state.status` contains `COMPLETED`, `FAILED`, or `STOPPED`, and `state.failed` contains the failure count — but the CLI never translates this to a process exit code. `ralph run -n 1` exits 0 **even if all checks failed** or the run crashed with an exception.
+
+For CI/automation (J5, J8), the exit code is the primary interface. A shell script like `ralph run -n 3 && git push` will push even if every iteration failed. The fix is ~5 lines at the end of `run()`: check `state.status` and `raise typer.Exit(1)` on failure.
+
+**CL2: Config loading is duplicated and unvalidated.** Both `run()` (`cli.py:300-303`) and `status()` (`cli.py:232-236`) independently access `config["agent"]`, `agent["command"]`, `agent["ralph"]` from the raw TOML dict. Neither validates the structure. If a user renames `[agent]` to `[agents]`, both commands crash with `KeyError: 'agent'` — but they crash independently, meaning fixing one command doesn't fix the other. The `_load_config()` function (`cli.py:133-140`) is the shared bottleneck, but it only checks for file existence, not content validity.
+
+**CL3: `project_root` is never resolved to an absolute path.** `RunConfig.project_root` defaults to `Path(".")` (`_run_types.py:58`). The CLI never sets it — it relies on the default. All check and context execution uses `cwd=project_root` (`_runner.py:54`). This works for CLI usage (CWD is the project root) but breaks for library consumers who call `run_loop()` from a different directory. The default should be `Path(".").resolve()` or the CLI should explicitly set it.
+
+**CL4: Banner adds friction for frequent users.** `run()` calls `_print_banner()` at `cli.py:299` — 10+ lines of ASCII art + tagline before any useful output. For a tool that's run frequently (J1), this pushes the actionable output (check counts, iteration results) below the fold. `status()` does not print the banner, creating inconsistency. The banner could be suppressed with a `--quiet` flag or limited to the first run.
+
+#### The `status` Command: Divergent Discovery
+
+The `status()` command (`cli.py:229-278`) shows a different view of the world than the engine uses.
+
+**CL5: `status` discovers differently than `run`.** `status()` calls:
+- `discover_checks()` — global only, enabled + disabled
+- `discover_contexts()` — global only, enabled + disabled
+- `discover_instructions()` — global only, enabled + disabled
+- `discover_ralphs()` — global only, enabled + disabled
+
+But the engine (`engine.py:71-75`) calls:
+- `discover_enabled_checks(root, prompt_dir)` — global + local merged, enabled only
+- `discover_enabled_contexts(root, prompt_dir)` — global + local merged, enabled only
+- `discover_enabled_instructions(root, prompt_dir)` — global + local merged, enabled only
+
+This means:
+1. `ralph status` shows ALL primitives (enabled + disabled) globally — correct for a general overview
+2. But it **can't** answer "what will `ralph run docs` actually use?" because it doesn't merge local primitives or know which ralph the user intends to run
+3. If a check is disabled globally but enabled locally for a specific ralph, `status` shows it as disabled, but `ralph run <name>` uses it as enabled
+4. Scoped primitives (under `.ralphify/ralphs/<name>/checks/`) don't appear at all in `status`
+
+The gap: there's no way to preview the effective configuration for a specific named ralph before running it. A `ralph status --ralph docs` command would fill this gap by showing the merged, filtered view.
+
+#### The `_DefaultRalphGroup` Implicit Routing
+
+`_DefaultRalphGroup` (`cli.py:49-55`) silently transforms unknown `ralph new <arg>` subcommands into `ralph new ralph <arg>`. Combined with `hidden=True` on the `new_ralph` command (`cli.py:221`), this creates:
+
+**CL6: Implicit routing with a collision trap.** `ralph new foo` creates a ralph named "foo" (because "foo" is not a known command, so it's routed to `ralph new ralph foo`). But `ralph new check` creates a check (because "check" IS a known command name). This means:
+- `ralph new check` → creates a check (expected)
+- `ralph new test-runner` → creates a **ralph** named "test-runner" (surprising — user might expect a check)
+- `ralph new ralph check` → creates a ralph named "check" (the explicit path)
+- A user who wants a ralph named "check" must use the explicit `ralph new ralph check` syntax, but the `ralph` subcommand is hidden
+
+The implicit routing is clever but creates a learning trap: users who successfully use `ralph new docs` to create a ralph will be surprised when `ralph new check` creates a check instead of a ralph named "check". The heuristic (unknown = ralph) is invisible.
+
+#### Prompt Re-Read: Undocumented Live Editing
+
+**CL7: Prompt file is re-read from disk on every iteration.** `_assemble_prompt()` (`engine.py:162`) calls `Path(config.prompt_file).read_text()` each iteration. This is an **undocumented feature**: users can edit `RALPH.md` (or any prompt file) between iterations and the changes take effect immediately.
+
+This creates an asymmetry:
+- **Prompt content** is dynamic (re-read each iteration)
+- **Prompt directory** (for scoped primitives) is fixed at startup (`engine.py:343-344` — `_resolve_prompt_dir` is called once)
+- **Primitives** are fixed at startup unless explicitly reloaded via `request_reload()`
+
+So a user can live-edit their prompt text, but they can't add/remove/edit checks mid-run without triggering a reload (which is only available via the API, not the CLI). This half-dynamic behavior is neither documented nor surfaced — users who discover it will expect the other half to be dynamic too.
+
+**Risk:** If the user deletes or renames the prompt file between iterations, `Path(config.prompt_file).read_text()` raises `FileNotFoundError`, which propagates to `run_loop`'s `except Exception` and crashes the run. There's no retry or fallback.
+
+#### Config-to-RunConfig Bridging Gap
+
+**CL8: CLI flags that can't be defaulted in config.** The `run()` command exposes 8 flags. Only 3 have config-file equivalents:
+
+| Setting | CLI Flag | Config Equivalent | Default |
+|---------|----------|-------------------|---------|
+| Command | — | `agent.command` | Required |
+| Args | — | `agent.args` | `[]` |
+| Ralph | `prompt_name` / `--prompt-file` | `agent.ralph` | `"RALPH.md"` |
+| Iterations | `-n` | — | Infinite |
+| Prompt text | `-p` | — | None |
+| Stop on error | `-s` | — | `False` |
+| Delay | `-d` | — | `0` |
+| Log dir | `-l` | — | None |
+| Timeout | `-t` | — | None |
+
+5 of 8 runtime behaviors can only be set per-invocation. A user who always wants `--log-dir logs --timeout 300 -n 10` types it every time. Already documented as F42 and O4, but this trace shows the precise gap at the bridging layer: `cli.py:331-342` constructs `RunConfig` purely from CLI flags with no config-file merging for these fields.
+
 ## Job–Architecture Alignment
 
 ### Well-Aligned
@@ -707,6 +796,11 @@ For alphify (non-technical user wrapper), the critical path is use case 1 via `R
 | J10 (Encode expertise) | Scoped checks don't work with all invocation paths | Feature only works on 2 of 5 prompt paths |
 | J8 (Team workflows) | Public API missing types returned by public functions | `Check`, `Context`, etc. not in `__all__` (API3) |
 | J8 (Team workflows) | Library import pulls in CLI dependencies | `__init__.py` imports `app` from `cli.py` (API2) |
+| J5 (Reliable workflow) | `ralph run` exits 0 even when all checks fail | `run_loop` returns None; CLI doesn't translate `RunState.status` to exit code (CL1) |
+| J8 (Team workflows) | Can't use `ralph run` in CI pipelines reliably | No non-zero exit code on failure means `&&` chaining, CI steps don't detect failures (CL1) |
+| J6 (Feel in control) | `ralph status` can't show what a specific ralph will use | `status` discovers globally; doesn't merge scoped primitives for a named ralph (CL5) |
+| J5 (Reliable workflow) | `project_root` is relative, breaks library consumers | `RunConfig.project_root` defaults to `Path(".")` — never resolved to absolute (CL3) |
+| J6 (Feel in control) | Prompt content is live-editable but primitives aren't | Prompt file re-read each iteration; primitives fixed at startup unless API reload (CL7) |
 
 ## Opportunities
 
@@ -885,6 +979,37 @@ Ranked by: (impact on job fulfillment) × (frequency of the job) / (effort + ris
 **Effort:** S (move one import line, ensure `main()` does a lazy import)
 **Risk:** Very low — `app` isn't in `__all__` but is accessible via `ralphify.app`. Moving it to lazy import is technically a breaking change for anyone doing `from ralphify import app`, but this is an internal detail.
 
+### CLI Bridge Layer Opportunities (from cli.py deep dive)
+
+### O24: Exit Code Propagation from Engine to CLI [HIGH PRIORITY]
+**What:** After `run_loop()` returns, check `state.status` and `state.failed`. If the run failed or was stopped due to error, `raise typer.Exit(1)`. If all iterations completed but checks failed on the final iteration, exit with code 2 (partial success). If the run completed cleanly, exit 0.
+**Job:** J5 (reliable workflow), J8 (team workflows — CI integration)
+**Why:** `ralph run -n 1` exits 0 **even when all checks fail** or the run crashes with an exception (CL1). The CLI never translates `RunState.status` to a process exit code. For CI/automation, the exit code is the primary interface: `ralph run -n 3 && git push` pushes even if every iteration failed. `set -e` scripts don't catch failures. GitHub Actions steps don't fail. This is the single biggest gap for J5 (reliable workflow) in automated contexts.
+**Effort:** S (~5 lines at end of `cli.py:run()` — check `state.status`, raise `typer.Exit(1)` on failure)
+**Risk:** Very low — additive behavior. CLI callers who don't check exit codes are unaffected. Callers who DO check exit codes (CI, shell scripts) get correct behavior they currently lack.
+**Evidence:** `cli.py:346` — `run_loop(config, state, emitter)` with no return value check. `engine.py:316` — `run_loop` returns `None`. After the call, `state.status` and `state.failed` are available but unused.
+
+### O25: Ralph-Specific Status View [MEDIUM PRIORITY]
+**What:** Add an optional `--ralph` argument to `ralph status` that shows the merged, filtered view for a specific named ralph. When provided, call `discover_enabled_*()` with the ralph's `prompt_dir` instead of `discover_*()` globally.
+**Job:** J6 (feel in control), J10 (encode expertise)
+**Why:** `ralph status` shows a different view than what `ralph run <name>` actually uses (CL5). Scoped primitives (checks/contexts/instructions under `.ralphify/ralphs/<name>/`) don't appear at all. A user who adds a scoped check to their ralph has no way to verify it was discovered correctly without actually running the loop. `ralph status --ralph docs` would show exactly what `ralph run docs` will use.
+**Effort:** S-M (~20 lines — add `--ralph` option, resolve ralph name, pass `prompt_dir` to discovery)
+**Risk:** Low — additive flag. Default behavior (no `--ralph`) is unchanged.
+
+### O26: Resolve `project_root` to Absolute Path [LOW PRIORITY]
+**What:** Change `RunConfig.project_root` default from `Path(".")` to `Path(".").resolve()`, or have the CLI explicitly set it to `Path.cwd()`.
+**Job:** J8 (team — library consumers), SJ4 (subprocess execution)
+**Why:** `RunConfig.project_root` defaults to `Path(".")` (`_run_types.py:58`), which is relative to wherever the Python process started. All check and context execution uses `cwd=project_root` (`_runner.py:54`). For CLI usage this works. For library consumers who call `run_loop()` from a different working directory (e.g., a web server), all subprocess execution silently runs in the wrong directory. The fix is 1 line.
+**Effort:** S (change default in `_run_types.py:58`, or set explicitly in `cli.py`)
+**Risk:** Very low — `Path(".").resolve()` produces the same result as `Path(".")` when CWD hasn't changed. Only changes behavior for library consumers, and the new behavior is correct.
+
+### O27: Document Live Prompt Editing as a Feature [LOW PRIORITY]
+**What:** Document that `_assemble_prompt()` re-reads the prompt file from disk on every iteration (`engine.py:162`), making live editing possible. Either: (a) document this as a feature with the caveat that primitives aren't dynamic, or (b) make primitives auto-reload too by calling `_discover_enabled_primitives` at the top of each iteration.
+**Job:** J6 (feel in control), J2 (guardrails — mid-run adjustment)
+**Why:** The prompt file is re-read each iteration (CL7), but this is undocumented. Users who discover it will expect primitives to be dynamic too, but primitives are fixed at startup unless reloaded via the API (not available from CLI). The half-dynamic behavior creates confusion. Either make both dynamic or document the asymmetry.
+**Effort:** S for docs, M for auto-reload (move `_discover_enabled_primitives` call into `_run_iteration`)
+**Risk:** Auto-reload adds a disk scan per iteration. At current scale (~10 primitives), this is negligible. Document-only approach has zero risk.
+
 ## Anti-Patterns Spotted
 
 ### 1. Dead Code: `detector.py`
@@ -934,6 +1059,15 @@ The missing middle tier — **graceful degradation** — would let individual pr
 
 This pattern is especially harmful for new users who are iterating on their configuration. Every configuration experiment is a potential run-killing error. (See O16 for check/context execution boundaries and O17 for frontmatter coercion boundaries.)
 
+### 10. Silent Exit Code: Success on Failure
+`ralph run` always exits 0, regardless of whether the run succeeded, failed, or crashed (CL1). The `run()` function at `cli.py:346` calls `run_loop()` and returns without checking `state.status`. This makes `ralph run` invisible to CI pipelines, shell script chaining (`&&`), and automation that relies on exit codes. A tool designed for reliable workflows (J5) that can't signal failure through the most basic Unix interface (exit codes) has a fundamental design gap. This is the CLI equivalent of a test runner that always says "passed." (See O24 for the fix.)
+
+### 11. Status Command Shows Wrong View
+`ralph status` uses a different discovery path than the engine, showing global-only primitives while the engine merges global + scoped primitives (CL5). The user asks "what's my setup?" and gets a snapshot that doesn't match what `ralph run <name>` actually uses. Scoped primitives are invisible in `status`. This is especially problematic for the J10 job (encode expertise) — a user who carefully scopes checks to a ralph has no way to verify the scoping worked without running the loop. (See O25 for the fix.)
+
+### 12. Half-Dynamic Runtime Behavior
+The prompt file is re-read from disk on every iteration (CL7), but primitives are fixed at startup. This creates a "half-dynamic" runtime where one input channel responds to live changes and another doesn't. Users who discover prompt live-editing (a useful, undocumented feature) will naturally expect primitives to be dynamic too. When they edit a CHECK.md or add a new check directory mid-run, nothing happens — and they have no way to know that a reload is needed (the reload API isn't exposed via CLI). The asymmetry is invisible and violates the principle of least surprise.
+
 ## Open Questions
 
 1. **Is a 5th primitive type planned?** If yes, O9 (reduce discovery boilerplate) becomes higher priority. If no, the current explicit pattern is fine.
@@ -961,3 +1095,9 @@ This pattern is especially harmful for new users who are iterating on their conf
 12. **Should `RunState.status` have a single writer?** O21 proposes making the engine the sole writer of status, using `_pause_requested`/`_resume_requested` flags. This eliminates the ST1-ST2 timing windows but changes the API contract — `request_pause()` would no longer immediately change status. For the CLI (single-threaded consumer), this doesn't matter. For the UI (dashboard polling status), the current "immediately visible" behavior may be preferred even if briefly inaccurate. The right answer depends on whether the UI prefers "fast but briefly wrong" or "correct but delayed."
 
 13. **Should the public API commit to exporting primitive types?** O22 proposes adding `Check`, `Context`, `Instruction`, etc. to `__all__`. Once exported, these types become a stability commitment — changing fields would be a breaking change. If the primitive type system is still evolving (e.g., adding new fields, changing defaults), deferring the export preserves flexibility. If alphify needs these types now, the stability commitment is unavoidable.
+
+14. **What exit code semantics should `ralph run` use?** O24 proposes exit code propagation, but the semantics need design. Options: (a) exit 1 if the run status is FAILED/STOPPED, exit 0 otherwise (simple but doesn't distinguish check failures from crashes), (b) exit 0 for COMPLETED, exit 1 for FAILED, exit 2 for STOPPED (granular but non-standard), (c) exit 0 if all checks passed on the final iteration, exit 1 otherwise (most useful for CI, but ignores run-level errors). The right answer depends on who the primary consumer of exit codes is: CI pipelines (want pass/fail), shell scripts (want error/no-error), or monitoring (want granular status).
+
+15. **Should primitives auto-reload on disk changes?** O27 surfaces the asymmetry: prompt files are re-read each iteration but primitives are fixed at startup. Options: (a) auto-reload primitives every iteration (adds disk I/O, ~10 primitives × 1 file read each = negligible), (b) use filesystem watching (complex, platform-dependent), (c) document the behavior and rely on the API `request_reload()` (no code change, but CLI users can't trigger it). Option (a) is simplest and aligns with the prompt re-read behavior. The cost is one `_discover_enabled_primitives()` call per iteration — which already runs at startup and on reload.
+
+16. **Should `ralph status` accept a ralph name?** O25 proposes `ralph status --ralph docs` to show the merged view. But there's a design tension: the current `status` command validates the global setup (command on PATH, config exists, primitives discoverable). A ralph-specific view adds a second mode. Should it replace the global view or supplement it? If supplementary, should it show the delta (what's different from global)? The right answer affects whether `status` remains a single-purpose validation tool or becomes a general inspection tool.
