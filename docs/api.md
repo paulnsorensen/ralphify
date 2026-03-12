@@ -208,49 +208,9 @@ Use `event.to_dict()` to serialize for JSON transport.
 
 ### `EventType`
 
-All event types the loop can emit. Every event has `type`, `run_id`, `timestamp`, and `data` fields.
+Events cover the full run lifecycle: `RUN_STARTED`, `RUN_STOPPED`, `RUN_PAUSED`, `RUN_RESUMED`, iteration events (`ITERATION_STARTED`, `ITERATION_COMPLETED`, `ITERATION_FAILED`, `ITERATION_TIMED_OUT`), check events (`CHECKS_STARTED`, `CHECK_PASSED`, `CHECK_FAILED`, `CHECKS_COMPLETED`), prompt assembly (`CONTEXTS_RESOLVED`, `PROMPT_ASSEMBLED`), and streaming (`AGENT_ACTIVITY`, `LOG_MESSAGE`).
 
-#### Run lifecycle
-
-| Event type | When | Data fields |
-|---|---|---|
-| `RUN_STARTED` | Run begins | `checks`, `contexts`, `instructions` (int counts), `max_iterations`, `timeout`, `delay`, `prompt_name` |
-| `RUN_STOPPED` | Run ends for any reason | `reason` (`"completed"`, `"user_requested"`, `"error"`), `total`, `completed`, `failed`, `timed_out` |
-| `RUN_PAUSED` | Run is paused | — |
-| `RUN_RESUMED` | Run is resumed | — |
-
-#### Iteration lifecycle
-
-| Event type | When | Data fields |
-|---|---|---|
-| `ITERATION_STARTED` | Iteration begins | `iteration` |
-| `ITERATION_COMPLETED` | Agent exits with code 0 | `iteration`, `returncode`, `duration` (seconds), `duration_formatted`, `detail`, `log_file`, `result_text` |
-| `ITERATION_FAILED` | Agent exits non-zero | `iteration`, `returncode`, `duration`, `duration_formatted`, `detail`, `log_file`, `result_text` |
-| `ITERATION_TIMED_OUT` | Agent exceeds timeout | `iteration`, `returncode` (null), `duration`, `duration_formatted`, `detail`, `log_file`, `result_text` |
-
-#### Checks
-
-| Event type | When | Data fields |
-|---|---|---|
-| `CHECKS_STARTED` | Check phase begins | `iteration`, `count` |
-| `CHECK_PASSED` | A single check passes | `iteration`, `name`, `passed`, `exit_code`, `timed_out`, `output` |
-| `CHECK_FAILED` | A single check fails | `iteration`, `name`, `passed`, `exit_code`, `timed_out`, `output` |
-| `CHECKS_COMPLETED` | All checks finish | `iteration`, `passed`, `failed`, `results` (array of `{name, passed, exit_code, timed_out, output}`) |
-
-#### Prompt assembly
-
-| Event type | When | Data fields |
-|---|---|---|
-| `CONTEXTS_RESOLVED` | Contexts injected into prompt | `iteration`, `count` |
-| `PROMPT_ASSEMBLED` | Full prompt built | `iteration`, `prompt_length` |
-
-#### Other
-
-| Event type | When | Data fields |
-|---|---|---|
-| `AGENT_ACTIVITY` | Each line of streamed agent output (Claude Code only) | `raw` (dict — one parsed JSON line from the agent's `stream-json` output), `iteration` |
-| `PRIMITIVES_RELOADED` | Primitives re-discovered mid-run | `checks`, `contexts`, `instructions` (int counts) |
-| `LOG_MESSAGE` | General log from the engine | `message`, `level` (`"info"`, `"error"`), `traceback` (optional) |
+Each event's `data` dict contains relevant fields (iteration number, exit codes, durations, output text, etc.). Inspect `event.data.keys()` or see the `EventType` enum in source for the full schema.
 
 ### Built-in emitters
 
@@ -310,30 +270,7 @@ for run in manager.list_runs():
     print(f"{run.state.run_id}: {run.state.status.value}")
 ```
 
-### `RunManager` methods
-
-| Method | Description |
-|---|---|
-| `create_run(config)` | Register a new run (assigns a unique ID). Does not start it |
-| `start_run(run_id)` | Start the run in a background daemon thread |
-| `stop_run(run_id)` | Signal the run to stop after the current iteration |
-| `pause_run(run_id)` | Pause the run between iterations |
-| `resume_run(run_id)` | Resume a paused run |
-| `list_runs()` | Return all registered runs |
-| `get_run(run_id)` | Look up a run by ID (returns `None` if not found) |
-
-### `ManagedRun`
-
-A run wrapped with its thread and event queue.
-
-| Field | Type | Description |
-|---|---|---|
-| `config` | `RunConfig` | The run's configuration |
-| `state` | `RunState` | Observable state and control methods |
-| `emitter` | `QueueEmitter` | Event queue for this run |
-| `thread` | `Thread | None` | The background thread (set after `start_run`) |
-
-Use `managed.add_listener(emitter)` to register additional event listeners before starting the run.
+`RunManager` provides `create_run(config)`, `start_run(run_id)`, `stop_run(run_id)`, `pause_run(run_id)`, `resume_run(run_id)`, `list_runs()`, and `get_run(run_id)`. Each run is wrapped in a `ManagedRun` with `config`, `state`, `emitter` (QueueEmitter), and `thread` fields. Use `managed.add_listener(emitter)` to register additional event listeners before starting.
 
 ## Primitive discovery
 
@@ -433,35 +370,4 @@ notifier = SlackNotifier("https://hooks.slack.com/services/YOUR/WEBHOOK/URL")
 run_loop(config, state, emitter=notifier)
 ```
 
-## Imports
-
-Everything is available from the top-level `ralphify` package:
-
-```python
-from ralphify import (
-    # Core
-    run_loop,
-    # Configuration
-    RunConfig,
-    RunState,
-    RunStatus,
-    # Events
-    Event,
-    EventEmitter,
-    EventType,
-    FanoutEmitter,
-    NullEmitter,
-    QueueEmitter,
-    # Multi-run management
-    ManagedRun,
-    RunManager,
-    # Primitive discovery
-    discover_checks,
-    run_all_checks,
-    discover_contexts,
-    run_all_contexts,
-    discover_instructions,
-    discover_ralphs,
-    resolve_ralph_name,
-)
-```
+All public API is available from the top-level `ralphify` package (e.g. `from ralphify import run_loop, RunConfig, RunState`).
