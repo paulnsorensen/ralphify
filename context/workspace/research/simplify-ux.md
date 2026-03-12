@@ -777,3 +777,285 @@ Based on re-ranking with cross-cutting insights:
 17. **Should log files include the assembled prompt?** (NEW) O30 proposes this. The prompt can be large (5,000+ chars with contexts). Including it in every log file doubles the file size. Alternative: write a separate `001_prompt.md` file alongside the log. Or only write the prompt when a `--debug` flag is set.
 
 18. **How should the dual-nature of `ralph.toml`'s `ralph` field be resolved?** (NEW) Currently `is_ralph_name()` checks for absence of `/` and `.`. This heuristic fails for values like `my-task` (could be either). Should the field be split into `ralph_file` and `ralph_name`? Or should named ralphs always be prefixed (e.g., `ralph = "@docs"`)? The current silent fallback (F46) is the biggest source of confusing errors.
+
+---
+
+## Deep Dive: The Debugging & Error Recovery Experience (NEW)
+
+This section walks through three concrete scenarios where the user's loop isn't producing good results, analyzing every step of the debugging journey and where friction emerges.
+
+### Scenario 1: "The agent keeps making the same mistake"
+
+**Situation:** The loop is running, tests pass, but every iteration the agent creates unnecessary utility files. The user wants this to stop.
+
+**Actual recovery journey:**
+
+1. Notice the problem (requires reviewing git history or log files — no alert mechanism)
+2. Decide where to intervene: prompt vs. check vs. instruction
+3. Open RALPH.md, add a sign: "Do NOT create utility files"
+4. Wait for the current iteration to finish (could be 5+ minutes)
+5. Hope the next iteration picks up the edit (no confirmation it did — F14)
+6. Watch to see if the behavior changed (requires attention, contradicts J3)
+
+**New friction identified:**
+
+- **F52: No way to know if the agent is exhibiting a pattern without manual review** (NEW, VALIDATED). The run summary shows iteration count and pass/fail but nothing about what the agent actually did. The user must manually `git log` or read log files. For J6 (feel in control), the tool should surface behavioral patterns — not just pass/fail status.
+
+- **F53: No way to interrupt the current iteration gracefully** (NEW, VALIDATED). When the user spots a problem mid-iteration, their only option is to let the iteration complete (wasting time/money) or Ctrl+C the entire loop (losing run state and check feedback). There's no "finish this iteration's checks but don't start the next one" signal. The `request_pause()` mechanism in `RunState` exists but is only exposed through the dashboard API — not from the CLI terminal.
+
+### Scenario 2: "My context isn't showing up in the prompt"
+
+**Situation:** The user added `{{ contexts.git-log }}` to RALPH.md, created the context, but the agent doesn't seem to see it.
+
+**Actual debugging journey:**
+
+1. Run `ralph status` — shows the context exists and is enabled (✓ git-log). Looks fine.
+2. Run `ralph run -n 1 --log-dir logs` and check the log — but the log only shows agent *output*, not the *input prompt* (F31). Can't verify what the agent was told.
+3. Re-read RALPH.md — maybe a typo? `{{ contexts.git-log }}` vs `{{ context.git-log }}` (singular vs plural). Singular produces raw `{{ context.git-log }}` text visible in agent output if noticed.
+4. Check the context directory name — `.ralphify/contexts/git-log/CONTEXT.md`. Is it `git-log` or `gitlog`? Name is directory-based (F37).
+5. If the name is correct but user also used a named placeholder for another context without a bulk `{{ contexts }}` — the git-log context is silently dropped (F16).
+6. No tool to test this. Must mentally simulate the placeholder resolution algorithm.
+
+**Total time to diagnose: 15-30 minutes** for what's often a typo or a missing bulk placeholder. The core issue: **the prompt assembly pipeline is opaque**.
+
+- **F54: No `ralph debug` or dry-run mode for diagnosing prompt assembly** (NEW, VALIDATED). O23 proposes a `ralph preview` command, but the gap is larger than just preview. Users need a diagnostic mode that shows: which contexts were found, which were placed by name, which were dropped, which had errors. The `_assemble_prompt` function at `engine.py:168-192` does this work but emits only `PROMPT_ASSEMBLED` with `prompt_length` — no breakdown of what was resolved.
+
+### Scenario 3: "Checks always fail but I don't know why"
+
+**Situation:** The user added a check with `command: ruff check .` but ruff isn't installed. The check fails every iteration.
+
+**Actual debugging journey:**
+
+1. See check failures in iteration output: `✗ lint (exit 1)`
+2. The check output shows a command-not-found error, but it's truncated at 5,000 chars and mixed with other output
+3. `ralph status` says "Ready to run." — no validation of check commands (F34)
+4. User eventually runs `ruff check .` manually and sees "command not found"
+5. Install ruff, restart loop
+
+**Key insight:** `ralph status` saying "Ready to run." when check commands don't exist is a trust violation. The user ran the validation step and was told everything was fine.
+
+- **F55: No distinction between "check command failed" vs. "check found issues"** (NEW, VALIDATED). When a check exits non-zero, the CLI shows `✗ lint (exit 1)`. Exit code 1 means the same thing whether ruff found lint errors (working as intended) or ruff itself crashed (broken setup). The user can't tell from the CLI output whether the check is doing its job. The check output (which would distinguish these) is only shown to the *next iteration's agent*, not to the user in the terminal. The `_on_checks_completed` handler at `_console_emitter.py:112-125` shows name + exit code but never shows any check output to the user.
+
+---
+
+## Deep Dive: The Cookbook Copy-Paste Gap (NEW)
+
+The cookbook (`docs/cookbook.md`) is the best onboarding resource — it gives complete, working setups. But there's a significant gap between reading a recipe and having it work.
+
+### The Setup Tax
+
+Every cookbook recipe follows this pattern:
+1. Run `ralph init` (creates generic config)
+2. Run `ralph new check X` (creates template with wrong defaults)
+3. Run `ralph new context Y` (creates template with wrong defaults)
+4. **"Edit each file to match the contents above"** ← this is the bottleneck
+
+For the Python library recipe, the user must manually edit **5 files** after scaffolding: `ralph.toml`, `RALPH.md`, `CHECK.md` (×2), `CONTEXT.md`. Each file starts with generic template content that must be replaced with the recipe's specific content.
+
+- **F56: Cookbook recipes require editing 5+ files after scaffolding** (NEW, VALIDATED). The `ralph new` command creates files with generic template content (`_templates.py:10-59`). The CHECK_MD_TEMPLATE defaults to `command: ruff check .`, the CONTEXT_MD_TEMPLATE defaults to `command: git log --oneline -10`. These are often close to what the user wants but not exact. The user must open each file, delete the HTML comment boilerplate, and paste in the recipe's version. This is 5 context switches and 5 file edits for a "copy-paste" recipe.
+
+- **F57: No `ralph init --recipe <name>` or template system** (NEW, HYPOTHESIZED). If `ralph init` could accept a recipe/preset name — `ralph init --preset python`, `ralph init --preset node-typescript` — it could scaffold the complete cookbook setup in one command. The `detect_project()` function already identifies the project type; the gap is connecting detection to scaffold templates.
+
+### The `run.*` Script Tax
+
+Three cookbook recipes (coverage check, migration status, integration tests) require `run.sh` scripts. The setup instructions for these are particularly friction-heavy:
+
+1. Create the `run.sh` file (no scaffold command for this)
+2. Write the script content (must be correct syntax)
+3. `chmod +x` the script (easy to forget; failure mode is a permissions error the user must debug)
+4. No validation that the script is executable until the check/context actually runs
+
+- **F58: `ralph new` doesn't scaffold `run.*` scripts, only marker files** (NEW, VALIDATED). `_scaffold_primitive()` at `cli.py:164-185` only creates the marker file (`CHECK.md`, `CONTEXT.md`). If the user needs a script (for shell features like pipes), they must create and `chmod` the file manually. The cookbook works around this with inline `cat > ... << 'EOF'` commands, which feel fragile and out-of-character for a tool that scaffolds everything else.
+
+- **F59: No validation that `run.*` scripts are executable** (NEW, VALIDATED). `find_run_script()` at `_discovery.py:43-52` finds `run.*` files but doesn't check if they're executable. A non-executable `run.sh` produces a permissions error at runtime. The `_runner.py:50` call `subprocess.run(cmd, ...)` will raise `PermissionError` which surfaces as an unhelpful error in the loop output. `ralph status` doesn't check script permissions either.
+
+---
+
+## Deep Dive: First-Run Anxiety (NEW)
+
+What does the user experience the first time they run `ralph run`? This matters because first impressions determine whether a user continues.
+
+### The Timeline
+
+**T+0s**: User types `ralph run -n 3 --log-dir logs`
+- ASCII art banner fills 8 lines of terminal (F8)
+- Config summary in dim text: "Checks: 2 enabled, Contexts: 1 enabled"
+- `── Iteration 1 ──` appears
+
+**T+1s**: Spinner with elapsed time appears. Nothing else.
+- User sees: `⠋ 1.2s` ... `⠋ 15.0s` ... `⠋ 45.0s`
+- **For Claude Code**: structured streaming happens internally, AGENT_ACTIVITY events fire, but `ConsoleEmitter` ignores them — the spinner is all the user sees
+- **For other agents**: complete silence during execution (F43)
+- The user has no idea: Is it working? Is it stuck? What is it doing?
+
+**T+60s**: Iteration completes
+- `✓ Iteration 1 completed (60.2s) → logs/001_20250312-142301.log`
+- `  Checks: 2 passed`
+- `    ✓ lint`
+- `    ✓ tests`
+- Relief! But the user waited 60 seconds with zero feedback about what was happening.
+
+**T+61s**: `── Iteration 2 ──` starts. Same spinner. Same silence.
+
+### The Anxiety Points
+
+1. **"Is it even doing anything?"** — During the spinner phase, the user has zero confirmation the agent is working. For a first-time user who just connected their API key, this is high anxiety. They're paying per token and see nothing.
+
+2. **"What did it just do?"** — After iteration 1 completes, the user sees "completed (60.2s)" and check results. But what changed? No git diff summary, no files-modified list, no preview of what the agent did. The user must manually `git diff` or read the log file.
+
+3. **"Did my prompt work?"** — The user carefully crafted RALPH.md but has no confirmation that contexts were injected, placeholders resolved, or instructions included. The dim summary says "Contexts: 1 enabled" at run start but doesn't confirm per-iteration resolution.
+
+- **F60: No indication of what the agent is doing during an iteration** (NEW, VALIDATED). The `AGENT_ACTIVITY` events from Claude Code's streaming output are emitted by the engine (`engine.py:217`) but `ConsoleEmitter` has no handler for `AGENT_ACTIVITY` — it's only used by the web dashboard. The CLI user sees nothing between `── Iteration 1 ──` and the completion message. For non-Claude agents, there's truly nothing to show (F43). Even a simple "Running agent..." message would help. A richer experience could show Claude Code's tool usage: "Reading file: src/main.py", "Editing: tests/test_main.py".
+
+- **F61: No post-iteration diff summary** (NEW, VALIDATED). After each iteration, the user sees duration and check results but nothing about what changed in the codebase. A one-line summary like `  Files: 3 modified, 1 created | Commits: 1` would dramatically improve J6 (feel in control). This could be as simple as running `git diff --stat HEAD~1..HEAD` after each iteration and emitting the result. The data is free (git is always available).
+
+---
+
+## Deep Dive: Documentation UX Friction (NEW)
+
+The documentation itself is a product with its own UX. Users frustrated by the CLI often turn to docs for help — if the docs have friction, the entire experience compounds.
+
+### Structure Issues
+
+- **F62: Getting-started guide buries "verify the basic loop works" at step 4** (NEW, VALIDATED). The getting-started guide at `docs/getting-started.md` has 11 steps. Steps 1-3 are install/init/write-prompt (reasonable). But steps 4-8 (test run, add checks, add context, verify, run again) are all setup before the user sees real value. The first time the user sees the self-healing feedback loop in action is step 9 — at which point they've been reading docs for 15+ minutes. Reordering to put "run a single iteration" immediately after init would let users feel value faster.
+
+- **F63: Troubleshooting and FAQ have significant overlap** (NEW, VALIDATED). `docs/troubleshooting.md` and `docs/faq.md` both answer "What if a check always fails?", "Can I edit while running?", "What about permissions?". A user searching for help must check both pages. These should be merged or one should explicitly reference the other for each topic.
+
+- **F64: The "how it works" page reveals critical gotchas mid-document** (NEW, VALIDATED). The placeholder resolution rules table at `docs/how-it-works.md:338-347` is the single most important UX footnote in the entire tool: "Named-only means remaining are dropped." But it's buried on line 349 of a technical deep-dive page. Users encounter this rule only after they've hit F16 (silent context exclusion) and gone searching. It should be surfaced earlier — in the getting-started guide or at minimum in the ralphs/primitives page under a warning callout.
+
+### Terminology Confusion
+
+- **F65: Four docs pages explain placeholders redundantly** (NEW, VALIDATED). Placeholder syntax (`{{ contexts.name }}`, `{{ contexts }}`) is explained in: `docs/primitives.md` (lines 183-197), `docs/ralphs.md` (lines 86-128), `docs/how-it-works.md` (lines 103-128 and 338-347), and `docs/getting-started.md` (lines 203-221). Each explanation is slightly different in depth and examples. When the user has a placeholder question, they find four overlapping sources and must determine which is authoritative. This violates single source of truth for documentation.
+
+---
+
+## Deep Dive: The `run.*` Script Escape Hatch (NEW)
+
+When a check or context needs shell features (pipes, redirections, `&&`), the user must create a `run.*` script. This is well-documented but has its own friction chain.
+
+### The Friction Chain
+
+1. **Discovery**: User writes `command: pytest -x 2>&1 | tail -20` in CHECK.md
+2. **Silent failure**: The `shlex.split()` at `_runner.py:47` splits `2>&1` as a literal argument. The `|` becomes a literal pipe argument to pytest. No error — just wrong behavior.
+3. **Confusion**: The check "works" but produces unexpected output. pytest may even exit 0 because `|` and `tail` are interpreted as test file arguments that don't exist, and pytest defaults to running nothing.
+4. **Diagnosis**: User must realize that `shlex.split()` doesn't support shell features. This is documented in `docs/primitives.md:64-69` but easy to miss.
+5. **Migration**: User creates `run.sh`, moves the command there, adds `#!/bin/bash`, makes it executable.
+6. **Gotcha**: If CHECK.md still has the `command:` field, the user might not realize that `run.*` takes precedence. Or they might remove the `command:` field and leave CHECK.md with just frontmatter + body, which works but is non-obvious.
+
+- **F66: Shell-incompatible commands fail silently, not with an error** (NEW, VALIDATED). `_runner.py:44-48`: when `command` is split via `shlex.split()`, shell operators (`|`, `&&`, `>`, `2>&1`) become literal arguments to the first command. This never produces a "you used shell features in a command" error — it produces unexpected behavior. The tool could detect common shell operators in the `command` field and warn: "Your command contains '|' — commands are run directly, not through a shell. Use a run.sh script for shell features."
+
+- **F67: Removing `command:` from CHECK.md when switching to `run.*` is non-obvious** (NEW, VALIDATED). `_runner.py:44-45`: if both `script` and `command` exist, `script` wins. But a user who adds a `run.sh` might not realize they should remove the `command:` field from frontmatter. The silent precedence means the check works correctly, but the CHECK.md still has a `command:` field that's never used — confusing if someone else reads the config. Conversely, if a user removes the `command:` field but forgets to create the script, the check is silently excluded (via `_check_from_entry` returning `None` at `checks.py:60-61`).
+
+---
+
+## New Simplification Opportunities (Iteration 3)
+
+### Tier 1: High Impact, Low Effort (NEW)
+
+#### O36: Show agent activity in CLI from Claude Code streaming (NEW)
+**What:** Add an `AGENT_ACTIVITY` handler to `ConsoleEmitter` that shows a dim one-line summary of what Claude Code is doing: `  ⋯ reading: src/main.py` or `  ⋯ editing: tests/test_api.py`. Extract the tool name and file path from the JSON stream events.
+**Why:** Addresses F60. The agent activity events are already flowing (`engine.py:217`). The `ConsoleEmitter` just doesn't handle them. This transforms the "staring at a spinner for 60 seconds" experience into "watching the agent work." Directly serves J6 (feel in control) and reduces first-run anxiety.
+**Job:** Monitor (J6)
+**Effort:** S — add one handler to `_handlers` dict, ~15 lines of rendering code. Must filter `AGENT_ACTIVITY` events to show only tool-use events (not every JSON line).
+**Risk:** Low. Dim text, non-blocking. Only fires for Claude Code — other agents continue to see the spinner only (which is still better than before).
+
+#### O37: Post-iteration git diff summary (NEW)
+**What:** After each iteration completes, run `git diff --stat HEAD~1..HEAD 2>/dev/null` and show a one-line summary: `  Files: 3 modified, 1 created | Commits: 1`. If no commits were made, show `  No commits this iteration`.
+**Why:** Addresses F61. The user instantly knows what the agent did without opening log files or running git manually. This is the highest-value, lowest-effort monitoring improvement after O24 (per-check events). Git is always available in ralphify's target environment.
+**Job:** Monitor (J6)
+**Effort:** S — run one git command after iteration completion, parse output, emit event.
+**Risk:** Very low. The git command is read-only and fast. Falls back gracefully if not in a git repo.
+
+#### O38: Warn on shell operators in `command` field (NEW)
+**What:** During primitive discovery, scan the `command` field for common shell operators (`|`, `&&`, `||`, `>`, `>>`, `2>&1`, `$(`, `` ` ``). If found, emit a warning: `⚠ Check 'lint': command contains '|' — commands are run directly, not through a shell. Use a run.sh script for shell features.`
+**Why:** Addresses F66. This is the most common gotcha for users writing checks and contexts. The warning prevents the user from spending 20 minutes debugging why their piped command produces wrong output.
+**Job:** Trust, Setup (J2, J5)
+**Effort:** XS — add a regex check in `_check_from_entry()` and `_context_from_entry()`. ~5 lines.
+**Risk:** None. Warning only.
+
+#### O39: Validate `run.*` script permissions in `ralph status` (NEW)
+**What:** When `ralph status` discovers a check or context with a `run.*` script, check if the script is executable (`os.access(path, os.X_OK)`). If not, show: `⚠ Check 'integration': run.sh is not executable. Run: chmod +x .ralphify/checks/integration/run.sh`
+**Why:** Addresses F59. A non-executable script produces a cryptic `PermissionError` at runtime. Catching it in `ralph status` (which users run to validate setup) prevents a completely avoidable failure mode.
+**Job:** Trust, Setup (J2, J5)
+**Effort:** XS — add `os.access()` check in the `_print_primitives_section` logic or during discovery.
+**Risk:** None. Warning only.
+
+#### O40: Show check output snippet to user in CLI (NEW)
+**What:** When a check fails, show the first 3 lines of check output in the CLI beneath the `✗ name (exit N)` line. Currently the user sees only the check name and exit code; the actual output is only fed to the agent.
+**Why:** Addresses F55. Users can't distinguish "check found issues" from "check command is broken" without reading log files. Showing `    FAILED tests/test_api.py::test_create_user - AssertionError` immediately tells the user what happened.
+**Job:** Monitor (J6)
+**Effort:** S — the check output is already in the `CHECK_FAILED` event data (`output` field at `engine.py:283`). Add a handler to `ConsoleEmitter` that shows first 3 lines.
+**Risk:** Very low. More terminal output, but only on failures where the user wants information.
+
+### Tier 2: High Impact, Medium Effort (NEW)
+
+#### O41: `ralph init --preset <type>` for cookbook recipes (NEW)
+**What:** Add preset support to `ralph init`. Running `ralph init --preset python` creates the full Python cookbook setup: `ralph.toml` with correct config, `RALPH.md` with the plan-file pattern, checks for pytest and ruff, context for git-log — all with correct commands, timeouts, and failure instructions. Presets available: `python`, `node`, `rust`, `go`, `docs`.
+**Why:** Addresses F56 and F57. Eliminates the cookbook copy-paste gap entirely. A new user goes from zero to a working, opinionated setup in one command. This is the single biggest "time to first productive run" improvement.
+**Job:** Setup (J1, J5)
+**Effort:** M — requires preset data structures, multiple file writes, and integration with `detect_project()` for auto-detection. Could be implemented as: `ralph init` auto-detects and uses the appropriate preset, `ralph init --preset python` forces a specific one.
+**Risk:** Low-medium. Opinionated defaults may not match every project's toolchain (e.g., `pytest` vs `unittest`). Mitigate by making generated files obviously editable and running `ralph status` to validate.
+
+#### O42: CLI pause signal (e.g., press 'p' to pause after current iteration) (NEW)
+**What:** During a running loop, listen for keypress 'p' (or a signal like SIGUSR1) to trigger `state.request_pause()`. The loop finishes the current iteration's checks, then pauses. Press 'p' again (or send signal) to resume.
+**Why:** Addresses F53. Users can pause the loop to review what happened, edit the prompt, add checks, then resume — without losing run state. The `request_pause()`/`request_resume()` infrastructure already exists in `RunState` (`_run_types.py:95-103`). The gap is purely in the CLI input handling.
+**Job:** Steer, Monitor (J3, J6)
+**Effort:** M — requires a non-blocking stdin reader or signal handler running alongside the main loop. Thread-based on Unix, more complex on Windows.
+**Risk:** Low. Opt-in behavior (user must actively press a key). Falls back gracefully on platforms without signal support.
+
+#### O43: Diagnostic mode for prompt assembly (NEW)
+**What:** `ralph preview [name] --diagnostic` shows the full prompt assembly pipeline with annotations: which contexts were found, which were placed by named placeholder, which went into bulk, which were excluded, whether any named placeholders were unresolved, the final prompt length, and the prompt itself.
+**Why:** Addresses F54. Goes beyond O23 (preview) by adding a step-by-step breakdown. When a user suspects a context is missing from their prompt, one command answers every question. The `_assemble_prompt()` function at `engine.py:168-192` already does the work; this would add observability wrappers.
+**Job:** Trust, Steer (J2, J6)
+**Effort:** M — extract and annotate each step of the assembly pipeline, render as a structured report.
+**Risk:** None. New command, read-only.
+
+---
+
+## Updated Principles Applied
+
+| Principle | New Applications (Iteration 3) |
+|---|---|
+| **Clear feedback** | O36 (agent activity in CLI), O37 (git diff summary), O38 (shell operator warning), O39 (script permission validation), O40 (check output snippet), O43 (assembly diagnostics) |
+| **Observability is trust** | O36, O37, O40 (make invisible operations visible at zero user cost) |
+| **Convention over configuration** | O41 (presets eliminate manual config for common setups) |
+| **Fewer steps** | O41 (one command replaces 5+ file edits) |
+| **Progressive disclosure** | O42 (pause key is invisible until needed, then immediately useful) |
+
+---
+
+## Updated Recommended Implementation Order
+
+Adding iteration 3 opportunities to the existing phased plan:
+
+**Phase 1 — "Just Works" (add to existing):**
+- O38: Warn on shell operators in commands (XS) — prevents most common check gotcha
+- O39: Validate `run.*` script permissions in status (XS)
+- O40: Show check output snippet in CLI on failure (S)
+
+**Phase 2 — "Smart Setup" (add to existing):**
+- O41: `ralph init --preset <type>` for cookbook recipes (M) — biggest setup time reduction
+
+**Phase 3 — "Observable Loop" (add to existing):**
+- O36: Show agent activity in CLI from Claude streaming (S) — transforms first-run experience
+- O37: Post-iteration git diff summary (S)
+
+**Phase 4 — "Power User Tools" (add to existing):**
+- O42: CLI pause signal (M)
+- O43: Diagnostic mode for prompt assembly (M)
+
+---
+
+## Updated Open Questions
+
+19. **Should `ralph init` auto-detect project type and use a preset without asking?** If `pyproject.toml` exists, should `ralph init` automatically scaffold Python-appropriate checks? Or should it require `--preset python` explicitly? Auto-detection is more magical but may surprise users who have unusual setups (e.g., a Python project that uses `unittest` not `pytest`).
+
+20. **Should the agent activity display be opt-in or opt-out?** O36 proposes showing Claude Code tool usage in the CLI. Some users may find this noisy. Options: on by default (with `--quiet` to suppress), off by default (with `--verbose` to show), or adaptive (show only when iteration exceeds 30s).
+
+21. **Should `ralph preview` and `ralph run --dry-run` be the same thing?** O23 proposes a `preview` command; O43 proposes a `--diagnostic` flag on it. An alternative is `ralph run --dry-run` which assembles the prompt and runs contexts but doesn't execute the agent. This keeps the CLI surface smaller (no new command) but overloads `ralph run` further.
+
+22. **Should check output be shown in the CLI for passing checks too?** O40 proposes showing output only on failure. But some users might want to see passing check output for verification. A `--verbose-checks` flag could show all output, while the default shows only failures.
+
+23. **Should the git diff summary (O37) detect "going in circles"?** If the same file is modified in 3 consecutive iterations, the summary could add a warning: `⚠ src/main.py modified in last 3 iterations — agent may be going in circles`. This directly addresses the best-practices doc's red flag: "Commits that undo previous commits."
+
+24. **How should presets (O41) handle existing files?** If `ralph init --preset python` is run in a project that already has a `ralph.toml`, should it fail, merge, or overwrite? Current `ralph init --force` overwrites everything — but presets create many more files (checks, contexts) that are harder to recreate.
