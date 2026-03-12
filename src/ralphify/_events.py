@@ -140,7 +140,12 @@ class EventEmitter(Protocol):
 
 
 class NullEmitter:
-    """Discards all events.  Used in tests to run the engine without output."""
+    """Discards all events silently.
+
+    Use this when you need the engine to run without any output — in tests,
+    in batch scripts where you only care about the final ``RunState``, or
+    as a default when no emitter is provided.
+    """
 
     def emit(self, event: Event) -> None:
         """No-op — silently discard the event."""

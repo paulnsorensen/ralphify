@@ -121,7 +121,12 @@ def run_all_checks(checks: list[Check], project_root: Path) -> list[CheckResult]
     """Run every check sequentially and return all results.
 
     Checks execute in the order given (the engine sorts alphabetically by
-    name).  Failures do not short-circuit — all checks run regardless.
+    name).  Failures do not short-circuit — all checks run regardless so
+    the agent receives the complete picture of what's broken.
+
+    The engine passes the results to :func:`format_check_failures`, which
+    formats them as markdown for injection into the next iteration's prompt.
+    This is what drives the self-healing feedback loop.
     """
     return [run_check(check, project_root) for check in checks]
 

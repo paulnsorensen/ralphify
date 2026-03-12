@@ -15,19 +15,36 @@ from pathlib import Path
 
 
 class RunStatus(Enum):
-    """Lifecycle status of a run."""
+    """Lifecycle status of a run.
 
-    PENDING = "pending"
-    RUNNING = "running"
-    PAUSED = "paused"
-    STOPPED = "stopped"
-    COMPLETED = "completed"
-    FAILED = "failed"
+    Transitions follow a simple path: ``PENDING`` → ``RUNNING`` →
+    terminal (``COMPLETED``, ``STOPPED``, or ``FAILED``).  A running loop
+    may also be ``PAUSED`` and later resumed back to ``RUNNING``.
+
+    Check ``state.status`` to decide what UI elements to show or whether
+    it's safe to start a new run with the same resources.
+    """
+
+    PENDING = "pending"       # Created but not yet started
+    RUNNING = "running"       # Loop is executing iterations
+    PAUSED = "paused"         # Paused between iterations, waiting for resume
+    STOPPED = "stopped"       # Stopped by user via request_stop()
+    COMPLETED = "completed"   # Reached max_iterations or finished naturally
+    FAILED = "failed"         # Crashed with an unhandled exception
 
 
 @dataclass
 class RunConfig:
-    """All settings for a single run.  Mutable — fields can change mid-run."""
+    """All settings for a single run.
+
+    Mutable by design: the engine reads fields at each iteration boundary,
+    so you can change ``max_iterations``, ``delay``, or ``timeout`` while
+    the loop is running and the new values take effect on the next cycle.
+    This is how the planned dashboard will let users tune a live run.
+
+    For CLI usage the config is built once from ``ralph.toml`` + flags.
+    For programmatic usage, construct directly and pass to :func:`run_loop`.
+    """
 
     command: str
     args: list[str]

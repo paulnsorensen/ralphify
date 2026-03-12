@@ -16,7 +16,13 @@ from ralphify.engine import run_loop
 
 @dataclass
 class ManagedRun:
-    """A run wrapped with its thread and event queue."""
+    """A run bundled with its background thread and event queue.
+
+    Created by :meth:`RunManager.create_run`.  Use ``state`` to inspect
+    progress or call control methods (stop, pause, resume), and drain
+    ``emitter.queue`` to consume events.  Register extra listeners with
+    :meth:`add_listener` *before* calling :meth:`RunManager.start_run`.
+    """
 
     config: RunConfig
     state: RunState
@@ -30,7 +36,13 @@ class ManagedRun:
 
 
 class RunManager:
-    """Registry of runs. Thread-safe."""
+    """Thread-safe registry for managing concurrent background runs.
+
+    Use this instead of calling :func:`run_loop` directly when you need to
+    launch multiple runs, control them from another thread (e.g. a web
+    server), or list/inspect all active runs.  Each run gets its own daemon
+    thread and event queue.
+    """
 
     def __init__(self) -> None:
         self._runs: dict[str, ManagedRun] = {}
