@@ -112,15 +112,16 @@ def run_agent_streaming(
                 break
             stdout_lines.append(line)
             stripped = line.strip()
-            if stripped:
-                try:
-                    parsed = json.loads(stripped)
-                    if parsed.get("type") == "result" and "result" in parsed:
-                        result_text = parsed["result"]
-                    if on_activity is not None:
-                        on_activity(parsed)
-                except json.JSONDecodeError:
-                    pass
+            if not stripped:
+                continue
+            try:
+                parsed = json.loads(stripped)
+            except json.JSONDecodeError:
+                continue
+            if parsed.get("type") == "result" and "result" in parsed:
+                result_text = parsed["result"]
+            if on_activity is not None:
+                on_activity(parsed)
 
         if not timed_out:
             # stdout exhausted — process finished normally.
