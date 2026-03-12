@@ -130,7 +130,7 @@ Effective concept count is **16**, not 10. Progressive disclosure should let use
 
 - **F8: Banner prints on every `ralph run`** (VALIDATED). The ASCII art banner (`cli.py:58-107`) prints every time the user runs `ralph run`. It's nice on first launch but wastes 8 lines of vertical space on subsequent runs. The "Star us on GitHub" line is promotional, not functional. During iteration, vertical space matters — users are scanning for check results and iteration status.
 
-- **F9: No default for `-n` (iteration limit)** (VALIDATED). If the user omits `-n`, the loop runs infinitely until Ctrl+C. For new users, this is risky — J9 (prevent runaway costs) is a validated job. A sensible default (e.g., `-n 5` or `-n 10`) with an explicit `--infinite` flag would protect new users while allowing power users to opt in.
+- **F9: No default for `-n` (iteration limit)** (VALIDATED). If the user omits `-n`, the loop runs infinitely until Ctrl+C. For new users, this is risky — J9 (prevent runaway costs) is a validated job. A sensible default (e.g., `-n 5` or `-n 10`) with an explicit `--no-limit` flag would protect new users while allowing power users to opt in.
 
 - **F19: `ralph new ralph` reads awkwardly** (VALIDATED). To create a named ralph, the command is `ralph new ralph docs`. The word "ralph" appears twice: as the CLI tool name and as the primitive type. This is a consequence of using the product name ("ralph") as both the tool and a primitive type name. Compare: `git branch create` makes sense because "git" and "branch" are different words. A user may wonder "did I type that correctly?" Internally this is the `new_ralph` function at `cli.py:215-221`, which is even marked `hidden=True` — the `_DefaultRalphGroup` at `cli.py:46-52` auto-routes unknown subcommands to `ralph`, so `ralph new docs` works. But the hidden magic creates its own confusion: `ralph new --help` doesn't show how to create a ralph.
 
@@ -232,6 +232,88 @@ Effective concept count is **16**, not 10. Progressive disclosure should let use
 
 - **F40: `ralph new` doesn't open the created file in `$EDITOR`** (VALIDATED). After `ralph new check tests`, the user sees "Created .ralphify/checks/tests/CHECK.md" and then has to manually navigate to and open the file. Many CLI tools (e.g., `git commit`, `crontab -e`) open the file automatically. Given that every scaffolded file needs editing (the templates contain generic placeholder content), this adds one extra step per primitive creation. A `--edit` flag (or auto-detect `$EDITOR`) would save time.
 
+### Error Message Quality Audit (NEW)
+
+This section walks through every error path in the codebase and evaluates whether the error message helps the user fix the problem. Grounded in: if a user triggers this error, can they immediately know what to do?
+
+**Error: `ralph.toml not found. Run 'ralph init' first.`** (`cli.py:131`)
+- Quality: GOOD. Clear problem, clear fix. Exit code 1.
+
+**Error: `{CONFIG_FILENAME} already exists. Use --force to overwrite.`** (`cli.py:148`)
+- Quality: GOOD. Tells user what to do.
+
+**Error: `RALPH.md already exists. Use --force to overwrite.`** (`cli.py:155`)
+- Quality: GOOD.
+
+**Error: `Cannot use both a ralph name and --prompt-file.`** (`cli.py:305`)
+- Quality: ADEQUATE. Says what's wrong but doesn't say which to prefer. Could add: "Use one or the other."
+
+**Error: `Ralph '{name}' not found. Available: {list}`** (`ralphs.py:73-76`)
+- Quality: GOOD. Shows what's available, suggests correction.
+
+**Error: `Prompt file '{path}' not found.`** (`cli.py:319`)
+- Quality: ADEQUATE. Says what's missing but doesn't suggest how to create it. Could add: "Run 'ralph init' to create RALPH.md."
+
+**Error: `{Label} '{name}' already exists at {path}`** (`cli.py:181`)
+- Quality: GOOD. Shows exact path.
+
+**Error: `Check '{name}' has neither a run.* script nor a command — skipping`** (`checks.py:61`)
+- Quality: POOR — this is a `warnings.warn()`, not a CLI error. It fires during discovery and might be lost in output. A user who creates a CHECK.md and forgets to add a command gets a warning they might never see. The check is silently excluded from the loop. For `ralph status`, this check would show up with `?` detail but no explanation of why.
+
+- **F44: Check without command/script produces a warning, not a clear error** (NEW, VALIDATED). `checks.py:55-62`: when a CHECK.md has no `command` field and no `run.*` script, `_check_from_entry` returns `None` and the check is silently excluded from the list. A `warnings.warn()` fires but users may not see it. The `ralph status` command shows `?` for the detail but doesn't explain why. A user who creates a check and forgets to add the command sees the check in `ralph status` with `?`, runs the loop, and the check never executes. No error, no clear signal.
+
+**Error: `Agent command not found: '{command}'. Check the [agent] command in ralph.toml.`** (`engine.py:224-227`)
+- Quality: GOOD. Clear error, points to config file.
+
+**Error: (Crash traceback) `Run crashed: {exc}`** (`engine.py:419-425`)
+- Quality: ADEQUATE. Shows traceback in dim text but this is a catch-all. Unexpected errors get the same treatment as known errors.
+
+- **F45: `ralph.toml` has no schema validation** (NEW, VALIDATED). `cli.py:127-134`: `_load_config()` loads the TOML file and returns a raw dict. The `run()` function at `cli.py:294-297` accesses `config["agent"]`, `agent["command"]`, etc. with no validation. If `ralph.toml` is missing the `[agent]` section, `command` field, or has typos (e.g., `comandd`), the user gets a raw Python `KeyError` traceback — not a helpful error message. Example: a user who writes `commnad = "claude"` (typo) gets `KeyError: 'command'` with no context about which key is missing or where.
+
+- **F46: `resolve_ralph_source` has a confusing silent fallback** (NEW, VALIDATED). `ralphs.py:108-123`: when `ralph.toml` has `ralph = "docs"` (looks like a name) but no ralph named "docs" exists, the function silently falls back to treating "docs" as a file path. The user then hits "Prompt file 'docs' not found" — a confusing error because they intended "docs" as a ralph name, not a file path. The heuristic `is_ralph_name()` at `ralphs.py:79-88` checks for absence of `/` and `.` — but `"docs"` passes both checks. The fallback at line 121 (`return toml_ralph, None`) converts a "ralph not found" into a "file not found" without explaining the resolution chain.
+
+- **F47: `ralph status` doesn't show which ralph will be used by `ralph run`** (NEW, VALIDATED). `cli.py:224-272`: the status command shows the `ralph` field from the config (e.g., `RALPH.md`), validates it exists, but doesn't indicate whether `ralph run` would use a named ralph, a root prompt file, or has a fallback chain. If `ralph.toml` has `ralph = "docs"`, status shows `Ralph: docs` and checks if the *file* "docs" exists — but it should check whether a ralph named "docs" exists under `.ralphify/ralphs/`. The status command doesn't mirror `resolve_ralph_source()`'s logic, so what status reports and what `run` uses can diverge.
+
+- **F48: Context timeout defaults to 30s — silently fails for slow commands** (NEW, VALIDATED). `contexts.py:33`: the default context timeout is 30 seconds. If a user adds `command: npm test` as a context (to show test status) and the test suite takes >30s, the context silently times out. The output up to the timeout is still injected, but it's incomplete. There's no warning that a context timed out — the ContextResult has `timed_out=True` but `resolve_contexts` at `contexts.py:120-146` uses the output regardless. The user sees partial test output in their prompt with no indication that it was cut short by a timeout, not by the tests finishing.
+
+- **F49: Log file naming is opaque** (NEW, VALIDATED). `_agent.py:46-48`: log files are named `{iteration:03d}_{timestamp}.log` (e.g., `001_20250312-143022.log`). This is useful for ordering but tells the user nothing about what happened. There's no way to quickly identify which iterations had failures vs successes from the filename alone. A naming convention like `001_20250312-143022_pass.log` or `001_20250312-143022_fail.log` would let users scan the log directory for problems.
+
+- **F50: Non-Claude agent output dumped as wall of text after iteration** (NEW, VALIDATED). `_agent.py:176-181`: after `subprocess.run` completes with `capture_output=True`, the full stdout is dumped via `sys.stdout.write(result.stdout)`. This is a raw write — no paging, no truncation, no formatting. If the agent produced 10,000 lines of output, all 10,000 lines are printed at once between the iteration header and the check results. The user sees the spinner, then a massive wall of text, then the check results. The iteration status line (✓/✗ with duration) gets buried in the output.
+
+### Configuration Surface Area Analysis (NEW)
+
+The configuration story has three layers that interact in non-obvious ways:
+
+**Layer 1: `ralph.toml` (project-level defaults)**
+```toml
+[agent]
+command = "claude"
+args = ["-p", "--dangerously-skip-permissions"]
+ralph = "RALPH.md"
+```
+- Only 3 fields. No validation. No schema.
+- `ralph` field has dual semantics: file path OR named ralph name. The distinction is made by `is_ralph_name()` checking for absence of `/` and `.`.
+- No config for: timeout, delay, log_dir, stop_on_error. These are CLI-only.
+- **Gap**: Users who always want `--log-dir logs --timeout 300` must type it every time. There's no way to set defaults in the config.
+
+**Layer 2: CLI flags (per-invocation overrides)**
+- 8 flags on `ralph run`, 1 on `ralph init`, 0 on `ralph status`.
+- Cannot override `command` or `args` from CLI — must edit toml.
+- Can set `--timeout` on CLI but not in toml. Can set `command` in toml but not on CLI. The two config surfaces are **non-overlapping** except for the `ralph` field.
+
+**Layer 3: Frontmatter (per-primitive config)**
+- `enabled`, `timeout`, `command`, `description` fields. Only `enabled` and `timeout` have type coercion.
+- No schema or validation beyond type coercion. Unknown fields silently accepted as strings.
+- `timeout` in frontmatter (per-check/context) vs `--timeout` on CLI (per-iteration) — same word, different scope. A user might think `--timeout 300` sets check timeouts.
+
+**The interplay creates friction:**
+- "How do I set the default timeout for all checks?" → Can't. Each check has its own frontmatter timeout, defaulting to 60s. No global check timeout.
+- "How do I always log to a directory?" → Can't configure in toml. Must add `--log-dir` every time or use a shell alias.
+- "How do I switch agents for one run?" → Can't use CLI. Must edit toml, run, edit back.
+- "What does `ralph = "docs"` mean in my toml?" → Could be a file named "docs" or a ralph named "docs". `is_ralph_name()` decides, but the user has no visibility into this heuristic.
+
+- **F51: CLI and toml config surfaces don't overlap** (NEW, VALIDATED). The CLI has `--timeout`, `--delay`, `--log-dir`, `--stop-on-error` that can't be set in toml. The toml has `command` and `args` that can't be overridden from CLI. Users who want consistent defaults for CLI-only settings have no config mechanism. Users who want to experiment with CLI-settable toml settings must edit the file. This creates a "worst of both worlds" situation where neither the config file nor the CLI is a complete control surface.
+
 ---
 
 ## Cross-Cutting Analysis
@@ -250,6 +332,8 @@ Several friction points share a root cause: things happen invisibly and the user
 | Full assembled prompt | F31 | User can't see what agent was told |
 | Agent execution (non-Claude) | F43 | No output during iteration for non-Claude agents |
 | Named placeholder resolution failure | F37 | Typo in placeholder name → silent empty string |
+| Context timeout | F48 | Context times out silently, partial output injected |
+| Ralph name/path resolution | F46 | Name falls back to path silently, confusing error |
 
 **Root principle: Observability is trust.** Users can't trust what they can't see. Every invisible operation should have at least a dim/debug-level signal in the CLI output. The cost of one extra line of output is far lower than the cost of a user spending 20 minutes debugging why their context isn't being injected.
 
@@ -264,8 +348,8 @@ The friction analysis reveals two distinct user journeys with fundamentally diff
 
 **Journey B: Deep Customization** (Staff Engineer, Platform Engineer)
 - Wants: fine-grained control over every aspect of the loop
-- Blocked by: F31 (can't see prompt), F32 (Claude-only streaming), F42 (can't override config from CLI), F33 (stop-on-error semantics), F26 (no fail-fast)
-- Needs: preview command, per-check events, CLI overrides, pluggable streaming
+- Blocked by: F31 (can't see prompt), F32 (Claude-only streaming), F42 (can't override config from CLI), F33 (stop-on-error semantics), F26 (no fail-fast), F51 (non-overlapping config surfaces)
+- Needs: preview command, per-check events, CLI overrides, pluggable streaming, unified config
 
 Current UX is stuck in the middle: too much ceremony for quick starters (12 steps), not enough power tools for power users. The simplification strategy should explicitly serve both — **reduce the floor** (fewer steps to first run) and **raise the ceiling** (more control for experts).
 
@@ -279,6 +363,60 @@ The word "ralph" carries 5 meanings:
 5. The `.ralphify/ralphs/` directory
 
 This creates friction at F19, F22, F28 and any documentation that tries to distinguish between these uses. The `_DefaultRalphGroup` hidden routing (`cli.py:46-52`) is clever but adds a 6th layer of confusion: `ralph new docs` secretly becomes `ralph new ralph docs`, but this isn't shown in `--help`.
+
+### The Configuration Identity Crisis (NEW)
+
+Ralphify has three non-overlapping configuration surfaces (see F51):
+
+1. **`ralph.toml`** controls: agent command, agent args, default prompt source
+2. **CLI flags** control: iteration limit, timeout, delay, log dir, stop behavior
+3. **Frontmatter** controls: per-primitive enabled, timeout, command
+
+No single surface is authoritative. The mental model should be: "toml for project defaults, CLI for session overrides, frontmatter for per-primitive config." But the implementation doesn't follow this cleanly:
+- `timeout` appears in both CLI (per-iteration) and frontmatter (per-check), with confusingly similar names but different scopes
+- `ralph` (prompt source) appears in both toml and CLI (positional + `--prompt-file`)
+- Common settings like log directory and iteration limit have no toml representation
+
+**Opportunity: Unify the config model.** Allow `ralph.toml` to set defaults for ALL settings:
+```toml
+[agent]
+command = "claude"
+args = ["-p", "--dangerously-skip-permissions"]
+ralph = "RALPH.md"
+
+[run]
+max_iterations = 5
+timeout = 300
+delay = 0
+log_dir = "ralph_logs"
+stop_on_error = false
+```
+CLI flags override toml defaults. This eliminates F42 and F51 simultaneously.
+
+### The Error Diagnostic Gap (NEW)
+
+The error path analysis reveals a pattern: errors are well-worded for expected cases (file not found, config not found) but fall through to raw Python exceptions for edge cases:
+- Missing `[agent]` section in toml → `KeyError: 'agent'`
+- Typo in toml field name → `KeyError` with no context
+- Malformed frontmatter → depends on the parsing failure mode
+
+The fix is lightweight: add a config validation step in `_load_config()` that checks for required keys and returns a typed object (or at minimum a clear error).
+
+### The Agent Parity Problem (NEW)
+
+Ralphify markets itself as "agent-agnostic" but the implementation is Claude-first:
+
+| Feature | Claude Code | Other agents |
+|---|---|---|
+| Streaming output | Yes (JSON lines) | No |
+| Dashboard activity feed | Yes | No (silent) |
+| Live terminal output during iteration | Yes | Only without `--log-dir` |
+| Result text extraction | Yes (`result` field from JSON) | No |
+| Auto-added flags | `--output-format stream-json --verbose` | None |
+
+This isn't necessarily wrong — Claude Code is the primary audience. But the marketing says "works with any agent CLI" while the experience diverges sharply. For non-Claude users, ralphify feels like a wrapper around `subprocess.run` with added complexity.
+
+**Key insight:** The agent parity gap affects monitoring (J6) disproportionately. Non-Claude users can still SET UP and RUN loops fine. But they can't MONITOR effectively because the streaming/logging infrastructure assumes Claude's JSON output format. This makes the tool feel less trustworthy (J2) for non-Claude users.
 
 ---
 
@@ -409,6 +547,36 @@ Ranked by: (impact on user's job) × (frequency of the job) / (effort + risk)
 **Effort:** S-M — option (a) is a rename, (b) is a new flag + one conditional in engine.py.
 **Risk:** Low for (a) and (b). Higher for (c) since it changes default behavior.
 
+#### O31: Validate `ralph.toml` schema on load (NEW)
+**What:** Add validation in `_load_config()` that checks for required keys (`[agent]`, `command`) and provides clear error messages: "ralph.toml is missing the 'command' field under [agent]. Example: command = \"claude\"". Use a simple dict check, not a schema library.
+**Why:** Addresses F45. Currently, a typo in ralph.toml produces a raw Python KeyError. Schema validation turns cryptic tracebacks into actionable error messages. This is a trust issue — if the tool crashes on a config typo, users lose confidence.
+**Job:** Setup, Trust (J1, J5)
+**Effort:** S — add ~15 lines of validation code in `_load_config()`.
+**Risk:** None.
+
+#### O32: Show context timeout warnings (NEW)
+**What:** When a context command times out (`ContextResult.timed_out=True`), emit a warning in the CLI: `⚠ Context 'tests' timed out after 30s — output may be incomplete. Consider increasing timeout in CONTEXT.md frontmatter.` Also mark the injected output: `(timed out after 30s — output may be incomplete)`.
+**Why:** Addresses F48. Context timeouts are currently invisible. The partial output is injected without any indication that it was cut short. This can cause the agent to act on incomplete information.
+**Job:** Trust, Monitor (J2, J6)
+**Effort:** S — add timeout check in the context resolution path, emit a warning event.
+**Risk:** None.
+
+#### O33: Unify config surfaces — add `[run]` section to `ralph.toml` (NEW)
+**What:** Allow ralph.toml to set defaults for all `ralph run` flags:
+```toml
+[run]
+max_iterations = 5
+timeout = 300
+delay = 0
+log_dir = "ralph_logs"
+stop_on_error = false
+```
+CLI flags override toml defaults. Existing behavior unchanged if `[run]` section is absent.
+**Why:** Addresses F42 and F51. Users who always want the same settings don't have to type them every time. Makes the config file the single source of project-level defaults.
+**Job:** Run, Setup (J1, J5, J6)
+**Effort:** M — parse new section in `_load_config()`, merge with CLI args in `run()`.
+**Risk:** Low. Purely additive — no breaking changes. CLI flags always win.
+
 ### Tier 3: Medium Impact, Medium Effort
 
 #### O9: Hot-reload primitives
@@ -448,7 +616,7 @@ Ranked by: (impact on user's job) × (frequency of the job) / (effort + risk)
 
 #### O28: Fix non-Claude agent output during logging
 **What:** For non-streaming agents (`run_agent` in `_agent.py`), use a `tee`-style approach: read output line-by-line and simultaneously display to terminal and buffer for log file, instead of the current all-or-nothing `capture_output`.
-**Why:** Addresses F43. Currently, enabling `--log-dir` for non-Claude agents means zero terminal output during the entire iteration. This is the worst possible monitoring experience and directly contradicts J6 (feel in control). With the proposed O2 (default logging), this would become the default experience for all non-Claude users — making O28 a prerequisite for O2.
+**Why:** Addresses F43 and F50. Currently, enabling `--log-dir` for non-Claude agents means zero terminal output during the entire iteration, followed by a wall of text. This is the worst possible monitoring experience and directly contradicts J6 (feel in control). With the proposed O2 (default logging), this would become the default experience for all non-Claude users — making O28 a prerequisite for O2.
 **Job:** Monitor (J6)
 **Effort:** M — change `subprocess.run` to `subprocess.Popen` with a line-by-line read loop similar to `run_agent_streaming`, but without JSON parsing.
 **Risk:** Low. The streaming version for Claude already proves this approach works.
@@ -459,6 +627,20 @@ Ranked by: (impact on user's job) × (frequency of the job) / (effort + risk)
 **Job:** Setup (J1, J5)
 **Effort:** XS — just change the template string.
 **Risk:** None.
+
+#### O34: Improve `ralph status` to mirror `ralph run` resolution (NEW)
+**What:** Make `ralph status` use the same `resolve_ralph_source()` logic as `ralph run`. Show the resolved prompt source: "Ralph: RALPH.md (from ralph.toml)" or "Ralph: .ralphify/ralphs/docs/RALPH.md (named ralph 'docs')". Warn if the `ralph` field in toml matches neither a file nor a named ralph.
+**Why:** Addresses F46 and F47. Currently `ralph status` and `ralph run` can disagree about which prompt file to use. Status shows the raw toml value; run resolves it through a priority chain with fallbacks. If they diverge, the user trusts status and is surprised by run.
+**Job:** Trust, Setup (J2, J6)
+**Effort:** S-M — call `resolve_ralph_source()` from status and display the resolved path.
+**Risk:** Very low.
+
+#### O35: Include pass/fail suffix in log filenames (NEW)
+**What:** Change log file naming from `001_20250312-143022.log` to `001_20250312-143022_pass.log` or `001_fail.log`. The suffix reflects the agent's exit code.
+**Why:** Addresses F49. Users scanning a log directory can immediately identify failed iterations without opening each file. Essential for long runs (50+ iterations) where manual scanning is infeasible.
+**Job:** Monitor (J6)
+**Effort:** XS — pass return code to `_write_log()`, append suffix to filename.
+**Risk:** Very low. Log file naming is internal, not a public API.
 
 ### Tier 4: Exploratory / Higher Risk
 
@@ -503,15 +685,16 @@ Ranked by: (impact on user's job) × (frequency of the job) / (effort + risk)
 
 | Principle | Where Applied |
 |---|---|
-| **Sensible defaults** | O1 (auto-create checks), O2 (default logs), O3 (default iteration limit), O15 (inline prompt → 1 iteration), O17 (explain scary flag), O29 (documented config) |
+| **Sensible defaults** | O1 (auto-create checks), O2 (default logs), O3 (default iteration limit), O15 (inline prompt → 1 iteration), O17 (explain scary flag), O29 (documented config), O33 (toml defaults for run settings) |
 | **Remove before you add** | O5 (remove --prompt-file), O10 (merge instructions) |
 | **Fewer concepts** | O10 (merge instructions into prompt/checks), O22 (rename ralphs to reduce polysemy) |
 | **Progressive disclosure** | O3 (safe default, opt into infinite), O4 (banner only when relevant), O21 (fail-fast checks opt-in) |
 | **Convention over configuration** | O1 (detect project, create appropriate checks), O2 (default log dir), O15 (inline = one-shot), O17 (agent presets) |
-| **Clear feedback** | O6 (warn on silent exclusion), O7 (prompt summary), O14 (progress N/M), O16 (truncation indicator), O18/O24 (per-check status), O19 (aggregate stats), O23/O30 (prompt visibility), O25 (warn on missing placeholder), O26 (validate commands) |
+| **Clear feedback** | O6 (warn on silent exclusion), O7 (prompt summary), O14 (progress N/M), O16 (truncation indicator), O18/O24 (per-check status), O19 (aggregate stats), O23/O30 (prompt visibility), O25 (warn on missing placeholder), O26 (validate commands), O31 (config validation), O32 (context timeout warning), O34 (status mirrors run), O35 (log file naming) |
 | **Fewer steps** | O1 (init creates working setup), O8 (better template), O20 (reload without restart) |
 | **Obvious naming** | O22 (rename ralphs to prompts/tasks), O27 (clarify stop-on-error scope) |
-| **Observability is trust** | O7, O14, O16, O24, O25, O26, O28, O30 (every invisible operation gets a signal) |
+| **Observability is trust** | O7, O14, O16, O24, O25, O26, O28, O30, O32, O34, O35 (every invisible operation gets a signal) |
+| **Single source of truth** | O31 (validated config), O33 (unified config surface), O34 (status mirrors run) |
 
 ---
 
@@ -525,30 +708,35 @@ Based on re-ranking with cross-cutting insights:
 3. O15: Default `-n 1` for inline prompts (XS)
 4. O24: Render per-check events in ConsoleEmitter (XS — events already exist)
 5. O29: Add inline comments to generated `ralph.toml` (XS)
-6. O7: Show prompt assembly summary per iteration (S)
-7. O19: Aggregate check statistics in run summary (S)
-8. O25: Warn on unresolved named placeholders (S)
+6. O35: Include pass/fail suffix in log filenames (XS)
+7. O7: Show prompt assembly summary per iteration (S)
+8. O19: Aggregate check statistics in run summary (S)
+9. O25: Warn on unresolved named placeholders (S)
+10. O31: Validate `ralph.toml` schema on load (S)
+11. O32: Show context timeout warnings (S)
 
 **Phase 2 — "Smart Setup" (S-M effort, addresses the biggest setup gap):**
-9. O1: Smart `ralph init` with auto-created checks (S)
-10. O8: Better `ralph init` prompt template (S)
-11. O17a: Add comment to `ralph.toml` explaining dangerous flag (S)
-12. O3: Default iteration limit of 5 (S, needs careful migration comms)
-13. O26: Validate check/context commands in `ralph status` (S)
-14. O6: Warn on silent context/instruction exclusion (S-M)
+12. O1: Smart `ralph init` with auto-created checks (S)
+13. O8: Better `ralph init` prompt template (S)
+14. O17a: Add comment to `ralph.toml` explaining dangerous flag (S)
+15. O3: Default iteration limit of 5 (S, needs careful migration comms)
+16. O26: Validate check/context commands in `ralph status` (S)
+17. O34: Improve `ralph status` to mirror `ralph run` resolution (S-M)
+18. O6: Warn on silent context/instruction exclusion (S-M)
 
 **Phase 3 — "Observable Loop" (M effort, addresses monitoring gaps):**
-15. O28: Fix non-Claude agent output during logging (M — prerequisite for O2)
-16. O2: Default log directory (S, but depends on O28)
-17. O16: Show truncation details (S)
-18. O30: Save assembled prompt to log directory (S)
+19. O28: Fix non-Claude agent output during logging (M — prerequisite for O2)
+20. O2: Default log directory (S, but depends on O28)
+21. O16: Show truncation details (S)
+22. O30: Save assembled prompt to log directory (S)
+23. O33: Unify config surfaces — add `[run]` section to toml (M)
 
 **Phase 4 — "Power User Tools" (M-L effort, addresses expert needs):**
-19. O23: Preview command (M)
-20. O5: Remove `--prompt-file` flag (S-M)
-21. O21: Fail-fast checks (S-M)
-22. O27: Clarify stop-on-error semantics (S-M)
-23. O9: Hot-reload primitives (M)
+24. O23: Preview command (M)
+25. O5: Remove `--prompt-file` flag (S-M)
+26. O21: Fail-fast checks (S-M)
+27. O27: Clarify stop-on-error semantics (S-M)
+28. O9: Hot-reload primitives (M)
 
 ---
 
@@ -583,3 +771,9 @@ Based on re-ranking with cross-cutting insights:
 14. **Is `context.success` field being ignored a bug or a feature?** `resolve_contexts` at `contexts.py:120-146` uses context output regardless of whether the command succeeded. The FAQ says "Context commands run regardless of exit code" — but users may not expect failed command output in their prompt. Should there be a `required: true` field that skips injection on failure?
 
 15. **Should `--stop-on-error` cover check failures too?** The current behavior (only stops on agent process failure) makes sense for the self-healing loop model. But users from CI/CD backgrounds expect "stop on error" to mean "stop when anything fails." Options: rename to `--stop-on-agent-error`, add `--stop-on-check-failure`, or change the behavior with a deprecation warning.
+
+16. **Should `ralph.toml` support a `[run]` section for default CLI settings?** (NEW) O33 proposes this but it changes the config surface. Questions: Should all CLI flags be representable in toml? What about flags that only make sense per-invocation (like `-p`)? Should there be a precedence doc?
+
+17. **Should log files include the assembled prompt?** (NEW) O30 proposes this. The prompt can be large (5,000+ chars with contexts). Including it in every log file doubles the file size. Alternative: write a separate `001_prompt.md` file alongside the log. Or only write the prompt when a `--debug` flag is set.
+
+18. **How should the dual-nature of `ralph.toml`'s `ralph` field be resolved?** (NEW) Currently `is_ralph_name()` checks for absence of `/` and `.`. This heuristic fails for values like `my-task` (could be either). Should the field be split into `ralph_file` and `ralph_name`? Or should named ralphs always be prefixed (e.g., `ralph = "@docs"`)? The current silent fallback (F46) is the biggest source of confusing errors.
