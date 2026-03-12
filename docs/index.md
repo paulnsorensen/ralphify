@@ -84,38 +84,6 @@ Iteration 2 broke a test. Iteration 3 automatically received the failure output 
 
 ---
 
-## Why it works
-
-<div class="grid cards" markdown>
-
--   :material-repeat:{ .lg .middle } **One thing per loop**
-
-    ---
-
-    The agent picks a task, implements it, tests it, and commits. Then the next iteration starts fresh — no accumulated state, no context window bloat.
-
--   :material-refresh:{ .lg .middle } **Fresh context every time**
-
-    ---
-
-    Each iteration re-reads `RALPH.md` and the codebase from scratch. The agent always works from the current state, not stale assumptions.
-
--   :material-source-branch:{ .lg .middle } **Progress lives in git**
-
-    ---
-
-    Code and commits are the only state that persists. If something goes wrong, `git reset --hard` and run more loops. No hidden state to debug.
-
--   :material-sign-direction:{ .lg .middle } **The prompt is a tuning knob**
-
-    ---
-
-    When the agent does something dumb, add a sign to the prompt. "SLIDE DOWN, DON'T JUMP." The next iteration follows the new rules.
-
-</div>
-
----
-
 ## Four primitives
 
 Ralphify extends the basic loop with four building blocks that live in the `.ralphify/` directory:
@@ -158,25 +126,6 @@ Ralphify extends the basic loop with four building blocks that live in the `.ral
 
 ---
 
-## The self-healing loop
-
-Checks create a feedback loop that makes the agent self-correcting:
-
-```
-Iteration N    Agent makes a change
-               Check runs → test fails
-
-Iteration N+1  Agent sees failure output in prompt
-               Fixes the broken test → checks pass
-
-Iteration N+2  No failures from previous iteration
-               Agent moves on to the next task
-```
-
-You define what "valid" means. Ralphify feeds failures back into the prompt automatically. The agent doesn't need to remember anything — check output tells it exactly what went wrong.
-
----
-
 ## Requirements
 
 - Python 3.11+
@@ -186,24 +135,6 @@ You define what "valid" means. Ralphify feeds failures back into the prompt auto
 
 ## Next steps
 
-<div class="grid cards" markdown>
-
--   **[Getting Started](getting-started.md)**
-
-    ---
-
-    Step-by-step tutorial from install to a running loop with checks and contexts.
-
--   **[Cookbook](cookbook.md)**
-
-    ---
-
-    Complete, copy-pasteable setups for Python, TypeScript, bug fixing, and docs.
-
--   **[Python API](api.md)**
-
-    ---
-
-    Embed the loop in your own automation, listen to events, and manage multiple runs programmatically.
-
-</div>
+- **[Getting Started](getting-started.md)** — from install to a running loop in 10 minutes
+- **[Cookbook](cookbook.md)** — copy-pasteable setups for Python, TypeScript, bug fixing, and more
+- **[Python API](api.md)** — embed the loop in your own automation
