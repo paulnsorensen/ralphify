@@ -30,7 +30,7 @@ src/ralphify/           # All source code
 ├── _run_types.py       # RunConfig, RunState, RunStatus — shared data types for the engine
 ├── _runner.py          # Execute shell commands with timeout and capture output (checks/contexts)
 ├── _frontmatter.py     # Parse YAML frontmatter from markdown primitives, marker/config constants
-├── _discovery.py       # Scan .ralphify/ directories for primitives (discover_primitives, find_run_script)
+├── _discovery.py       # Primitive protocol, directory scanning, merge_by_name, find_run_script
 ├── _templates.py       # Scaffold templates for init and new commands
 ├── _console_emitter.py # Rich console renderer for run-loop events (ConsoleEmitter)
 ├── _events.py          # Event types and emitter protocol (NullEmitter, QueueEmitter, FanoutEmitter)
@@ -71,9 +71,9 @@ ralph run
             └── Repeat
 ```
 
-### The four primitives
+### The four primitives and the `Primitive` protocol
 
-All four follow the same pattern: a directory under `.ralphify/` with a marker markdown file containing YAML frontmatter.
+All four primitive types follow the same pattern: a directory under `.ralphify/` with a marker markdown file containing YAML frontmatter. Each type's dataclass (`Check`, `Context`, `Instruction`, `Ralph`) satisfies the `Primitive` protocol defined in `_discovery.py`, which requires `name` and `enabled` properties. This enables type-safe generic functions for discovery, filtering, merging, and display — the engine's `_discover_and_filter_enabled()` helper uses the protocol to handle all four types through a single code path.
 
 | Primitive | Marker file | Runs | Injects into prompt |
 |---|---|---|---|
@@ -82,7 +82,7 @@ All four follow the same pattern: a directory under `.ralphify/` with a marker m
 | Instruction | `INSTRUCTION.md` | Before iteration | Content replaces `{{ instructions.name }}` |
 | Ralph | `RALPH.md` | At run start | Replaces root RALPH.md when selected by name |
 
-Discovery is handled by `_discovery.py:discover_primitives()` which scans `.ralphify/{kind}/*/` for marker files.
+Discovery is handled by `_discovery.py:discover_primitives()` which scans `.ralphify/{kind}/*/` for marker files. The engine groups enabled primitives into an `EnabledPrimitives` NamedTuple for clean parameter passing.
 
 ### Placeholder resolution
 
@@ -98,7 +98,7 @@ The run loop communicates via structured events (`_events.py`). Each event has a
 
 - **`EventEmitter`** — protocol that any listener implements (just an `emit(event)` method)
 - **`NullEmitter`** — discards events (used in tests)
-- **`QueueEmitter`** — pushes events into a `queue.Queue` for async consumption (used by the UI)
+- **`QueueEmitter`** — pushes events into a `queue.Queue` for async consumption (used by external orchestration layers)
 - **`FanoutEmitter`** — broadcasts events to multiple emitters (used by the manager for fan-out to queue + persistence)
 
 The CLI uses a `ConsoleEmitter` (defined in `_console_emitter.py`) that renders events to the terminal with Rich formatting.
@@ -117,7 +117,7 @@ The CLI uses a `ConsoleEmitter` (defined in `_console_emitter.py`) that renders 
 1. **`engine.py`** — The core run loop. Uses `RunConfig` and `RunState` (from `_run_types.py`) and `EventEmitter`. This is where iteration logic lives.
 2. **`_run_types.py`** — `RunConfig`, `RunState`, and `RunStatus`. These are the shared data types used by the engine, CLI, and manager. Separated so modules that only need the types don't pull in execution logic.
 3. **`cli.py`** — All CLI commands. Delegates to `engine.run_loop()` for the actual loop. Prompt source resolution (name vs. file path vs. inline) lives in `ralphs.py:resolve_ralph_source()`. Scaffold templates live in `_templates.py`. Terminal event rendering lives in `_console_emitter.py`.
-4. **`_frontmatter.py`** + **`_discovery.py`** — Frontmatter parsing and primitive discovery. `_frontmatter.py` handles YAML parsing and defines marker constants. `_discovery.py` scans `.ralphify/` directories and uses `parse_frontmatter()` to yield `PrimitiveEntry` results. Understanding both is essential for working on checks/contexts/instructions/ralphs.
+4. **`_frontmatter.py`** + **`_discovery.py`** — Frontmatter parsing and primitive discovery. `_frontmatter.py` handles YAML parsing and defines marker constants. `_discovery.py` defines the `Primitive` protocol, scans `.ralphify/` directories, and provides `merge_by_name()` for overlaying ralph-scoped primitives on globals. Understanding both is essential for working on checks/contexts/instructions/ralphs.
 5. **`resolver.py`** — Template placeholder logic shared by contexts and instructions. Small file but critical — changes here affect both.
 
 ## Traps and gotchas
@@ -138,9 +138,9 @@ Add it in `cli.py`. The CLI uses Typer. The `new` subcommand group uses `app.add
 
 You need to:
 
-1. Create a new module (like `ralphs.py`) with dataclass, discover, and resolve functions
+1. Create a new module (like `ralphs.py`) with a dataclass that satisfies the `Primitive` protocol (`name` and `enabled` properties), plus discover and resolve functions
 2. Add a scaffold template in `_templates.py` and a `new` subcommand in `cli.py`
-3. Wire it into `engine.py:run_loop()` if it affects the iteration cycle
+3. Wire it into `engine.py:run_loop()` — add it to `EnabledPrimitives` and use `_discover_and_filter_enabled()`
 4. Add tests
 5. Update `docs/primitives.md`
 

@@ -24,14 +24,18 @@ Renamed "prompt" to "ralph" everywhere, simplified the CLI, and added a spinner 
 
 - Agent result message is now displayed in CLI output after each iteration.
 - Raw Claude Code `stream-json` output no longer leaks to the terminal during iterations.
-- Web dashboard page now clearly marked as "Coming Soon" to prevent users from trying non-existent commands.
+- Removed placeholder dashboard page so all docs describe real, shipping features.
 
 ### Improved
 
+- Introduced `Primitive` protocol in `_discovery.py` so all four primitive types (`Check`, `Context`, `Instruction`, `Ralph`) share a typed interface for discovery, filtering, merging, and display.
+- Added generic `_discover_and_filter_enabled()` in the engine, replacing per-type boilerplate with a single code path bounded by the `Primitive` protocol.
+- Moved check result serialization into `CheckResult.to_event_data()` so event data formatting has a single source of truth.
+- Added missing event data fields (`result_text`, `detail`, `duration_formatted`) to API docs so library users see what the engine actually emits.
 - Extracted shared scanning logic in `_discovery.py` to reduce duplication across primitive types.
 - Added `PrimitiveEntry` type annotations for better code clarity.
 - Moved `merge_by_name` to `_discovery.py` and deduplicated checks discovery logic.
-- Updated codebase map and contributing docs to match the renamed source structure.
+- Updated codebase map and contributing docs to match the current architecture.
 
 ### Migration guide
 
