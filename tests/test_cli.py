@@ -1049,7 +1049,7 @@ def _setup_ralph(tmp_path, name="improve-docs", description="Improve docs", enab
 class TestNewRalph:
     def test_creates_ralph_directory_and_file(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
-        result = runner.invoke(app, ["new", "ralph", "improve-docs"])
+        result = runner.invoke(app, ["new", "improve-docs"])
         assert result.exit_code == 0
         prompt_md = tmp_path / ".ralphify" / "ralphs" / "improve-docs" / "RALPH.md"
         assert prompt_md.exists()
@@ -1063,7 +1063,7 @@ class TestNewRalph:
         p_dir.mkdir(parents=True)
         (p_dir / "RALPH.md").write_text("original content")
 
-        result = runner.invoke(app, ["new", "ralph", "improve-docs"])
+        result = runner.invoke(app, ["new", "improve-docs"])
         assert result.exit_code == 1
         assert "already exists" in result.output
         assert (p_dir / "RALPH.md").read_text() == "original content"
@@ -1071,42 +1071,18 @@ class TestNewRalph:
     def test_creates_ralph_dirs_if_missing(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         assert not (tmp_path / ".ralphify").exists()
-        result = runner.invoke(app, ["new", "ralph", "fresh"])
+        result = runner.invoke(app, ["new", "fresh"])
         assert result.exit_code == 0
         assert (tmp_path / ".ralphify" / "ralphs" / "fresh" / "RALPH.md").exists()
 
     def test_default_template_has_placeholder_body(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
-        result = runner.invoke(app, ["new", "ralph", "empty-body"])
+        result = runner.invoke(app, ["new", "empty-body"])
         assert result.exit_code == 0
         prompt_md = tmp_path / ".ralphify" / "ralphs" / "empty-body" / "RALPH.md"
         _, body = parse_frontmatter(prompt_md.read_text())
         assert "Your prompt content here." in body
 
-
-class TestRalphsList:
-    def test_no_ralphs_shows_message(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        result = runner.invoke(app, ["ralphs", "list"])
-        assert result.exit_code == 0
-        assert "No ralphs found" in result.output
-
-    def test_shows_root_ralph(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        (tmp_path / "RALPH.md").write_text("my prompt")
-        result = runner.invoke(app, ["ralphs", "list"])
-        assert result.exit_code == 0
-        assert "RALPH.md" in result.output
-        assert "root" in result.output
-
-    def test_shows_named_ralphs(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        _setup_ralph(tmp_path, "improve-docs", description="Improve docs")
-        _setup_ralph(tmp_path, "refactor", description="Refactor code")
-        result = runner.invoke(app, ["ralphs", "list"])
-        assert result.exit_code == 0
-        assert "improve-docs" in result.output
-        assert "refactor" in result.output
 
 
 class TestStatusRalphs:

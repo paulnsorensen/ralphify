@@ -42,44 +42,18 @@ rprint = _console.print
 
 app = typer.Typer()
 
-new_app = typer.Typer(help="Scaffold new ralph primitives.", invoke_without_command=True)
+
+class _DefaultRalphGroup(typer.core.TyperGroup):
+    """Click group that routes unknown subcommands to ``ralph`` creation."""
+
+    def resolve_command(self, ctx, args):
+        if args and args[0] not in self.commands:
+            args = ["ralph"] + list(args)
+        return super().resolve_command(ctx, args)
+
+
+new_app = typer.Typer(help="Scaffold new ralph primitives.", cls=_DefaultRalphGroup)
 app.add_typer(new_app, name="new")
-
-ralphs_app = typer.Typer(help="Manage ralph primitives.", invoke_without_command=True)
-app.add_typer(ralphs_app, name="ralphs")
-
-
-@new_app.callback()
-def new_callback(ctx: typer.Context) -> None:
-    """Scaffold new ralph primitives."""
-    if ctx.invoked_subcommand is None:
-        rprint(ctx.get_help())
-        raise typer.Exit()
-
-
-@ralphs_app.callback()
-def ralphs_callback(ctx: typer.Context) -> None:
-    """Manage ralph primitives."""
-    if ctx.invoked_subcommand is None:
-        rprint(ctx.get_help())
-        raise typer.Exit()
-
-
-@ralphs_app.command("list")
-def ralphs_list() -> None:
-    """List available ralphs."""
-    ralphs = discover_ralphs()
-    root_ralph = Path("RALPH.md")
-    if not ralphs and not root_ralph.exists():
-        rprint("[dim]No ralphs found.[/dim]")
-        return
-    if root_ralph.exists():
-        size = len(root_ralph.read_text())
-        rprint(f"  [cyan]RALPH.md[/cyan]  (root, {size} chars)")
-    for p in ralphs:
-        icon = "[green]✓[/green]" if p.enabled else "[dim]○[/dim]"
-        desc = f"  {p.description}" if p.description else ""
-        rprint(f"  {icon} {p.name:<18}{desc}")
 
 BANNER_LINES = [
     "██████╗░░█████╗░██╗░░░░░██████╗░██╗░░██╗██╗███████╗██╗░░░██╗",
@@ -238,7 +212,7 @@ def context(
     _scaffold_primitive("contexts", name, CONTEXT_MARKER, CONTEXT_MD_TEMPLATE, ralph=ralph)
 
 
-@new_app.command("ralph")
+@new_app.command("ralph", hidden=True)
 def new_ralph(
     name: str = typer.Argument(help="Name of the new ralph."),
 ) -> None:
@@ -366,18 +340,3 @@ def run(
     run_loop(config, state, emitter)
 
 
-@app.command()
-def ui(
-    port: int = typer.Option(8765, "--port", help="Port to serve the UI on."),
-    host: str = typer.Option("127.0.0.1", "--host", help="Host to bind to."),
-) -> None:
-    """Launch the web-based orchestration dashboard."""
-    try:
-        from ralphify.ui.app import create_app
-    except ImportError:
-        rprint("[red]UI deps not installed. Run: pip install ralphify[ui][/red]")
-        raise typer.Exit(1)
-    import uvicorn  # ty: ignore[unresolved-import]
-
-    rprint(f"[bold]Starting Ralphify UI at http://{host}:{port}[/bold]")
-    uvicorn.run(create_app(), host=host, port=port)
