@@ -231,6 +231,7 @@ def _run_checks_phase(
     project_root: Path,
     state: RunState,
     emit: _BoundEmitter,
+    ralph_name: str | None = None,
 ) -> str:
     """Execute all checks, emit per-check and summary events.
 
@@ -241,7 +242,7 @@ def _run_checks_phase(
 
     emit(EventType.CHECKS_STARTED, {"iteration": iteration, "count": len(enabled_checks)})
 
-    check_results = run_all_checks(enabled_checks, project_root)
+    check_results = run_all_checks(enabled_checks, project_root, ralph_name)
 
     # Build per-result data once; reused for both per-check and summary events.
     results_data: list[dict] = []
@@ -287,7 +288,7 @@ def _run_iteration(
     context_results: list[ContextResult] = []
     if primitives.contexts:
         context_results = run_all_contexts(
-            primitives.contexts, config.project_root,
+            primitives.contexts, config.project_root, config.ralph_name,
         )
         emit(EventType.CONTEXTS_RESOLVED, {"iteration": iteration, "count": len(primitives.contexts)})
 
@@ -307,7 +308,7 @@ def _run_iteration(
 
     if primitives.checks:
         check_failures_text = _run_checks_phase(
-            primitives.checks, config.project_root, state, emit,
+            primitives.checks, config.project_root, state, emit, config.ralph_name,
         )
 
     return check_failures_text, True

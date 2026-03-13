@@ -91,22 +91,27 @@ def discover_enabled_contexts(root: Path, ralph_dir: Path | None = None) -> list
     return discover_enabled(root, ralph_dir, discover_contexts, discover_contexts_local)
 
 
-def run_context(context: Context, project_root: Path) -> ContextResult:
+def run_context(context: Context, project_root: Path, ralph_name: str | None = None) -> ContextResult:
     """Run a single context and return the result.
 
     Static-only contexts (no script or command) return immediately with
     ``success=True`` and empty output.  The static content is combined
     with command output later during prompt resolution.
+
+    When *ralph_name* is set, a ``RALPH_NAME`` environment variable is
+    passed to the subprocess so scripts can read per-ralph state.
     """
     if not context.script and not context.command:
         # Static-only context, no command to run
         return ContextResult(context=context, output="", success=True)
 
+    env = {"RALPH_NAME": ralph_name} if ralph_name else None
     r = run_command(
         script=context.script,
         command=context.command,
         cwd=project_root,
         timeout=context.timeout,
+        env=env,
     )
     return ContextResult(
         context=context,
@@ -116,14 +121,17 @@ def run_context(context: Context, project_root: Path) -> ContextResult:
     )
 
 
-def run_all_contexts(contexts: list[Context], project_root: Path) -> list[ContextResult]:
+def run_all_contexts(contexts: list[Context], project_root: Path, ralph_name: str | None = None) -> list[ContextResult]:
     """Run every context sequentially and return all results.
 
     Each context's command (or script) executes with *project_root* as the
     working directory.  Static-only contexts return immediately.  Results
     are passed to :func:`resolve_contexts` for prompt injection.
+
+    When *ralph_name* is set, it is forwarded to each context subprocess
+    as the ``RALPH_NAME`` environment variable.
     """
-    return [run_context(ctx, project_root) for ctx in contexts]
+    return [run_context(ctx, project_root, ralph_name) for ctx in contexts]
 
 
 def resolve_contexts(prompt: str, results: list[ContextResult]) -> str:

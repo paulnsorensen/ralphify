@@ -7,6 +7,7 @@ of where the primitive directory is located.
 
 from __future__ import annotations
 
+import os
 import shlex
 import subprocess
 from dataclasses import dataclass
@@ -31,6 +32,7 @@ def run_command(
     command: str | None,
     cwd: Path,
     timeout: int,
+    env: dict[str, str] | None = None,
 ) -> RunResult:
     """Run a script or shell command and return the result.
 
@@ -39,12 +41,18 @@ def run_command(
     Pipes, redirections, and ``&&`` chaining are not supported in
     commands — use a ``run.*`` script for complex logic.
 
+    When *env* is set, the given variables are merged on top of the
+    current process environment so scripts keep ``PATH`` etc.  When
+    ``None`` (default), ``subprocess.run`` inherits the parent env.
+
     On timeout, returns ``exit_code=-1`` and ``timed_out=True``.
     """
     if script:
         cmd = [str(script)]
     else:
         cmd = shlex.split(command)
+
+    merged_env = {**os.environ, **env} if env else None
 
     try:
         result = subprocess.run(
@@ -53,6 +61,7 @@ def run_command(
             text=True,
             cwd=cwd,
             timeout=timeout,
+            env=merged_env,
         )
         return RunResult(
             success=result.returncode == 0,

@@ -529,3 +529,53 @@ class TestResolveRalphDir:
             ralph_file="RALPH.md",
         )
         assert _resolve_ralph_dir(config) is None
+
+
+class TestRalphNameEnv:
+    """Tests that ralph_name flows to context and check subprocesses."""
+
+    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    def test_ralph_name_passed_to_context_scripts(self, mock_run, tmp_path):
+        """When ralph_name is set, context scripts receive RALPH_NAME env var."""
+        # Create a context with a command
+        ctx_dir = tmp_path / ".ralphify" / "contexts" / "test-ctx"
+        ctx_dir.mkdir(parents=True)
+        (ctx_dir / "CONTEXT.md").write_text("---\ncommand: echo hi\n---\n")
+
+        config = _make_config(tmp_path, ralph_name="docs", max_iterations=1)
+        state = _make_state()
+        run_loop(config, state, NullEmitter())
+
+        # Find the context subprocess call (first call before the agent call)
+        context_call = mock_run.call_args_list[0]
+        assert context_call.kwargs["env"]["RALPH_NAME"] == "docs"
+
+    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    def test_ralph_name_passed_to_check_scripts(self, mock_run, tmp_path):
+        """When ralph_name is set, check scripts receive RALPH_NAME env var."""
+        # Create a check with a command
+        check_dir = tmp_path / ".ralphify" / "checks" / "test-chk"
+        check_dir.mkdir(parents=True)
+        (check_dir / "CHECK.md").write_text("---\ncommand: echo ok\n---\n")
+
+        config = _make_config(tmp_path, ralph_name="docs", max_iterations=1)
+        state = _make_state()
+        run_loop(config, state, NullEmitter())
+
+        # The check call is after the agent call
+        check_call = mock_run.call_args_list[-1]
+        assert check_call.kwargs["env"]["RALPH_NAME"] == "docs"
+
+    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    def test_no_ralph_name_no_env(self, mock_run, tmp_path):
+        """When ralph_name is None, no custom env is passed."""
+        ctx_dir = tmp_path / ".ralphify" / "contexts" / "test-ctx"
+        ctx_dir.mkdir(parents=True)
+        (ctx_dir / "CONTEXT.md").write_text("---\ncommand: echo hi\n---\n")
+
+        config = _make_config(tmp_path, ralph_name=None, max_iterations=1)
+        state = _make_state()
+        run_loop(config, state, NullEmitter())
+
+        context_call = mock_run.call_args_list[0]
+        assert context_call.kwargs["env"] is None

@@ -1,3 +1,4 @@
+import os
 import subprocess
 from pathlib import Path
 from unittest.mock import patch
@@ -88,3 +89,25 @@ class TestRunCommand:
 
         assert "out" in result.output
         assert "err" in result.output
+
+    @patch(_MOCK_SUBPROCESS)
+    def test_env_merged_with_parent(self, mock_run):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="", stderr=""
+        )
+        run_command(script=None, command="echo", cwd=Path("/project"), timeout=60, env={"RALPH_NAME": "docs"})
+
+        passed_env = mock_run.call_args.kwargs["env"]
+        assert passed_env["RALPH_NAME"] == "docs"
+        # Parent env vars (like PATH) should be preserved
+        assert "PATH" in passed_env
+
+    @patch(_MOCK_SUBPROCESS)
+    def test_env_none_inherits_parent(self, mock_run):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="", stderr=""
+        )
+        run_command(script=None, command="echo", cwd=Path("/project"), timeout=60, env=None)
+
+        # env=None means subprocess.run inherits parent env
+        assert mock_run.call_args.kwargs["env"] is None

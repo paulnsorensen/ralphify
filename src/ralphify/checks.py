@@ -118,18 +118,23 @@ def discover_enabled_checks(root: Path, ralph_dir: Path | None = None) -> list[C
     return discover_enabled(root, ralph_dir, discover_checks, discover_checks_local)
 
 
-def run_check(check: Check, project_root: Path) -> CheckResult:
+def run_check(check: Check, project_root: Path, ralph_name: str | None = None) -> CheckResult:
     """Run a single check and return the result.
 
     The check's script or command executes with *project_root* as the
     working directory.  On timeout, ``exit_code`` is ``-1`` and
     ``timed_out`` is ``True``.
+
+    When *ralph_name* is set, a ``RALPH_NAME`` environment variable is
+    passed to the subprocess so scripts can read per-ralph state.
     """
+    env = {"RALPH_NAME": ralph_name} if ralph_name else None
     r = run_command(
         script=check.script,
         command=check.command,
         cwd=project_root,
         timeout=check.timeout,
+        env=env,
     )
     return CheckResult(
         check=check,
@@ -140,7 +145,7 @@ def run_check(check: Check, project_root: Path) -> CheckResult:
     )
 
 
-def run_all_checks(checks: list[Check], project_root: Path) -> list[CheckResult]:
+def run_all_checks(checks: list[Check], project_root: Path, ralph_name: str | None = None) -> list[CheckResult]:
     """Run every check sequentially and return all results.
 
     Checks execute in the order given (the engine sorts alphabetically by
@@ -150,8 +155,11 @@ def run_all_checks(checks: list[Check], project_root: Path) -> list[CheckResult]
     The engine passes the results to :func:`format_check_failures`, which
     formats them as markdown for injection into the next iteration's prompt.
     This is what drives the self-healing feedback loop.
+
+    When *ralph_name* is set, it is forwarded to each check subprocess
+    as the ``RALPH_NAME`` environment variable.
     """
-    return [run_check(check, project_root) for check in checks]
+    return [run_check(check, project_root, ralph_name) for check in checks]
 
 
 def format_check_failures(results: list[CheckResult]) -> str:

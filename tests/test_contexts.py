@@ -281,6 +281,27 @@ class TestRunContext:
         assert "out" in result.output
         assert "err" in result.output
 
+    @patch(_MOCK_SUBPROCESS)
+    def test_ralph_name_passed_as_env(self, mock_run):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="", stderr=""
+        )
+        ctx = self._make_context()
+        run_context(ctx, Path("/project"), ralph_name="docs")
+
+        passed_env = mock_run.call_args.kwargs["env"]
+        assert passed_env["RALPH_NAME"] == "docs"
+
+    @patch(_MOCK_SUBPROCESS)
+    def test_ralph_name_none_no_env(self, mock_run):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="", stderr=""
+        )
+        ctx = self._make_context()
+        run_context(ctx, Path("/project"), ralph_name=None)
+
+        assert mock_run.call_args.kwargs["env"] is None
+
 
 class TestRunAllContexts:
     @patch(_MOCK_SUBPROCESS)
