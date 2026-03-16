@@ -387,10 +387,10 @@ class TestResolveContexts:
         prompt = "Do the thing."
         assert resolve_contexts(prompt, []) == prompt
 
-    def test_no_placeholders_appends_at_end(self):
+    def test_no_placeholders_leaves_prompt_unchanged(self):
         results = self._make_results(("git-log", "abc123 fix bug\n"))
         result = resolve_contexts("Base prompt.", results)
-        assert result == "Base prompt.\n\nabc123 fix bug"
+        assert result == "Base prompt."
 
     def test_named_placeholder_replaced(self):
         results = self._make_results(("git-log", "abc123 fix\n"))
@@ -399,26 +399,15 @@ class TestResolveContexts:
         assert "abc123 fix" in result
         assert "{{ contexts.git-log }}" not in result
 
-    def test_bulk_placeholder_injects_all(self):
+    def test_unreferenced_contexts_excluded(self):
         results = self._make_results(
             ("alpha", "Alpha output\n"),
             ("beta", "Beta output\n"),
         )
-        prompt = "Start.\n\n{{ contexts }}\n\nEnd."
+        prompt = "Only alpha: {{ contexts.alpha }}"
         result = resolve_contexts(prompt, results)
         assert "Alpha output" in result
-        assert "Beta output" in result
-        assert "{{ contexts }}" not in result
-
-    def test_named_excludes_from_bulk(self):
-        results = self._make_results(
-            ("alpha", "Alpha output\n"),
-            ("beta", "Beta output\n"),
-        )
-        prompt = "{{ contexts.alpha }}\n\n{{ contexts }}"
-        result = resolve_contexts(prompt, results)
-        assert result.count("Alpha output") == 1
-        assert "Beta output" in result
+        assert "Beta output" not in result
 
     def test_multiple_named_placeholders(self):
         results = self._make_results(
@@ -451,7 +440,7 @@ class TestResolveContexts:
             static_content="Header:",
         )
         results = [ContextResult(context=ctx, output="dynamic\n", success=True)]
-        prompt = "{{ contexts }}"
+        prompt = "{{ contexts.info }}"
         result = resolve_contexts(prompt, results)
         assert "Header:" in result
         assert "dynamic" in result

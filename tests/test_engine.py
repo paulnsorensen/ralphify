@@ -315,7 +315,7 @@ class TestPromptLocalPrimitives:
         # Named prompt
         ralph_dir = tmp_path / ".ralphify" / "ralphs" / "ui"
         ralph_dir.mkdir(parents=True)
-        (ralph_dir / "RALPH.md").write_text("---\n---\nBuild the UI.")
+        (ralph_dir / "RALPH.md").write_text("---\n---\n{{ contexts.global-info }}\n\nBuild the UI.\n\n{{ contexts.focus }}")
 
         # Local context
         lc = ralph_dir / "contexts" / "focus"
@@ -346,7 +346,7 @@ class TestPromptLocalPrimitives:
         # Named prompt
         ralph_dir = tmp_path / ".ralphify" / "ralphs" / "ui"
         ralph_dir.mkdir(parents=True)
-        (ralph_dir / "RALPH.md").write_text("---\n---\nBuild the UI.")
+        (ralph_dir / "RALPH.md").write_text("---\n---\n{{ contexts.info }}\n\nBuild the UI.")
 
         # Local context with SAME name
         lc = ralph_dir / "contexts" / "info"
@@ -376,7 +376,7 @@ class TestPromptLocalPrimitives:
 
         config = _make_config(
             tmp_path,
-            prompt_text="ad-hoc prompt",
+            prompt_text="{{ contexts.info }}\n\nad-hoc prompt",
             ralph_name=None,
             max_iterations=1,
         )
@@ -423,7 +423,7 @@ class TestPromptLocalPrimitives:
         # Named prompt
         ralph_dir = tmp_path / ".ralphify" / "ralphs" / "ui"
         ralph_dir.mkdir(parents=True)
-        (ralph_dir / "RALPH.md").write_text("---\n---\nBuild the UI.")
+        (ralph_dir / "RALPH.md").write_text("---\n---\nBuild the UI.\n\n{{ contexts.new-focus }}")
 
         config = _make_config(
             tmp_path,

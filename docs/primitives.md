@@ -110,19 +110,17 @@ Context output is injected **regardless of the command's exit code**. Commands l
 
 ### Placement in the prompt
 
-By default, all context output is appended to the end of the prompt. Control placement with placeholders in your `RALPH.md`:
+Use named placeholders in your `RALPH.md` to place specific contexts:
 
 ```markdown
 {{ contexts.git-log }}
 
 Work on the next task.
 
-{{ contexts }}
+{{ contexts.test-status }}
 ```
 
-- `{{ contexts.git-log }}` — places that specific context here
-- `{{ contexts }}` — places all remaining contexts (those not already placed by name)
-- If no placeholders are found, all context output is appended to the end
+Each context must be referenced by name with `{{ contexts.name }}`. Contexts not referenced by a placeholder are excluded from the prompt.
 
 ## Ralphs
 
@@ -146,7 +144,7 @@ You are a documentation agent. Each iteration starts fresh.
 
 Read the codebase and existing docs. Find the biggest gap and improve one page per iteration.
 
-{{ contexts }}
+{{ contexts.git-log }}
 ```
 
 ### Running a named ralph

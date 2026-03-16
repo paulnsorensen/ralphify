@@ -86,8 +86,7 @@ Discovery is handled by `_discovery.py:discover_primitives()` which scans `.ralp
 Contexts use the resolver (`resolver.py:resolve_placeholders()`):
 
 - `{{ contexts.git-log }}` — named placement for a specific context
-- `{{ contexts }}` — bulk placement for all remaining contexts
-- No placeholders at all — everything appended to the end of the prompt
+- Contexts not referenced by name are excluded from the prompt
 
 ### Event system
 

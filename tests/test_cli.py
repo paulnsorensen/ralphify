@@ -772,7 +772,7 @@ class TestRunContexts:
     def test_contexts_injected_into_prompt(self, mock_agent, mock_run_contexts, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        (tmp_path / "RALPH.md").write_text("Base.\n\n{{ contexts }}")
+        (tmp_path / "RALPH.md").write_text("Base.\n\n{{ contexts.git-log }}")
         _setup_context(tmp_path, "git-log", "git log --oneline -5")
 
         ctx = Context(name="git-log", path=Path("/fake"), command="git log", enabled=True)
@@ -784,7 +784,7 @@ class TestRunContexts:
         assert result.exit_code == 0
         prompt_sent = mock_agent.call_args.kwargs["input"]
         assert "abc123 fix bug" in prompt_sent
-        assert "{{ contexts }}" not in prompt_sent
+        assert "{{ contexts.git-log }}" not in prompt_sent
 
 
     @patch("ralphify.engine.run_all_contexts")
@@ -813,7 +813,7 @@ class TestRunContexts:
     def test_contexts_run_each_iteration(self, mock_agent, mock_run_contexts, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        (tmp_path / "RALPH.md").write_text("{{ contexts }}")
+        (tmp_path / "RALPH.md").write_text("{{ contexts.info }}")
         _setup_context(tmp_path, "info", "echo hi")
 
         ctx = Context(name="info", path=Path("/fake"), command="echo hi", enabled=True)

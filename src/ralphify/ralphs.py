@@ -22,7 +22,7 @@ class Ralph:
 
     The *content* is the body text below the YAML frontmatter — this is the
     full prompt that gets piped to the agent.  Context placeholders
-    (``{{ contexts }}``) resolve the same way as in a root ``RALPH.md``.
+    (``{{ contexts.name }}``) resolve the same way as in a root ``RALPH.md``.
     """
 
     name: str

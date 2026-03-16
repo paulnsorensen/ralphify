@@ -1,9 +1,6 @@
 """Tests for ralphify.resolver — the template placeholder resolution engine.
 
-Tests the three placement strategies directly:
-1. Named: {{ kind.name }} → specific content
-2. Bulk: {{ kind }} → all remaining content (alphabetically)
-3. Implicit: no placeholders → append all at end
+Only named placeholders are supported: {{ kind.name }} → specific content.
 """
 
 from ralphify.resolver import resolve_placeholders
@@ -14,7 +11,7 @@ class TestEmptyAvailable:
         assert resolve_placeholders("Hello world", {}, "contexts") == "Hello world"
 
     def test_returns_prompt_unchanged_when_available_is_empty(self):
-        prompt = "{{ contexts }}"
+        prompt = "Some prompt text"
         assert resolve_placeholders(prompt, {}, "contexts") == prompt
 
 
@@ -77,93 +74,34 @@ class TestNamedPlaceholders:
         assert result == r"match \d+ and \1 groups"
 
 
-class TestBulkPlaceholder:
-    def test_single_item_bulk(self):
-        result = resolve_placeholders(
-            "Start\n{{ contexts }}\nEnd",
-            {"git": "log data"},
-            "contexts",
-        )
-        assert result == "Start\nlog data\nEnd"
-
-    def test_multiple_items_alphabetical_order(self):
-        result = resolve_placeholders(
-            "{{ contexts }}",
-            {"zebra": "Z", "alpha": "A", "middle": "M"},
-            "contexts",
-        )
-        assert result == "A\n\nM\n\nZ"
-
-    def test_bulk_with_backslash_sequences(self):
-        """Bulk replacement must use lambda to avoid re.sub backslash interpretation."""
-        result = resolve_placeholders(
-            "{{ contexts }}",
-            {"regex": r"Use \d+ for digits and \1 for groups"},
-            "contexts",
-        )
-        assert result == r"Use \d+ for digits and \1 for groups"
-
-    def test_multiple_bulk_placeholders(self):
-        result = resolve_placeholders(
-            "First: {{ contexts }}\nSecond: {{ contexts }}",
-            {"a": "content"},
-            "contexts",
-        )
-        assert "First: content" in result
-        assert "Second: content" in result
-
-
-class TestNamedExcludesFromBulk:
-    def test_named_items_excluded_from_bulk(self):
-        result = resolve_placeholders(
-            "Specific: {{ contexts.alpha }}\nRest: {{ contexts }}",
-            {"alpha": "A", "beta": "B", "gamma": "G"},
-            "contexts",
-        )
-        assert "Specific: A" in result
-        assert result.count("A") == 1  # alpha only appears once
-        assert "B" in result
-        assert "G" in result
-
-    def test_all_named_leaves_bulk_empty(self):
-        result = resolve_placeholders(
-            "{{ contexts.a }} {{ contexts.b }}\n{{ contexts }}",
-            {"a": "A", "b": "B"},
-            "contexts",
-        )
-        assert "A" in result
-        assert "B" in result
-        # Bulk should be empty since all items were placed by name
-        assert result.count("A") == 1
-        assert result.count("B") == 1
-
-
-class TestImplicitAppend:
-    def test_appends_when_no_placeholders(self):
+class TestUnreferencedItemsExcluded:
+    def test_unreferenced_items_not_appended(self):
+        """Items not referenced by a named placeholder should be excluded."""
         result = resolve_placeholders(
             "Base prompt.",
             {"style": "Use black formatting."},
             "instructions",
         )
-        assert result == "Base prompt.\n\nUse black formatting."
+        assert result == "Base prompt."
 
-    def test_appends_multiple_alphabetically(self):
+    def test_only_named_items_included(self):
         result = resolve_placeholders(
-            "Base.",
-            {"beta": "B", "alpha": "A"},
-            "instructions",
-        )
-        assert result == "Base.\n\nA\n\nB"
-
-    def test_no_append_when_named_placeholder_exists(self):
-        """When named placeholders are used (but no bulk), remaining items are NOT appended."""
-        result = resolve_placeholders(
-            "{{ instructions.used }}",
+            "{{ contexts.used }}",
             {"used": "placed", "unused": "should not appear"},
-            "instructions",
+            "contexts",
         )
         assert "placed" in result
         assert "should not appear" not in result
+
+    def test_multiple_available_only_named_placed(self):
+        result = resolve_placeholders(
+            "{{ contexts.alpha }}",
+            {"alpha": "A", "beta": "B", "gamma": "G"},
+            "contexts",
+        )
+        assert result == "A"
+        assert "B" not in result
+        assert "G" not in result
 
 
 class TestKindIsolation:
@@ -174,7 +112,7 @@ class TestKindIsolation:
             {"foo": "bar"},
             "contexts",  # resolving contexts, not instructions
         )
-        assert result == "{{ instructions.foo }}\n\nbar"
+        assert result == "{{ instructions.foo }}"
 
     def test_kind_with_special_regex_chars(self):
         """Kind names are re.escape'd so dots/brackets don't break patterns."""

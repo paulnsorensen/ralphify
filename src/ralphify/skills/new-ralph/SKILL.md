@@ -60,8 +60,7 @@ enabled: true
 
 - Body text appears as a label above the command output
 - Contexts run regardless of command exit code
-- Place contexts in the prompt with `{{ contexts.context-name }}` or `{{ contexts }}` for all remaining
-- If no placeholders, all context output is appended to the end
+- Place contexts in the prompt with `{{ contexts.context-name }}` — each context must be referenced by name
 
 ### Scripts
 
@@ -91,7 +90,7 @@ All primitive output is truncated to 5000 characters.
      - What it is and what it's doing
      - That each iteration starts fresh (progress lives in code and git)
      - Specific rules and constraints
-     - Where to place context output (use `{{ contexts }}` or named placeholders)
+     - Where to place context output (use named placeholders like `{{ contexts.name }}`)
    - Follow these prompt patterns:
      - Start with role and loop awareness: "You are an autonomous X agent running in a loop."
      - Include "Each iteration starts with a fresh context. Your progress lives in the code and git."

@@ -172,13 +172,7 @@ By default, context output is appended to the end of the prompt. You can control
 You are an autonomous coding agent running in a loop...
 ```
 
-Or use `{{ contexts }}` to place all contexts at once:
-
-```markdown
-{{ contexts }}
-
-You are an autonomous coding agent...
-```
+Each context must be referenced by name — contexts not referenced are excluded from the prompt.
 
 ## Step 8: Verify and run
 

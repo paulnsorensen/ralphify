@@ -195,15 +195,7 @@ Run the context command manually to verify it produces output. Note that context
 
 ### Some contexts are missing from the prompt
 
-If you use a **named placeholder** like `{{ contexts.git-log }}` but don't include a bulk `{{ contexts }}` placeholder, any other contexts are silently excluded. Add `{{ contexts }}` somewhere in your prompt to catch all remaining contexts:
-
-```markdown
-{{ contexts.git-log }}
-
-Do the work.
-
-{{ contexts }}
-```
+Each context must be referenced by a named placeholder like `{{ contexts.git-log }}` to appear in the prompt. Contexts without a placeholder are excluded. Make sure every context you want included has a corresponding `{{ contexts.name }}` in your `RALPH.md`.
 
 See [Placement in the prompt](primitives.md#placement-in-the-prompt) for full details.
 

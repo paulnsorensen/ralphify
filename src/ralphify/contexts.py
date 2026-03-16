@@ -144,9 +144,9 @@ def resolve_contexts(prompt: str, results: list[ContextResult]) -> str:
     Callers are responsible for passing only the results they want
     resolved (the engine pre-filters via ``_discover_enabled_primitives``).
 
+    Only named placeholders are supported:
     - {{ contexts.<name> }} → specific context content
-    - {{ contexts }} → all contexts not already placed
-    - If no placeholders found → append all at end
+    - Contexts not referenced by name are excluded
     """
     available: dict[str, str] = {}
     for r in results:
