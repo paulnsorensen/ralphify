@@ -358,7 +358,11 @@ def run_loop(
 
     check_failures_text = ""
     ralph_dir = _resolve_ralph_dir(config)
-    primitives = _discover_enabled_primitives(config.project_root, ralph_dir)
+    primitives = _discover_enabled_primitives(
+        config.project_root, ralph_dir,
+        global_checks=config.global_checks,
+        global_contexts=config.global_contexts,
+    )
 
     emit(EventType.RUN_STARTED, {
         "checks": len(primitives.checks),

@@ -109,13 +109,20 @@ def discover_checks_local(ralph_dir: Path) -> list[Check]:
     return _checks_from_entries(discover_local_primitives(ralph_dir, "checks", CHECK_MARKER))
 
 
-def discover_enabled_checks(root: Path, ralph_dir: Path | None = None) -> list[Check]:
+def discover_enabled_checks(
+    root: Path,
+    ralph_dir: Path | None = None,
+    global_names: list[str] | None = None,
+) -> list[Check]:
     """Discover checks, merge local overrides, and return only enabled ones.
 
-    Convenience wrapper over :func:`~ralphify._discovery.discover_enabled`
-    so callers don't need to wire up the discover/discover_local callables.
+    When *global_names* is ``None``, no global checks are included.
+    Pass a list of names to select specific globals from the library.
     """
-    return discover_enabled(root, ralph_dir, discover_checks, discover_checks_local)
+    return discover_enabled(
+        root, ralph_dir, discover_checks, discover_checks_local,
+        global_names=global_names, kind="checks",
+    )
 
 
 def run_check(check: Check, project_root: Path, ralph_name: str | None = None) -> CheckResult:

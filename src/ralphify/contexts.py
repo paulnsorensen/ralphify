@@ -82,13 +82,20 @@ def discover_contexts_local(ralph_dir: Path) -> list[Context]:
     return [_context_from_entry(prim) for prim in discover_local_primitives(ralph_dir, "contexts", CONTEXT_MARKER)]
 
 
-def discover_enabled_contexts(root: Path, ralph_dir: Path | None = None) -> list[Context]:
+def discover_enabled_contexts(
+    root: Path,
+    ralph_dir: Path | None = None,
+    global_names: list[str] | None = None,
+) -> list[Context]:
     """Discover contexts, merge local overrides, and return only enabled ones.
 
-    Convenience wrapper over :func:`~ralphify._discovery.discover_enabled`
-    so callers don't need to wire up the discover/discover_local callables.
+    When *global_names* is ``None``, no global contexts are included.
+    Pass a list of names to select specific globals from the library.
     """
-    return discover_enabled(root, ralph_dir, discover_contexts, discover_contexts_local)
+    return discover_enabled(
+        root, ralph_dir, discover_contexts, discover_contexts_local,
+        global_names=global_names, kind="contexts",
+    )
 
 
 def run_context(context: Context, project_root: Path, ralph_name: str | None = None) -> ContextResult:

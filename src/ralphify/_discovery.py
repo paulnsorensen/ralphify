@@ -116,21 +116,51 @@ def merge_by_name(global_list: list[_P], local_list: list[_P]) -> list[_P]:
     return sorted(by_name.values(), key=lambda p: p.name)
 
 
+def select_by_names(
+    all_primitives: list[_P], names: list[str], kind: str,
+) -> list[_P]:
+    """Select specific primitives from a pool by name.
+
+    Raises ``ValueError`` listing available names if any requested name
+    is not found.
+    """
+    by_name = {p.name: p for p in all_primitives}
+    selected: list[_P] = []
+    missing: list[str] = []
+    for name in names:
+        if name in by_name:
+            selected.append(by_name[name])
+        else:
+            missing.append(name)
+    if missing:
+        available = sorted(by_name.keys())
+        raise ValueError(
+            f"Unknown {kind}: {', '.join(missing)}. "
+            f"Available: {', '.join(available) if available else '(none)'}"
+        )
+    return sorted(selected, key=lambda p: p.name)
+
+
 def discover_enabled(
     root: Path,
     ralph_dir: Path | None,
     discover: Callable[[Path], list[_P]],
     discover_local: Callable[[Path], list[_P]],
+    global_names: list[str] | None = None,
+    kind: str = "",
 ) -> list[_P]:
-    """Discover primitives, merge local overrides (if any), and return only enabled ones.
+    """Discover primitives, select globals by name, merge with locals, filter enabled.
 
-    Encapsulates the three-step pattern shared by all primitive types:
-    discover globals → merge with ralph-scoped locals → filter to enabled.
-
-    Used by the engine's ``_discover_enabled_primitives`` to build the
-    full set of primitives for a run.
+    When *global_names* is ``None``, no global primitives are included
+    (the library model — globals must be explicitly declared).
+    When *global_names* is a list, only those named globals are selected.
+    Ralph-local primitives always auto-apply.
     """
-    items = discover(root)
+    items: list[_P] = []
+    if global_names is not None:
+        all_globals = discover(root)
+        items = select_by_names(all_globals, global_names, kind)
     if ralph_dir is not None:
-        items = merge_by_name(items, discover_local(ralph_dir))
+        local_items = discover_local(ralph_dir)
+        items = merge_by_name(items, local_items)
     return [item for item in items if item.enabled]

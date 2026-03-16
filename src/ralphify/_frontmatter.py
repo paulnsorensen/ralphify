@@ -27,9 +27,21 @@ _HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 
 # Type coercion for known frontmatter fields.
 # To add a new typed field, add an entry here — no other changes needed.
+
+
+def _parse_list_value(v: str) -> list[str]:
+    """Parse ``[a, b, c]`` into ``['a', 'b', 'c']``."""
+    v = v.strip()
+    if v.startswith("[") and v.endswith("]"):
+        v = v[1:-1]
+    return [item.strip() for item in v.split(",") if item.strip()]
+
+
 _FIELD_COERCIONS: dict[str, Callable[[str], object]] = {
     "timeout": int,
     "enabled": lambda v: v.lower() in ("true", "yes", "1"),
+    "checks": _parse_list_value,
+    "contexts": _parse_list_value,
 }
 
 
@@ -98,7 +110,10 @@ def serialize_frontmatter(frontmatter: dict, body: str) -> str:
     if frontmatter:
         parts.append("---")
         for key, value in frontmatter.items():
-            parts.append(f"{key}: {value}")
+            if isinstance(value, list):
+                parts.append(f"{key}: [{', '.join(value)}]")
+            else:
+                parts.append(f"{key}: {value}")
         parts.append("---")
         parts.append("")
     parts.append(body)

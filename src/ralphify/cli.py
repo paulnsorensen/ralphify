@@ -17,7 +17,7 @@ from rich.console import Console
 
 from ralphify import __version__
 from ralphify._console_emitter import ConsoleEmitter
-from ralphify._frontmatter import CONFIG_FILENAME
+from ralphify._frontmatter import CONFIG_FILENAME, parse_frontmatter
 from ralphify._run_types import RunConfig, RunState
 from ralphify.engine import run_loop
 from ralphify.ralphs import resolve_ralph_source
@@ -196,6 +196,11 @@ def run(
     if log_dir:
         rprint(f"[dim]Logging output to {log_dir}/[/dim]")
 
+    # Extract declared global primitive dependencies from ralph frontmatter
+    ralph_fm, _ = parse_frontmatter(Path(ralph_file_path).read_text())
+    global_checks = ralph_fm.get("checks")
+    global_contexts = ralph_fm.get("contexts")
+
     config = RunConfig(
         command=command,
         args=args,
@@ -206,6 +211,8 @@ def run(
         timeout=timeout,
         stop_on_error=stop_on_error,
         log_dir=log_dir,
+        global_checks=global_checks,
+        global_contexts=global_contexts,
     )
     state = RunState(run_id=uuid.uuid4().hex[:12])
     emitter = ConsoleEmitter(_console)

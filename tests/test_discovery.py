@@ -1,6 +1,10 @@
-"""Tests for discover_local_primitives in _discovery.py."""
+"""Tests for _discovery.py."""
 
-from ralphify._discovery import discover_local_primitives
+import pytest
+from pathlib import Path
+
+from ralphify._discovery import discover_local_primitives, select_by_names
+from ralphify.contexts import Context
 
 
 class TestDiscoverLocalPrimitivesBasic:
@@ -53,3 +57,32 @@ class TestDiscoverLocalPrimitivesBasic:
 
         results = list(discover_local_primitives(tmp_path, "checks", "CHECK.md"))
         assert results == []
+
+
+class TestSelectByNames:
+    def _make_contexts(self, *names):
+        return [Context(name=n, path=Path(f"/{n}")) for n in names]
+
+    def test_selects_requested_names(self):
+        pool = self._make_contexts("lint", "typecheck", "format")
+        result = select_by_names(pool, ["lint", "typecheck"], "checks")
+        assert [p.name for p in result] == ["lint", "typecheck"]
+
+    def test_errors_on_unknown_name(self):
+        pool = self._make_contexts("lint")
+        with pytest.raises(ValueError, match="Unknown checks: typo"):
+            select_by_names(pool, ["typo"], "checks")
+
+    def test_error_lists_available(self):
+        pool = self._make_contexts("lint", "format")
+        with pytest.raises(ValueError, match="Available: format, lint"):
+            select_by_names(pool, ["nope"], "checks")
+
+    def test_empty_names_returns_empty(self):
+        pool = self._make_contexts("lint")
+        assert select_by_names(pool, [], "checks") == []
+
+    def test_sorted_output(self):
+        pool = self._make_contexts("zebra", "alpha")
+        result = select_by_names(pool, ["zebra", "alpha"], "checks")
+        assert [p.name for p in result] == ["alpha", "zebra"]

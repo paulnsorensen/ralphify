@@ -245,7 +245,7 @@ class TestRunCheckScriptValidation:
     def test_errors_when_check_script_not_executable(self, mock_run, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        (tmp_path / "RALPH.md").write_text("go")
+        (tmp_path / "RALPH.md").write_text("---\nchecks: [my-check]\n---\ngo")
 
         check_dir = tmp_path / ".ralphify" / "checks" / "my-check"
         check_dir.mkdir(parents=True)
@@ -262,7 +262,7 @@ class TestRunCheckScriptValidation:
     def test_runs_when_check_script_is_executable(self, mock_run, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        (tmp_path / "RALPH.md").write_text("go")
+        (tmp_path / "RALPH.md").write_text("---\nchecks: [my-check]\n---\ngo")
 
         check_dir = tmp_path / ".ralphify" / "checks" / "my-check"
         check_dir.mkdir(parents=True)
@@ -505,7 +505,7 @@ class TestRunChecks:
     def test_checks_run_after_iteration(self, mock_agent, mock_run_checks, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        (tmp_path / "RALPH.md").write_text("test prompt")
+        (tmp_path / "RALPH.md").write_text("---\nchecks: [lint]\n---\ntest prompt")
         _setup_check(tmp_path, "lint", "ruff check .")
 
         mock_run_checks.return_value = [_make_check_result()]
@@ -520,7 +520,7 @@ class TestRunChecks:
     def test_failure_text_appended_to_next_prompt(self, mock_agent, mock_run_checks, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        (tmp_path / "RALPH.md").write_text("base prompt")
+        (tmp_path / "RALPH.md").write_text("---\nchecks: [lint]\n---\nbase prompt")
         _setup_check(tmp_path, "lint", "ruff check .", body="Fix lint errors.")
 
         mock_run_checks.return_value = [
@@ -549,7 +549,7 @@ class TestRunChecks:
     def test_checks_run_even_when_agent_fails(self, mock_agent, mock_run_checks, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        (tmp_path / "RALPH.md").write_text("prompt")
+        (tmp_path / "RALPH.md").write_text("---\nchecks: [lint]\n---\nprompt")
         _setup_check(tmp_path, "lint", "ruff check .")
 
         mock_run_checks.return_value = [_make_check_result()]
@@ -563,7 +563,7 @@ class TestRunChecks:
     def test_check_failure_does_not_trigger_stop_on_error(self, mock_agent, mock_run_checks, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        (tmp_path / "RALPH.md").write_text("prompt")
+        (tmp_path / "RALPH.md").write_text("---\nchecks: [lint]\n---\nprompt")
         _setup_check(tmp_path, "lint", "ruff check .")
 
         mock_run_checks.return_value = [
@@ -581,7 +581,7 @@ class TestRunChecks:
     def test_disabled_checks_not_run(self, mock_agent, mock_run_checks, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        (tmp_path / "RALPH.md").write_text("prompt")
+        (tmp_path / "RALPH.md").write_text("---\nchecks: [enabled, disabled]\n---\nprompt")
         _setup_check(tmp_path, "enabled", "echo ok", enabled=True)
         _setup_check(tmp_path, "disabled", "echo skip", enabled=False)
 
@@ -690,7 +690,7 @@ class TestRunContexts:
     def test_contexts_injected_into_prompt(self, mock_agent, mock_run_contexts, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        (tmp_path / "RALPH.md").write_text("Base.\n\n{{ contexts.git-log }}")
+        (tmp_path / "RALPH.md").write_text("---\ncontexts: [git-log]\n---\nBase.\n\n{{ contexts.git-log }}")
         _setup_context(tmp_path, "git-log", "git log --oneline -5")
 
         ctx = Context(name="git-log", path=Path("/fake"), command="git log", enabled=True)
@@ -710,7 +710,7 @@ class TestRunContexts:
     def test_disabled_contexts_not_run(self, mock_agent, mock_run_contexts, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        (tmp_path / "RALPH.md").write_text("prompt")
+        (tmp_path / "RALPH.md").write_text("---\ncontexts: [enabled, disabled]\n---\nprompt")
         _setup_context(tmp_path, "enabled", "echo ok", enabled=True)
         _setup_context(tmp_path, "disabled", "echo skip", enabled=False)
 
@@ -731,7 +731,7 @@ class TestRunContexts:
     def test_contexts_run_each_iteration(self, mock_agent, mock_run_contexts, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        (tmp_path / "RALPH.md").write_text("{{ contexts.info }}")
+        (tmp_path / "RALPH.md").write_text("---\ncontexts: [info]\n---\n{{ contexts.info }}")
         _setup_context(tmp_path, "info", "echo hi")
 
         ctx = Context(name="info", path=Path("/fake"), command="echo hi", enabled=True)

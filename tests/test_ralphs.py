@@ -104,6 +104,37 @@ class TestResolveRalphName:
             resolve_ralph_name("nonexistent", tmp_path)
 
 
+class TestRalphPrimitiveDependencies:
+    def test_checks_and_contexts_parsed(self, tmp_path):
+        p_dir = tmp_path / ".ralphify" / "ralphs" / "my-ralph"
+        p_dir.mkdir(parents=True)
+        (p_dir / "RALPH.md").write_text(
+            "---\nchecks: [lint, typecheck]\ncontexts: [git-log]\n---\nDo work."
+        )
+
+        result = discover_ralphs(tmp_path)
+        assert result[0].checks == ["lint", "typecheck"]
+        assert result[0].contexts == ["git-log"]
+
+    def test_no_dependencies_is_none(self, tmp_path):
+        p_dir = tmp_path / ".ralphify" / "ralphs" / "basic"
+        p_dir.mkdir(parents=True)
+        (p_dir / "RALPH.md").write_text("---\n---\nSimple prompt.")
+
+        result = discover_ralphs(tmp_path)
+        assert result[0].checks is None
+        assert result[0].contexts is None
+
+    def test_empty_list(self, tmp_path):
+        p_dir = tmp_path / ".ralphify" / "ralphs" / "empty"
+        p_dir.mkdir(parents=True)
+        (p_dir / "RALPH.md").write_text("---\nchecks: []\ncontexts: []\n---\nNo deps.")
+
+        result = discover_ralphs(tmp_path)
+        assert result[0].checks == []
+        assert result[0].contexts == []
+
+
 class TestIsRalphName:
     def test_simple_name(self):
         assert is_ralph_name("improve-docs") is True

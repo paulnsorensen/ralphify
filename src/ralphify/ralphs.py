@@ -30,6 +30,8 @@ class Ralph:
     description: str = ""
     enabled: bool = True
     content: str = ""
+    checks: list[str] | None = None
+    contexts: list[str] | None = None
 
 
 def _ralph_from_entry(prim: PrimitiveEntry) -> Ralph:
@@ -40,6 +42,8 @@ def _ralph_from_entry(prim: PrimitiveEntry) -> Ralph:
         description=prim.frontmatter.get("description", ""),
         enabled=prim.frontmatter.get("enabled", True),
         content=prim.body,
+        checks=prim.frontmatter.get("checks"),
+        contexts=prim.frontmatter.get("contexts"),
     )
 
 

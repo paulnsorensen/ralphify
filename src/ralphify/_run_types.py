@@ -56,6 +56,8 @@ class RunConfig:
     stop_on_error: bool = False
     log_dir: str | None = None
     project_root: Path = field(default_factory=lambda: Path("."))
+    global_checks: list[str] | None = None
+    global_contexts: list[str] | None = None
 
 
 @dataclass

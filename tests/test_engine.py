@@ -306,16 +306,16 @@ class TestPromptLocalPrimitives:
 
     @patch(_MOCK_SUBPROCESS, side_effect=_ok)
     def test_prompt_local_contexts_merged(self, mock_run, tmp_path):
-        """Both global and local contexts are discovered."""
+        """Both declared global and local contexts are discovered."""
         # Global context
         gc = tmp_path / ".ralphify" / "contexts" / "global-info"
         gc.mkdir(parents=True)
         (gc / "CONTEXT.md").write_text("---\n---\nGlobal info.")
 
-        # Named prompt
+        # Named prompt — declares global-info as a dependency
         ralph_dir = tmp_path / ".ralphify" / "ralphs" / "ui"
         ralph_dir.mkdir(parents=True)
-        (ralph_dir / "RALPH.md").write_text("---\n---\n{{ contexts.global-info }}\n\nBuild the UI.\n\n{{ contexts.focus }}")
+        (ralph_dir / "RALPH.md").write_text("---\ncontexts: [global-info]\n---\n{{ contexts.global-info }}\n\nBuild the UI.\n\n{{ contexts.focus }}")
 
         # Local context
         lc = ralph_dir / "contexts" / "focus"
@@ -326,6 +326,7 @@ class TestPromptLocalPrimitives:
             tmp_path,
             ralph_file=str(ralph_dir / "RALPH.md"),
             ralph_name="ui",
+            global_contexts=["global-info"],
             max_iterations=1,
         )
         state = _make_state()
@@ -343,10 +344,10 @@ class TestPromptLocalPrimitives:
         gc.mkdir(parents=True)
         (gc / "CONTEXT.md").write_text("---\n---\nGlobal info.")
 
-        # Named prompt
+        # Named prompt — declares info as dependency, but local overrides it
         ralph_dir = tmp_path / ".ralphify" / "ralphs" / "ui"
         ralph_dir.mkdir(parents=True)
-        (ralph_dir / "RALPH.md").write_text("---\n---\n{{ contexts.info }}\n\nBuild the UI.")
+        (ralph_dir / "RALPH.md").write_text("---\ncontexts: [info]\n---\n{{ contexts.info }}\n\nBuild the UI.")
 
         # Local context with SAME name
         lc = ralph_dir / "contexts" / "info"
@@ -357,6 +358,7 @@ class TestPromptLocalPrimitives:
             tmp_path,
             ralph_file=str(ralph_dir / "RALPH.md"),
             ralph_name="ui",
+            global_contexts=["info"],
             max_iterations=1,
         )
         state = _make_state()
@@ -367,16 +369,16 @@ class TestPromptLocalPrimitives:
         assert "Global info." not in call_input
 
     @patch(_MOCK_SUBPROCESS, side_effect=_ok)
-    def test_adhoc_prompt_only_globals(self, mock_run, tmp_path):
-        """Ad-hoc prompt text should not trigger local discovery."""
-        # Global context
+    def test_adhoc_prompt_gets_no_globals(self, mock_run, tmp_path):
+        """Ad-hoc prompt text gets no global primitives (no frontmatter = no declarations)."""
+        # Global context exists but should NOT be included
         gc = tmp_path / ".ralphify" / "contexts" / "info"
         gc.mkdir(parents=True)
         (gc / "CONTEXT.md").write_text("---\n---\nGlobal info.")
 
         config = _make_config(
             tmp_path,
-            prompt_text="{{ contexts.info }}\n\nad-hoc prompt",
+            prompt_text="ad-hoc prompt",
             ralph_name=None,
             max_iterations=1,
         )
@@ -384,20 +386,21 @@ class TestPromptLocalPrimitives:
         run_loop(config, state, NullEmitter())
 
         call_input = mock_run.call_args.kwargs["input"]
-        assert "Global info." in call_input
+        assert call_input == "ad-hoc prompt"
+        assert "Global info." not in call_input
 
     @patch(_MOCK_SUBPROCESS, side_effect=_ok)
     def test_disabled_local_suppresses_global(self, mock_run, tmp_path):
-        """A disabled local primitive with the same name hides the global one."""
+        """A disabled local primitive with the same name hides the declared global."""
         # Global context (enabled)
         gc = tmp_path / ".ralphify" / "contexts" / "info"
         gc.mkdir(parents=True)
         (gc / "CONTEXT.md").write_text("---\n---\nGlobal info.")
 
-        # Named prompt
+        # Named prompt — declares info, but local disables it
         ralph_dir = tmp_path / ".ralphify" / "ralphs" / "ui"
         ralph_dir.mkdir(parents=True)
-        (ralph_dir / "RALPH.md").write_text("---\n---\nBuild the UI.")
+        (ralph_dir / "RALPH.md").write_text("---\ncontexts: [info]\n---\nBuild the UI.")
 
         # Local context: same name, disabled
         lc = ralph_dir / "contexts" / "info"
@@ -408,6 +411,7 @@ class TestPromptLocalPrimitives:
             tmp_path,
             ralph_file=str(ralph_dir / "RALPH.md"),
             ralph_name="ui",
+            global_contexts=["info"],
             max_iterations=1,
         )
         state = _make_state()
@@ -541,7 +545,10 @@ class TestRalphNameEnv:
         ctx_dir.mkdir(parents=True)
         (ctx_dir / "CONTEXT.md").write_text("---\ncommand: echo hi\n---\n")
 
-        config = _make_config(tmp_path, ralph_name="docs", max_iterations=1)
+        config = _make_config(
+            tmp_path, ralph_name="docs", max_iterations=1,
+            global_contexts=["test-ctx"],
+        )
         state = _make_state()
         run_loop(config, state, NullEmitter())
 
@@ -557,7 +564,10 @@ class TestRalphNameEnv:
         check_dir.mkdir(parents=True)
         (check_dir / "CHECK.md").write_text("---\ncommand: echo ok\n---\n")
 
-        config = _make_config(tmp_path, ralph_name="docs", max_iterations=1)
+        config = _make_config(
+            tmp_path, ralph_name="docs", max_iterations=1,
+            global_checks=["test-chk"],
+        )
         state = _make_state()
         run_loop(config, state, NullEmitter())
 
@@ -572,7 +582,10 @@ class TestRalphNameEnv:
         ctx_dir.mkdir(parents=True)
         (ctx_dir / "CONTEXT.md").write_text("---\ncommand: echo hi\n---\n")
 
-        config = _make_config(tmp_path, ralph_name=None, max_iterations=1)
+        config = _make_config(
+            tmp_path, ralph_name=None, max_iterations=1,
+            global_contexts=["test-ctx"],
+        )
         state = _make_state()
         run_loop(config, state, NullEmitter())
 
