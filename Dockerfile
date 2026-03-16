@@ -7,6 +7,7 @@ WORKDIR /app
 COPY . .
 
 RUN uv sync --frozen
+RUN git init && git add -A && git commit -m "build" --allow-empty
 RUN uv run --group dev python -m mkdocs build --strict --site-dir _site/docs
 
 RUN mkdir -p _site && cp -r website/* _site/
