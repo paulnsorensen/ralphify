@@ -101,7 +101,8 @@ class TestRun:
         assert mock_run.call_count == 1
 
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_runs_n_iterations(self, mock_run, tmp_path, monkeypatch):
+    @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
+    def test_runs_n_iterations(self, mock_which, mock_run, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("test prompt")
@@ -114,7 +115,8 @@ class TestRun:
             assert call.kwargs["text"] is True
 
     @patch("ralphify._agent.subprocess.run")
-    def test_reads_prompt_each_iteration(self, mock_run, tmp_path, monkeypatch):
+    @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
+    def test_reads_prompt_each_iteration(self, mock_which, mock_run, tmp_path, monkeypatch):
         """Prompt file is re-read each iteration so edits take effect."""
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
@@ -152,7 +154,8 @@ class TestRun:
         )
 
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_shows_success_per_iteration(self, mock_run, tmp_path, monkeypatch):
+    @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
+    def test_shows_success_per_iteration(self, mock_which, mock_run, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("go")
@@ -164,7 +167,8 @@ class TestRun:
         assert "2 succeeded" in result.output
 
     @patch("ralphify._agent.subprocess.run", side_effect=_fail)
-    def test_continues_on_error_by_default(self, mock_run, tmp_path, monkeypatch):
+    @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
+    def test_continues_on_error_by_default(self, mock_which, mock_run, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("go")
@@ -175,7 +179,8 @@ class TestRun:
         assert "3 failed" in result.output
 
     @patch("ralphify._agent.subprocess.run", side_effect=_fail)
-    def test_stop_on_error(self, mock_run, tmp_path, monkeypatch):
+    @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
+    def test_stop_on_error(self, mock_which, mock_run, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("go")
@@ -187,7 +192,8 @@ class TestRun:
         assert "1 failed" in result.output
 
     @patch("ralphify._agent.subprocess.run")
-    def test_mixed_success_and_failure(self, mock_run, tmp_path, monkeypatch):
+    @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
+    def test_mixed_success_and_failure(self, mock_which, mock_run, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("go")
@@ -205,7 +211,8 @@ class TestRun:
 
     @patch("ralphify.engine.time.sleep")
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_delay_between_iterations(self, mock_run, mock_sleep, tmp_path, monkeypatch):
+    @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
+    def test_delay_between_iterations(self, mock_which, mock_run, mock_sleep, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("go")
@@ -219,7 +226,8 @@ class TestRun:
 
     @patch("ralphify.engine.time.sleep")
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_no_delay_with_single_iteration(self, mock_run, mock_sleep, tmp_path, monkeypatch):
+    @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
+    def test_no_delay_with_single_iteration(self, mock_which, mock_run, mock_sleep, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("go")
@@ -240,9 +248,10 @@ class TestRunRejectsInlinePrompt:
         assert "not found" in result.output.lower()
 
 
+@patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
 class TestRunCheckScriptValidation:
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_errors_when_check_script_not_executable(self, mock_run, tmp_path, monkeypatch):
+    def test_errors_when_check_script_not_executable(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("---\nchecks: [my-check]\n---\ngo")
@@ -259,7 +268,7 @@ class TestRunCheckScriptValidation:
         assert "not executable" in result.output
 
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_runs_when_check_script_is_executable(self, mock_run, tmp_path, monkeypatch):
+    def test_runs_when_check_script_is_executable(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("---\nchecks: [my-check]\n---\ngo")
@@ -276,9 +285,10 @@ class TestRunCheckScriptValidation:
         assert "not executable" not in result.output
 
 
+@patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
 class TestRunLogging:
     @patch("ralphify._agent.subprocess.run")
-    def test_creates_log_files(self, mock_run, tmp_path, monkeypatch):
+    def test_creates_log_files(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("go")
@@ -296,7 +306,7 @@ class TestRunLogging:
         assert log_files[1].name.startswith("002_")
 
     @patch("ralphify._agent.subprocess.run")
-    def test_log_file_contains_output(self, mock_run, tmp_path, monkeypatch):
+    def test_log_file_contains_output(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("go")
@@ -314,7 +324,7 @@ class TestRunLogging:
         assert "warning" in content
 
     @patch("ralphify._agent.subprocess.run")
-    def test_log_dir_created_automatically(self, mock_run, tmp_path, monkeypatch):
+    def test_log_dir_created_automatically(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("go")
@@ -330,7 +340,7 @@ class TestRunLogging:
         assert len(list(log_dir.iterdir())) == 1
 
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_no_log_files_without_flag(self, mock_run, tmp_path, monkeypatch):
+    def test_no_log_files_without_flag(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("go")
@@ -342,7 +352,7 @@ class TestRunLogging:
         assert not (tmp_path / "logs").exists()
 
     @patch("ralphify._agent.subprocess.run")
-    def test_log_shows_path_in_status(self, mock_run, tmp_path, monkeypatch):
+    def test_log_shows_path_in_status(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("go")
@@ -358,7 +368,7 @@ class TestRunLogging:
         assert ".log" in result.output
 
     @patch("ralphify._agent.subprocess.run")
-    def test_log_uses_capture_output(self, mock_run, tmp_path, monkeypatch):
+    def test_log_uses_capture_output(self, mock_run, mock_which, tmp_path, monkeypatch):
         """When logging, subprocess.run is called with capture_output=True."""
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
@@ -373,9 +383,10 @@ class TestRunLogging:
         assert mock_run.call_args.kwargs["capture_output"] is True
 
 
+@patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
 class TestRunTimeout:
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_timeout_passed_to_subprocess(self, mock_run, tmp_path, monkeypatch):
+    def test_timeout_passed_to_subprocess(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("go")
@@ -385,7 +396,7 @@ class TestRunTimeout:
         assert mock_run.call_args.kwargs["timeout"] == 30
 
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_no_timeout_by_default(self, mock_run, tmp_path, monkeypatch):
+    def test_no_timeout_by_default(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("go")
@@ -395,7 +406,7 @@ class TestRunTimeout:
         assert mock_run.call_args.kwargs["timeout"] is None
 
     @patch("ralphify._agent.subprocess.run")
-    def test_timeout_counts_as_failure(self, mock_run, tmp_path, monkeypatch):
+    def test_timeout_counts_as_failure(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("go")
@@ -409,7 +420,7 @@ class TestRunTimeout:
         assert "1 timed out" in result.output
 
     @patch("ralphify._agent.subprocess.run")
-    def test_timeout_continues_by_default(self, mock_run, tmp_path, monkeypatch):
+    def test_timeout_continues_by_default(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("go")
@@ -426,7 +437,7 @@ class TestRunTimeout:
         assert "1 failed" in result.output
 
     @patch("ralphify._agent.subprocess.run")
-    def test_timeout_stops_with_stop_on_error(self, mock_run, tmp_path, monkeypatch):
+    def test_timeout_stops_with_stop_on_error(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("go")
@@ -439,7 +450,7 @@ class TestRunTimeout:
         assert "Stopping due to --stop-on-error" in result.output
 
     @patch("ralphify._agent.subprocess.run")
-    def test_timeout_with_logging(self, mock_run, tmp_path, monkeypatch):
+    def test_timeout_with_logging(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("go")
@@ -458,7 +469,7 @@ class TestRunTimeout:
         assert "partial output" in content
 
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_timeout_shows_in_header(self, mock_run, tmp_path, monkeypatch):
+    def test_timeout_shows_in_header(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("go")
@@ -499,10 +510,11 @@ def _make_check_result(name="lint", passed=True, exit_code=0, output="ok\n",
     )
 
 
+@patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
 class TestRunChecks:
     @patch("ralphify.engine.run_all_checks")
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_checks_run_after_iteration(self, mock_agent, mock_run_checks, tmp_path, monkeypatch):
+    def test_checks_run_after_iteration(self, mock_agent, mock_run_checks, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("---\nchecks: [lint]\n---\ntest prompt")
@@ -517,7 +529,7 @@ class TestRunChecks:
 
     @patch("ralphify.engine.run_all_checks")
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_failure_text_appended_to_next_prompt(self, mock_agent, mock_run_checks, tmp_path, monkeypatch):
+    def test_failure_text_appended_to_next_prompt(self, mock_agent, mock_run_checks, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("---\nchecks: [lint]\n---\nbase prompt")
@@ -546,7 +558,7 @@ class TestRunChecks:
 
     @patch("ralphify.engine.run_all_checks")
     @patch("ralphify._agent.subprocess.run", side_effect=_fail)
-    def test_checks_run_even_when_agent_fails(self, mock_agent, mock_run_checks, tmp_path, monkeypatch):
+    def test_checks_run_even_when_agent_fails(self, mock_agent, mock_run_checks, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("---\nchecks: [lint]\n---\nprompt")
@@ -560,7 +572,7 @@ class TestRunChecks:
 
     @patch("ralphify.engine.run_all_checks")
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_check_failure_does_not_trigger_stop_on_error(self, mock_agent, mock_run_checks, tmp_path, monkeypatch):
+    def test_check_failure_does_not_trigger_stop_on_error(self, mock_agent, mock_run_checks, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("---\nchecks: [lint]\n---\nprompt")
@@ -578,7 +590,7 @@ class TestRunChecks:
 
     @patch("ralphify.engine.run_all_checks")
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_disabled_checks_not_run(self, mock_agent, mock_run_checks, tmp_path, monkeypatch):
+    def test_disabled_checks_not_run(self, mock_agent, mock_run_checks, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("---\nchecks: [enabled, disabled]\n---\nprompt")
@@ -684,10 +696,11 @@ def _setup_context(tmp_path, name="git-history", command="git log --oneline -5",
 
 
 
+@patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
 class TestRunContexts:
     @patch("ralphify.engine.run_all_contexts")
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_contexts_injected_into_prompt(self, mock_agent, mock_run_contexts, tmp_path, monkeypatch):
+    def test_contexts_injected_into_prompt(self, mock_agent, mock_run_contexts, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("---\ncontexts: [git-log]\n---\nBase.\n\n{{ contexts.git-log }}")
@@ -704,10 +717,9 @@ class TestRunContexts:
         assert "abc123 fix bug" in prompt_sent
         assert "{{ contexts.git-log }}" not in prompt_sent
 
-
     @patch("ralphify.engine.run_all_contexts")
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_disabled_contexts_not_run(self, mock_agent, mock_run_contexts, tmp_path, monkeypatch):
+    def test_disabled_contexts_not_run(self, mock_agent, mock_run_contexts, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("---\ncontexts: [enabled, disabled]\n---\nprompt")
@@ -728,7 +740,7 @@ class TestRunContexts:
 
     @patch("ralphify.engine.run_all_contexts")
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_contexts_run_each_iteration(self, mock_agent, mock_run_contexts, tmp_path, monkeypatch):
+    def test_contexts_run_each_iteration(self, mock_agent, mock_run_contexts, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("---\ncontexts: [info]\n---\n{{ contexts.info }}")
@@ -758,9 +770,10 @@ def _setup_ralph(tmp_path, name="improve-docs", description="Improve docs", enab
 
 
 
+@patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
 class TestRunRalphName:
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_run_with_ralph_name(self, mock_run, tmp_path, monkeypatch):
+    def test_run_with_ralph_name(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         _setup_ralph(tmp_path, "improve-docs", content="Fix the docs.")
@@ -769,7 +782,7 @@ class TestRunRalphName:
         assert result.exit_code == 0
         assert mock_run.call_args.kwargs["input"] == "Fix the docs."
 
-    def test_nonexistent_name_errors(self, tmp_path, monkeypatch):
+    def test_nonexistent_name_errors(self, mock_which, tmp_path, monkeypatch):
         """A value that doesn't match a named ralph produces an error."""
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
@@ -779,7 +792,7 @@ class TestRunRalphName:
         assert "not found" in result.output.lower()
 
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_run_without_name_falls_back_to_toml(self, mock_run, tmp_path, monkeypatch):
+    def test_run_without_name_falls_back_to_toml(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         (tmp_path / "RALPH.md").write_text("default prompt")
@@ -789,7 +802,7 @@ class TestRunRalphName:
         assert mock_run.call_args.kwargs["input"] == "default prompt"
 
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_toml_ralph_as_name(self, mock_run, tmp_path, monkeypatch):
+    def test_toml_ralph_as_name(self, mock_run, mock_which, tmp_path, monkeypatch):
         """When ralph.toml agent.ralph is a ralph name, resolve it."""
         monkeypatch.chdir(tmp_path)
         config = '[agent]\ncommand = "claude"\nargs = ["-p"]\nralph = "improve-docs"\n'
@@ -800,7 +813,7 @@ class TestRunRalphName:
         assert result.exit_code == 0
         assert mock_run.call_args.kwargs["input"] == "Fix the docs."
 
-    def test_inline_text_rejected(self, tmp_path, monkeypatch):
+    def test_inline_text_rejected(self, mock_which, tmp_path, monkeypatch):
         """Inline text that isn't a ralph name produces an error."""
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
