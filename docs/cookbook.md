@@ -59,8 +59,9 @@ invalid admonition syntax.
 
 ```bash
 ralph init
-ralph new check docs-build
-ralph new context git-log
+# Create the primitives manually, or use `ralph new` for AI-guided setup
+mkdir -p .ralphify/checks/docs-build .ralphify/contexts/git-log
+# Then add CHECK.md and CONTEXT.md files as shown above
 ```
 
 ---

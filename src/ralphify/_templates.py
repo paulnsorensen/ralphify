@@ -1,48 +1,10 @@
-"""Scaffold templates for ``ralph init`` and ``ralph new`` commands."""
+"""Scaffold templates for ``ralph init``."""
 
 RALPH_TOML_TEMPLATE = """\
 [agent]
 command = "claude"
 args = ["-p", "--dangerously-skip-permissions"]
 ralph = "RALPH.md"
-"""
-
-CHECK_MD_TEMPLATE = """\
----
-command: ruff check .
-timeout: 60
-enabled: true
----
-<!--
-Optional instructions for the agent when this check fails.
-Appended to the prompt alongside the command output.
-
-Example: "Fix all lint errors. Do not add noqa comments."
--->
-"""
-
-CONTEXT_MD_TEMPLATE = """\
----
-command: git log --oneline -10
-timeout: 30
-enabled: true
----
-<!--
-Optional static text injected above the command output.
-The command runs each iteration and its stdout is appended.
-
-Use {{ contexts.<name> }} in RALPH.md to place this specifically,
-or {{ contexts }} to inject all enabled contexts.
--->
-"""
-
-RALPH_MD_TEMPLATE = """\
----
-description: Describe what this ralph does
-enabled: true
----
-
-Your prompt content here.
 """
 
 ROOT_RALPH_TEMPLATE = """\

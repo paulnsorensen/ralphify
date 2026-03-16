@@ -5,6 +5,7 @@ for the core autonomous loop.  Terminal rendering of events is handled by
 :class:`~ralphify._console_emitter.ConsoleEmitter`.
 """
 
+import os
 import shutil
 import sys
 import tomllib
@@ -19,7 +20,7 @@ from rich.console import Console
 from ralphify import __version__
 from ralphify._console_emitter import ConsoleEmitter
 from ralphify._discovery import Primitive
-from ralphify._frontmatter import CHECK_MARKER, CONFIG_FILENAME, CONTEXT_MARKER, PRIMITIVES_DIR, RALPH_MARKER
+from ralphify._frontmatter import CONFIG_FILENAME
 from ralphify.checks import discover_checks
 from ralphify.contexts import discover_contexts
 from ralphify._run_types import RunConfig, RunState
@@ -27,9 +28,6 @@ from ralphify.engine import run_loop
 from ralphify.ralphs import discover_ralphs, resolve_ralph_source
 from ralphify.detector import detect_project
 from ralphify._templates import (
-    CHECK_MD_TEMPLATE,
-    CONTEXT_MD_TEMPLATE,
-    RALPH_MD_TEMPLATE,
     ROOT_RALPH_TEMPLATE,
     RALPH_TOML_TEMPLATE,
 )
@@ -43,18 +41,6 @@ rprint = _console.print
 
 app = typer.Typer()
 
-
-class _DefaultRalphGroup(typer.core.TyperGroup):
-    """Click group that routes unknown subcommands to ``ralph`` creation."""
-
-    def resolve_command(self, ctx, args):
-        if args and args[0] not in self.commands:
-            args = ["ralph"] + list(args)
-        return super().resolve_command(ctx, args)
-
-
-new_app = typer.Typer(help="Scaffold new ralph primitives.", cls=_DefaultRalphGroup)
-app.add_typer(new_app, name="new")
 
 BANNER_LINES = [
     "██████╗░░█████╗░██╗░░░░░██████╗░██╗░░██╗██╗███████╗██╗░░░██╗",
@@ -165,54 +151,27 @@ def init(
     rprint("Edit RALPH.md to customize your agent's behavior.")
 
 
-def _scaffold_primitive(
-    kind: str, name: str, filename: str, template: str,
-    ralph: str | None = None,
+@app.command()
+def new(
+    name: str | None = typer.Argument(None, help="Name for the new ralph. If omitted, the agent will help you choose."),
 ) -> None:
-    """Create a new ralph primitive directory and template file.
+    """Create a new ralph with AI-guided setup."""
+    from ralphify._skills import build_agent_command, detect_agent, install_skill
 
-    When *ralph* is set, the primitive is created under
-    ``.ralphify/ralphs/{ralph}/{kind}/{name}/`` instead of the global
-    ``.ralphify/{kind}/{name}/``.
-    """
-    if ralph:
-        prim_dir = Path(PRIMITIVES_DIR) / "ralphs" / ralph / kind / name
-    else:
-        prim_dir = Path(PRIMITIVES_DIR) / kind / name
-    prim_file = prim_dir / filename
-    label = filename.split(".")[0].capitalize()
-    if prim_file.exists():
-        rprint(f"[red]{label} '{name}' already exists at {prim_file}[/red]")
+    try:
+        agent_name, agent_path = detect_agent()
+    except RuntimeError as e:
+        rprint(f"[red]{e}[/red]")
         raise typer.Exit(1)
-    prim_dir.mkdir(parents=True, exist_ok=True)
-    prim_file.write_text(template)
-    rprint(f"[green]Created {prim_file}[/green]")
 
+    try:
+        install_skill("new-ralph", agent_name)
+    except RuntimeError as e:
+        rprint(f"[red]{e}[/red]")
+        raise typer.Exit(1)
 
-@new_app.command()
-def check(
-    name: str = typer.Argument(help="Name of the new check."),
-    ralph: str | None = typer.Option(None, "--ralph", help="Scope check to a named ralph."),
-) -> None:
-    """Create a new check. Checks are scripts that run after each iteration to validate the agent's work (e.g. tests, linters)."""
-    _scaffold_primitive("checks", name, CHECK_MARKER, CHECK_MD_TEMPLATE, ralph=ralph)
-
-
-@new_app.command()
-def context(
-    name: str = typer.Argument(help="Name of the new context."),
-    ralph: str | None = typer.Option(None, "--ralph", help="Scope context to a named ralph."),
-) -> None:
-    """Create a new context. Contexts are dynamic data sources (scripts or static text) injected before each iteration."""
-    _scaffold_primitive("contexts", name, CONTEXT_MARKER, CONTEXT_MD_TEMPLATE, ralph=ralph)
-
-
-@new_app.command("ralph", hidden=True)
-def new_ralph(
-    name: str = typer.Argument(help="Name of the new ralph."),
-) -> None:
-    """Create a new ralph. Ralphs are reusable task-focused prompt files you can switch between."""
-    _scaffold_primitive("ralphs", name, RALPH_MARKER, RALPH_MD_TEMPLATE)
+    cmd = build_agent_command(agent_name, "new-ralph", name)
+    os.execvp(cmd[0], cmd)
 
 
 @app.command()

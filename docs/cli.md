@@ -127,25 +127,17 @@ If everything is configured correctly, it prints "Ready to run." If not, it tell
 
 ### `ralph new`
 
-Scaffold new primitives. Each command creates a directory under `.ralphify/` with a template file.
+Create a new ralph with AI-guided setup. Installs a skill into your agent (Claude Code, Codex) and launches an interactive session where the agent guides you through creating a complete ralph — prompt, checks, and contexts — via conversation.
 
 ```bash
-ralph new check <name>         # Create .ralphify/checks/<name>/CHECK.md
-ralph new context <name>       # Create .ralphify/contexts/<name>/CONTEXT.md
-ralph new ralph <name>         # Create .ralphify/ralphs/<name>/RALPH.md
+ralph new              # Agent helps you choose a name and build everything
+ralph new my-task      # Start with a name already chosen
 ```
 
-#### Ralph-scoped primitives
+| Argument | Default | Description |
+|---|---|---|
+| `[NAME]` | none | Name for the new ralph. If omitted, the agent will help you choose |
 
-Checks and contexts accept a `--ralph` option to create them inside a named ralph's directory. These [ralph-scoped primitives](primitives.md#ralph-scoped-primitives) only apply when running that specific ralph.
+The command detects your agent from `ralph.toml` `[agent].command`, or auto-detects `claude` / `codex` on PATH. The skill is installed at `.claude/skills/new-ralph/SKILL.md` (or `.agents/skills/` for Codex) and kept in sync with your installed ralphify version.
 
-```bash
-ralph new check docs-build --ralph docs        # .ralphify/ralphs/docs/checks/docs-build/CHECK.md
-ralph new context doc-coverage --ralph docs     # .ralphify/ralphs/docs/contexts/doc-coverage/CONTEXT.md
-```
-
-| Option | Description |
-|---|---|
-| `--ralph` | Name of a ralph in `.ralphify/ralphs/` to scope this primitive to |
-
-The created template files include placeholder frontmatter and comments explaining how to configure each primitive. See [Primitives](primitives.md) for full details on each type.
+See [Primitives](primitives.md) for the full reference on checks, contexts, and ralphs.

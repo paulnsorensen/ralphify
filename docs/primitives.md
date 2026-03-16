@@ -18,11 +18,9 @@ Checks run **after** each iteration to validate what the agent did. If a check f
 
 ### Creating a check
 
-```bash
-ralph new check my-tests
-```
+The easiest way is `ralph new`, which guides you through creating a complete ralph with checks and contexts. To create a check manually:
 
-Edit `.ralphify/checks/my-tests/CHECK.md`:
+Create `.ralphify/checks/my-tests/CHECK.md`:
 
 ```markdown
 ---
@@ -83,11 +81,9 @@ Contexts inject **dynamic data** into the prompt before each iteration — recen
 
 ### Creating a context
 
-```bash
-ralph new context git-log
-```
+To create a context manually:
 
-Edit `.ralphify/contexts/git-log/CONTEXT.md`:
+Create `.ralphify/contexts/git-log/CONTEXT.md`:
 
 ```markdown
 ---
@@ -135,10 +131,10 @@ Named ralphs let you switch between different tasks without editing your root `R
 ### Creating a ralph
 
 ```bash
-ralph new ralph docs
+ralph new docs
 ```
 
-Edit `.ralphify/ralphs/docs/RALPH.md`:
+This launches an AI-guided session that helps you create the ralph, its checks, and contexts. To create one manually, create `.ralphify/ralphs/docs/RALPH.md`:
 
 ```markdown
 ---
@@ -178,14 +174,7 @@ The positional `[PROMPT]` argument is smart — it resolves in order:
 
 ## Ralph-scoped primitives
 
-Named ralphs can have their own checks and contexts that only apply when running that ralph. Create them with the `--ralph` flag:
-
-```bash
-ralph new check docs-build --ralph docs
-ralph new context doc-coverage --ralph docs
-```
-
-These live inside the ralph's directory:
+Named ralphs can have their own checks and contexts that only apply when running that ralph. When you use `ralph new`, the AI guide creates ralph-scoped primitives automatically. To create them manually, place them inside the ralph's directory:
 
 ```
 .ralphify/ralphs/docs/

@@ -5,7 +5,6 @@ from unittest.mock import patch
 from typer.testing import CliRunner
 
 from ralphify import __version__
-from ralphify._frontmatter import parse_frontmatter
 from ralphify.checks import Check, CheckResult
 from ralphify.contexts import Context, ContextResult
 from ralphify.cli import app, CONFIG_FILENAME
@@ -670,43 +669,75 @@ class TestRunChecks:
         assert checks_arg[0].name == "enabled"
 
 
-class TestNewCheck:
-    def test_creates_check_directory_and_file(self, tmp_path, monkeypatch):
+class TestNew:
+    @patch("ralphify.cli.os.execvp")
+    @patch("shutil.which", return_value="/usr/bin/claude")
+    def test_installs_skill_and_launches_agent(self, mock_which, mock_execvp, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
-        result = runner.invoke(app, ["new", "check", "my-lint"])
+        (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
+
+        result = runner.invoke(app, ["new", "my-task"])
         assert result.exit_code == 0
-        check_md = tmp_path / ".ralphify" / "checks" / "my-lint" / "CHECK.md"
-        assert check_md.exists()
-        content = check_md.read_text()
-        assert "command:" in content
-        assert "timeout:" in content
-        assert "enabled:" in content
+        skill_file = tmp_path / ".claude" / "skills" / "new-ralph" / "SKILL.md"
+        assert skill_file.exists()
+        assert "new-ralph" in skill_file.read_text()
+        mock_execvp.assert_called_once_with("claude", ["claude", "/new-ralph my-task"])
 
-    def test_refuses_existing_check(self, tmp_path, monkeypatch):
+    @patch("ralphify.cli.os.execvp")
+    @patch("shutil.which", return_value="/usr/bin/claude")
+    def test_name_is_optional(self, mock_which, mock_execvp, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
-        check_dir = tmp_path / ".ralphify" / "checks" / "my-lint"
-        check_dir.mkdir(parents=True)
-        (check_dir / "CHECK.md").write_text("original content")
+        (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
 
-        result = runner.invoke(app, ["new", "check", "my-lint"])
+        result = runner.invoke(app, ["new"])
+        assert result.exit_code == 0
+        mock_execvp.assert_called_once_with("claude", ["claude", "/new-ralph"])
+
+    @patch("shutil.which", return_value=None)
+    def test_errors_when_no_agent_found(self, mock_which, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+
+        result = runner.invoke(app, ["new"])
         assert result.exit_code == 1
-        assert "already exists" in result.output
-        assert (check_dir / "CHECK.md").read_text() == "original content"
+        assert "No agent found" in result.output
 
-    def test_creates_ralph_dirs_if_missing(self, tmp_path, monkeypatch):
+    @patch("ralphify.cli.os.execvp")
+    @patch("shutil.which", return_value="/usr/bin/claude")
+    def test_auto_detects_agent_without_config(self, mock_which, mock_execvp, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
-        assert not (tmp_path / ".ralphify").exists()
-        result = runner.invoke(app, ["new", "check", "fresh"])
-        assert result.exit_code == 0
-        assert (tmp_path / ".ralphify" / "checks" / "fresh" / "CHECK.md").exists()
+        # No ralph.toml — should fall back to PATH detection
 
-    def test_default_body_stripped_to_empty(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        result = runner.invoke(app, ["new", "check", "empty-body"])
+        result = runner.invoke(app, ["new", "my-task"])
         assert result.exit_code == 0
-        check_md = tmp_path / ".ralphify" / "checks" / "empty-body" / "CHECK.md"
-        _, body = parse_frontmatter(check_md.read_text())
-        assert body == ""
+        mock_execvp.assert_called_once()
+
+    @patch("ralphify.cli.os.execvp")
+    @patch("shutil.which", return_value="/usr/bin/codex")
+    def test_codex_skill_installation(self, mock_which, mock_execvp, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        config = '[agent]\ncommand = "codex"\nargs = []\nralph = "RALPH.md"\n'
+        (tmp_path / CONFIG_FILENAME).write_text(config)
+
+        result = runner.invoke(app, ["new", "my-task"])
+        assert result.exit_code == 0
+        skill_file = tmp_path / ".agents" / "skills" / "new-ralph" / "SKILL.md"
+        assert skill_file.exists()
+        mock_execvp.assert_called_once_with("codex", ["codex", "$new-ralph my-task"])
+
+    @patch("ralphify.cli.os.execvp")
+    @patch("shutil.which", return_value="/usr/bin/claude")
+    def test_overwrites_existing_skill(self, mock_which, mock_execvp, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
+
+        # Pre-existing skill file with old content
+        skill_dir = tmp_path / ".claude" / "skills" / "new-ralph"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("old content")
+
+        result = runner.invoke(app, ["new", "my-task"])
+        assert result.exit_code == 0
+        assert (skill_dir / "SKILL.md").read_text() != "old content"
 
 
 
@@ -725,43 +756,6 @@ def _setup_context(tmp_path, name="git-history", command="git log --oneline -5",
     return ctx_dir
 
 
-class TestNewContext:
-    def test_creates_context_directory_and_file(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        result = runner.invoke(app, ["new", "context", "git-history"])
-        assert result.exit_code == 0
-        ctx_md = tmp_path / ".ralphify" / "contexts" / "git-history" / "CONTEXT.md"
-        assert ctx_md.exists()
-        content = ctx_md.read_text()
-        assert "command:" in content
-        assert "timeout:" in content
-        assert "enabled:" in content
-
-    def test_refuses_existing_context(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        ctx_dir = tmp_path / ".ralphify" / "contexts" / "git-history"
-        ctx_dir.mkdir(parents=True)
-        (ctx_dir / "CONTEXT.md").write_text("original content")
-
-        result = runner.invoke(app, ["new", "context", "git-history"])
-        assert result.exit_code == 1
-        assert "already exists" in result.output
-        assert (ctx_dir / "CONTEXT.md").read_text() == "original content"
-
-    def test_creates_ralph_dirs_if_missing(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        assert not (tmp_path / ".ralphify").exists()
-        result = runner.invoke(app, ["new", "context", "fresh"])
-        assert result.exit_code == 0
-        assert (tmp_path / ".ralphify" / "contexts" / "fresh" / "CONTEXT.md").exists()
-
-    def test_default_body_stripped_to_empty(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        result = runner.invoke(app, ["new", "context", "empty-body"])
-        assert result.exit_code == 0
-        ctx_md = tmp_path / ".ralphify" / "contexts" / "empty-body" / "CONTEXT.md"
-        _, body = parse_frontmatter(ctx_md.read_text())
-        assert body == ""
 
 
 class TestStatusContexts:
@@ -874,42 +868,6 @@ def _setup_ralph(tmp_path, name="improve-docs", description="Improve docs", enab
     return p_dir
 
 
-class TestNewRalph:
-    def test_creates_ralph_directory_and_file(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        result = runner.invoke(app, ["new", "improve-docs"])
-        assert result.exit_code == 0
-        prompt_md = tmp_path / ".ralphify" / "ralphs" / "improve-docs" / "RALPH.md"
-        assert prompt_md.exists()
-        content = prompt_md.read_text()
-        assert "description:" in content
-        assert "enabled:" in content
-
-    def test_refuses_existing_ralph(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        p_dir = tmp_path / ".ralphify" / "ralphs" / "improve-docs"
-        p_dir.mkdir(parents=True)
-        (p_dir / "RALPH.md").write_text("original content")
-
-        result = runner.invoke(app, ["new", "improve-docs"])
-        assert result.exit_code == 1
-        assert "already exists" in result.output
-        assert (p_dir / "RALPH.md").read_text() == "original content"
-
-    def test_creates_ralph_dirs_if_missing(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        assert not (tmp_path / ".ralphify").exists()
-        result = runner.invoke(app, ["new", "fresh"])
-        assert result.exit_code == 0
-        assert (tmp_path / ".ralphify" / "ralphs" / "fresh" / "RALPH.md").exists()
-
-    def test_default_template_has_placeholder_body(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        result = runner.invoke(app, ["new", "empty-body"])
-        assert result.exit_code == 0
-        prompt_md = tmp_path / ".ralphify" / "ralphs" / "empty-body" / "RALPH.md"
-        _, body = parse_frontmatter(prompt_md.read_text())
-        assert "Your prompt content here." in body
 
 
 
