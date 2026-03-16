@@ -1,5 +1,5 @@
 ---
-description: Full reference for ralphify's four primitives — checks (post-iteration validation), contexts (dynamic data injection), instructions (reusable prompt rules), and ralphs (named task-focused ralphs).
+description: Full reference for ralphify's three primitives — checks (post-iteration validation), contexts (dynamic data injection), and ralphs (named task-focused ralphs).
 ---
 
 # Primitives
@@ -9,8 +9,7 @@ Primitives are reusable building blocks that extend your loop. They live in the 
 | Primitive | Purpose | Runs when |
 |---|---|---|
 | [Checks](#checks) | Validate the agent's work (tests, linters) | After each iteration |
-| [Contexts](#contexts) | Inject dynamic data into the prompt | Before each iteration |
-| [Instructions](#instructions) | Inject static text into the prompt | Before each iteration |
+| [Contexts](#contexts) | Inject dynamic or static data into the prompt | Before each iteration |
 | [Ralphs](#ralphs) | Reusable task-focused ralphs you can switch between | At run start |
 
 ## Checks
@@ -129,33 +128,6 @@ Work on the next task.
 - `{{ contexts }}` — places all remaining contexts (those not already placed by name)
 - If no placeholders are found, all context output is appended to the end
 
-## Instructions
-
-Instructions inject **static text** into the prompt — reusable rules, style guides, or constraints you can toggle without editing the ralph file.
-
-### Creating an instruction
-
-```bash
-ralph new instruction code-style
-```
-
-Edit `.ralphify/instructions/code-style/INSTRUCTION.md`:
-
-```markdown
----
-enabled: true
----
-Always use type hints on function signatures.
-Keep functions under 30 lines.
-Never use print() for logging — use the logging module.
-```
-
-Instructions with no body text are silently excluded, even when `enabled: true`.
-
-### Placement in the prompt
-
-Same rules as contexts: `{{ instructions.code-style }}` for specific placement, `{{ instructions }}` for all remaining, or appended to the end if no placeholders.
-
 ## Ralphs
 
 Named ralphs let you switch between different tasks without editing your root `RALPH.md`. Create a `docs` ralph, a `refactor` ralph, and a `bug-fix` ralph — select the one you need at run time.
@@ -179,7 +151,6 @@ You are a documentation agent. Each iteration starts fresh.
 Read the codebase and existing docs. Find the biggest gap and improve one page per iteration.
 
 {{ contexts }}
-{{ instructions }}
 ```
 
 ### Running a named ralph
@@ -196,19 +167,18 @@ You can also set a default in `ralph.toml`:
 ralph = "docs"   # Name of a ralph in .ralphify/ralphs/
 ```
 
-### Priority chain
+### Prompt resolution
 
-When resolving the prompt (first match wins):
+The positional `[PROMPT]` argument is smart — it resolves in order:
 
-1. `-p` flag — inline ad-hoc prompt text
-2. Positional argument — `ralph run <name>` looks up `.ralphify/ralphs/<name>/RALPH.md`
-3. `--ralph-file` / `-f` flag — explicit path to a prompt file
-4. `ralph.toml` `ralph` field — can be a name or a file path
-5. Fallback — `RALPH.md` in the project root
+1. If it matches a named ralph in `.ralphify/ralphs/` → use that ralph
+2. If it's an existing file path → use as prompt file
+3. Otherwise → treat as inline prompt text
+4. If omitted → fall back to `ralph.toml` `agent.ralph` (name or path)
 
 ## Ralph-scoped primitives
 
-Named ralphs can have their own checks, contexts, and instructions that only apply when running that ralph. Create them with the `--ralph` flag:
+Named ralphs can have their own checks and contexts that only apply when running that ralph. Create them with the `--ralph` flag:
 
 ```bash
 ralph new check docs-build --ralph docs
@@ -238,6 +208,6 @@ Primitives run in **alphabetical order by directory name**. To control order, us
 |---|---|---|
 | `RALPH.md` | Every iteration | Yes |
 | Context command output | Every iteration | Yes |
-| Primitive config (checks, contexts, instructions) | Startup only | No — restart the loop |
+| Primitive config (checks, contexts) | Startup only | No — restart the loop |
 
 `RALPH.md` is the primary way to steer the agent in real time.

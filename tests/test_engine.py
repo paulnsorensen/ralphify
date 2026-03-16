@@ -305,22 +305,22 @@ class TestPromptLocalPrimitives:
     """Tests for prompt-scoped primitive discovery and merge logic."""
 
     @patch(_MOCK_SUBPROCESS, side_effect=_ok)
-    def test_prompt_local_primitives_merged(self, mock_run, tmp_path):
-        """Both global and local primitives are discovered."""
-        # Global instruction
-        gi = tmp_path / ".ralphify" / "instructions" / "global-style"
-        gi.mkdir(parents=True)
-        (gi / "INSTRUCTION.md").write_text("---\n---\nGlobal style.")
+    def test_prompt_local_contexts_merged(self, mock_run, tmp_path):
+        """Both global and local contexts are discovered."""
+        # Global context
+        gc = tmp_path / ".ralphify" / "contexts" / "global-info"
+        gc.mkdir(parents=True)
+        (gc / "CONTEXT.md").write_text("---\n---\nGlobal info.")
 
         # Named prompt
         ralph_dir = tmp_path / ".ralphify" / "ralphs" / "ui"
         ralph_dir.mkdir(parents=True)
         (ralph_dir / "RALPH.md").write_text("---\n---\nBuild the UI.")
 
-        # Local instruction
-        li = ralph_dir / "instructions" / "focus"
-        li.mkdir(parents=True)
-        (li / "INSTRUCTION.md").write_text("---\n---\nFocus on components.")
+        # Local context
+        lc = ralph_dir / "contexts" / "focus"
+        lc.mkdir(parents=True)
+        (lc / "CONTEXT.md").write_text("---\n---\nFocus on components.")
 
         config = _make_config(
             tmp_path,
@@ -331,28 +331,27 @@ class TestPromptLocalPrimitives:
         state = _make_state()
         run_loop(config, state, NullEmitter())
 
-        # Agent should have been called with both instructions resolved
         call_input = mock_run.call_args.kwargs["input"]
-        assert "Global style." in call_input
+        assert "Global info." in call_input
         assert "Focus on components." in call_input
 
     @patch(_MOCK_SUBPROCESS, side_effect=_ok)
     def test_prompt_local_overrides_global(self, mock_run, tmp_path):
         """A prompt-local primitive with the same name replaces the global one."""
-        # Global instruction
-        gi = tmp_path / ".ralphify" / "instructions" / "style"
-        gi.mkdir(parents=True)
-        (gi / "INSTRUCTION.md").write_text("---\n---\nGlobal style rules.")
+        # Global context
+        gc = tmp_path / ".ralphify" / "contexts" / "info"
+        gc.mkdir(parents=True)
+        (gc / "CONTEXT.md").write_text("---\n---\nGlobal info.")
 
         # Named prompt
         ralph_dir = tmp_path / ".ralphify" / "ralphs" / "ui"
         ralph_dir.mkdir(parents=True)
         (ralph_dir / "RALPH.md").write_text("---\n---\nBuild the UI.")
 
-        # Local instruction with SAME name
-        li = ralph_dir / "instructions" / "style"
-        li.mkdir(parents=True)
-        (li / "INSTRUCTION.md").write_text("---\n---\nLocal style rules.")
+        # Local context with SAME name
+        lc = ralph_dir / "contexts" / "info"
+        lc.mkdir(parents=True)
+        (lc / "CONTEXT.md").write_text("---\n---\nLocal info.")
 
         config = _make_config(
             tmp_path,
@@ -364,16 +363,16 @@ class TestPromptLocalPrimitives:
         run_loop(config, state, NullEmitter())
 
         call_input = mock_run.call_args.kwargs["input"]
-        assert "Local style rules." in call_input
-        assert "Global style rules." not in call_input
+        assert "Local info." in call_input
+        assert "Global info." not in call_input
 
     @patch(_MOCK_SUBPROCESS, side_effect=_ok)
     def test_adhoc_prompt_only_globals(self, mock_run, tmp_path):
-        """Ad-hoc prompt text (-p) should not trigger local discovery."""
-        # Global instruction
-        gi = tmp_path / ".ralphify" / "instructions" / "style"
-        gi.mkdir(parents=True)
-        (gi / "INSTRUCTION.md").write_text("---\n---\nGlobal style.")
+        """Ad-hoc prompt text should not trigger local discovery."""
+        # Global context
+        gc = tmp_path / ".ralphify" / "contexts" / "info"
+        gc.mkdir(parents=True)
+        (gc / "CONTEXT.md").write_text("---\n---\nGlobal info.")
 
         config = _make_config(
             tmp_path,
@@ -385,25 +384,25 @@ class TestPromptLocalPrimitives:
         run_loop(config, state, NullEmitter())
 
         call_input = mock_run.call_args.kwargs["input"]
-        assert "Global style." in call_input
+        assert "Global info." in call_input
 
     @patch(_MOCK_SUBPROCESS, side_effect=_ok)
     def test_disabled_local_suppresses_global(self, mock_run, tmp_path):
         """A disabled local primitive with the same name hides the global one."""
-        # Global instruction (enabled)
-        gi = tmp_path / ".ralphify" / "instructions" / "style"
-        gi.mkdir(parents=True)
-        (gi / "INSTRUCTION.md").write_text("---\n---\nGlobal style.")
+        # Global context (enabled)
+        gc = tmp_path / ".ralphify" / "contexts" / "info"
+        gc.mkdir(parents=True)
+        (gc / "CONTEXT.md").write_text("---\n---\nGlobal info.")
 
         # Named prompt
         ralph_dir = tmp_path / ".ralphify" / "ralphs" / "ui"
         ralph_dir.mkdir(parents=True)
         (ralph_dir / "RALPH.md").write_text("---\n---\nBuild the UI.")
 
-        # Local instruction: same name, disabled
-        li = ralph_dir / "instructions" / "style"
-        li.mkdir(parents=True)
-        (li / "INSTRUCTION.md").write_text("---\nenabled: false\n---\nLocal style.")
+        # Local context: same name, disabled
+        lc = ralph_dir / "contexts" / "info"
+        lc.mkdir(parents=True)
+        (lc / "CONTEXT.md").write_text("---\nenabled: false\n---\nLocal info.")
 
         config = _make_config(
             tmp_path,
@@ -415,8 +414,8 @@ class TestPromptLocalPrimitives:
         run_loop(config, state, NullEmitter())
 
         call_input = mock_run.call_args.kwargs["input"]
-        assert "Global style." not in call_input
-        assert "Local style." not in call_input
+        assert "Global info." not in call_input
+        assert "Local info." not in call_input
 
     @patch(_MOCK_SUBPROCESS, side_effect=_ok)
     def test_reload_rediscovers_local(self, mock_run, tmp_path):
@@ -441,10 +440,10 @@ class TestPromptLocalPrimitives:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                # Add a local instruction and request reload
-                li = ralph_dir / "instructions" / "new-focus"
-                li.mkdir(parents=True)
-                (li / "INSTRUCTION.md").write_text("---\n---\nNew focus.")
+                # Add a local context and request reload
+                lc = ralph_dir / "contexts" / "new-focus"
+                lc.mkdir(parents=True)
+                (lc / "CONTEXT.md").write_text("---\n---\nNew focus.")
                 state.request_reload()
             return subprocess.CompletedProcess(args=args, returncode=0)
 
@@ -459,7 +458,7 @@ class TestPromptLocalPrimitives:
         types = [e.type for e in events]
         assert EventType.PRIMITIVES_RELOADED in types
 
-        # Second call should include the new instruction
+        # Second call should include the new context
         second_call_input = mock_run.call_args.kwargs["input"]
         assert "New focus." in second_call_input
 
@@ -468,31 +467,31 @@ class TestMergeByName:
     """Unit tests for merge_by_name helper."""
 
     def test_local_wins_on_name_conflict(self):
-        from ralphify.instructions import Instruction
+        from ralphify.contexts import Context
         from pathlib import Path
 
         global_list = [
-            Instruction(name="style", path=Path("/g/style"), content="Global."),
-            Instruction(name="other", path=Path("/g/other"), content="Other."),
+            Context(name="info", path=Path("/g/info"), static_content="Global."),
+            Context(name="other", path=Path("/g/other"), static_content="Other."),
         ]
         local_list = [
-            Instruction(name="style", path=Path("/l/style"), content="Local."),
+            Context(name="info", path=Path("/l/info"), static_content="Local."),
         ]
         merged = merge_by_name(global_list, local_list)
         assert len(merged) == 2
         by_name = {p.name: p for p in merged}
-        assert by_name["style"].content == "Local."
-        assert by_name["other"].content == "Other."
+        assert by_name["info"].static_content == "Local."
+        assert by_name["other"].static_content == "Other."
 
     def test_sorted_by_name(self):
-        from ralphify.instructions import Instruction
+        from ralphify.contexts import Context
         from pathlib import Path
 
         global_list = [
-            Instruction(name="zebra", path=Path("/g/z"), content="Z."),
+            Context(name="zebra", path=Path("/g/z"), static_content="Z."),
         ]
         local_list = [
-            Instruction(name="alpha", path=Path("/l/a"), content="A."),
+            Context(name="alpha", path=Path("/l/a"), static_content="A."),
         ]
         merged = merge_by_name(global_list, local_list)
         assert [p.name for p in merged] == ["alpha", "zebra"]

@@ -21,9 +21,8 @@ class Ralph:
     ``ralph run <name>`` instead of editing the root ``RALPH.md``.
 
     The *content* is the body text below the YAML frontmatter — this is the
-    full prompt that gets piped to the agent.  Context and instruction
-    placeholders (``{{ contexts }}``, ``{{ instructions }}``) resolve the
-    same way as in a root ``RALPH.md``.
+    full prompt that gets piped to the agent.  Context placeholders
+    (``{{ contexts }}``) resolve the same way as in a root ``RALPH.md``.
     """
 
     name: str
@@ -90,34 +89,45 @@ def is_ralph_name(value: str) -> bool:
 
 def resolve_ralph_source(
     *,
-    ralph_name: str | None,
-    ralph_file: str | None,
+    prompt: str | None,
     toml_ralph: str,
-) -> tuple[str, str | None]:
-    """Resolve which prompt file to use, returning ``(file_path, ralph_name)``.
+) -> tuple[str, str | None, str | None]:
+    """Resolve the positional prompt argument into a file path, ralph name, or inline text.
 
-    Priority chain: positional name > --ralph-file > ralph.toml.
-    The ``toml_ralph`` value from ``ralph.toml`` may be either a file path or
-    a named ralph — names are tried first, falling back to a literal path.
+    Returns ``(ralph_file_path, ralph_name, prompt_text)`` — exactly one of
+    ``ralph_name`` or ``prompt_text`` will be set, or both ``None`` when
+    falling back to the toml/root prompt file.
 
-    Only called when no inline ``-p/--prompt`` text was provided — inline
-    text bypasses file resolution entirely (see :func:`~ralphify.cli.run`).
+    Resolution order for the positional *prompt* argument:
 
-    Raises ``ValueError`` if a named ralph lookup fails.
+    1. ``None`` → fall back to ``ralph.toml`` ``agent.ralph``
+    2. Matches a named ralph in ``.ralphify/ralphs/`` → use that ralph
+    3. Existing file path → use as prompt file
+    4. Otherwise → treat as inline prompt text
+
+    Raises ``ValueError`` if a named ralph lookup fails (only when using
+    the toml fallback with a name-like value).
     """
-    if ralph_name:
-        found = resolve_ralph_name(ralph_name)
-        return str(found.path / RALPH_MARKER), found.name
+    if prompt is None:
+        # Fall back to ralph.toml agent.ralph — could be a name or a path
+        if is_ralph_name(toml_ralph):
+            try:
+                found = resolve_ralph_name(toml_ralph)
+                return str(found.path / RALPH_MARKER), found.name, None
+            except ValueError:
+                return toml_ralph, None, None
+        return toml_ralph, None, None
 
-    if ralph_file:
-        return ralph_file, None
+    # Try as a named ralph first
+    try:
+        found = resolve_ralph_name(prompt)
+        return str(found.path / RALPH_MARKER), found.name, None
+    except ValueError:
+        pass
 
-    # Fall back to ralph.toml agent.ralph — could be a name or a path
-    if is_ralph_name(toml_ralph):
-        try:
-            found = resolve_ralph_name(toml_ralph)
-            return str(found.path / RALPH_MARKER), found.name
-        except ValueError:
-            return toml_ralph, None
+    # Try as a file path
+    if Path(prompt).exists():
+        return prompt, None, None
 
-    return toml_ralph, None
+    # Treat as inline prompt text
+    return toml_ralph, None, prompt

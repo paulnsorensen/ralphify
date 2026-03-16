@@ -276,64 +276,40 @@ class TestRunAdHocPrompt:
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
 
-        result = runner.invoke(app, ["run", "-n", "1", "-p", "do something"])
+        result = runner.invoke(app, ["run", "do something", "-n", "1"])
         assert result.exit_code == 0
         assert mock_run.call_args.kwargs["input"] == "do something"
 
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
     def test_skips_ralph_file_check(self, mock_run, tmp_path, monkeypatch):
-        """Works without RALPH.md when -p is provided."""
+        """Works without RALPH.md when inline text is provided."""
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
         # No RALPH.md created
 
-        result = runner.invoke(app, ["run", "-n", "1", "-p", "ad-hoc prompt"])
+        result = runner.invoke(app, ["run", "ad-hoc prompt", "-n", "1"])
         assert result.exit_code == 0
         assert mock_run.call_count == 1
 
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_contexts_and_instructions_resolve_with_ad_hoc_prompt(self, mock_run, tmp_path, monkeypatch):
+    def test_file_path_used_as_prompt(self, mock_run, tmp_path, monkeypatch):
+        """An existing file path is used as the prompt file."""
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        _setup_instruction(tmp_path, "style", content="Use black formatting.")
-
-        result = runner.invoke(app, ["run", "-n", "1", "-p", "Base.\n\n{{ instructions }}"])
-        assert result.exit_code == 0
-        prompt_sent = mock_run.call_args.kwargs["input"]
-        assert "Use black formatting." in prompt_sent
-        assert "{{ instructions }}" not in prompt_sent
-
-
-class TestRunRalphFile:
-    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_ralph_file_overrides_config(self, mock_run, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        (tmp_path / "RALPH.md").write_text("default prompt")
         (tmp_path / "alt.md").write_text("alternate prompt")
 
-        result = runner.invoke(app, ["run", "-n", "1", "--ralph-file", "alt.md"])
+        result = runner.invoke(app, ["run", "alt.md", "-n", "1"])
         assert result.exit_code == 0
         assert mock_run.call_args.kwargs["input"] == "alternate prompt"
 
-    def test_ralph_file_missing_exits(self, tmp_path, monkeypatch):
+    def test_nonexistent_file_treated_as_inline(self, tmp_path, monkeypatch):
+        """A non-existent path-like string is treated as inline text."""
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        (tmp_path / "RALPH.md").write_text("default prompt")
 
-        result = runner.invoke(app, ["run", "-n", "1", "--ralph-file", "nonexistent.md"])
-        assert result.exit_code == 1
-        assert "not found" in result.output
-
-    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_prompt_text_overrides_ralph_file(self, mock_run, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        (tmp_path / "alt.md").write_text("alternate prompt")
-
-        result = runner.invoke(app, ["run", "-n", "1", "-p", "inline text", "--ralph-file", "alt.md"])
-        assert result.exit_code == 0
-        assert mock_run.call_args.kwargs["input"] == "inline text"
+        # "nonexistent.md" doesn't exist as a file, and doesn't match a ralph name,
+        # so it's treated as inline text
+        result = runner.invoke(app, ["run", "nonexistent.md", "-n", "1"])
 
 
 class TestRunLogging:
@@ -733,131 +709,6 @@ class TestNewCheck:
         assert body == ""
 
 
-def _setup_instruction(tmp_path, name="coding-style", enabled=True, content="Use type hints."):
-    """Helper to create an instruction directory with INSTRUCTION.md."""
-    inst_dir = tmp_path / ".ralphify" / "instructions" / name
-    inst_dir.mkdir(parents=True, exist_ok=True)
-    enabled_str = "true" if enabled else "false"
-    (inst_dir / "INSTRUCTION.md").write_text(
-        f"---\nenabled: {enabled_str}\n---\n{content}"
-    )
-    return inst_dir
-
-
-class TestNewInstruction:
-    def test_creates_instruction_directory_and_file(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        result = runner.invoke(app, ["new", "instruction", "my-style"])
-        assert result.exit_code == 0
-        inst_md = tmp_path / ".ralphify" / "instructions" / "my-style" / "INSTRUCTION.md"
-        assert inst_md.exists()
-        content = inst_md.read_text()
-        assert "enabled:" in content
-
-    def test_refuses_existing_instruction(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        inst_dir = tmp_path / ".ralphify" / "instructions" / "my-style"
-        inst_dir.mkdir(parents=True)
-        (inst_dir / "INSTRUCTION.md").write_text("original content")
-
-        result = runner.invoke(app, ["new", "instruction", "my-style"])
-        assert result.exit_code == 1
-        assert "already exists" in result.output
-        assert (inst_dir / "INSTRUCTION.md").read_text() == "original content"
-
-    def test_creates_ralph_dirs_if_missing(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        assert not (tmp_path / ".ralphify").exists()
-        result = runner.invoke(app, ["new", "instruction", "fresh"])
-        assert result.exit_code == 0
-        assert (tmp_path / ".ralphify" / "instructions" / "fresh" / "INSTRUCTION.md").exists()
-
-    def test_default_body_stripped_to_empty(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        result = runner.invoke(app, ["new", "instruction", "empty-body"])
-        assert result.exit_code == 0
-        inst_md = tmp_path / ".ralphify" / "instructions" / "empty-body" / "INSTRUCTION.md"
-        _, body = parse_frontmatter(inst_md.read_text())
-        assert body == ""
-
-
-class TestStatusInstructions:
-    @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
-    def test_no_instructions_shows_none(self, mock_which, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        (tmp_path / "RALPH.md").write_text("prompt")
-
-        result = runner.invoke(app, ["status"])
-        assert result.exit_code == 0
-        assert "Instructions:" in result.output
-        assert "none" in result.output
-
-    @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
-    def test_found_instructions_shown(self, mock_which, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        (tmp_path / "RALPH.md").write_text("prompt")
-        _setup_instruction(tmp_path, "coding-style", content="Use type hints.")
-        _setup_instruction(tmp_path, "testing", content="Write tests first.")
-
-        result = runner.invoke(app, ["status"])
-        assert result.exit_code == 0
-        assert "2 found" in result.output
-        assert "coding-style" in result.output
-        assert "testing" in result.output
-
-    @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
-    def test_disabled_instruction_display(self, mock_which, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        (tmp_path / "RALPH.md").write_text("prompt")
-        _setup_instruction(tmp_path, "enabled-inst", enabled=True)
-        _setup_instruction(tmp_path, "disabled-inst", enabled=False)
-
-        result = runner.invoke(app, ["status"])
-        assert result.exit_code == 0
-        assert "2 found" in result.output
-
-
-class TestRunInstructions:
-    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_instructions_injected_into_prompt(self, mock_run, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        (tmp_path / "RALPH.md").write_text("Base prompt.\n\n{{ instructions }}")
-        _setup_instruction(tmp_path, "style", content="Use black formatting.")
-
-        result = runner.invoke(app, ["run", "-n", "1"])
-        assert result.exit_code == 0
-        prompt_sent = mock_run.call_args.kwargs["input"]
-        assert "Use black formatting." in prompt_sent
-        assert "{{ instructions }}" not in prompt_sent
-
-    @patch("ralphify.engine.run_all_checks")
-    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_instructions_resolved_before_check_failures(self, mock_agent, mock_run_checks, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        (tmp_path / "RALPH.md").write_text("Base.\n\n{{ instructions }}")
-        _setup_instruction(tmp_path, "style", content="Use black.")
-        _setup_check(tmp_path, "lint", "ruff check .", body="Fix lint.")
-
-        mock_run_checks.return_value = [
-            _make_check_result(passed=False, exit_code=1, output="err\n", failure_instruction="Fix lint.")
-        ]
-
-        result = runner.invoke(app, ["run", "-n", "2"])
-        assert result.exit_code == 0
-
-        # Second iteration: instructions resolved + check failures appended
-        second_input = mock_agent.call_args_list[1].kwargs["input"]
-        assert "Use black." in second_input
-        assert "Check Failures" in second_input
-        # Instructions should come before check failures
-        inst_pos = second_input.index("Use black.")
-        fail_pos = second_input.index("Check Failures")
-        assert inst_pos < fail_pos
 
 
 def _setup_context(tmp_path, name="git-history", command="git log --oneline -5",
@@ -972,29 +823,6 @@ class TestRunContexts:
         assert "abc123 fix bug" in prompt_sent
         assert "{{ contexts }}" not in prompt_sent
 
-    @patch("ralphify.engine.run_all_contexts")
-    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_contexts_resolved_before_instructions(self, mock_agent, mock_run_contexts, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        (tmp_path / "RALPH.md").write_text("Base.\n\n{{ contexts }}\n\n{{ instructions }}")
-        _setup_context(tmp_path, "git-log", "git log --oneline -5")
-        _setup_instruction(tmp_path, "style", content="Use black.")
-
-        ctx = Context(name="git-log", path=Path("/fake"), command="git log", enabled=True)
-        mock_run_contexts.return_value = [
-            ContextResult(context=ctx, output="abc123 fix\n", success=True)
-        ]
-
-        result = runner.invoke(app, ["run", "-n", "1"])
-        assert result.exit_code == 0
-        prompt_sent = mock_agent.call_args.kwargs["input"]
-        assert "abc123 fix" in prompt_sent
-        assert "Use black." in prompt_sent
-        # Contexts should come before instructions
-        ctx_pos = prompt_sent.index("abc123 fix")
-        inst_pos = prompt_sent.index("Use black.")
-        assert ctx_pos < inst_pos
 
     @patch("ralphify.engine.run_all_contexts")
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
@@ -1123,23 +951,15 @@ class TestRunRalphName:
         assert result.exit_code == 0
         assert mock_run.call_args.kwargs["input"] == "Fix the docs."
 
-    def test_run_with_nonexistent_ralph_name(self, tmp_path, monkeypatch):
+    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
+    def test_nonexistent_name_treated_as_inline_text(self, mock_run, tmp_path, monkeypatch):
+        """A value that doesn't match a ralph or file is treated as inline text."""
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
 
         result = runner.invoke(app, ["run", "nonexistent", "-n", "1"])
-        assert result.exit_code == 1
-        assert "not found" in result.output
-
-    def test_run_with_name_and_ralph_file_conflicts(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        _setup_ralph(tmp_path, "improve-docs", content="Fix the docs.")
-        (tmp_path / "alt.md").write_text("alt prompt")
-
-        result = runner.invoke(app, ["run", "improve-docs", "-n", "1", "--ralph-file", "alt.md"])
-        assert result.exit_code == 1
-        assert "Cannot use both" in result.output
+        assert result.exit_code == 0
+        assert mock_run.call_args.kwargs["input"] == "nonexistent"
 
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
     def test_run_without_name_falls_back_to_toml(self, mock_run, tmp_path, monkeypatch):
@@ -1164,11 +984,10 @@ class TestRunRalphName:
         assert mock_run.call_args.kwargs["input"] == "Fix the docs."
 
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_inline_prompt_overrides_name(self, mock_run, tmp_path, monkeypatch):
+    def test_inline_prompt_used_when_not_ralph_or_file(self, mock_run, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        _setup_ralph(tmp_path, "improve-docs", content="Fix the docs.")
 
-        result = runner.invoke(app, ["run", "-n", "1", "-p", "inline text"])
+        result = runner.invoke(app, ["run", "inline text", "-n", "1"])
         assert result.exit_code == 0
         assert mock_run.call_args.kwargs["input"] == "inline text"

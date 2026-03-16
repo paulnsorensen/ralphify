@@ -12,48 +12,11 @@ This tutorial walks through setting up ralphify on a project, adding checks and 
 - **An AI coding agent CLI** — this tutorial uses Claude Code, but ralphify works with [any agent that accepts piped input](agents.md)
 - **A project with a test suite** (we'll use this for the feedback loop)
 
-### Install Claude Code (if you don't have it)
-
-```bash
-npm install -g @anthropic-ai/claude-code
-```
-
-Then authenticate:
-
-```bash
-claude  # Opens an interactive session — follow the login prompts
-```
-
-Once authenticated, verify it works non-interactively:
-
-```bash
-echo "Say hello" | claude -p
-```
-
-You should see a text response. If this works, you're ready.
-
-!!! tip "Using a different agent?"
-    See [Using with Different Agents](agents.md) for setup guides for Aider, Codex CLI, or your own custom wrapper.
-
 ## Step 1: Install ralphify
 
-=== "uv (recommended)"
-
-    ```bash
-    uv tool install ralphify
-    ```
-
-=== "pipx"
-
-    ```bash
-    pipx install ralphify
-    ```
-
-=== "pip"
-
-    ```bash
-    pip install ralphify
-    ```
+```bash
+uv tool install ralphify
+```
 
 Verify it's working:
 
@@ -108,9 +71,6 @@ implement it fully, then mark it done.
 - Commit with a descriptive message like `feat: add X` or `fix: resolve Y`
 - Mark the completed task in TODO.md
 ```
-
-!!! tip "Be specific"
-    The more specific your prompt, the better the results. "Run tests" is less effective than the exact command `uv run pytest -x`. Point the agent at a concrete file like `TODO.md` rather than saying "find something to work on."
 
 ## Step 4: Do a test run
 
@@ -262,27 +222,8 @@ The agent in iteration 3 receives the test failure output and the failure instru
 
 Once you're confident the loop works, drop the `-n 3` to let it run indefinitely. Press `Ctrl+C` to stop.
 
-## Tips from real usage
-
-**Use a plan file.** Give the agent a `PLAN.md` or `TODO.md` to read and update. This provides continuity across iterations — the agent sees what's done and what's next without needing memory.
-
-**Add signs, not essays.** When the agent does something dumb, add a short constraint to the prompt. `RALPH.md` is re-read every iteration, so changes take effect immediately:
-
-```markdown
-- Do NOT refactor existing code unless the task requires it
-- Do NOT create new utility files
-```
-
-Each sign should be specific, negative ("do NOT"), and observable from a git diff.
-
-**Use checks for hard rules, the prompt for soft rules.** If you can write a command that returns exit 0 or 1, make it a check. If it's a judgment call, put it in the prompt.
-
-**Order checks fast to strict.** Checks run alphabetically. Name them `01-lint`, `02-typecheck`, `03-tests` so fast checks run first.
-
-**Start small.** Always `ralph run -n 3` on a new setup. Review the logs. Only scale up once you're confident the loop is productive.
-
 ## Next steps
 
-- [Cookbook](cookbook.md) — complete setups for Python, TypeScript, bug fixing, docs, and CI
+- [Cookbook](cookbook.md) — copy-pasteable setups for documentation and test coverage loops
 - [Primitives](primitives.md) — full reference for checks, contexts, instructions, and named ralphs
 - [CLI Reference](cli.md) — all commands and options

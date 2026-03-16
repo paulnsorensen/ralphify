@@ -51,7 +51,7 @@ ralph run       # Starts the loop (Ctrl+C to stop)
 Or skip setup and pass a prompt directly:
 
 ```bash
-ralph run -n 1 -p "Add type hints to all public functions in src/"
+ralph run "Add type hints to all public functions in src/" -n 1
 ```
 
 ### What it looks like
@@ -84,9 +84,9 @@ Iteration 2 broke a test. Iteration 3 automatically received the failure output 
 
 ---
 
-## Four primitives
+## Three primitives
 
-Ralphify extends the basic loop with four building blocks that live in the `.ralphify/` directory:
+Ralphify extends the basic loop with three building blocks that live in the `.ralphify/` directory:
 
 <div class="grid cards" markdown>
 
@@ -102,17 +102,9 @@ Ralphify extends the basic loop with four building blocks that live in the `.ral
 
     ---
 
-    Inject dynamic data into the prompt before each iteration — recent git history, current test status, API responses. The agent always sees fresh information.
+    Inject dynamic or static data into the prompt before each iteration — recent git history, current test status, reusable rules, or API responses. The agent always sees fresh information.
 
     [:octicons-arrow-right-24: Learn more](primitives.md#contexts)
-
--   :material-file-document-edit-outline:{ .lg .middle } **Instructions**
-
-    ---
-
-    Reusable rules and coding standards injected into the prompt. Toggle them on and off without editing `RALPH.md` — useful for style guides, commit conventions, or safety constraints.
-
-    [:octicons-arrow-right-24: Learn more](primitives.md#instructions)
 
 -   :material-text-box-multiple-outline:{ .lg .middle } **Ralphs**
 

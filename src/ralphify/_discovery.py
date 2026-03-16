@@ -20,9 +20,9 @@ class Primitive(Protocol):
     """Protocol for the shared interface of all primitive types.
 
     All primitive dataclasses (:class:`~ralphify.checks.Check`,
-    :class:`~ralphify.contexts.Context`, :class:`~ralphify.instructions.Instruction`,
-    :class:`~ralphify.ralphs.Ralph`) satisfy this protocol, enabling type-safe
-    discovery, filtering, merging, and display.
+    :class:`~ralphify.contexts.Context`, :class:`~ralphify.ralphs.Ralph`)
+    satisfy this protocol, enabling type-safe discovery, filtering, merging,
+    and display.
     """
 
     @property

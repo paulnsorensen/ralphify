@@ -47,7 +47,7 @@ class EventType(Enum):
     """
 
     # ── Run lifecycle ───────────────────────────────────────────
-    # Data: checks/contexts/instructions (int counts), max_iterations,
+    # Data: checks/contexts (int counts), max_iterations,
     #       timeout, delay, ralph_name
     RUN_STARTED = "run_started"
     # Data: reason ("completed" | "user_requested" | "error"),
@@ -90,7 +90,7 @@ class EventType(Enum):
     AGENT_ACTIVITY = "agent_activity"
 
     # ── Other ───────────────────────────────────────────────────
-    # Data: checks, contexts, instructions (int counts)
+    # Data: checks, contexts (int counts)
     PRIMITIVES_RELOADED = "primitives_reloaded"
     # Data: message, level ("info" | "error"), traceback (optional)
     LOG_MESSAGE = "log_message"

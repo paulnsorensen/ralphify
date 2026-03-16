@@ -83,8 +83,8 @@ Start the autonomous coding loop.
 ralph run                          # Run forever (Ctrl+C to stop)
 ralph run docs                     # Use the "docs" named ralph
 ralph run -n 5                     # Run 5 iterations
-ralph run -p "Fix the login bug"   # Ad-hoc prompt (no RALPH.md needed)
-ralph run -f path/to/prompt.md     # Use a specific prompt file
+ralph run "Fix the login bug"      # Ad-hoc inline prompt
+ralph run path/to/prompt.md        # Use a specific prompt file
 ralph run --stop-on-error          # Stop if agent exits non-zero
 ralph run --delay 10               # Wait 10s between iterations
 ralph run --timeout 300            # Kill agent after 5 minutes per iteration
@@ -93,16 +93,21 @@ ralph run --log-dir ralph_logs     # Save output to log files
 
 | Argument / Option | Short | Default | Description |
 |---|---|---|---|
-| `[RALPH_NAME]` | | none | Name of a [named ralph](primitives.md#ralphs) in `.ralphify/ralphs/` |
+| `[PROMPT]` | | none | Ralph name, file path, or inline prompt text (see resolution below) |
 | `-n` | | unlimited | Max number of iterations |
-| `--prompt` | `-p` | none | Ad-hoc prompt text. Overrides the ralph file |
-| `--ralph-file` | `-f` | none | Path to a ralph file. Overrides `ralph.toml` |
 | `--stop-on-error` | `-s` | off | Stop loop if agent exits non-zero or times out |
 | `--delay` | `-d` | `0` | Seconds to wait between iterations |
 | `--timeout` | `-t` | none | Max seconds per iteration |
 | `--log-dir` | `-l` | none | Directory for iteration log files |
 
-Ad-hoc prompts (`-p`) still resolve context and instruction placeholders. When `-p` is provided, `RALPH.md` doesn't need to exist.
+The `[PROMPT]` argument is smart — it resolves in order:
+
+1. If it matches a named ralph in `.ralphify/ralphs/` → use that ralph
+2. If it's an existing file path → use as prompt file
+3. Otherwise → treat as inline prompt text
+4. If omitted → fall back to `ralph.toml` `agent.ralph`
+
+Inline prompts still resolve context placeholders. When inline text is provided, `RALPH.md` doesn't need to exist.
 
 ### `ralph status`
 
@@ -116,7 +121,7 @@ This command checks:
 
 - Whether the prompt file exists
 - Whether the agent command is on PATH
-- All discovered checks, contexts, instructions, and named ralphs (with enabled/disabled status)
+- All discovered checks, contexts, and named ralphs (with enabled/disabled status)
 
 If everything is configured correctly, it prints "Ready to run." If not, it tells you exactly what's wrong.
 
@@ -126,19 +131,17 @@ Scaffold new primitives. Each command creates a directory under `.ralphify/` wit
 
 ```bash
 ralph new check <name>         # Create .ralphify/checks/<name>/CHECK.md
-ralph new instruction <name>   # Create .ralphify/instructions/<name>/INSTRUCTION.md
 ralph new context <name>       # Create .ralphify/contexts/<name>/CONTEXT.md
 ralph new ralph <name>         # Create .ralphify/ralphs/<name>/RALPH.md
 ```
 
 #### Ralph-scoped primitives
 
-Checks, contexts, and instructions accept a `--ralph` option to create them inside a named ralph's directory. These [ralph-scoped primitives](primitives.md#ralph-scoped-primitives) only apply when running that specific ralph.
+Checks and contexts accept a `--ralph` option to create them inside a named ralph's directory. These [ralph-scoped primitives](primitives.md#ralph-scoped-primitives) only apply when running that specific ralph.
 
 ```bash
 ralph new check docs-build --ralph docs        # .ralphify/ralphs/docs/checks/docs-build/CHECK.md
 ralph new context doc-coverage --ralph docs     # .ralphify/ralphs/docs/contexts/doc-coverage/CONTEXT.md
-ralph new instruction writing-style --ralph docs  # .ralphify/ralphs/docs/instructions/writing-style/INSTRUCTION.md
 ```
 
 | Option | Description |

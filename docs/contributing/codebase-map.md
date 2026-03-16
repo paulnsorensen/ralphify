@@ -10,7 +10,7 @@ Quick orientation guide for anyone working on this codebase — human contributo
 
 Ralphify is a CLI tool (`ralph`) that runs AI coding agents in autonomous loops. It reads a prompt file, pipes it to an agent command (e.g. `claude -p`), waits for it to finish, then repeats. Each iteration gets a fresh context window. Progress is tracked through git commits.
 
-The core loop is simple. The complexity lives in **prompt assembly** — resolving contexts, instructions, and check failures into the prompt before each iteration.
+The core loop is simple. The complexity lives in **prompt assembly** — resolving contexts and check failures into the prompt before each iteration.
 
 ## Directory structure
 
@@ -22,9 +22,8 @@ src/ralphify/           # All source code
 ├── manager.py          # Multi-run orchestration (concurrent runs via threads)
 ├── checks.py           # Discover and run validation checks, format failures
 ├── contexts.py         # Discover and run dynamic data contexts, resolve into prompt
-├── instructions.py     # Discover and resolve static text instructions
 ├── ralphs.py           # Named ralph discovery and resolution (resolve_ralph_source)
-├── resolver.py         # Template placeholder resolution (shared by contexts + instructions)
+├── resolver.py         # Template placeholder resolution (used by contexts)
 ├── detector.py         # Auto-detect project type from manifest files
 ├── _agent.py           # Run agent subprocesses (streaming + blocking modes, log writing)
 ├── _run_types.py       # RunConfig, RunState, RunStatus — shared data types for the engine
@@ -54,15 +53,14 @@ ralph run
   │
   ├── cli.py:run() — parse options, print banner
   │   ├── Load config from ralph.toml
-  │   ├── Resolve prompt via ralphs.resolve_ralph_source() (--prompt > name > --ralph-file > toml > root)
+  │   ├── Resolve prompt via ralphs.resolve_ralph_source() (name > file path > inline text > toml)
   │   └── Build RunConfig and call engine.run_loop()
   │
   └── engine.py:run_loop(config, state, emitter)
-       ├── Discover checks, contexts, instructions from .ralphify/
+       ├── Discover checks, contexts from .ralphify/
        └── Loop:
             ├── Read RALPH.md (or use ad-hoc text)
             ├── Run contexts → resolve {{ contexts.* }} placeholders
-            ├── Resolve {{ instructions.* }} placeholders
             ├── Append check failures from previous iteration (if any)
             ├── Pipe assembled prompt to agent command via subprocess
             ├── Emit iteration events (started, completed, failed, timed_out)
@@ -71,25 +69,24 @@ ralph run
             └── Repeat
 ```
 
-### The four primitives and the `Primitive` protocol
+### The three primitives and the `Primitive` protocol
 
-All four primitive types follow the same pattern: a directory under `.ralphify/` with a marker markdown file containing YAML frontmatter. Each type's dataclass (`Check`, `Context`, `Instruction`, `Ralph`) satisfies the `Primitive` protocol defined in `_discovery.py`, which requires `name` and `enabled` properties. This enables type-safe generic functions for discovery, filtering, merging, and display — the engine's `_discover_and_filter_enabled()` helper uses the protocol to handle all four types through a single code path.
+All three primitive types follow the same pattern: a directory under `.ralphify/` with a marker markdown file containing YAML frontmatter. Each type's dataclass (`Check`, `Context`, `Ralph`) satisfies the `Primitive` protocol defined in `_discovery.py`, which requires `name` and `enabled` properties. This enables type-safe generic functions for discovery, filtering, merging, and display — the engine's `_discover_and_filter_enabled()` helper uses the protocol to handle all three types through a single code path.
 
 | Primitive | Marker file | Runs | Injects into prompt |
 |---|---|---|---|
 | Check | `CHECK.md` | After iteration | Failures appended to next prompt |
 | Context | `CONTEXT.md` | Before iteration | Output replaces `{{ contexts.name }}` |
-| Instruction | `INSTRUCTION.md` | Before iteration | Content replaces `{{ instructions.name }}` |
 | Ralph | `RALPH.md` | At run start | Replaces root RALPH.md when selected by name |
 
 Discovery is handled by `_discovery.py:discover_primitives()` which scans `.ralphify/{kind}/*/` for marker files. The engine groups enabled primitives into an `EnabledPrimitives` NamedTuple for clean parameter passing.
 
 ### Placeholder resolution
 
-Both contexts and instructions use the same resolver (`resolver.py:resolve_placeholders()`):
+Contexts use the resolver (`resolver.py:resolve_placeholders()`):
 
-- `{{ contexts.git-log }}` — named placement for a specific primitive
-- `{{ contexts }}` — bulk placement for all remaining primitives
+- `{{ contexts.git-log }}` — named placement for a specific context
+- `{{ contexts }}` — bulk placement for all remaining contexts
 - No placeholders at all — everything appended to the end of the prompt
 
 ### Event system
@@ -117,14 +114,14 @@ The CLI uses a `ConsoleEmitter` (defined in `_console_emitter.py`) that renders 
 1. **`engine.py`** — The core run loop. Uses `RunConfig` and `RunState` (from `_run_types.py`) and `EventEmitter`. This is where iteration logic lives.
 2. **`_run_types.py`** — `RunConfig`, `RunState`, and `RunStatus`. These are the shared data types used by the engine, CLI, and manager. Separated so modules that only need the types don't pull in execution logic.
 3. **`cli.py`** — All CLI commands. Delegates to `engine.run_loop()` for the actual loop. Prompt source resolution (name vs. file path vs. inline) lives in `ralphs.py:resolve_ralph_source()`. Scaffold templates live in `_templates.py`. Terminal event rendering lives in `_console_emitter.py`.
-4. **`_frontmatter.py`** + **`_discovery.py`** — Frontmatter parsing and primitive discovery. `_frontmatter.py` handles YAML parsing and defines marker constants. `_discovery.py` defines the `Primitive` protocol, scans `.ralphify/` directories, and provides `merge_by_name()` for overlaying ralph-scoped primitives on globals. Understanding both is essential for working on checks/contexts/instructions/ralphs.
-5. **`resolver.py`** — Template placeholder logic shared by contexts and instructions. Small file but critical — changes here affect both.
+4. **`_frontmatter.py`** + **`_discovery.py`** — Frontmatter parsing and primitive discovery. `_frontmatter.py` handles YAML parsing and defines marker constants. `_discovery.py` defines the `Primitive` protocol, scans `.ralphify/` directories, and provides `merge_by_name()` for overlaying ralph-scoped primitives on globals. Understanding both is essential for working on checks/contexts/ralphs.
+5. **`resolver.py`** — Template placeholder logic used by contexts. Small file but critical.
 
 ## Traps and gotchas
 
 ### If you change the primitive marker filenames...
 
-The marker file names (`CHECK.md`, `CONTEXT.md`, `INSTRUCTION.md`, `RALPH.md`) are defined as constants in `_frontmatter.py` (`CHECK_MARKER`, `CONTEXT_MARKER`, `INSTRUCTION_MARKER`, `RALPH_MARKER`). The primitives directory name is `PRIMITIVES_DIR`. All modules — `checks.py`, `contexts.py`, `instructions.py`, `ralphs.py`, and `cli.py` — import from there. Change the constant to rename everywhere.
+The marker file names (`CHECK.md`, `CONTEXT.md`, `RALPH.md`) are defined as constants in `_frontmatter.py` (`CHECK_MARKER`, `CONTEXT_MARKER`, `RALPH_MARKER`). The primitives directory name is `PRIMITIVES_DIR`. All modules — `checks.py`, `contexts.py`, `ralphs.py`, and `cli.py` — import from there. Change the constant to rename everywhere.
 
 ### If you change frontmatter fields...
 

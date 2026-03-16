@@ -1,4 +1,4 @@
-"""Template placeholder resolution shared by contexts and instructions.
+"""Template placeholder resolution for contexts.
 
 Handles three placement strategies:
 
@@ -17,7 +17,7 @@ def resolve_placeholders(
 ) -> str:
     """Replace template placeholders in a prompt string.
 
-    *kind* is the placeholder category (e.g. "contexts" or "instructions").
+    *kind* is the placeholder category (e.g. "contexts").
 
     - Named placeholders (e.g. {{ kind.name }}) -> specific content
     - Bulk placeholder (e.g. {{ kind }}) -> all not already placed
