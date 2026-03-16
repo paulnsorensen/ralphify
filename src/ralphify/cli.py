@@ -224,7 +224,7 @@ def status() -> None:
 
 @app.command()
 def run(
-    prompt: str | None = typer.Argument(None, help="Ralph name, file path, or inline prompt text."),
+    prompt: str | None = typer.Argument(None, help="Named ralph from .ralphify/ralphs/."),
     n: int | None = typer.Option(None, "-n", help="Max number of iterations. Infinite if not set."),
     stop_on_error: bool = typer.Option(False, "--stop-on-error", "-s", help="Stop if the agent exits with non-zero."),
     delay: float = typer.Option(0, "--delay", "-d", help="Seconds to wait between iterations."),
@@ -244,7 +244,7 @@ def run(
     args = agent.get("args", [])
 
     try:
-        ralph_file_path, resolved_ralph_name, prompt_text = resolve_ralph_source(
+        ralph_file_path, resolved_ralph_name = resolve_ralph_source(
             prompt=prompt,
             toml_ralph=agent.get("ralph", "RALPH.md"),
         )
@@ -252,7 +252,7 @@ def run(
         rprint(f"[red]{e}[/red]")
         raise typer.Exit(1)
 
-    if not prompt_text and not Path(ralph_file_path).exists():
+    if not Path(ralph_file_path).exists():
         rprint(f"[red]Prompt file '{ralph_file_path}' not found.[/red]")
         raise typer.Exit(1)
 
@@ -263,7 +263,6 @@ def run(
         command=command,
         args=args,
         ralph_file=ralph_file_path,
-        prompt_text=prompt_text,
         ralph_name=resolved_ralph_name,
         max_iterations=n,
         delay=delay,

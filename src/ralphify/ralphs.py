@@ -91,43 +91,28 @@ def resolve_ralph_source(
     *,
     prompt: str | None,
     toml_ralph: str,
-) -> tuple[str, str | None, str | None]:
-    """Resolve the positional prompt argument into a file path, ralph name, or inline text.
+) -> tuple[str, str | None]:
+    """Resolve the positional argument into a ralph file path and optional name.
 
-    Returns ``(ralph_file_path, ralph_name, prompt_text)`` — exactly one of
-    ``ralph_name`` or ``prompt_text`` will be set, or both ``None`` when
-    falling back to the toml/root prompt file.
+    Returns ``(ralph_file_path, ralph_name)``.
 
-    Resolution order for the positional *prompt* argument:
+    Resolution:
 
     1. ``None`` → fall back to ``ralph.toml`` ``agent.ralph``
-    2. Matches a named ralph in ``.ralphify/ralphs/`` → use that ralph
-    3. Existing file path → use as prompt file
-    4. Otherwise → treat as inline prompt text
+    2. Otherwise → must match a named ralph in ``.ralphify/ralphs/``
 
-    Raises ``ValueError`` if a named ralph lookup fails (only when using
-    the toml fallback with a name-like value).
+    Raises ``ValueError`` if a named ralph lookup fails.
     """
     if prompt is None:
         # Fall back to ralph.toml agent.ralph — could be a name or a path
         if is_ralph_name(toml_ralph):
             try:
                 found = resolve_ralph_name(toml_ralph)
-                return str(found.path / RALPH_MARKER), found.name, None
+                return str(found.path / RALPH_MARKER), found.name
             except ValueError:
-                return toml_ralph, None, None
-        return toml_ralph, None, None
+                return toml_ralph, None
+        return toml_ralph, None
 
-    # Try as a named ralph first
-    try:
-        found = resolve_ralph_name(prompt)
-        return str(found.path / RALPH_MARKER), found.name, None
-    except ValueError:
-        pass
-
-    # Try as a file path
-    if Path(prompt).exists():
-        return prompt, None, None
-
-    # Treat as inline prompt text
-    return toml_ralph, None, prompt
+    # Must be a named ralph
+    found = resolve_ralph_name(prompt)
+    return str(found.path / RALPH_MARKER), found.name

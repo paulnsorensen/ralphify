@@ -269,46 +269,15 @@ class TestRun:
         mock_sleep.assert_not_called()
 
 
-class TestRunAdHocPrompt:
-    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_uses_provided_prompt_text(self, mock_run, tmp_path, monkeypatch):
+class TestRunRejectsInlinePrompt:
+    def test_unknown_name_errors(self, tmp_path, monkeypatch):
+        """A value that doesn't match a named ralph produces an error."""
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
 
         result = runner.invoke(app, ["run", "do something", "-n", "1"])
-        assert result.exit_code == 0
-        assert mock_run.call_args.kwargs["input"] == "do something"
-
-    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_skips_ralph_file_check(self, mock_run, tmp_path, monkeypatch):
-        """Works without RALPH.md when inline text is provided."""
-        monkeypatch.chdir(tmp_path)
-        (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        # No RALPH.md created
-
-        result = runner.invoke(app, ["run", "ad-hoc prompt", "-n", "1"])
-        assert result.exit_code == 0
-        assert mock_run.call_count == 1
-
-    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_file_path_used_as_prompt(self, mock_run, tmp_path, monkeypatch):
-        """An existing file path is used as the prompt file."""
-        monkeypatch.chdir(tmp_path)
-        (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-        (tmp_path / "alt.md").write_text("alternate prompt")
-
-        result = runner.invoke(app, ["run", "alt.md", "-n", "1"])
-        assert result.exit_code == 0
-        assert mock_run.call_args.kwargs["input"] == "alternate prompt"
-
-    def test_nonexistent_file_treated_as_inline(self, tmp_path, monkeypatch):
-        """A non-existent path-like string is treated as inline text."""
-        monkeypatch.chdir(tmp_path)
-        (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
-
-        # "nonexistent.md" doesn't exist as a file, and doesn't match a ralph name,
-        # so it's treated as inline text
-        result = runner.invoke(app, ["run", "nonexistent.md", "-n", "1"])
+        assert result.exit_code == 1
+        assert "not found" in result.output.lower()
 
 
 class TestRunLogging:
@@ -909,15 +878,14 @@ class TestRunRalphName:
         assert result.exit_code == 0
         assert mock_run.call_args.kwargs["input"] == "Fix the docs."
 
-    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_nonexistent_name_treated_as_inline_text(self, mock_run, tmp_path, monkeypatch):
-        """A value that doesn't match a ralph or file is treated as inline text."""
+    def test_nonexistent_name_errors(self, tmp_path, monkeypatch):
+        """A value that doesn't match a named ralph produces an error."""
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
 
         result = runner.invoke(app, ["run", "nonexistent", "-n", "1"])
-        assert result.exit_code == 0
-        assert mock_run.call_args.kwargs["input"] == "nonexistent"
+        assert result.exit_code == 1
+        assert "not found" in result.output.lower()
 
     @patch("ralphify._agent.subprocess.run", side_effect=_ok)
     def test_run_without_name_falls_back_to_toml(self, mock_run, tmp_path, monkeypatch):
@@ -941,11 +909,11 @@ class TestRunRalphName:
         assert result.exit_code == 0
         assert mock_run.call_args.kwargs["input"] == "Fix the docs."
 
-    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
-    def test_inline_prompt_used_when_not_ralph_or_file(self, mock_run, tmp_path, monkeypatch):
+    def test_inline_text_rejected(self, tmp_path, monkeypatch):
+        """Inline text that isn't a ralph name produces an error."""
         monkeypatch.chdir(tmp_path)
         (tmp_path / CONFIG_FILENAME).write_text(RALPH_TOML_TEMPLATE)
 
         result = runner.invoke(app, ["run", "inline text", "-n", "1"])
-        assert result.exit_code == 0
-        assert mock_run.call_args.kwargs["input"] == "inline text"
+        assert result.exit_code == 1
+        assert "not found" in result.output.lower()
