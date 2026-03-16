@@ -6,6 +6,7 @@ dist/
 .claude/
 .codex/
 site/
+_site/
 ralph_logs/
 node_modules/
 .playwright-cli/

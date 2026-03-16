@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ralphify — Put your AI coding agent in a while True loop</title>
+  <meta name="description" content="Minimal CLI harness for autonomous AI coding loops. Pipe a prompt to an agent, validate with checks, repeat.">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>∞</text></svg>">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/" class="logo">∞ Ralphify</a>
+      <div class="nav-links">
+        <a href="/docs/">Docs</a>
+        <a href="https://github.com/computerlovetech/ralphify">GitHub</a>
+        <a href="https://pypi.org/project/ralphify/">PyPI</a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>Put your AI coding agent in a <code>while True</code> loop and let it ship.</h1>
+      <p class="subtitle">Ralphify is a minimal CLI harness for autonomous AI coding loops. Pipe a prompt to an agent, validate with checks, repeat.</p>
+      <div class="cta">
+        <a href="/docs/getting-started/" class="btn btn-primary">Get Started</a>
+        <a href="/docs/cookbook/" class="btn btn-secondary">View Cookbook</a>
+      </div>
+    </section>
+
+    <section class="terminal">
+      <div class="terminal-window">
+        <div class="terminal-header">
+          <span class="terminal-dot red"></span>
+          <span class="terminal-dot yellow"></span>
+          <span class="terminal-dot green"></span>
+        </div>
+        <pre><code><span class="prompt">$</span> ralph init
+<span class="dim">Created ralph.toml + RALPH.md</span>
+
+<span class="prompt">$</span> ralph run -n 3
+<span class="dim">── Iteration 1 ──</span>
+<span class="success">✓</span> Iteration 1 completed (52.3s)
+  Checks: 2 passed
+    <span class="success">✓</span> lint
+    <span class="success">✓</span> tests
+
+<span class="dim">── Iteration 2 ──</span>
+<span class="fail">✗</span> Iteration 2 failed with exit code 1 (23.1s)
+  Checks: 1 passed, 1 failed
+    <span class="success">✓</span> lint
+    <span class="fail">✗</span> tests (exit 1)
+
+<span class="dim">── Iteration 3 ──</span>
+<span class="success">✓</span> Iteration 3 completed (41.7s)
+  Checks: 2 passed
+    <span class="success">✓</span> lint
+    <span class="success">✓</span> tests
+
+<span class="dim">Done: 3 iteration(s) — 2 succeeded, 1 failed</span></code></pre>
+      </div>
+      <p class="terminal-caption">Iteration 2 broke a test. Iteration 3 saw the failure and fixed it — that's the self-healing loop.</p>
+    </section>
+
+    <section class="install">
+      <h2>Install</h2>
+      <div class="install-command">
+        <code>uv tool install ralphify</code>
+      </div>
+    </section>
+
+    <section class="features">
+      <h2>Three primitives</h2>
+      <p class="features-subtitle">Extend the basic loop with building blocks that live in <code>.ralphify/</code></p>
+      <div class="card-grid">
+        <div class="card">
+          <h3>Checks</h3>
+          <p>Run after each iteration to validate the agent's work. Failed check output feeds into the next iteration so the agent can fix its own mistakes.</p>
+        </div>
+        <div class="card">
+          <h3>Contexts</h3>
+          <p>Inject dynamic data into the prompt before each iteration — git history, test status, API responses. The agent always sees fresh information.</p>
+        </div>
+        <div class="card">
+          <h3>Ralphs</h3>
+          <p>Named, task-focused prompts you switch between at run time. Keep a docs ralph, a refactor ralph, and a bug-fix ralph.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta-bottom">
+      <h2>Two commands to start</h2>
+      <div class="install-command">
+        <code>ralph init && ralph run</code>
+      </div>
+      <a href="/docs/getting-started/" class="btn btn-primary">Read the guide</a>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2025–2026 Computerlove Technologies &middot; <a href="https://github.com/computerlovetech/ralphify/blob/main/LICENSE">MIT License</a></p>
+  </footer>
+</body>
+</html>
