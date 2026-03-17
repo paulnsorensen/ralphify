@@ -20,6 +20,41 @@ Tightened the primitive system: global primitives are now opt-in, context placeh
 
 - **Live re-discovery** — primitives are re-discovered every iteration, so adding or editing a check, context, or ralph on disk takes effect on the next cycle without restarting the loop.
 
+### How to upgrade from 0.1.8
+
+If you're upgrading from 0.1.8 or earlier, here's what to update:
+
+**1. Declare primitive dependencies in your ralph frontmatter**
+
+Global checks and contexts no longer auto-apply. Add `checks` and `contexts` lists to the YAML frontmatter of every `RALPH.md` (root or named) that uses them:
+
+```markdown
+---
+checks: [tests, lint]
+contexts: [git-log]
+---
+
+Your prompt here...
+```
+
+If you don't add these declarations, your checks won't run and your contexts won't resolve. Ralph-scoped primitives (inside `.ralphify/ralphs/<name>/`) still auto-apply — only globals in `.ralphify/checks/` and `.ralphify/contexts/` need to be declared.
+
+**2. Switch to named context placeholders**
+
+The bulk `{{ contexts }}` placeholder no longer works. Replace it with individual named placeholders for each context:
+
+```diff
+- {{ contexts }}
++ {{ contexts.git-log }}
++ {{ contexts.test-status }}
+```
+
+Contexts not referenced by a named placeholder are excluded from the prompt entirely.
+
+**3. Replace `ralph status` usage**
+
+The `ralph status` command has been removed. Use `ralph run -n 1` to validate your setup — it checks config, discovers primitives, and surfaces errors during the first iteration.
+
 ### Fixed
 
 - Unknown ralph names now error immediately instead of being silently treated as inline prompts.

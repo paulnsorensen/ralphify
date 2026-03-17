@@ -84,7 +84,9 @@ The `--strict` flag treats warnings as errors. The CI pipeline uses this flag, s
 ```
 docs/
 ├── index.md              # Landing page
+├── when-to-use.md        # Use case guide — when loops fit vs. don't fit
 ├── getting-started.md    # Step-by-step tutorial
+├── how-it-works.md       # Iteration lifecycle explanation
 ├── writing-prompts.md    # Patterns for effective autonomous loop prompts
 ├── agents.md             # Setup guides for different agents
 ├── cookbook.md            # Complete copy-pasteable setups
