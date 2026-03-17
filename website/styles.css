@@ -29,6 +29,21 @@
   }
 }
 
+/* ── Section dividers ───────────────────────────────────── */
+
+hr {
+  border: none;
+  border-top: 2px solid rgba(139, 108, 240, 0.15);
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+@media (prefers-color-scheme: dark) {
+  hr {
+    border-top-color: rgba(167, 139, 245, 0.2);
+  }
+}
+
 /* ── Skip link ──────────────────────────────────────────── */
 
 .skip-link {
