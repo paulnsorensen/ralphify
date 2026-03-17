@@ -73,6 +73,17 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+::selection {
+  background: rgba(139, 108, 240, 0.25);
+  color: inherit;
+}
+
+@media (prefers-color-scheme: dark) {
+  ::selection {
+    background: rgba(167, 139, 245, 0.3);
+  }
+}
+
 code {
   font-family: "SF Mono", "Fira Code", "JetBrains Mono", Consolas, monospace;
 }
