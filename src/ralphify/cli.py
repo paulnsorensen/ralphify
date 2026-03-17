@@ -219,7 +219,7 @@ def _build_run_config(
 
 @app.command()
 def run(
-    prompt: str | None = typer.Argument(None, help="Named ralph from .ralphify/ralphs/."),
+    ralph: str | None = typer.Argument(None, help="Named ralph from .ralphify/ralphs/."),
     n: int | None = typer.Option(None, "-n", help="Max number of iterations. Infinite if not set."),
     stop_on_error: bool = typer.Option(False, "--stop-on-error", "-s", help="Stop if the agent exits with non-zero."),
     delay: float = typer.Option(0, "--delay", "-d", help="Seconds to wait between iterations."),
@@ -235,7 +235,7 @@ def run(
     """
     toml_config = _load_config()
     config = _build_run_config(
-        toml_config, prompt, n, stop_on_error, delay, log_dir, timeout,
+        toml_config, ralph, n, stop_on_error, delay, log_dir, timeout,
     )
 
     if log_dir:
