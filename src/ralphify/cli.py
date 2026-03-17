@@ -188,7 +188,9 @@ def run(
     except ValueError as e:
         _exit_error(str(e))
 
-    if not Path(ralph_file_path).exists():
+    try:
+        ralph_text = Path(ralph_file_path).read_text()
+    except FileNotFoundError:
         _exit_error(f"Prompt file '{ralph_file_path}' not found.")
 
     if not shutil.which(command):
@@ -198,7 +200,7 @@ def run(
         rprint(f"[dim]Logging output to {log_dir}/[/dim]")
 
     # Extract declared global primitive dependencies from ralph frontmatter
-    ralph_fm, _ = parse_frontmatter(Path(ralph_file_path).read_text())
+    ralph_fm, _ = parse_frontmatter(ralph_text)
     global_checks = ralph_fm.get("checks")
     global_contexts = ralph_fm.get("contexts")
 
