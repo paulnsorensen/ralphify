@@ -12,6 +12,44 @@ Primitives are reusable building blocks that extend your loop. They live in the 
 | [Contexts](#contexts) | Inject dynamic or static data into the prompt | Before each iteration |
 | [Ralphs](#ralphs) | Reusable task-focused ralphs you can switch between | At run start |
 
+## Directory structure
+
+Here's what a mature `.ralphify/` directory looks like with global primitives and two named ralphs:
+
+```
+.ralphify/
+├── checks/                           # Global checks — shared across ralphs
+│   ├── lint/
+│   │   └── CHECK.md                  #   command: ruff check .
+│   └── tests/
+│       └── CHECK.md                  #   command: uv run pytest -x
+│
+├── contexts/                         # Global contexts — shared across ralphs
+│   └── git-log/
+│       └── CONTEXT.md                #   command: git log --oneline -10
+│
+└── ralphs/                           # Named ralphs — task-focused prompts
+    ├── docs/
+    │   ├── RALPH.md                  #   checks: [lint], contexts: [git-log]
+    │   ├── checks/                   # Ralph-scoped check (only runs with this ralph)
+    │   │   └── docs-build/
+    │   │       └── CHECK.md          #   command: mkdocs build --strict
+    │   └── contexts/                 # Ralph-scoped context
+    │       └── doc-coverage/
+    │           ├── CONTEXT.md
+    │           └── run.sh            #   Script for shell features
+    │
+    └── refactor/
+        └── RALPH.md                  #   checks: [lint, tests], contexts: [git-log]
+```
+
+**Key points:**
+
+- Global primitives in `.ralphify/checks/` and `.ralphify/contexts/` are available to any ralph, but only included when [explicitly declared](#declaring-global-primitive-dependencies) in the ralph's frontmatter
+- Ralph-scoped primitives inside `.ralphify/ralphs/<name>/checks/` and `contexts/` are always included when that ralph runs — no declaration needed
+- If a ralph-scoped primitive has the same name as a global one, the [local version wins](#how-global-and-local-primitives-merge)
+- Each primitive directory contains a marker file (`CHECK.md`, `CONTEXT.md`, or `RALPH.md`) and optionally a `run.*` script
+
 ## Checks
 
 Checks run **after** each iteration to validate what the agent did. If a check fails, its output (and optional failure instructions) are appended to the next iteration's prompt so the agent can fix the problem.
