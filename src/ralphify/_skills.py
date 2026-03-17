@@ -26,6 +26,22 @@ _AGENTS: dict[str, _AgentConfig] = {
 }
 
 
+def _get_agent_config(agent_name: str) -> _AgentConfig:
+    """Look up agent-specific skill settings by name.
+
+    Raises ``RuntimeError`` if *agent_name* is not in the supported set.
+    Used by both :func:`install_skill` and :func:`build_agent_command` so
+    the error path is consistent — unknown agents always raise, never
+    silently fall back.
+    """
+    config = _AGENTS.get(agent_name)
+    if config is None:
+        raise RuntimeError(
+            f"Unknown agent: {agent_name!r}. Supported: {', '.join(_AGENTS)}"
+        )
+    return config
+
+
 def read_bundled_skill(skill_name: str) -> str:
     """Read a bundled SKILL.md from the ``ralphify.skills`` package.
 
@@ -77,9 +93,7 @@ def install_skill(skill_name: str, agent_name: str) -> Path:
 
     Raises ``RuntimeError`` for unknown agent names.
     """
-    agent_config = _AGENTS.get(agent_name)
-    if agent_config is None:
-        raise RuntimeError(f"Unknown agent: {agent_name!r}. Supported: {', '.join(_AGENTS)}")
+    agent_config = _get_agent_config(agent_name)
 
     content = read_bundled_skill(skill_name)
     dest = Path(agent_config.skill_dir) / skill_name / "SKILL.md"
@@ -92,10 +106,11 @@ def build_agent_command(agent_name: str, skill_name: str, ralph_name: str | None
     """Build the command to launch the agent with the skill invoked.
 
     Returns a list suitable for ``os.execvp``.
+
+    Raises ``RuntimeError`` for unknown agent names.
     """
-    agent_config = _AGENTS.get(agent_name)
-    prefix = agent_config.skill_prefix if agent_config else "/"
-    invocation = f"{prefix}{skill_name}"
+    agent_config = _get_agent_config(agent_name)
+    invocation = f"{agent_config.skill_prefix}{skill_name}"
     if ralph_name:
         invocation = f"{invocation} {ralph_name}"
     return [agent_name, invocation]

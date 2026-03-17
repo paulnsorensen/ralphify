@@ -11,6 +11,7 @@ import sys
 import tomllib
 import uuid
 from pathlib import Path
+from typing import NoReturn
 
 import typer
 from rich.console import Console
@@ -37,7 +38,7 @@ rprint = _console.print
 app = typer.Typer()
 
 
-def _exit_error(msg: str) -> None:
+def _exit_error(msg: str) -> NoReturn:
     """Print an error in red and exit with code 1."""
     rprint(f"[red]{msg}[/red]")
     raise typer.Exit(1)

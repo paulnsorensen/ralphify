@@ -124,3 +124,7 @@ class TestBuildAgentCommand:
     def test_codex_without_name(self):
         cmd = build_agent_command("codex", "new-ralph", None)
         assert cmd == ["codex", "$new-ralph"]
+
+    def test_raises_for_unknown_agent(self):
+        with pytest.raises(RuntimeError, match="Unknown agent"):
+            build_agent_command("unknown-agent", "new-ralph", None)
