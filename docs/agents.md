@@ -1,5 +1,5 @@
 ---
-description: Configure ralphify with Claude Code, Aider, Codex CLI, or any custom agent. Includes setup guides, compatibility checklist, and wrapper script examples.
+description: Configure ralphify with Claude Code, Aider, Codex CLI, or any custom agent. Includes setup guides, agent comparison table, and wrapper script examples.
 ---
 
 # Using with Different Agents
@@ -7,6 +7,21 @@ description: Configure ralphify with Claude Code, Aider, Codex CLI, or any custo
 Ralphify works with **any CLI that reads a prompt from stdin and exits when done**. Claude Code is the default, but you can swap in any tool that follows this contract.
 
 This page shows how to configure ralphify for popular agents and how to write your own wrapper.
+
+## Agent comparison
+
+| Agent | Stdin support | Streaming | `ralph new` support | Wrapper needed |
+|---|---|---|---|---|
+| [Claude Code](#claude-code) | Native (`-p`) | Yes — real-time activity tracking | Yes | No |
+| [Aider](#aider) | Via bash wrapper | No | No | Yes (`bash -c`) |
+| [Codex CLI](#codex-cli) | Via bash wrapper | No | Yes | Yes (`bash -c`) |
+| [Custom](#custom-wrapper-script) | You implement it | No | No | Yes (script) |
+
+**Streaming** means ralphify can parse the agent's output in real time, track activity during the iteration, and extract the agent's final result text. Non-streaming agents run in blocking mode — ralphify waits for the process to exit and captures output afterward.
+
+**`ralph new` support** means the `ralph new` command can install a skill into the agent for AI-guided ralph creation. Currently only Claude Code and Codex CLI support this.
+
+If you're not sure which to pick: **start with Claude Code.** It has the deepest integration, the best autonomous coding capabilities, and is the default configuration.
 
 ## What ralphify needs from an agent
 
@@ -162,3 +177,36 @@ ralph run -n 1 --log-dir ralph_logs
 
 !!! tip "Non-Claude-Code agents"
     Disable auto-commits if your prompt handles commits — most agents have this feature, and it conflicts with prompt-driven commit instructions. Use `--timeout` as a safety net in case the agent enters an unexpected interactive mode.
+
+## How agent output works
+
+Ralphify uses two different execution modes depending on the agent:
+
+### Streaming mode (Claude Code)
+
+When the agent command is `claude`, ralphify spawns the process with `Popen` and reads its JSON output line by line. This enables:
+
+- **Live activity tracking** — the terminal shows what the agent is doing in real time
+- **Result text extraction** — the agent's final response is captured in `result_text` (available via the [event system](api.md#event-system))
+- **Verbose logging** — with `--log-dir`, logs include the agent's internal tool calls and reasoning
+
+### Blocking mode (all other agents)
+
+For non-Claude agents, ralphify uses `subprocess.run` and waits for the process to exit. Output behavior depends on whether you're using `--log-dir`:
+
+- **Without `--log-dir`** — agent output streams directly to your terminal in real time
+- **With `--log-dir`** — output is captured, written to a log file, then replayed to the terminal after the iteration completes
+
+Both modes support all ralphify features (checks, contexts, timeouts, iteration tracking). The difference is only in how output is handled during each iteration.
+
+## Adapting other tools
+
+Many AI coding tools don't read from stdin directly but can be adapted with a bash wrapper. The pattern is:
+
+```bash
+bash -c '<tool> <auto-approve-flag> --message "$(cat -)"'
+```
+
+The `cat -` reads the piped prompt from stdin and passes it as a command-line argument. This works for any tool that accepts a prompt via a flag (like `--message`, `--input`, `--prompt`).
+
+If the tool has no way to accept a prompt non-interactively, a [custom wrapper script](#custom-wrapper-script) is the escape hatch — you can use the prompt text however the tool needs it (write to a file, post to an API, etc.).
