@@ -135,16 +135,19 @@ class ConsoleEmitter:
 
     def _on_run_stopped(self, data: dict) -> None:
         self._stop_live()
-        if data.get("reason") == "completed":
-            total = data.get("total", 0)
-            completed = data.get("completed", 0)
-            failed = data.get("failed", 0)
-            timed_out_count = data.get("timed_out", 0)
-            summary = f"\n[green]Done: {total} iteration(s) {_ICON_DASH} {completed} succeeded"
-            if failed:
-                summary += f", {failed} failed"
-            if timed_out_count:
-                summary += f" ({timed_out_count} timed out)"
-            summary += "[/green]"
-            self._rprint(summary)
+        if data.get("reason") != "completed":
+            return
+
+        total = data.get("total", 0)
+        completed = data.get("completed", 0)
+        failed = data.get("failed", 0)
+        timed_out_count = data.get("timed_out", 0)
+
+        parts = [f"{completed} succeeded"]
+        if failed:
+            parts.append(f"{failed} failed")
+        detail = ", ".join(parts)
+        if timed_out_count:
+            detail += f" ({timed_out_count} timed out)"
+        self._rprint(f"\n[green]Done: {total} iteration(s) {_ICON_DASH} {detail}[/green]")
 

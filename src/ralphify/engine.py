@@ -33,6 +33,13 @@ from ralphify.contexts import (
 )
 
 
+# Maps terminal run status to the reason string emitted in RUN_STOPPED events.
+_STATUS_REASONS: dict[RunStatus, str] = {
+    RunStatus.FAILED: "error",
+    RunStatus.STOPPED: "user_requested",
+}
+
+
 class EnabledPrimitives(NamedTuple):
     """The enabled checks and contexts for a project."""
 
@@ -414,11 +421,7 @@ def run_loop(
     if state.status == RunStatus.RUNNING:
         state.status = RunStatus.COMPLETED
 
-    reason = (
-        "error" if state.status == RunStatus.FAILED
-        else "user_requested" if state.status == RunStatus.STOPPED
-        else "completed"
-    )
+    reason = _STATUS_REASONS.get(state.status, "completed")
     emit(EventType.RUN_STOPPED, {
         "reason": reason,
         "total": state.total,
