@@ -44,7 +44,7 @@ Tests use temporary directories and have no external dependencies — no API key
 tests/
 ├── conftest.py            # Shared fixtures (disables streaming path for all tests)
 ├── test_checks.py         # Check discovery and execution
-├── test_cli.py            # CLI commands (init, run, status, new)
+├── test_cli.py            # CLI commands (init, run, new)
 ├── test_contexts.py       # Context discovery and injection
 ├── test_detector.py       # Project type detection
 ├── test_discovery.py      # Primitive directory scanning
@@ -85,10 +85,12 @@ The `--strict` flag treats warnings as errors. The CI pipeline uses this flag, s
 docs/
 ├── index.md              # Landing page
 ├── getting-started.md    # Step-by-step tutorial
+├── writing-prompts.md    # Patterns for effective autonomous loop prompts
 ├── agents.md             # Setup guides for different agents
 ├── cookbook.md            # Complete copy-pasteable setups
 ├── primitives.md         # Checks, contexts, ralphs reference
 ├── cli.md                # Configuration and CLI reference
+├── api.md                # Python library reference (run_loop, RunConfig, events)
 ├── troubleshooting.md    # Troubleshooting and FAQ
 ├── contributing/         # Contributor docs (this section)
 │   ├── index.md          # This page

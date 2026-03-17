@@ -66,12 +66,12 @@ Initialize a project with `ralph.toml` and `RALPH.md`.
 
 ```bash
 ralph init
-ralph init --force   # Overwrite existing files
+ralph init --force   # Overwrite existing ralph.toml
 ```
 
 | Option | Short | Default | Description |
 |---|---|---|---|
-| `--force` | `-f` | off | Overwrite existing `ralph.toml` and `RALPH.md` |
+| `--force` | `-f` | off | Overwrite existing `ralph.toml` |
 
 During init, ralphify detects your project type by looking for manifest files (`package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`). The detected type is displayed but doesn't currently change the generated configuration — all project types get the same defaults.
 
