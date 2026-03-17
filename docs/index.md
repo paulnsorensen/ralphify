@@ -48,12 +48,6 @@ ralph run       # Starts the loop (Ctrl+C to stop)
 
 `ralph init` creates a config file and a starter prompt. `ralph run` reads the prompt, pipes it to the agent, waits for it to finish, and does it again. Edit `RALPH.md` while the loop is running — changes take effect on the next iteration.
 
-Or skip setup and pass a prompt directly:
-
-```bash
-ralph run "Add type hints to all public functions in src/" -n 1
-```
-
 ### What it looks like
 
 ```

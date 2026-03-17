@@ -53,13 +53,13 @@ ralph run
   │
   ├── cli.py:run() — parse options, print banner
   │   ├── Load config from ralph.toml
-  │   ├── Resolve prompt via ralphs.resolve_ralph_source() (name > file path > inline text > toml)
+  │   ├── Resolve prompt via ralphs.resolve_ralph_source() (name > file path > toml)
   │   └── Build RunConfig and call engine.run_loop()
   │
   └── engine.py:run_loop(config, state, emitter)
        ├── Discover checks, contexts from .ralphify/
        └── Loop:
-            ├── Read RALPH.md (or use ad-hoc text)
+            ├── Read RALPH.md
             ├── Run contexts → resolve {{ contexts.* }} placeholders
             ├── Append check failures from previous iteration (if any)
             ├── Pipe assembled prompt to agent command via subprocess
@@ -112,7 +112,7 @@ The CLI uses a `ConsoleEmitter` (defined in `_console_emitter.py`) that renders 
 
 1. **`engine.py`** — The core run loop. Uses `RunConfig` and `RunState` (from `_run_types.py`) and `EventEmitter`. This is where iteration logic lives.
 2. **`_run_types.py`** — `RunConfig`, `RunState`, and `RunStatus`. These are the shared data types used by the engine, CLI, and manager. Separated so modules that only need the types don't pull in execution logic.
-3. **`cli.py`** — All CLI commands. Delegates to `engine.run_loop()` for the actual loop. Prompt source resolution (name vs. file path vs. inline) lives in `ralphs.py:resolve_ralph_source()`. Scaffold templates live in `_templates.py`. Terminal event rendering lives in `_console_emitter.py`.
+3. **`cli.py`** — All CLI commands. Delegates to `engine.run_loop()` for the actual loop. Prompt source resolution (name vs. file path) lives in `ralphs.py:resolve_ralph_source()`. Scaffold templates live in `_templates.py`. Terminal event rendering lives in `_console_emitter.py`.
 4. **`_frontmatter.py`** + **`_discovery.py`** — Frontmatter parsing and primitive discovery. `_frontmatter.py` handles YAML parsing and defines marker constants. `_discovery.py` defines the `Primitive` protocol, scans `.ralphify/` directories, and provides `merge_by_name()` for overlaying ralph-scoped primitives on globals. Understanding both is essential for working on checks/contexts/ralphs.
 5. **`resolver.py`** — Template placeholder logic used by contexts. Small file but critical.
 

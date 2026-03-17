@@ -14,6 +14,8 @@ Simplified the CLI, added a spinner during iterations, and removed the experimen
 
 - **Removed `ralph ui` subcommand and web dashboard** — the experimental web dashboard introduced in 0.1.6 has been removed. The dashboard depended on FastAPI, React, and SQLite, adding significant complexity for a feature that wasn't ready for production use. All dashboard-related API endpoints, persistent history, and WebSocket streaming have been removed. The core agent streaming (Claude Code auto-detection with `--output-format stream-json`) remains — it's used by the CLI for live activity tracking.
 - **Removed `ralph ralphs` subcommand** — `ralph new <name>` is now shorthand for `ralph new ralph <name>`.
+- **Removed instructions primitive** — the `instructions` primitive type introduced in 0.1.3 has been removed. Use contexts for injecting reusable rules into prompts instead. The `{{ instructions }}` and `{{ instructions.name }}` placeholders no longer resolve.
+- **Removed ad-hoc prompts (`-p` flag)** — the `--prompt` / `-p` flag on `ralph run` has been removed. The positional `[PROMPT]` argument now exclusively accepts a named ralph from `.ralphify/ralphs/`. To run a quick one-off task, create a named ralph with `ralph new`.
 
 ### Added
 
@@ -26,7 +28,7 @@ Simplified the CLI, added a spinner during iterations, and removed the experimen
 
 ### Improved
 
-- Introduced `Primitive` protocol in `_discovery.py` so all four primitive types (`Check`, `Context`, `Instruction`, `Ralph`) share a typed interface for discovery, filtering, merging, and display.
+- Introduced `Primitive` protocol in `_discovery.py` so all three primitive types (`Check`, `Context`, `Ralph`) share a typed interface for discovery, filtering, merging, and display.
 - Added generic `_discover_and_filter_enabled()` in the engine, replacing per-type boilerplate with a single code path bounded by the `Primitive` protocol.
 - Moved check result serialization into `CheckResult.to_event_data()` so event data formatting has a single source of truth.
 - Added missing event data fields (`result_text`, `detail`, `duration_formatted`) to API docs so library users see what the engine actually emits.

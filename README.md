@@ -44,12 +44,6 @@ ralph run       # Starts the loop (Ctrl+C to stop)
 
 That's it. Two commands.
 
-Or skip setup entirely with an ad-hoc prompt:
-
-```bash
-ralph run -n 1 -p "Add type hints to all public functions in src/"
-```
-
 ### What `ralph init` creates
 
 **`ralph.toml`** — tells ralphify what command to run:
@@ -70,7 +64,7 @@ Reads the prompt, pipes it to the agent, waits for it to finish, then does it ag
 ```bash
 ralph run          # Run forever
 ralph run -n 10    # Run 10 iterations then stop
-ralph run -p "Fix the login bug"   # Ad-hoc prompt, no RALPH.md needed
+ralph run docs     # Use a named ralph from .ralphify/ralphs/
 ```
 
 ### What it looks like
@@ -114,7 +108,7 @@ Read the full writeup: [Ralph Wiggum as a "software engineer"](https://ghuntley.
 
 ## Beyond the basic loop
 
-The simple loop works, but ralphify's real power comes from four primitives that live in the `.ralphify/` directory.
+The simple loop works, but ralphify's real power comes from three primitives that live in the `.ralphify/` directory.
 
 ### Checks — the self-healing loop
 
@@ -162,16 +156,6 @@ command: git log --oneline -10
 ```
 
 The command runs before each iteration. Use `{{ contexts.git-log }}` in your `RALPH.md` to control where the output appears.
-
-### Instructions — reusable rules
-
-Instructions are static text blocks (coding standards, commit conventions) you can toggle on and off without editing the prompt.
-
-```bash
-ralph new instruction code-style
-```
-
-Drop `{{ instructions }}` into `RALPH.md` to inject all enabled instructions.
 
 ### Ralphs — named task switcher
 
