@@ -49,6 +49,46 @@
     "codeRepository": "https://github.com/computerlovetech/ralphify"
   }
   </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What AI coding agents work with Ralphify?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Any agent that accepts prompts via stdin or CLI arguments — Claude Code, Aider, Cursor, and others. Ralphify is agent-agnostic by design."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What is a ralph loop?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "A ralph loop is an autonomous AI coding cycle: read a prompt, run the agent, validate with checks, and repeat. Each iteration starts fresh with a clean context window, so the agent never accumulates stale conversation history."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How is Ralphify different from running my AI coding agent once?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "A single agent run fills up its context window, slows down, and loses focus. Ralphify resets the agent every iteration — it re-reads the codebase, gets fresh check results, and follows your latest prompt. You steer, the loop executes."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does Ralphify require a web UI or JavaScript runtime?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. Ralphify is a pure CLI tool installed via pip or uv. It runs in your terminal and works over SSH — no browser needed."
+        }
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
   <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -183,6 +223,28 @@
           <p>Named, task-focused prompts you switch between at run time. Keep a docs ralph, a refactor ralph, and a bug-fix ralph.</p>
         </div>
       </div>
+    </section>
+
+    <section class="faq" aria-labelledby="faq-heading">
+      <h2 id="faq-heading">FAQ</h2>
+      <dl class="faq-list">
+        <div class="faq-item">
+          <dt>What AI coding agents work with Ralphify?</dt>
+          <dd>Any agent that accepts prompts via stdin or CLI arguments — Claude Code, Aider, Cursor, and others. Ralphify is agent-agnostic by design.</dd>
+        </div>
+        <div class="faq-item">
+          <dt>What is a ralph loop?</dt>
+          <dd>A ralph loop is an autonomous AI coding cycle: read a prompt, run the agent, validate with checks, and repeat. Each iteration starts fresh with a clean context window, so the agent never accumulates stale conversation history.</dd>
+        </div>
+        <div class="faq-item">
+          <dt>How is this different from running my agent once?</dt>
+          <dd>A single agent run fills up its context window, slows down, and loses focus. Ralphify resets the agent every iteration — it re-reads the codebase, gets fresh check results, and follows your latest prompt. You steer, the loop executes.</dd>
+        </div>
+        <div class="faq-item">
+          <dt>Does Ralphify require a web UI or JavaScript runtime?</dt>
+          <dd>No. Ralphify is a pure CLI tool installed via <code>pip</code> or <code>uv</code>. It runs in your terminal and works over SSH — no browser needed.</dd>
+        </div>
+      </dl>
     </section>
 
     <section class="cta-bottom" aria-labelledby="cta-bottom-heading">
