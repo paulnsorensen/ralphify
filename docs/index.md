@@ -78,6 +78,40 @@ Iteration 2 broke a test. Iteration 3 automatically received the failure output 
 
 ---
 
+## Why ralph loops?
+
+A single agent conversation fills up its context window, slows down, and eventually loses the plot. Ralph loops solve this by resetting every iteration — the agent always starts fresh.
+
+<div class="grid cards" markdown>
+
+-   :material-refresh:{ .lg .middle } **Fresh context, no decay**
+
+    ---
+
+    Each iteration starts with a clean context window. No conversation bloat, no hallucinated memories, no degradation over time. The agent reads the current state of the codebase every loop.
+
+-   :material-shield-check-outline:{ .lg .middle } **Self-healing feedback**
+
+    ---
+
+    Checks validate the agent's work after each iteration. When something breaks, the failure output feeds into the next iteration automatically — the agent fixes its own mistakes without you stepping in.
+
+-   :material-pencil-outline:{ .lg .middle } **Steer while it runs**
+
+    ---
+
+    The prompt is re-read every iteration. Edit `RALPH.md` while the loop runs and the agent follows your new rules on the next cycle. When it does something dumb, add a sign.
+
+-   :material-git:{ .lg .middle } **Progress lives in git**
+
+    ---
+
+    Every iteration commits to git. If something goes wrong, `git log` shows exactly what happened and `git reset` rolls it back. No opaque internal state to debug or lose.
+
+</div>
+
+---
+
 ## Three primitives
 
 Ralphify extends the basic loop with three building blocks that live in the `.ralphify/` directory:

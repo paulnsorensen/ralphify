@@ -37,6 +37,12 @@ rprint = _console.print
 app = typer.Typer()
 
 
+def _exit_error(msg: str) -> None:
+    """Print an error in red and exit with code 1."""
+    rprint(f"[red]{msg}[/red]")
+    raise typer.Exit(1)
+
+
 BANNER_LINES = [
     "██████╗░░█████╗░██╗░░░░░██████╗░██╗░░██╗██╗███████╗██╗░░░██╗",
     "██╔══██╗██╔══██╗██║░░░░░██╔══██╗██║░░██║██║██╔════╝╚██╗░██╔╝",
@@ -99,8 +105,7 @@ def _load_config() -> dict:
     """Load and return the ralph.toml config, exiting if not found."""
     config_path = Path(CONFIG_FILENAME)
     if not config_path.exists():
-        rprint(f"[red]{CONFIG_FILENAME} not found. Run 'ralph init' first.[/red]")
-        raise typer.Exit(1)
+        _exit_error(f"{CONFIG_FILENAME} not found. Run 'ralph init' first.")
     with open(config_path, "rb") as f:
         return tomllib.load(f)
 
@@ -142,14 +147,12 @@ def new(
     try:
         agent_name, agent_path = detect_agent()
     except RuntimeError as e:
-        rprint(f"[red]{e}[/red]")
-        raise typer.Exit(1)
+        _exit_error(str(e))
 
     try:
         install_skill("new-ralph", agent_name)
     except RuntimeError as e:
-        rprint(f"[red]{e}[/red]")
-        raise typer.Exit(1)
+        _exit_error(str(e))
 
     cmd = build_agent_command(agent_name, "new-ralph", name)
     os.execvp(cmd[0], cmd)
@@ -182,16 +185,13 @@ def run(
             toml_ralph=agent.get("ralph", "RALPH.md"),
         )
     except ValueError as e:
-        rprint(f"[red]{e}[/red]")
-        raise typer.Exit(1)
+        _exit_error(str(e))
 
     if not Path(ralph_file_path).exists():
-        rprint(f"[red]Prompt file '{ralph_file_path}' not found.[/red]")
-        raise typer.Exit(1)
+        _exit_error(f"Prompt file '{ralph_file_path}' not found.")
 
     if not shutil.which(command):
-        rprint(f"[red]Agent command '{command}' not found on PATH.[/red]")
-        raise typer.Exit(1)
+        _exit_error(f"Agent command '{command}' not found on PATH.")
 
     if log_dir:
         rprint(f"[dim]Logging output to {log_dir}/[/dim]")
