@@ -65,37 +65,34 @@ def _parse_kv_lines(lines: list[str]) -> dict:
 def _extract_frontmatter_block(text: str) -> tuple[list[str], str]:
     """Split text into frontmatter lines and body at ``---`` delimiters.
 
-    Returns ``([], text)`` when no valid frontmatter block is found.
+    The opening ``---`` must be the very first line (standard YAML
+    frontmatter convention).  Returns ``([], text)`` when no valid
+    frontmatter block is found.
     """
     lines = text.split("\n")
-    start = None
-    for i, line in enumerate(lines):
+    if not lines or lines[0].strip() != "---":
+        return [], text
+
+    for i, line in enumerate(lines[1:], start=1):
         if line.strip() == "---":
-            if start is None:
-                start = i
-            else:
-                fm_lines = lines[start + 1 : i]
-                body = "\n".join(lines[i + 1 :]).strip()
-                return fm_lines, body
+            fm_lines = lines[1:i]
+            body = "\n".join(lines[i + 1 :]).strip()
+            return fm_lines, body
     return [], text
 
 
 def parse_frontmatter(text: str) -> tuple[dict, str]:
     """Parse a markdown file with optional YAML-like frontmatter.
 
-    Frontmatter is delimited by ``---`` lines.  Only flat ``key: value``
-    pairs are supported.  The ``timeout`` field is coerced to ``int``
-    and ``enabled`` to ``bool``.  HTML comments are stripped from the
-    body so they don't leak into the assembled prompt.
+    Frontmatter is delimited by ``---`` lines at the start of the file.
+    Only flat ``key: value`` pairs are supported.  The ``timeout`` field
+    is coerced to ``int`` and ``enabled`` to ``bool``.  HTML comments are
+    stripped from the body so they don't leak into the assembled prompt.
 
     Returns ``(frontmatter_dict, body_text)``.
     """
-    if text.strip().startswith("---"):
-        fm_lines, body = _extract_frontmatter_block(text)
-        frontmatter = _parse_kv_lines(fm_lines)
-    else:
-        frontmatter, body = {}, text
-
+    fm_lines, body = _extract_frontmatter_block(text)
+    frontmatter = _parse_kv_lines(fm_lines)
     body = _HTML_COMMENT_RE.sub("", body).strip()
     return frontmatter, body
 
