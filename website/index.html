@@ -51,8 +51,9 @@
   </script>
 </head>
 <body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
   <header>
-    <nav>
+    <nav aria-label="Main navigation">
       <a href="./" class="logo">∞ Ralphify</a>
       <div class="nav-links">
         <a href="docs/">Docs</a>
@@ -62,8 +63,8 @@
     </nav>
   </header>
 
-  <main>
-    <section class="hero">
+  <main id="main-content">
+    <section class="hero" aria-label="Introduction">
       <h1>Put your AI coding agent in a <code>while True</code> loop and let it ship.</h1>
       <p class="subtitle">Ralphify is a minimal CLI harness for autonomous AI coding loops. Pipe a prompt to an agent, validate with checks, repeat.</p>
       <div class="cta">
@@ -72,8 +73,8 @@
       </div>
     </section>
 
-    <section class="terminal">
-      <div class="terminal-window">
+    <section class="terminal" aria-label="CLI demo">
+      <div class="terminal-window" role="img" aria-label="Terminal showing ralph init and ralph run commands with three iterations — iteration 2 fails a test, iteration 3 automatically fixes it">
         <div class="terminal-header">
           <span class="terminal-dot red"></span>
           <span class="terminal-dot yellow"></span>
@@ -106,8 +107,8 @@
       <p class="terminal-caption">Iteration 2 broke a test. Iteration 3 saw the failure and fixed it — that's the self-healing loop.</p>
     </section>
 
-    <section class="how-it-works">
-      <h2>How it works</h2>
+    <section class="how-it-works" aria-labelledby="how-it-works-heading">
+      <h2 id="how-it-works-heading">How it works</h2>
       <p class="how-subtitle">Every iteration follows the same cycle. The agent always starts fresh — no conversation history, no stale context.</p>
       <div class="steps">
         <div class="step">
@@ -131,8 +132,8 @@
       <p class="how-repeat">Then it repeats. Edit the prompt while it runs — changes take effect on the next cycle.</p>
     </section>
 
-    <section class="why">
-      <h2>Why ralph loops?</h2>
+    <section class="why" aria-labelledby="why-heading">
+      <h2 id="why-heading">Why ralph loops?</h2>
       <p class="why-subtitle">A single agent conversation fills up its context window, slows down, and loses the plot. Ralph loops solve this by resetting every iteration.</p>
       <div class="why-grid">
         <div class="why-item">
@@ -158,15 +159,15 @@
       </div>
     </section>
 
-    <section class="install">
-      <h2>Install</h2>
+    <section class="install" aria-labelledby="install-heading">
+      <h2 id="install-heading">Install</h2>
       <div class="install-command">
         <code>uv tool install ralphify</code>
       </div>
     </section>
 
-    <section class="features">
-      <h2>Three primitives</h2>
+    <section class="features" aria-labelledby="features-heading">
+      <h2 id="features-heading">Three primitives</h2>
       <p class="features-subtitle">Extend the basic loop with building blocks that live in <code>.ralphify/</code></p>
       <div class="card-grid">
         <div class="card">
@@ -184,8 +185,8 @@
       </div>
     </section>
 
-    <section class="cta-bottom">
-      <h2>Two commands to start</h2>
+    <section class="cta-bottom" aria-labelledby="cta-bottom-heading">
+      <h2 id="cta-bottom-heading">Two commands to start</h2>
       <div class="install-command">
         <code>ralph init && ralph run</code>
       </div>
