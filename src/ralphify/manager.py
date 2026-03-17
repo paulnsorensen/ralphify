@@ -34,6 +34,18 @@ class ManagedRun:
         """Register an additional emitter to receive events from this run."""
         self._extra_emitters.append(emitter)
 
+    def build_emitter(self) -> EventEmitter:
+        """Build the composite emitter for this run.
+
+        Returns a :class:`FanoutEmitter` when extra listeners are registered,
+        or the queue emitter directly when there are none.  This keeps the
+        emitter composition logic inside ``ManagedRun`` so callers don't need
+        to reach into private fields.
+        """
+        if self._extra_emitters:
+            return FanoutEmitter([self.emitter, *self._extra_emitters])
+        return self.emitter
+
 
 class RunManager:
     """Thread-safe registry for managing concurrent background runs.
@@ -70,15 +82,15 @@ class RunManager:
     def start_run(self, run_id: str) -> None:
         """Start the run loop in a daemon thread.
 
-        The thread calls :func:`engine.run_loop` with a fanout emitter
-        that broadcasts events to the run's queue and any extra listeners.
+        The thread calls :func:`engine.run_loop` with the emitter built
+        by :meth:`ManagedRun.build_emitter`, which fans out to the queue
+        and any extra listeners.
         """
         managed = self._get_run(run_id)
-        all_emitters: list[EventEmitter] = [managed.emitter] + managed._extra_emitters
-        fanout = FanoutEmitter(all_emitters)
+        emitter = managed.build_emitter()
         thread = threading.Thread(
             target=run_loop,
-            args=(managed.config, managed.state, fanout),
+            args=(managed.config, managed.state, emitter),
             daemon=True,
             name=f"run-{run_id}",
         )
