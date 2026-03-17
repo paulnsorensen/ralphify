@@ -85,17 +85,21 @@ class RunManager:
         The thread calls :func:`engine.run_loop` with the emitter built
         by :meth:`ManagedRun.build_emitter`, which fans out to the queue
         and any extra listeners.
+
+        The entire operation runs under the registry lock so that
+        concurrent calls cannot race on the same run.
         """
-        managed = self._get_run(run_id)
-        emitter = managed.build_emitter()
-        thread = threading.Thread(
-            target=run_loop,
-            args=(managed.config, managed.state, emitter),
-            daemon=True,
-            name=f"run-{run_id}",
-        )
-        managed.thread = thread
-        thread.start()
+        with self._lock:
+            managed = self._runs[run_id]
+            emitter = managed.build_emitter()
+            thread = threading.Thread(
+                target=run_loop,
+                args=(managed.config, managed.state, emitter),
+                daemon=True,
+                name=f"run-{run_id}",
+            )
+            managed.thread = thread
+            thread.start()
 
     def stop_run(self, run_id: str) -> None:
         """Signal the run to stop after the current iteration finishes."""
