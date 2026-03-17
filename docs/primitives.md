@@ -138,6 +138,8 @@ This launches an AI-guided session that helps you create the ralph, its checks, 
 ---
 description: Improve project documentation
 enabled: true
+checks: [docs-build]
+contexts: [git-log]
 ---
 
 You are a documentation agent. Each iteration starts fresh.
@@ -146,6 +148,15 @@ Read the codebase and existing docs. Find the biggest gap and improve one page p
 
 {{ contexts.git-log }}
 ```
+
+### Frontmatter fields
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `description` | string | `""` | Short description of what this ralph does |
+| `enabled` | bool | `true` | Set to `false` to disable without deleting |
+| `checks` | list | — | Global checks to include (see [declaring dependencies](#declaring-global-primitive-dependencies) below) |
+| `contexts` | list | — | Global contexts to include (see [declaring dependencies](#declaring-global-primitive-dependencies) below) |
 
 ### Running a named ralph
 
@@ -163,16 +174,36 @@ ralph = "docs"   # Name of a ralph in .ralphify/ralphs/
 
 ### Prompt resolution
 
-The positional `[PROMPT]` argument is smart — it resolves in order:
+The positional `[PROMPT]` argument accepts a named ralph:
 
-1. If it matches a named ralph in `.ralphify/ralphs/` → use that ralph
-2. If it's an existing file path → use as prompt file
-3. Otherwise → treat as inline prompt text
-4. If omitted → fall back to `ralph.toml` `agent.ralph` (name or path)
+```bash
+ralph run docs       # Looks up "docs" in .ralphify/ralphs/
+```
+
+If omitted, ralphify falls back to `ralph.toml`'s `agent.ralph` field, which can be either a ralph name or a file path (e.g. `RALPH.md`).
+
+## Declaring global primitive dependencies
+
+By default, **global primitives are not included** when running a named ralph. You must explicitly declare which global checks and contexts the ralph needs using `checks` and `contexts` in the ralph's frontmatter:
+
+```markdown
+---
+description: Improve project documentation
+checks: [lint, tests]
+contexts: [git-log]
+---
+```
+
+This tells ralphify to include the global `lint` and `tests` checks from `.ralphify/checks/` and the global `git-log` context from `.ralphify/contexts/`. Any global primitive not listed is excluded.
+
+If you omit the `checks` or `contexts` field entirely, no global primitives of that type are included — only ralph-scoped (local) ones apply.
+
+!!! tip "Why explicit dependencies?"
+    Explicit dependencies keep ralphs self-contained and predictable. A `docs` ralph shouldn't run your test suite unless you say so. When you create a ralph with `ralph new`, the AI guide helps you declare the right dependencies.
 
 ## Ralph-scoped primitives
 
-Named ralphs can have their own checks and contexts that only apply when running that ralph. When you use `ralph new`, the AI guide creates ralph-scoped primitives automatically. To create them manually, place them inside the ralph's directory:
+Named ralphs can also have their own checks and contexts that only apply when running that ralph. When you use `ralph new`, the AI guide creates ralph-scoped primitives automatically. To create them manually, place them inside the ralph's directory:
 
 ```
 .ralphify/ralphs/docs/
@@ -181,7 +212,16 @@ Named ralphs can have their own checks and contexts that only apply when running
 └── contexts/doc-coverage/CONTEXT.md
 ```
 
-When you run `ralph run docs`, global primitives and ralph-scoped primitives are merged. If a local primitive has the same name as a global one, the local version wins. A disabled local primitive suppresses a global one with the same name.
+Ralph-scoped primitives are always included — they don't need to be declared in the frontmatter.
+
+### How global and local primitives merge
+
+When you run `ralph run docs`:
+
+1. Global checks/contexts listed in the ralph's `checks`/`contexts` frontmatter are selected
+2. Ralph-scoped (local) primitives from the ralph's directory are discovered
+3. The two sets are merged — if a local primitive has the same name as a global one, the **local version wins**
+4. A disabled local primitive suppresses a global one with the same name
 
 ## Behavior notes
 
@@ -189,12 +229,12 @@ When you run `ralph run docs`, global primitives and ralph-scoped primitives are
 
 Primitives run in **alphabetical order by directory name**. To control order, use number prefixes: `01-lint/`, `02-typecheck/`, `03-tests/`. All checks run regardless of whether earlier checks pass or fail.
 
-### What's re-read vs. fixed at startup
+### What's re-read each iteration
 
-| What | When loaded | Editable while running? |
-|---|---|---|
-| `RALPH.md` | Every iteration | Yes |
-| Context command output | Every iteration | Yes |
-| Primitive config (checks, contexts) | Startup only | No — restart the loop |
+Everything is re-read every iteration, so you can edit files on disk and the changes take effect on the next cycle — no restart needed.
 
-`RALPH.md` is the primary way to steer the agent in real time.
+| What | When loaded |
+|---|---|
+| `RALPH.md` prompt | Every iteration |
+| Context command output | Every iteration |
+| Primitive config (checks, contexts) | Every iteration |

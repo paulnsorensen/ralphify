@@ -92,15 +92,20 @@ Common causes:
 - There's no concrete task source (no TODO.md, PLAN.md, or failing tests to fix)
 - The agent can't find what it's supposed to work on
 
-### New check/context/instruction not being picked up
+### New check/context not being picked up
 
-Primitives are discovered once when `ralph run` starts. If you add, remove, or modify a primitive while the loop is running, the change won't take effect until you restart:
+Primitives are re-discovered every iteration, so adding or editing a check or context on disk takes effect on the next cycle without restarting.
 
-1. Press `Ctrl+C` to stop the loop
-2. Make your changes (add checks, edit instructions, etc.)
-3. Run `ralph run` again
+If a primitive still isn't running, check that it's **declared** in your ralph file's frontmatter. Global checks and contexts must be listed explicitly:
 
-This is different from `RALPH.md`, which **is** re-read every iteration. See [What's re-read vs. fixed at startup](primitives.md#whats-re-read-vs-fixed-at-startup) for details.
+```markdown
+---
+checks: [tests, lint]
+contexts: [git-log]
+---
+```
+
+See [Declaring global primitive dependencies](primitives.md#declaring-global-primitive-dependencies) for details.
 
 ## Check issues
 

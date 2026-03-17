@@ -83,8 +83,6 @@ Start the autonomous coding loop.
 ralph run                          # Run forever (Ctrl+C to stop)
 ralph run docs                     # Use the "docs" named ralph
 ralph run -n 5                     # Run 5 iterations
-ralph run "Fix the login bug"      # Ad-hoc inline prompt
-ralph run path/to/prompt.md        # Use a specific prompt file
 ralph run --stop-on-error          # Stop if agent exits non-zero
 ralph run --delay 10               # Wait 10s between iterations
 ralph run --timeout 300            # Kill agent after 5 minutes per iteration
@@ -93,21 +91,14 @@ ralph run --log-dir ralph_logs     # Save output to log files
 
 | Argument / Option | Short | Default | Description |
 |---|---|---|---|
-| `[PROMPT]` | | none | Ralph name, file path, or inline prompt text (see resolution below) |
+| `[PROMPT]` | | none | Named ralph from `.ralphify/ralphs/` |
 | `-n` | | unlimited | Max number of iterations |
 | `--stop-on-error` | `-s` | off | Stop loop if agent exits non-zero or times out |
 | `--delay` | `-d` | `0` | Seconds to wait between iterations |
 | `--timeout` | `-t` | none | Max seconds per iteration |
 | `--log-dir` | `-l` | none | Directory for iteration log files |
 
-The `[PROMPT]` argument is smart — it resolves in order:
-
-1. If it matches a named ralph in `.ralphify/ralphs/` → use that ralph
-2. If it's an existing file path → use as prompt file
-3. Otherwise → treat as inline prompt text
-4. If omitted → fall back to `ralph.toml` `agent.ralph`
-
-Inline prompts still resolve context placeholders. When inline text is provided, `RALPH.md` doesn't need to exist.
+The `[PROMPT]` argument accepts a [named ralph](primitives.md#ralphs). If omitted, ralphify falls back to `ralph.toml`'s `agent.ralph` field, which can be either a ralph name or a file path (e.g. `RALPH.md`).
 
 ### `ralph new`
 

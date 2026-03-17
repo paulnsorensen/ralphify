@@ -160,19 +160,36 @@ enabled: true
 
 The command runs each iteration and its output is appended to the prompt. The body text ("## Recent commits") appears above the command output as a label.
 
-### Place the context in your prompt
+### Declare your primitives and place the context
 
-By default, context output is appended to the end of the prompt. You can control placement with a placeholder in `RALPH.md`:
+Checks and contexts must be **declared** in your ralph file's frontmatter before they'll run. Now that you've created all three primitives, update `RALPH.md` to declare them and place the context:
 
 ```markdown
+---
+checks: [tests, lint]
+contexts: [git-log]
+---
+
 # Prompt
 
 {{ contexts.git-log }}
 
-You are an autonomous coding agent running in a loop...
+You are an autonomous coding agent running in a loop. Each iteration
+starts with a fresh context. Your progress lives in the code and git.
+
+Read TODO.md for the current task list. Pick the top uncompleted task,
+implement it fully, then mark it done.
+
+## Rules
+
+- One task per iteration
+- No placeholder code — full, working implementations only
+- Run `uv run pytest -x` before committing
+- Commit with a descriptive message like `feat: add X` or `fix: resolve Y`
+- Mark the completed task in TODO.md
 ```
 
-Each context must be referenced by name — contexts not referenced are excluded from the prompt.
+The `checks` and `contexts` fields in the frontmatter tell ralphify which global primitives to use. The `{{ contexts.git-log }}` placeholder controls where the context output appears in the prompt — contexts not referenced by a placeholder are excluded.
 
 ## Step 8: Run the loop
 

@@ -24,6 +24,11 @@ Improve project documentation one page at a time.
 **`RALPH.md`**
 
 ```markdown
+---
+checks: [docs-build]
+contexts: [git-log]
+---
+
 # Prompt
 
 You are an autonomous documentation agent running in a loop. Each iteration
@@ -73,6 +78,11 @@ Uses script-based checks and contexts to track and enforce a coverage threshold.
 **`RALPH.md`**
 
 ```markdown
+---
+checks: [tests, coverage-threshold]
+contexts: [coverage]
+---
+
 # Prompt
 
 You are an autonomous test-writing agent running in a loop. Each iteration
