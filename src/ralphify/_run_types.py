@@ -87,9 +87,9 @@ class RunState:
     timed_out: int = 0  # subset of ``failed``; see class docstring
     started_at: datetime | None = None
 
-    _stop_requested: bool = False
-    _pause_event: threading.Event = field(default_factory=threading.Event)
-    _reload_requested: bool = False
+    _stop_requested: bool = field(default=False, init=False, repr=False, compare=False)
+    _pause_event: threading.Event = field(default_factory=threading.Event, init=False, repr=False, compare=False)
+    _reload_requested: bool = field(default=False, init=False, repr=False, compare=False)
 
     @property
     def total(self) -> int:
