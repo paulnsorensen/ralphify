@@ -308,6 +308,44 @@ def _run_iteration(
     return check_failures_text, True
 
 
+def _rediscover_primitives(
+    config: RunConfig,
+    ralph_dir: Path | None,
+    state: RunState,
+    emit: _BoundEmitter,
+) -> EnabledPrimitives:
+    """Re-discover primitives from disk, emitting a reload event if explicitly requested.
+
+    Called at the top of each iteration so edits on disk take effect
+    immediately without restarting the loop.
+    """
+    explicit_reload = state.consume_reload_request()
+    primitives = _discover_enabled_primitives(
+        config.project_root, ralph_dir,
+        global_checks=config.global_checks,
+        global_contexts=config.global_contexts,
+    )
+    if explicit_reload:
+        emit(EventType.PRIMITIVES_RELOADED, {
+            "checks": len(primitives.checks),
+            "contexts": len(primitives.contexts),
+        })
+    return primitives
+
+
+def _delay_if_needed(config: RunConfig, state: RunState, emit: _BoundEmitter) -> None:
+    """Sleep between iterations when a delay is configured.
+
+    Skips the delay after the final iteration (when max_iterations is
+    set and we've just completed the last one) to avoid a useless wait.
+    """
+    if config.delay > 0 and (
+        config.max_iterations is None or state.iteration < config.max_iterations
+    ):
+        emit(EventType.LOG_MESSAGE, {"message": f"Waiting {config.delay}s...", "level": "info"})
+        time.sleep(config.delay)
+
+
 def run_loop(
     config: RunConfig,
     state: RunState,
@@ -357,19 +395,7 @@ def run_loop(
             if not _handle_control_signals(state, emit):
                 break
 
-            # Re-discover primitives every iteration so edits on disk
-            # take effect immediately without restarting the loop.
-            explicit_reload = state.consume_reload_request()
-            primitives = _discover_enabled_primitives(
-                config.project_root, ralph_dir,
-                global_checks=config.global_checks,
-                global_contexts=config.global_contexts,
-            )
-            if explicit_reload:
-                emit(EventType.PRIMITIVES_RELOADED, {
-                    "checks": len(primitives.checks),
-                    "contexts": len(primitives.contexts),
-                })
+            primitives = _rediscover_primitives(config, ralph_dir, state, emit)
 
             state.iteration += 1
             if config.max_iterations is not None and state.iteration > config.max_iterations:
@@ -381,12 +407,7 @@ def run_loop(
             if not should_continue:
                 break
 
-            # Delay between iterations
-            if config.delay > 0 and (
-                config.max_iterations is None or state.iteration < config.max_iterations
-            ):
-                emit(EventType.LOG_MESSAGE, {"message": f"Waiting {config.delay}s...", "level": "info"})
-                time.sleep(config.delay)
+            _delay_if_needed(config, state, emit)
 
     except KeyboardInterrupt:
         state.status = RunStatus.STOPPED
