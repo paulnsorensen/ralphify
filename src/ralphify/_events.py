@@ -5,13 +5,13 @@ frontends can observe progress without coupling to the engine internals.
 
 - **CLI mode** renders events to the terminal via
   :class:`~ralphify._console_emitter.ConsoleEmitter`.
-- **UI mode** pushes events through a :class:`QueueEmitter` into the
-  FastAPI web layer, which broadcasts them over WebSocket.
+- **Programmatic mode** pushes events through a :class:`QueueEmitter`
+  for async consumption by external orchestration code.
 - **Tests** use :class:`NullEmitter` to silently discard events.
 
 To add a new event type, add a member to :class:`EventType` and handle it
-in both :class:`~ralphify._console_emitter.ConsoleEmitter` (terminal
-rendering) and the UI event consumer (WebSocket broadcast).
+in :class:`~ralphify._console_emitter.ConsoleEmitter` (terminal rendering)
+and any custom emitters that need to react to it.
 """
 
 from __future__ import annotations
@@ -42,8 +42,8 @@ class EventType(Enum):
     **Prompt assembly** — emitted during prompt construction:
     ``CONTEXTS_RESOLVED``, ``PROMPT_ASSEMBLED``.
 
-    Each member's value is the wire-format string used in WebSocket messages
-    and :meth:`Event.to_dict` serialization.
+    Each member's value is the string used in :meth:`Event.to_dict`
+    serialization.
     """
 
     # ── Run lifecycle ───────────────────────────────────────────
@@ -102,7 +102,7 @@ class Event:
 
     Every event carries a *type* (:class:`EventType`), the *run_id* of the
     run that produced it, an arbitrary *data* dict, and a UTC *timestamp*.
-    Use :meth:`to_dict` to serialize for JSON transport (e.g. WebSocket).
+    Use :meth:`to_dict` to serialize for JSON transport.
     """
 
     type: EventType
@@ -154,8 +154,9 @@ class NullEmitter:
 class QueueEmitter:
     """Pushes events into a :class:`queue.Queue` for async consumption.
 
-    Used by the UI layer: the engine thread pushes events into the queue,
-    and an async FastAPI task drains it for WebSocket broadcast.
+    The engine thread pushes events into the queue, and external code
+    drains it to process events asynchronously — for example, logging,
+    forwarding to a web interface, or triggering downstream workflows.
     """
 
     def __init__(self, q: queue.Queue[Event] | None = None) -> None:
@@ -171,8 +172,8 @@ class FanoutEmitter:
     """Broadcasts events to multiple emitters.
 
     Used by :class:`~ralphify.manager.RunManager` to send each event to
-    both a :class:`QueueEmitter` (for WebSocket broadcast) and a
-    persistence layer (for SQLite storage) simultaneously.
+    a :class:`QueueEmitter` and any additional listeners registered via
+    :meth:`~ralphify.manager.ManagedRun.add_listener`.
     """
 
     def __init__(self, emitters: list[EventEmitter]) -> None:

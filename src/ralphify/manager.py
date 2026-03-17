@@ -1,6 +1,7 @@
-"""Multi-run orchestration for the UI layer.
+"""Multi-run orchestration for concurrent ralph loops.
 
-Wraps run engine threads and provides a registry for managing concurrent runs.
+Wraps run engine threads and provides a thread-safe registry for launching,
+controlling, and inspecting multiple runs from external code.
 """
 
 from __future__ import annotations

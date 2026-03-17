@@ -353,7 +353,7 @@ def run_loop(
 
     This is the core loop extracted from ``cli.py:run()``.  All terminal
     output is replaced by ``emitter.emit()`` calls so the same logic can
-    drive both CLI and web UIs.
+    drive both CLI and programmatic consumers.
 
     Orchestration only — the work of each iteration is in
     :func:`_run_iteration`.

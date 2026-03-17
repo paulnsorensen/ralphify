@@ -76,7 +76,7 @@ class RunState:
     **Threading model**: counters (``iteration``, ``completed``, etc.) are
     written only by the engine thread and read by API threads.  Under
     CPython's GIL this is safe — readers may see a briefly stale value,
-    which is acceptable for dashboard display.
+    which is acceptable for status display.
     """
 
     run_id: str
