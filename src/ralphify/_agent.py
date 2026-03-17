@@ -65,8 +65,13 @@ def _write_log(
     return log_file
 
 
-def _is_claude_command(cmd: list[str]) -> bool:
-    """Return True if the command looks like Claude Code (supports stream-json)."""
+def _supports_stream_json(cmd: list[str]) -> bool:
+    """Return True if the agent command supports ``--output-format stream-json``.
+
+    Currently only Claude Code supports this protocol.  To add streaming
+    support for another agent, extend the check here — no other changes
+    needed since :func:`_run_agent_streaming` handles the protocol generically.
+    """
     if not cmd:
         return False
     binary = Path(cmd[0]).name
@@ -243,7 +248,7 @@ def execute_agent(
     This is the single entry point the engine should use — callers don't need
     to know which execution mode is selected.
     """
-    if _is_claude_command(cmd):
+    if _supports_stream_json(cmd):
         return _run_agent_streaming(
             cmd, prompt, timeout, log_path_dir, iteration,
             on_activity=on_activity,

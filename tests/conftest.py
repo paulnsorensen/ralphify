@@ -14,10 +14,10 @@ def _disable_streaming(monkeypatch):
 
     Tests mock ``subprocess.run`` to avoid real process execution.  The
     streaming code path uses ``subprocess.Popen`` instead, which would
-    bypass those mocks.  Forcing ``_is_claude_command`` to return ``False``
-    ensures all tests go through the ``subprocess.run`` path.
+    bypass those mocks.  Forcing ``_supports_stream_json`` to return
+    ``False`` ensures all tests go through the ``subprocess.run`` path.
     """
-    monkeypatch.setattr("ralphify._agent._is_claude_command", lambda cmd: False)
+    monkeypatch.setattr("ralphify._agent._supports_stream_json", lambda cmd: False)
 
 
 # ── Shared constants ───────────────────────────────────────────────────
