@@ -24,9 +24,9 @@ Key modules:
 - `_templates.py` — Scaffold templates for `ralph init` and `ralph new`
 - `_frontmatter.py` — YAML frontmatter parsing and marker/config filename constants
 - `_discovery.py` — Primitive directory scanning (`discover_primitives`, `find_run_script`)
-- `resolver.py` — Template placeholder resolution (`{{ contexts.name }}`, `{{ instructions }}`)
+- `resolver.py` — Template placeholder resolution (`{{ contexts.name }}`)
 - `ralphs.py` — Named ralph discovery and resolution
-- `checks.py`, `contexts.py`, `instructions.py` — The other three primitive types
+- `checks.py`, `contexts.py` — Check and context primitive types
 - `_events.py` — Event types and emitter protocol (NullEmitter, QueueEmitter, FanoutEmitter)
 - `_agent.py` — Run agent subprocesses (streaming + blocking modes, log writing)
 - `_output.py` — Combine/truncate stdout+stderr
@@ -42,8 +42,8 @@ Tests are in `tests/` with one file per module. Docs are in `docs/` using MkDocs
 
 ## Traps
 
-- Primitive marker filenames (`CHECK.md`, `CONTEXT.md`, `INSTRUCTION.md`, `RALPH.md`) are defined as constants in `_frontmatter.py` (`CHECK_MARKER`, `CONTEXT_MARKER`, `RALPH_MARKER`, etc.). The primitives directory name is `PRIMITIVES_DIR`. All modules import from there — change the constant to rename everywhere.
+- Primitive marker filenames (`CHECK.md`, `CONTEXT.md`, `RALPH.md`) are defined as constants in `_frontmatter.py` (`CHECK_MARKER`, `CONTEXT_MARKER`, `RALPH_MARKER`). The primitives directory name is `PRIMITIVES_DIR`. All modules import from there — change the constant to rename everywhere.
 - `timeout` and `enabled` frontmatter fields have special type coercion via `_FIELD_COERCIONS` in `_frontmatter.py`. To add a new typed field, add an entry to that dict.
-- Both contexts and instructions share `resolver.py:resolve_placeholders()`. Changes affect both.
+- Contexts use `resolver.py:resolve_placeholders()` for `{{ contexts.name }}` template substitution.
 - Output is truncated to 5000 chars in `_output.py`. This is intentional.
 - Commands in frontmatter run via `shlex.split()` — no shell features (pipes, redirections, `&&`). Scripts (`run.*`) are the escape hatch.
