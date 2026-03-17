@@ -109,11 +109,11 @@ Built-in emitters: `NullEmitter` (silent), `QueueEmitter` (pushes to a `queue.Qu
 
 ## Primitive discovery
 
-Discover checks, contexts, instructions, and ralphs without running the loop:
+Discover checks, contexts, and ralphs without running the loop:
 
 ```python
 from pathlib import Path
-from ralphify import discover_checks, discover_contexts, discover_instructions, discover_ralphs
+from ralphify import discover_checks, discover_contexts, discover_ralphs
 
 root = Path(".")
 

@@ -18,7 +18,7 @@ echo "<assembled prompt>" | <command> <args...>
 
 Your agent must:
 
-1. **Read a prompt from stdin** — the full assembled prompt (with contexts, instructions, and any check failures) is piped in
+1. **Read a prompt from stdin** — the full assembled prompt (with contexts and any check failures) is piped in
 2. **Do work in the current directory** — edit files, run commands, make commits
 3. **Exit when done** — exit code 0 means success, non-zero means failure
 

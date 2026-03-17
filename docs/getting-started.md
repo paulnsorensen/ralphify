@@ -228,5 +228,5 @@ Once you're confident the loop works, drop the `-n 3` to let it run indefinitely
 ## Next steps
 
 - [Cookbook](cookbook.md) — copy-pasteable setups for documentation and test coverage loops
-- [Primitives](primitives.md) — full reference for checks, contexts, instructions, and named ralphs
+- [Primitives](primitives.md) — full reference for checks, contexts, and named ralphs
 - [CLI Reference](cli.md) — all commands and options

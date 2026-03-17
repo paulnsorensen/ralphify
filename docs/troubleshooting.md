@@ -176,7 +176,7 @@ If a check has neither a `run.*` script nor a `command`, add one of:
 - A `command` field in the CHECK.md frontmatter
 - An executable script named `run.sh`, `run.py`, etc. in the check directory
 
-## Context and instruction issues
+## Context issues
 
 ### Placeholder produces no output
 
@@ -187,10 +187,8 @@ If a `{{ contexts.my-context }}` placeholder silently disappears (the prompt has
 3. The context is enabled (check the `enabled` field in its CONTEXT.md frontmatter)
 4. If the context has a command, verify the command produces output by running it manually
 
-Same rules apply for `{{ instructions.name }}`.
-
 !!! note "Raw placeholder text still visible?"
-    If you see literal `{{ contexts.name }}` in the agent's output, the placeholder syntax wasn't recognized — usually a typo in the keyword (e.g. `{{ context.name }}` instead of `{{ contexts.name }}`). It must be `contexts` (plural) and `instructions` (plural).
+    If you see literal `{{ contexts.name }}` in the agent's output, the placeholder syntax wasn't recognized — usually a typo in the keyword (e.g. `{{ context.name }}` instead of `{{ contexts.name }}`). It must be `contexts` (plural).
 
 ### Context command failing
 
@@ -239,7 +237,7 @@ git checkout -b feature-b && ralph run
 |---|---|---|
 | `ralph.toml` | **Yes** | Loop configuration |
 | `RALPH.md` | **Yes** | The prompt |
-| `.ralphify/` | **Yes** | Checks, contexts, instructions |
+| `.ralphify/` | **Yes** | Checks, contexts, ralphs |
 | `ralph_logs/` | **No** | Iteration logs — add to `.gitignore` |
 
 ## Getting more help

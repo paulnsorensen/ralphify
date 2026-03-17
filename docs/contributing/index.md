@@ -49,12 +49,12 @@ tests/
 ├── test_detector.py       # Project type detection
 ├── test_discovery.py      # Primitive directory scanning
 ├── test_engine.py         # Core run loop and RunState/RunConfig
-├── test_instructions.py   # Instruction discovery and resolution
 ├── test_manager.py        # Multi-run orchestration
 ├── test_output.py         # Output combining and truncation
 ├── test_ralphs.py         # Named ralph discovery and resolution
-├── test_resolver.py       # Template placeholder resolution (named, bulk, implicit)
+├── test_resolver.py       # Template placeholder resolution
 ├── test_runner.py         # Command execution with timeout
+├── test_skills.py         # Agent skill integration
 ```
 
 When adding a new feature, add tests in the corresponding file. If you're adding a new module, create a matching `test_<module>.py` file.
@@ -87,7 +87,7 @@ docs/
 ├── getting-started.md    # Step-by-step tutorial
 ├── agents.md             # Setup guides for different agents
 ├── cookbook.md            # Complete copy-pasteable setups
-├── primitives.md         # Checks, contexts, instructions reference
+├── primitives.md         # Checks, contexts, ralphs reference
 ├── cli.md                # Configuration and CLI reference
 ├── troubleshooting.md    # Troubleshooting and FAQ
 ├── contributing/         # Contributor docs (this section)
