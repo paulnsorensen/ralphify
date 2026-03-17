@@ -225,6 +225,32 @@ When you run `ralph run docs`:
 
 ## Behavior notes
 
+### Script execution environment
+
+When a check or context command (or `run.*` script) runs, ralphify sets up the following environment:
+
+**Working directory:** Always the **project root** (where `ralph.toml` lives), regardless of where the primitive directory is located.
+
+**Environment variables:** Scripts inherit the full parent process environment (`PATH`, `HOME`, etc.). When running a named ralph, ralphify also sets:
+
+| Variable | Value | When set |
+|---|---|---|
+| `RALPH_NAME` | Name of the current ralph (e.g. `docs`) | Only when running a named ralph via `ralph run docs` |
+
+This lets a single script adapt its behavior based on which ralph is running:
+
+```bash
+#!/bin/bash
+# .ralphify/checks/tests/run.sh
+if [ "$RALPH_NAME" = "docs" ]; then
+    uv run pytest tests/test_docs.py -x
+else
+    uv run pytest -x
+fi
+```
+
+`RALPH_NAME` is not set when running the root `RALPH.md` directly (i.e. `ralph run` without a named ralph).
+
 ### Execution order
 
 Primitives run in **alphabetical order by directory name**. To control order, use number prefixes: `01-lint/`, `02-typecheck/`, `03-tests/`. All checks run regardless of whether earlier checks pass or fail.
