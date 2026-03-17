@@ -157,19 +157,19 @@
         <div class="step">
           <div class="step-number">1</div>
           <h3>Read prompt + contexts</h3>
-          <p>Ralphify reads your <code>RALPH.md</code> prompt, runs context commands (git log, test status, etc.), and injects the results into the prompt via placeholders.</p>
+          <p>Ralphify reads your <a href="docs/writing-prompts/"><code>RALPH.md</code> prompt</a>, runs <a href="docs/primitives/">context commands</a> (git log, test status, etc.), and injects the results into the prompt via placeholders.</p>
         </div>
         <div class="step-arrow">&rarr;</div>
         <div class="step">
           <div class="step-number">2</div>
           <h3>Agent does one thing</h3>
-          <p>The assembled prompt is piped to your agent. It reads the codebase, implements one task, runs tests, and commits. Then it exits.</p>
+          <p>The assembled prompt is piped to your <a href="docs/agents/">agent</a>. It reads the codebase, implements one task, runs tests, and commits. Then it exits.</p>
         </div>
         <div class="step-arrow">&rarr;</div>
         <div class="step">
           <div class="step-number">3</div>
           <h3>Checks validate &amp; feed back</h3>
-          <p>Checks (tests, linters) run after the agent exits. If something fails, the output feeds into the next iteration — the agent fixes its own mistakes.</p>
+          <p><a href="docs/primitives/">Checks</a> (tests, linters) run after the agent exits. If something fails, the output feeds into the next iteration — the agent fixes its own mistakes.</p>
         </div>
       </div>
       <p class="how-repeat">Then it repeats. Edit the prompt while it runs — changes take effect on the next cycle.</p>
@@ -213,18 +213,18 @@
 
     <section class="features" aria-labelledby="features-heading">
       <h2 id="features-heading">Three primitives</h2>
-      <p class="features-subtitle">Extend the basic loop with building blocks that live in <code>.ralphify/</code></p>
+      <p class="features-subtitle">Extend the basic loop with building blocks that live in <code>.ralphify/</code>. See the <a href="docs/primitives/">primitives guide</a>.</p>
       <div class="card-grid">
         <div class="card">
-          <h3>Checks</h3>
+          <h3><a href="docs/primitives/">Checks</a></h3>
           <p>Run after each iteration to validate the agent's work. Failed check output feeds into the next iteration so the agent can fix its own mistakes.</p>
         </div>
         <div class="card">
-          <h3>Contexts</h3>
+          <h3><a href="docs/primitives/">Contexts</a></h3>
           <p>Inject dynamic data into the prompt before each iteration — git history, test status, API responses. The agent always sees fresh information.</p>
         </div>
         <div class="card">
-          <h3>Ralphs</h3>
+          <h3><a href="docs/primitives/">Ralphs</a></h3>
           <p>Named, task-focused prompts you switch between at run time. Keep a docs ralph, a refactor ralph, and a bug-fix ralph.</p>
         </div>
       </div>
@@ -237,11 +237,11 @@
       <dl class="faq-list">
         <div class="faq-item">
           <dt>What AI coding agents work with Ralphify?</dt>
-          <dd>Any agent that accepts prompts via stdin or CLI arguments — Claude Code, Aider, Cursor, and others. Ralphify is agent-agnostic by design.</dd>
+          <dd>Any agent that accepts prompts via stdin or CLI arguments — Claude Code, Aider, Cursor, and others. Ralphify is agent-agnostic by design. See <a href="docs/agents/">supported agents</a>.</dd>
         </div>
         <div class="faq-item">
           <dt>What is a ralph loop?</dt>
-          <dd>A ralph loop is an autonomous AI coding cycle: read a prompt, run the agent, validate with checks, and repeat. Each iteration starts fresh with a clean context window, so the agent never accumulates stale conversation history.</dd>
+          <dd>A ralph loop is an autonomous AI coding cycle: read a prompt, run the agent, validate with checks, and repeat. Each iteration starts fresh with a clean context window, so the agent never accumulates stale conversation history. Learn more in <a href="docs/how-it-works/">how it works</a>.</dd>
         </div>
         <div class="faq-item">
           <dt>How is this different from running my agent once?</dt>

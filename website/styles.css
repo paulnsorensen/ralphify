@@ -340,6 +340,10 @@ nav {
   font-size: 1.05rem;
 }
 
+.step a {
+  color: inherit;
+}
+
 @media (prefers-color-scheme: dark) {
   .step h3 {
     color: var(--purple-light);
@@ -557,6 +561,10 @@ nav {
   color: var(--purple);
   margin-bottom: 0.5rem;
   font-size: 1.15rem;
+}
+
+.card h3 a {
+  color: inherit;
 }
 
 @media (prefers-color-scheme: dark) {
