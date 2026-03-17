@@ -865,3 +865,167 @@ a:focus-visible,
     padding: 2rem 1.25rem 1.5rem;
   }
 }
+
+/* ── Print ──────────────────────────────────────────────── */
+
+@media print {
+  *,
+  *::before,
+  *::after {
+    background: transparent !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  body {
+    font-size: 12pt;
+    line-height: 1.5;
+  }
+
+  .skip-link,
+  .btn-secondary {
+    display: none !important;
+  }
+
+  header {
+    padding: 0.5rem 0;
+    border-bottom: 2px solid #000;
+  }
+
+  .logo {
+    font-size: 1.25rem;
+  }
+
+  .nav-links a::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    font-weight: 400;
+  }
+
+  .hero {
+    padding: 2rem 0 1.5rem;
+  }
+
+  .hero h1 {
+    font-size: 1.75rem;
+  }
+
+  .hero h1 code {
+    -webkit-text-fill-color: #000 !important;
+  }
+
+  .btn-primary {
+    border: 2px solid #000 !important;
+    padding: 0.5rem 1rem;
+  }
+
+  .btn-primary::after {
+    content: " → " attr(href);
+    font-size: 0.8em;
+    font-weight: 400;
+  }
+
+  .terminal-window {
+    border: 1px solid #999;
+    border-radius: 4px;
+  }
+
+  .terminal-header {
+    display: none;
+  }
+
+  .terminal-window pre {
+    padding: 1rem;
+    font-size: 9pt;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  .terminal-window code,
+  .terminal-window .prompt,
+  .terminal-window .dim,
+  .terminal-window .success,
+  .terminal-window .fail {
+    color: #000 !important;
+  }
+
+  .terminal-window .success::before { content: ""; }
+  .terminal-window .fail::before { content: ""; }
+
+  hr {
+    border-top: 1px solid #ccc;
+  }
+
+  .steps {
+    gap: 0.5rem;
+  }
+
+  .step,
+  .why-item,
+  .card,
+  .faq-item {
+    border: 1px solid #ddd;
+    page-break-inside: avoid;
+  }
+
+  .step-number {
+    border: 2px solid #000;
+  }
+
+  .step-arrow {
+    font-size: 1.25rem;
+    padding-top: 2rem;
+  }
+
+  .install-command {
+    border: 1px solid #999;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+  }
+
+  .install-command code {
+    font-size: 11pt;
+  }
+
+  .why-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .card-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+  }
+
+  footer {
+    border-top: 1px solid #ccc;
+    padding-top: 1rem;
+    margin-top: 1rem;
+  }
+
+  .footer-col a::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+  }
+
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    font-weight: 400;
+    word-break: break-all;
+  }
+
+  a[href^="docs/"]::after,
+  a[href^="./"]::after {
+    content: "";
+  }
+
+  section {
+    page-break-inside: avoid;
+  }
+
+  .faq {
+    page-break-before: auto;
+  }
+}
