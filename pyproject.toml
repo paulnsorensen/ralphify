@@ -47,3 +47,4 @@ packages = ["src/ralphify"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["tests"]

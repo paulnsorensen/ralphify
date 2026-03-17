@@ -3,43 +3,19 @@
 import subprocess
 import threading
 import time
-from dataclasses import replace
 from unittest.mock import patch
 
+from conftest import MOCK_SUBPROCESS, drain_events, make_config, ok_result
+
 from ralphify._events import Event, EventType, FanoutEmitter, QueueEmitter
-from ralphify._run_types import RunConfig, RunStatus
+from ralphify._run_types import RunStatus
 from ralphify.manager import ManagedRun, RunManager
-
-_MOCK_SUBPROCESS = "ralphify._agent.subprocess.run"
-
-
-def _make_config(tmp_path, **overrides):
-    """Create a RunConfig pointing at a temp directory with RALPH.md."""
-    prompt_path = tmp_path / "RALPH.md"
-    if not prompt_path.exists():
-        prompt_path.write_text("test prompt")
-    config = RunConfig(
-        command="echo",
-        args=[],
-        ralph_file=str(prompt_path),
-        max_iterations=1,
-        project_root=tmp_path,
-    )
-    return replace(config, **overrides) if overrides else config
-
-
-def _ok(*args, **kwargs):
-    return subprocess.CompletedProcess(args=args, returncode=0)
-
-
-def _fail(*args, **kwargs):
-    return subprocess.CompletedProcess(args=args, returncode=1)
 
 
 class TestRunManagerCreateRun:
     def test_create_run_returns_managed_run(self, tmp_path):
         manager = RunManager()
-        config = _make_config(tmp_path)
+        config = make_config(tmp_path)
         managed = manager.create_run(config)
 
         assert isinstance(managed, ManagedRun)
@@ -50,7 +26,7 @@ class TestRunManagerCreateRun:
 
     def test_create_run_assigns_unique_ids(self, tmp_path):
         manager = RunManager()
-        config = _make_config(tmp_path)
+        config = make_config(tmp_path)
         run1 = manager.create_run(config)
         run2 = manager.create_run(config)
 
@@ -58,7 +34,7 @@ class TestRunManagerCreateRun:
 
     def test_create_run_id_is_12_hex_chars(self, tmp_path):
         manager = RunManager()
-        config = _make_config(tmp_path)
+        config = make_config(tmp_path)
         managed = manager.create_run(config)
 
         run_id = managed.state.run_id
@@ -67,10 +43,10 @@ class TestRunManagerCreateRun:
 
 
 class TestRunManagerStartRun:
-    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_start_run_starts_thread(self, mock_run, tmp_path):
         manager = RunManager()
-        config = _make_config(tmp_path, max_iterations=1)
+        config = make_config(tmp_path, max_iterations=1)
         managed = manager.create_run(config)
         run_id = managed.state.run_id
 
@@ -82,10 +58,10 @@ class TestRunManagerStartRun:
         managed.thread.join(timeout=5)
         assert managed.state.status == RunStatus.COMPLETED
 
-    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_start_run_thread_is_daemon(self, mock_run, tmp_path):
         manager = RunManager()
-        config = _make_config(tmp_path, max_iterations=1)
+        config = make_config(tmp_path, max_iterations=1)
         managed = manager.create_run(config)
         run_id = managed.state.run_id
 
@@ -95,10 +71,10 @@ class TestRunManagerStartRun:
         assert managed.thread.daemon is True
         managed.thread.join(timeout=5)
 
-    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_start_run_emits_events_to_queue(self, mock_run, tmp_path):
         manager = RunManager()
-        config = _make_config(tmp_path, max_iterations=1)
+        config = make_config(tmp_path, max_iterations=1)
         managed = manager.create_run(config)
         run_id = managed.state.run_id
 
@@ -106,9 +82,7 @@ class TestRunManagerStartRun:
         assert managed.thread is not None
         managed.thread.join(timeout=5)
 
-        events = []
-        while not managed.emitter.queue.empty():
-            events.append(managed.emitter.queue.get())
+        events = drain_events(managed.emitter)
 
         types = [e.type for e in events]
         assert EventType.RUN_STARTED in types
@@ -116,10 +90,10 @@ class TestRunManagerStartRun:
 
 
 class TestRunManagerStopRun:
-    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_stop_run_stops_running_run(self, mock_run, tmp_path):
         manager = RunManager()
-        config = _make_config(tmp_path, max_iterations=100, delay=0.1)
+        config = make_config(tmp_path, max_iterations=100, delay=0.1)
         managed = manager.create_run(config)
         run_id = managed.state.run_id
 
@@ -135,7 +109,7 @@ class TestRunManagerStopRun:
 
 
 class TestRunManagerPauseResume:
-    @patch(_MOCK_SUBPROCESS)
+    @patch(MOCK_SUBPROCESS)
     def test_pause_and_resume(self, mock_run, tmp_path):
         """Pause after the first iteration and verify the run completes after resume."""
         pause_done = threading.Event()
@@ -154,7 +128,7 @@ class TestRunManagerPauseResume:
         mock_run.side_effect = counting_ok
 
         manager = RunManager()
-        config = _make_config(tmp_path, max_iterations=3)
+        config = make_config(tmp_path, max_iterations=3)
         managed = manager.create_run(config)
         run_id = managed.state.run_id
 
@@ -178,7 +152,7 @@ class TestRunManagerPauseResume:
 class TestRunManagerListAndGet:
     def test_list_runs_returns_all_runs(self, tmp_path):
         manager = RunManager()
-        config = _make_config(tmp_path)
+        config = make_config(tmp_path)
 
         managed1 = manager.create_run(config)
         managed2 = manager.create_run(config)
@@ -197,7 +171,7 @@ class TestRunManagerListAndGet:
 
     def test_get_run_returns_correct_run(self, tmp_path):
         manager = RunManager()
-        config = _make_config(tmp_path)
+        config = make_config(tmp_path)
         managed = manager.create_run(config)
         run_id = managed.state.run_id
 
@@ -223,10 +197,10 @@ class TestFanoutEmitter:
         assert q1.queue.get() is event
         assert q2.queue.get() is event
 
-    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_extra_listeners_receive_events(self, mock_run, tmp_path):
         manager = RunManager()
-        config = _make_config(tmp_path, max_iterations=1)
+        config = make_config(tmp_path, max_iterations=1)
         managed = manager.create_run(config)
         run_id = managed.state.run_id
 
@@ -238,13 +212,8 @@ class TestFanoutEmitter:
         managed.thread.join(timeout=5)
 
         # Both the primary emitter and the extra listener should have events
-        primary_events = []
-        while not managed.emitter.queue.empty():
-            primary_events.append(managed.emitter.queue.get())
-
-        extra_events = []
-        while not extra.queue.empty():
-            extra_events.append(extra.queue.get())
+        primary_events = drain_events(managed.emitter)
+        extra_events = drain_events(extra)
 
         assert len(primary_events) > 0
         assert len(extra_events) == len(primary_events)

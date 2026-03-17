@@ -3,49 +3,21 @@
 import subprocess
 import threading
 import time
-from dataclasses import replace
 from unittest.mock import patch
 
+from conftest import MOCK_SUBPROCESS, drain_events, fail_result, make_config, make_state, ok_result
+
 from ralphify._events import EventType, NullEmitter, QueueEmitter
-from ralphify._run_types import RunConfig, RunState, RunStatus
+from ralphify._run_types import RunConfig, RunStatus
 from ralphify._discovery import merge_by_name
 from ralphify.engine import _resolve_ralph_dir, run_loop
 
-_MOCK_SUBPROCESS = "ralphify._agent.subprocess.run"
-
-
-def _make_config(tmp_path, **overrides):
-    """Create a RunConfig pointing at a temp directory with RALPH.md."""
-    prompt_path = tmp_path / "RALPH.md"
-    if not prompt_path.exists():
-        prompt_path.write_text("test prompt")
-    config = RunConfig(
-        command="echo",
-        args=[],
-        ralph_file=str(prompt_path),
-        max_iterations=1,
-        project_root=tmp_path,
-    )
-    return replace(config, **overrides) if overrides else config
-
-
-def _make_state():
-    return RunState(run_id="test-run-001")
-
-
-def _ok(*args, **kwargs):
-    return subprocess.CompletedProcess(args=args, returncode=0)
-
-
-def _fail(*args, **kwargs):
-    return subprocess.CompletedProcess(args=args, returncode=1)
-
 
 class TestRunLoop:
-    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_single_iteration(self, mock_run, tmp_path):
-        config = _make_config(tmp_path, max_iterations=1)
-        state = _make_state()
+        config = make_config(tmp_path, max_iterations=1)
+        state = make_state()
         q = QueueEmitter()
 
         run_loop(config, state, q)
@@ -55,64 +27,64 @@ class TestRunLoop:
         assert state.status == RunStatus.COMPLETED
         assert mock_run.call_count == 1
 
-    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_multiple_iterations(self, mock_run, tmp_path):
-        config = _make_config(tmp_path, max_iterations=3)
-        state = _make_state()
+        config = make_config(tmp_path, max_iterations=3)
+        state = make_state()
 
         run_loop(config, state, NullEmitter())
 
         assert state.completed == 3
         assert mock_run.call_count == 3
 
-    @patch(_MOCK_SUBPROCESS, side_effect=_fail)
+    @patch(MOCK_SUBPROCESS, side_effect=fail_result)
     def test_failed_iterations_counted(self, mock_run, tmp_path):
-        config = _make_config(tmp_path, max_iterations=2)
-        state = _make_state()
+        config = make_config(tmp_path, max_iterations=2)
+        state = make_state()
 
         run_loop(config, state, NullEmitter())
 
         assert state.completed == 0
         assert state.failed == 2
 
-    @patch(_MOCK_SUBPROCESS, side_effect=_fail)
+    @patch(MOCK_SUBPROCESS, side_effect=fail_result)
     def test_stop_on_error(self, mock_run, tmp_path):
-        config = _make_config(tmp_path, max_iterations=5, stop_on_error=True)
-        state = _make_state()
+        config = make_config(tmp_path, max_iterations=5, stop_on_error=True)
+        state = make_state()
 
         run_loop(config, state, NullEmitter())
 
         assert mock_run.call_count == 1
         assert state.failed == 1
 
-    @patch(_MOCK_SUBPROCESS)
+    @patch(MOCK_SUBPROCESS)
     def test_timeout_counted(self, mock_run, tmp_path):
         mock_run.side_effect = subprocess.TimeoutExpired(cmd="echo", timeout=5)
-        config = _make_config(tmp_path, max_iterations=1, timeout=5)
-        state = _make_state()
+        config = make_config(tmp_path, max_iterations=1, timeout=5)
+        state = make_state()
 
         run_loop(config, state, NullEmitter())
 
         assert state.timed_out == 1
         assert state.failed == 1
 
-    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_prompt_text_overrides_file(self, mock_run, tmp_path):
-        config = _make_config(tmp_path, max_iterations=1, prompt_text="ad-hoc")
-        state = _make_state()
+        config = make_config(tmp_path, max_iterations=1, prompt_text="ad-hoc")
+        state = make_state()
 
         run_loop(config, state, NullEmitter())
 
         assert mock_run.call_args.kwargs["input"] == "ad-hoc"
 
-    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_log_dir_creates_files(self, mock_run, tmp_path):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="output\n", stderr=""
         )
         log_dir = tmp_path / "logs"
-        config = _make_config(tmp_path, max_iterations=2, log_dir=str(log_dir))
-        state = _make_state()
+        config = make_config(tmp_path, max_iterations=2, log_dir=str(log_dir))
+        state = make_state()
 
         run_loop(config, state, NullEmitter())
 
@@ -123,17 +95,15 @@ class TestRunLoop:
 
 
 class TestRunLoopEvents:
-    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_events_emitted_in_order(self, mock_run, tmp_path):
-        config = _make_config(tmp_path, max_iterations=1)
-        state = _make_state()
+        config = make_config(tmp_path, max_iterations=1)
+        state = make_state()
         q = QueueEmitter()
 
         run_loop(config, state, q)
 
-        events = []
-        while not q.queue.empty():
-            events.append(q.queue.get())
+        events = drain_events(q)
 
         types = [e.type for e in events]
         assert types[0] == EventType.RUN_STARTED
@@ -142,55 +112,50 @@ class TestRunLoopEvents:
         assert EventType.ITERATION_COMPLETED in types
         assert types[-1] == EventType.RUN_STOPPED
 
-    @patch(_MOCK_SUBPROCESS, side_effect=_fail)
+    @patch(MOCK_SUBPROCESS, side_effect=fail_result)
     def test_failure_event_emitted(self, mock_run, tmp_path):
-        config = _make_config(tmp_path, max_iterations=1)
-        state = _make_state()
+        config = make_config(tmp_path, max_iterations=1)
+        state = make_state()
         q = QueueEmitter()
 
         run_loop(config, state, q)
 
-        events = []
-        while not q.queue.empty():
-            events.append(q.queue.get())
+        events = drain_events(q)
 
         types = [e.type for e in events]
         assert EventType.ITERATION_FAILED in types
 
-    @patch(_MOCK_SUBPROCESS)
+    @patch(MOCK_SUBPROCESS)
     def test_timeout_event_emitted(self, mock_run, tmp_path):
         mock_run.side_effect = subprocess.TimeoutExpired(cmd="echo", timeout=5)
-        config = _make_config(tmp_path, max_iterations=1, timeout=5)
-        state = _make_state()
+        config = make_config(tmp_path, max_iterations=1, timeout=5)
+        state = make_state()
         q = QueueEmitter()
 
         run_loop(config, state, q)
 
-        events = []
-        while not q.queue.empty():
-            events.append(q.queue.get())
+        events = drain_events(q)
 
         types = [e.type for e in events]
         assert EventType.ITERATION_TIMED_OUT in types
 
-    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_all_events_have_run_id(self, mock_run, tmp_path):
-        config = _make_config(tmp_path, max_iterations=1)
-        state = _make_state()
+        config = make_config(tmp_path, max_iterations=1)
+        state = make_state()
         q = QueueEmitter()
 
         run_loop(config, state, q)
 
-        while not q.queue.empty():
-            event = q.queue.get()
+        for event in drain_events(q):
             assert event.run_id == "test-run-001"
 
 
 class TestRunStateControls:
-    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_stop_request(self, mock_run, tmp_path):
-        config = _make_config(tmp_path, max_iterations=100)
-        state = _make_state()
+        config = make_config(tmp_path, max_iterations=100)
+        state = make_state()
 
         # Request stop before starting (will stop at first iteration boundary)
         def stop_after_first(*args, **kwargs):
@@ -204,29 +169,27 @@ class TestRunStateControls:
         assert mock_run.call_count == 1
         assert state.status == RunStatus.STOPPED
 
-    @patch(_MOCK_SUBPROCESS)
+    @patch(MOCK_SUBPROCESS)
     def test_keyboard_interrupt_sets_stopped(self, mock_run, tmp_path):
         """Ctrl+C should set status to STOPPED, not COMPLETED."""
         mock_run.side_effect = KeyboardInterrupt
-        config = _make_config(tmp_path, max_iterations=5)
-        state = _make_state()
+        config = make_config(tmp_path, max_iterations=5)
+        state = make_state()
         q = QueueEmitter()
 
         run_loop(config, state, q)
 
         assert state.status == RunStatus.STOPPED
 
-        events = []
-        while not q.queue.empty():
-            events.append(q.queue.get())
+        events = drain_events(q)
 
         stop_event = [e for e in events if e.type == EventType.RUN_STOPPED][0]
         assert stop_event.data["reason"] == "user_requested"
 
-    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_pause_and_resume(self, mock_run, tmp_path):
-        config = _make_config(tmp_path, max_iterations=3)
-        state = _make_state()
+        config = make_config(tmp_path, max_iterations=3)
+        state = make_state()
 
         call_count = 0
 
@@ -251,11 +214,11 @@ class TestRunStateControls:
         assert state.completed == 3
         assert state.status == RunStatus.COMPLETED
 
-    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_reload_rediscovers_primitives(self, mock_run, tmp_path):
         (tmp_path / "RALPH.md").write_text("test prompt")
-        config = _make_config(tmp_path, max_iterations=2)
-        state = _make_state()
+        config = make_config(tmp_path, max_iterations=2)
+        state = make_state()
         q = QueueEmitter()
 
         call_count = 0
@@ -271,17 +234,15 @@ class TestRunStateControls:
 
         run_loop(config, state, q)
 
-        events = []
-        while not q.queue.empty():
-            events.append(q.queue.get())
+        events = drain_events(q)
 
         types = [e.type for e in events]
         assert EventType.PRIMITIVES_RELOADED in types
 
-    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_stop_while_paused(self, mock_run, tmp_path):
-        config = _make_config(tmp_path, max_iterations=100)
-        state = _make_state()
+        config = make_config(tmp_path, max_iterations=100)
+        state = make_state()
 
         def pause_then_stop(*args, **kwargs):
             state.request_pause()
@@ -304,7 +265,7 @@ class TestRunStateControls:
 class TestPromptLocalPrimitives:
     """Tests for prompt-scoped primitive discovery and merge logic."""
 
-    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_prompt_local_contexts_merged(self, mock_run, tmp_path):
         """Both declared global and local contexts are discovered."""
         # Global context
@@ -322,21 +283,21 @@ class TestPromptLocalPrimitives:
         lc.mkdir(parents=True)
         (lc / "CONTEXT.md").write_text("---\n---\nFocus on components.")
 
-        config = _make_config(
+        config = make_config(
             tmp_path,
             ralph_file=str(ralph_dir / "RALPH.md"),
             ralph_name="ui",
             global_contexts=["global-info"],
             max_iterations=1,
         )
-        state = _make_state()
+        state = make_state()
         run_loop(config, state, NullEmitter())
 
         call_input = mock_run.call_args.kwargs["input"]
         assert "Global info." in call_input
         assert "Focus on components." in call_input
 
-    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_prompt_local_overrides_global(self, mock_run, tmp_path):
         """A prompt-local primitive with the same name replaces the global one."""
         # Global context
@@ -354,21 +315,21 @@ class TestPromptLocalPrimitives:
         lc.mkdir(parents=True)
         (lc / "CONTEXT.md").write_text("---\n---\nLocal info.")
 
-        config = _make_config(
+        config = make_config(
             tmp_path,
             ralph_file=str(ralph_dir / "RALPH.md"),
             ralph_name="ui",
             global_contexts=["info"],
             max_iterations=1,
         )
-        state = _make_state()
+        state = make_state()
         run_loop(config, state, NullEmitter())
 
         call_input = mock_run.call_args.kwargs["input"]
         assert "Local info." in call_input
         assert "Global info." not in call_input
 
-    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_adhoc_prompt_gets_no_globals(self, mock_run, tmp_path):
         """Ad-hoc prompt text gets no global primitives (no frontmatter = no declarations)."""
         # Global context exists but should NOT be included
@@ -376,20 +337,20 @@ class TestPromptLocalPrimitives:
         gc.mkdir(parents=True)
         (gc / "CONTEXT.md").write_text("---\n---\nGlobal info.")
 
-        config = _make_config(
+        config = make_config(
             tmp_path,
             prompt_text="ad-hoc prompt",
             ralph_name=None,
             max_iterations=1,
         )
-        state = _make_state()
+        state = make_state()
         run_loop(config, state, NullEmitter())
 
         call_input = mock_run.call_args.kwargs["input"]
         assert call_input == "ad-hoc prompt"
         assert "Global info." not in call_input
 
-    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_disabled_local_suppresses_global(self, mock_run, tmp_path):
         """A disabled local primitive with the same name hides the declared global."""
         # Global context (enabled)
@@ -407,21 +368,21 @@ class TestPromptLocalPrimitives:
         lc.mkdir(parents=True)
         (lc / "CONTEXT.md").write_text("---\nenabled: false\n---\nLocal info.")
 
-        config = _make_config(
+        config = make_config(
             tmp_path,
             ralph_file=str(ralph_dir / "RALPH.md"),
             ralph_name="ui",
             global_contexts=["info"],
             max_iterations=1,
         )
-        state = _make_state()
+        state = make_state()
         run_loop(config, state, NullEmitter())
 
         call_input = mock_run.call_args.kwargs["input"]
         assert "Global info." not in call_input
         assert "Local info." not in call_input
 
-    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_reload_rediscovers_local(self, mock_run, tmp_path):
         """Reload should re-discover prompt-local primitives."""
         # Named prompt
@@ -429,13 +390,13 @@ class TestPromptLocalPrimitives:
         ralph_dir.mkdir(parents=True)
         (ralph_dir / "RALPH.md").write_text("---\n---\nBuild the UI.\n\n{{ contexts.new-focus }}")
 
-        config = _make_config(
+        config = make_config(
             tmp_path,
             ralph_file=str(ralph_dir / "RALPH.md"),
             ralph_name="ui",
             max_iterations=2,
         )
-        state = _make_state()
+        state = make_state()
         q = QueueEmitter()
 
         call_count = 0
@@ -455,9 +416,7 @@ class TestPromptLocalPrimitives:
 
         run_loop(config, state, q)
 
-        events = []
-        while not q.queue.empty():
-            events.append(q.queue.get())
+        events = drain_events(q)
 
         types = [e.type for e in events]
         assert EventType.PRIMITIVES_RELOADED in types
@@ -537,7 +496,7 @@ class TestResolveRalphDir:
 class TestRalphNameEnv:
     """Tests that ralph_name flows to context and check subprocesses."""
 
-    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_ralph_name_passed_to_context_scripts(self, mock_run, tmp_path):
         """When ralph_name is set, context scripts receive RALPH_NAME env var."""
         # Create a context with a command
@@ -545,18 +504,18 @@ class TestRalphNameEnv:
         ctx_dir.mkdir(parents=True)
         (ctx_dir / "CONTEXT.md").write_text("---\ncommand: echo hi\n---\n")
 
-        config = _make_config(
+        config = make_config(
             tmp_path, ralph_name="docs", max_iterations=1,
             global_contexts=["test-ctx"],
         )
-        state = _make_state()
+        state = make_state()
         run_loop(config, state, NullEmitter())
 
         # Find the context subprocess call (first call before the agent call)
         context_call = mock_run.call_args_list[0]
         assert context_call.kwargs["env"]["RALPH_NAME"] == "docs"
 
-    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_ralph_name_passed_to_check_scripts(self, mock_run, tmp_path):
         """When ralph_name is set, check scripts receive RALPH_NAME env var."""
         # Create a check with a command
@@ -564,29 +523,29 @@ class TestRalphNameEnv:
         check_dir.mkdir(parents=True)
         (check_dir / "CHECK.md").write_text("---\ncommand: echo ok\n---\n")
 
-        config = _make_config(
+        config = make_config(
             tmp_path, ralph_name="docs", max_iterations=1,
             global_checks=["test-chk"],
         )
-        state = _make_state()
+        state = make_state()
         run_loop(config, state, NullEmitter())
 
         # The check call is after the agent call
         check_call = mock_run.call_args_list[-1]
         assert check_call.kwargs["env"]["RALPH_NAME"] == "docs"
 
-    @patch(_MOCK_SUBPROCESS, side_effect=_ok)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_no_ralph_name_no_env(self, mock_run, tmp_path):
         """When ralph_name is None, no custom env is passed."""
         ctx_dir = tmp_path / ".ralphify" / "contexts" / "test-ctx"
         ctx_dir.mkdir(parents=True)
         (ctx_dir / "CONTEXT.md").write_text("---\ncommand: echo hi\n---\n")
 
-        config = _make_config(
+        config = make_config(
             tmp_path, ralph_name=None, max_iterations=1,
             global_contexts=["test-ctx"],
         )
-        state = _make_state()
+        state = make_state()
         run_loop(config, state, NullEmitter())
 
         context_call = mock_run.call_args_list[0]
