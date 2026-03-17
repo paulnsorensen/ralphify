@@ -163,7 +163,7 @@ def resolve_contexts(prompt: str, results: list[ContextResult]) -> str:
     then injected into the prompt via :func:`resolve_placeholders`.
 
     Callers are responsible for passing only the results they want
-    resolved (the engine pre-filters via ``_discover_enabled_primitives``).
+    resolved (the engine pre-filters via ``_rediscover_primitives``).
 
     Only named placeholders are supported:
     - {{ contexts.<name> }} → specific context content

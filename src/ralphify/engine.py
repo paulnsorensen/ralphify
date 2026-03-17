@@ -312,10 +312,12 @@ def _rediscover_primitives(
     state: RunState,
     emit: _BoundEmitter,
 ) -> EnabledPrimitives:
-    """Re-discover primitives from disk, emitting a reload event if explicitly requested.
+    """Discover primitives from disk, emitting a reload event if explicitly requested.
 
-    Called at the top of each iteration so edits on disk take effect
-    immediately without restarting the loop.
+    This is the single entry point for all primitive discovery in the engine —
+    both the initial discovery at run start and per-iteration re-discovery.
+    When no reload has been requested (e.g. on first call), discovery runs
+    silently without emitting an event.
     """
     explicit_reload = state.consume_reload_request()
     primitives = _discover_enabled_primitives(
@@ -372,11 +374,7 @@ def run_loop(
 
     check_failures_text = ""
     ralph_dir = _resolve_ralph_dir(config)
-    primitives = _discover_enabled_primitives(
-        config.project_root, ralph_dir,
-        global_checks=config.global_checks,
-        global_contexts=config.global_contexts,
-    )
+    primitives = _rediscover_primitives(config, ralph_dir, state, emit)
 
     emit(EventType.RUN_STARTED, {
         "checks": len(primitives.checks),
