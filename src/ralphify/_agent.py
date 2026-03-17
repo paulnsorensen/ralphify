@@ -22,7 +22,7 @@ import time
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import NamedTuple
+from typing import IO, NamedTuple
 
 from ralphify._output import collect_output
 
@@ -34,6 +34,14 @@ class AgentResult(NamedTuple):
     elapsed: float
     log_file: Path | None
     result_text: str | None = None
+
+
+class _StreamResult(NamedTuple):
+    """Accumulated output from reading the agent's JSON stream."""
+
+    stdout_lines: list[str]
+    result_text: str | None
+    timed_out: bool
 
 
 def _write_log(
@@ -57,6 +65,47 @@ def _is_claude_command(cmd: list[str]) -> bool:
     return binary == "claude"
 
 
+def _read_agent_stream(
+    stdout: IO[str],
+    deadline: float | None,
+    on_activity: Callable[[dict], None] | None,
+) -> _StreamResult:
+    """Read the agent's JSON stream line-by-line until EOF or timeout.
+
+    Parses each non-empty line as JSON.  Valid JSON objects are forwarded
+    to *on_activity* (if provided).  The ``result`` field from
+    ``{"type": "result"}`` events is captured as *result_text*.
+
+    Lines that aren't valid JSON are silently collected for logging but
+    not forwarded — this keeps the caller working even if the agent
+    emits non-JSON diagnostics to stdout.
+
+    Returns early with ``timed_out=True`` when the deadline is exceeded,
+    leaving the caller responsible for killing the subprocess.
+    """
+    stdout_lines: list[str] = []
+    result_text: str | None = None
+
+    for line in stdout:
+        if deadline and time.monotonic() > deadline:
+            return _StreamResult(stdout_lines, result_text, timed_out=True)
+
+        stdout_lines.append(line)
+        stripped = line.strip()
+        if not stripped:
+            continue
+        try:
+            parsed = json.loads(stripped)
+        except json.JSONDecodeError:
+            continue
+        if parsed.get("type") == "result" and "result" in parsed:
+            result_text = parsed["result"]
+        if on_activity is not None:
+            on_activity(parsed)
+
+    return _StreamResult(stdout_lines, result_text, timed_out=False)
+
+
 def _run_agent_streaming(
     cmd: list[str],
     prompt: str,
@@ -68,23 +117,13 @@ def _run_agent_streaming(
     """Run the agent subprocess with line-by-line streaming of JSON output.
 
     Used for agents that support ``--output-format stream-json`` (e.g. Claude
-    Code).  Each JSON line is passed to *on_activity* (if provided) so the
-    caller can emit events or update UI.
-
-    Falls back gracefully if any line is not valid JSON — it is still
-    collected for logging but not forwarded as structured data.
-
-    Timeout is enforced manually between line reads (``Popen`` has no
-    built-in timeout on iteration).  A ``try/finally`` ensures the child
-    process is cleaned up even on unexpected errors.
+    Code).  Stream processing is delegated to :func:`_read_agent_stream`;
+    this function owns the subprocess lifecycle (spawn, stdin delivery,
+    timeout kill, and cleanup via ``try/finally``).
     """
     stream_cmd = cmd + ["--output-format", "stream-json", "--verbose"]
     start = time.monotonic()
     deadline = (start + timeout) if timeout else None
-    stdout_lines: list[str] = []
-    stderr_data = ""
-    returncode: int | None = None
-    result_text: str | None = None
 
     proc = subprocess.Popen(
         stream_cmd,
@@ -99,32 +138,16 @@ def _run_agent_streaming(
         if proc.stdin is None or proc.stdout is None or proc.stderr is None:
             raise RuntimeError("subprocess.Popen failed to create PIPE streams")
 
-        # Send prompt and close stdin so the agent can start.
         proc.stdin.write(prompt)
         proc.stdin.close()
 
-        timed_out = False
-        for line in proc.stdout:
-            if deadline and time.monotonic() > deadline:
-                proc.kill()
-                proc.wait()
-                timed_out = True
-                break
-            stdout_lines.append(line)
-            stripped = line.strip()
-            if not stripped:
-                continue
-            try:
-                parsed = json.loads(stripped)
-            except json.JSONDecodeError:
-                continue
-            if parsed.get("type") == "result" and "result" in parsed:
-                result_text = parsed["result"]
-            if on_activity is not None:
-                on_activity(parsed)
+        stream = _read_agent_stream(proc.stdout, deadline, on_activity)
 
-        if not timed_out:
-            # stdout exhausted — process finished normally.
+        if stream.timed_out:
+            proc.kill()
+            proc.wait()
+            returncode = None
+        else:
             proc.wait()
             returncode = proc.returncode
 
@@ -136,13 +159,13 @@ def _run_agent_streaming(
 
     log_file: Path | None = None
     if log_path_dir:
-        log_file = _write_log(log_path_dir, iteration, "".join(stdout_lines), stderr_data)
+        log_file = _write_log(log_path_dir, iteration, "".join(stream.stdout_lines), stderr_data)
 
     return AgentResult(
         returncode=returncode,
         elapsed=time.monotonic() - start,
         log_file=log_file,
-        result_text=result_text,
+        result_text=stream.result_text,
     )
 
 
