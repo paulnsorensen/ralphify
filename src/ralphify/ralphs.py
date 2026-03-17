@@ -105,6 +105,11 @@ def is_ralph_name(value: str) -> bool:
     return "/" not in value and "." not in value
 
 
+def _ralph_to_source(ralph: Ralph) -> RalphSource:
+    """Convert a resolved :class:`Ralph` to a :class:`RalphSource`."""
+    return RalphSource(str(ralph.path / RALPH_MARKER), ralph.name)
+
+
 def resolve_ralph_source(
     *,
     ralph_arg: str | None,
@@ -120,21 +125,22 @@ def resolve_ralph_source(
 
     Resolution:
 
-    1. ``ralph_arg is None`` → fall back to *toml_ralph*
-    2. Otherwise → look up *ralph_arg* as a named ralph
+    1. CLI argument present → look up as a named ralph
+    2. toml value looks like a file path → use it directly
+    3. toml value looks like a name → try named lookup, fall back to file path
 
-    Raises ``ValueError`` if a named ralph lookup fails.
+    Raises ``ValueError`` if a CLI-provided ralph name lookup fails.
     """
-    if ralph_arg is None:
-        # Fall back to ralph.toml agent.ralph — could be a name or a path
-        if is_ralph_name(toml_ralph):
-            try:
-                found = resolve_ralph_name(toml_ralph)
-                return RalphSource(str(found.path / RALPH_MARKER), found.name)
-            except ValueError:
-                return RalphSource(toml_ralph, None)
+    # Case 1: CLI argument takes precedence — always resolve as a named ralph
+    if ralph_arg is not None:
+        return _ralph_to_source(resolve_ralph_name(ralph_arg))
+
+    # Case 2: toml value is a file path (contains "/" or ".")
+    if not is_ralph_name(toml_ralph):
         return RalphSource(toml_ralph, None)
 
-    # Must be a named ralph
-    found = resolve_ralph_name(ralph_arg)
-    return RalphSource(str(found.path / RALPH_MARKER), found.name)
+    # Case 3: toml value looks like a ralph name — try lookup, fall back to path
+    try:
+        return _ralph_to_source(resolve_ralph_name(toml_ralph))
+    except ValueError:
+        return RalphSource(toml_ralph, None)
