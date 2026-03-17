@@ -71,7 +71,7 @@ ralph run
 
 ### The three primitives and the `Primitive` protocol
 
-All three primitive types follow the same pattern: a directory under `.ralphify/` with a marker markdown file containing YAML frontmatter. Each type's dataclass (`Check`, `Context`, `Ralph`) satisfies the `Primitive` protocol defined in `_discovery.py`, which requires `name` and `enabled` properties. This enables type-safe generic functions for discovery, filtering, merging, and display — the engine's `_discover_and_filter_enabled()` helper uses the protocol to handle all three types through a single code path.
+All three primitive types follow the same pattern: a directory under `.ralphify/` with a marker markdown file containing YAML frontmatter. Each type's dataclass (`Check`, `Context`, `Ralph`) satisfies the `Primitive` protocol defined in `_discovery.py`, which requires `name` and `enabled` properties. This enables type-safe generic functions for discovery, filtering, merging, and display — the engine's `_discover_enabled_primitives()` helper uses the protocol to handle all three types through a single code path.
 
 | Primitive | Marker file | Runs | Injects into prompt |
 |---|---|---|---|
@@ -136,7 +136,7 @@ You need to:
 
 1. Create a new module (like `ralphs.py`) with a dataclass that satisfies the `Primitive` protocol (`name` and `enabled` properties), plus discover and resolve functions
 2. Add a scaffold template in `_templates.py` and a `new` subcommand in `cli.py`
-3. Wire it into `engine.py:run_loop()` — add it to `EnabledPrimitives` and use `_discover_and_filter_enabled()`
+3. Wire it into `engine.py:run_loop()` — add it to `EnabledPrimitives` and use `_discover_enabled_primitives()`
 4. Add tests
 5. Update `docs/primitives.md`
 

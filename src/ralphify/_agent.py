@@ -20,6 +20,7 @@ import subprocess
 import sys
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import IO, NamedTuple
@@ -27,13 +28,20 @@ from typing import IO, NamedTuple
 from ralphify._output import collect_output
 
 
-class AgentResult(NamedTuple):
-    """Result of running the agent subprocess."""
+@dataclass
+class AgentResult:
+    """Result of running the agent subprocess.
 
-    returncode: int | None  # None means timed out
+    *returncode* is the process exit code, or ``None`` when the process
+    timed out.  *timed_out* makes the timeout condition explicit — prefer
+    checking ``timed_out`` over ``returncode is None``.
+    """
+
+    returncode: int | None
     elapsed: float
     log_file: Path | None
     result_text: str | None = None
+    timed_out: bool = False
 
 
 class _StreamResult(NamedTuple):
@@ -147,9 +155,11 @@ def _run_agent_streaming(
             proc.kill()
             proc.wait()
             returncode = None
+            timed_out = True
         else:
             proc.wait()
             returncode = proc.returncode
+            timed_out = False
 
         stderr_data = proc.stderr.read()
     finally:
@@ -166,6 +176,7 @@ def _run_agent_streaming(
         elapsed=time.monotonic() - start,
         log_file=log_file,
         result_text=stream.result_text,
+        timed_out=timed_out,
     )
 
 
@@ -188,6 +199,7 @@ def _run_agent_blocking(
     start = time.monotonic()
     log_file: Path | None = None
     returncode: int | None = None
+    timed_out = False
 
     try:
         result = subprocess.run(
@@ -205,6 +217,7 @@ def _run_agent_blocking(
                 sys.stderr.write(result.stderr)
         returncode = result.returncode
     except subprocess.TimeoutExpired as e:
+        timed_out = True
         if log_path_dir:
             log_file = _write_log(log_path_dir, iteration, e.stdout, e.stderr)
 
@@ -212,6 +225,7 @@ def _run_agent_blocking(
         returncode=returncode,
         elapsed=time.monotonic() - start,
         log_file=log_file,
+        timed_out=timed_out,
     )
 
 

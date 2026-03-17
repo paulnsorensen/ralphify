@@ -184,7 +184,7 @@ def _run_agent_phase(
 
     duration = format_duration(agent.elapsed)
 
-    if agent.returncode is None:
+    if agent.timed_out:
         state.mark_timed_out()
         event_type = EventType.ITERATION_TIMED_OUT
         state_detail = f"timed out after {duration}"

@@ -66,7 +66,7 @@ class EventType(Enum):
     ITERATION_COMPLETED = "iteration_completed"
     # Data: same as ITERATION_COMPLETED
     ITERATION_FAILED = "iteration_failed"
-    # Data: same as ITERATION_COMPLETED (returncode is None)
+    # Data: same as ITERATION_COMPLETED (returncode is None, timed_out is True)
     ITERATION_TIMED_OUT = "iteration_timed_out"
 
     # ── Checks ──────────────────────────────────────────────────
