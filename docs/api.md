@@ -48,6 +48,7 @@ config = RunConfig(
     command="claude",
     args=["-p", "--dangerously-skip-permissions"],
     ralph_file="RALPH.md",
+    prompt_text=None,          # Pass prompt text directly instead of reading from file
     ralph_name=None,           # Named ralph from .ralphify/ralphs/
     max_iterations=10,
     delay=2.0,
@@ -64,7 +65,8 @@ config = RunConfig(
 |---|---|---|---|
 | `command` | `str` | — | Agent CLI executable |
 | `args` | `list[str]` | — | Arguments passed to the command |
-| `ralph_file` | `str` | — | Path to the ralph file |
+| `ralph_file` | `str` | — | Path to the ralph file (ignored when `prompt_text` is set) |
+| `prompt_text` | `str | None` | `None` | Pass prompt text directly instead of reading from `ralph_file` |
 | `ralph_name` | `str | None` | `None` | Named ralph from `.ralphify/ralphs/` |
 | `max_iterations` | `int | None` | `None` | Max iterations (`None` = unlimited) |
 | `delay` | `float` | `0` | Seconds to wait between iterations |
@@ -76,6 +78,24 @@ config = RunConfig(
 | `global_contexts` | `list[str] | None` | `None` | Global context names to include |
 
 `RunConfig` is mutable — you can change fields mid-run, and the loop picks up changes at the next iteration boundary.
+
+!!! tip "Dynamic prompts with `prompt_text`"
+    Use `prompt_text` when you want to generate prompts programmatically instead of reading from a file. When set, `ralph_file` is still required but its contents are ignored — the loop uses `prompt_text` as the prompt body. Context placeholders (`{{ contexts.name }}`) and check failure injection still work normally on the provided text.
+
+    ```python
+    tasks = ["Add input validation to the login endpoint", "Write tests for the user model"]
+
+    for task in tasks:
+        config = RunConfig(
+            command="claude",
+            args=["-p", "--dangerously-skip-permissions"],
+            ralph_file="RALPH.md",  # required but ignored when prompt_text is set
+            prompt_text=f"You are an autonomous coding agent.\n\nTask: {task}\n\nCommit when done.",
+            max_iterations=1,
+        )
+        state = RunState(run_id=f"task-{tasks.index(task)}")
+        run_loop(config, state)
+    ```
 
 ---
 
