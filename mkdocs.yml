@@ -96,6 +96,7 @@ nav:
     - Using with Different Agents: agents.md
     - Cookbook: cookbook.md
   - Reference:
+    - Quick Reference: quick-reference.md
     - Primitives: primitives.md
     - Configuration & CLI: cli.md
     - Python API: api.md
