@@ -1095,3 +1095,346 @@ The same pattern works for any file-by-file migration where you can validate cor
 - Prompt rule: "Replace CSS classes with Tailwind utilities, remove the old CSS file when all its classes are inlined"
 
 The key to any migration recipe is a **context that shows progress** (what's done, what's left) and a **check that validates correctness** (compiler, test suite, linter). The agent handles the tedious file-by-file work while the checks prevent regressions.
+
+---
+
+## Multi-ralph project setup
+
+Use multiple named ralphs with shared global primitives and ralph-scoped overrides. This is the setup for a mature project where different workflows share common checks (tests, lint) but each ralph also has its own validation.
+
+### Directory structure
+
+```
+.ralphify/
+├── checks/                              # Global checks — shared across ralphs
+│   ├── lint/
+│   │   └── CHECK.md
+│   └── tests/
+│       └── CHECK.md
+│
+├── contexts/                            # Global contexts — shared across ralphs
+│   └── git-log/
+│       └── CONTEXT.md
+│
+└── ralphs/
+    ├── features/                        # Feature development ralph
+    │   └── RALPH.md
+    │
+    ├── docs/                            # Documentation ralph
+    │   ├── RALPH.md
+    │   └── checks/                      # Ralph-scoped check (only runs with docs)
+    │       └── docs-build/
+    │           └── CHECK.md
+    │
+    └── tests/                           # Test coverage ralph
+        ├── RALPH.md
+        └── contexts/                    # Ralph-scoped context (only runs with tests)
+            └── coverage/
+                ├── CONTEXT.md
+                └── run.sh
+```
+
+### Global primitives
+
+These are shared across all ralphs — each ralph opts in by declaring them in its frontmatter.
+
+**`.ralphify/checks/tests/CHECK.md`**
+
+```markdown
+---
+command: uv run pytest -x
+timeout: 120
+---
+Fix all failing tests. Do not skip or delete tests.
+```
+
+**`.ralphify/checks/lint/CHECK.md`**
+
+```markdown
+---
+command: uv run ruff check .
+timeout: 60
+---
+Fix all lint errors. Do not suppress warnings with noqa comments.
+```
+
+**`.ralphify/contexts/git-log/CONTEXT.md`**
+
+```markdown
+---
+command: git log --oneline -10
+---
+## Recent commits
+```
+
+### Named ralphs
+
+Each ralph declares which global primitives it needs. Ralph-scoped primitives are auto-included.
+
+**`.ralphify/ralphs/features/RALPH.md`** — uses both global checks and the git-log context:
+
+```markdown
+---
+description: Implement features from the task list
+checks: [tests, lint]
+contexts: [git-log]
+---
+
+# Prompt
+
+You are an autonomous coding agent running in a loop. Each iteration
+starts with a fresh context. Your progress lives in the code and git.
+
+{{ contexts.git-log }}
+
+Read TODO.md for the current task list. Pick the top uncompleted task,
+implement it fully, then mark it done.
+
+## Rules
+
+- One task per iteration
+- No placeholder code — full, working implementations only
+- Run tests before committing
+- Commit with a descriptive message like `feat: add X` or `fix: resolve Y`
+- Mark the completed task in TODO.md
+```
+
+**`.ralphify/ralphs/docs/RALPH.md`** — uses only the lint check globally, plus its own ralph-scoped docs-build check:
+
+```markdown
+---
+description: Improve project documentation
+checks: [lint]
+contexts: [git-log]
+---
+
+# Prompt
+
+You are an autonomous documentation agent running in a loop. Each
+iteration starts with a fresh context. Your progress lives in the code
+and git.
+
+{{ contexts.git-log }}
+
+Read the codebase and existing docs. Find the biggest gap between what
+the code can do and what the docs explain. Write or improve one page
+per iteration.
+
+## Rules
+
+- Do one meaningful documentation improvement per iteration
+- No placeholder content — full, accurate, useful writing only
+- Verify any code examples actually run before committing
+- Commit with `docs: explain X for users who want to Y`
+```
+
+**`.ralphify/ralphs/docs/checks/docs-build/CHECK.md`** — ralph-scoped check that only runs with the docs ralph:
+
+```markdown
+---
+command: uv run mkdocs build --strict
+timeout: 60
+---
+The docs build failed. Fix any warnings or errors in the markdown files.
+Check for broken cross-links and invalid admonition syntax.
+```
+
+**`.ralphify/ralphs/tests/RALPH.md`** — uses the global tests check, plus a ralph-scoped coverage context:
+
+```markdown
+---
+description: Increase test coverage
+checks: [tests]
+contexts: [coverage]
+---
+
+# Prompt
+
+You are an autonomous test-writing agent running in a loop. Each
+iteration starts with a fresh context. Your progress lives in the code
+and git.
+
+{{ contexts.coverage }}
+
+Find the module with the lowest coverage that has meaningful logic
+worth testing. Write thorough tests for that module.
+
+## Rules
+
+- One module per iteration
+- Write tests that verify behavior, not implementation details
+- Do NOT modify source code to make it easier to test
+- Commit with `test: add tests for <module name>`
+```
+
+**`.ralphify/ralphs/tests/contexts/coverage/CONTEXT.md`**
+
+```markdown
+---
+timeout: 60
+---
+## Current test coverage
+```
+
+**`.ralphify/ralphs/tests/contexts/coverage/run.sh`**
+
+```bash
+#!/bin/bash
+uv run pytest --cov=src --cov-report=term-missing -q 2>/dev/null || true
+```
+
+Make the script executable: `chmod +x .ralphify/ralphs/tests/contexts/coverage/run.sh`
+
+### Running
+
+Switch between ralphs at the command line:
+
+```bash
+ralph run features          # Implement features from TODO.md
+ralph run docs              # Improve documentation
+ralph run tests -n 5        # Write tests for 5 modules
+```
+
+### How the primitives compose
+
+When you run `ralph run docs`, here's what happens:
+
+1. **Global checks selected:** `lint` (declared in docs ralph frontmatter). `tests` is NOT included — the docs ralph didn't declare it.
+2. **Ralph-scoped checks discovered:** `docs-build` (inside `.ralphify/ralphs/docs/checks/`). Auto-included, no declaration needed.
+3. **Merged check list:** `docs-build`, `lint` — both run after each iteration.
+4. **Global contexts selected:** `git-log` (declared in frontmatter).
+5. **No ralph-scoped contexts** for the docs ralph.
+6. **Result:** The docs agent gets lint validation and a docs build check, but doesn't waste time running the test suite. The features ralph gets both lint and tests. Each ralph gets exactly the validation it needs.
+
+??? example "One-command setup"
+
+    ```bash
+    ralph init
+    mkdir -p .ralphify/checks/tests .ralphify/checks/lint .ralphify/contexts/git-log
+    mkdir -p .ralphify/ralphs/features .ralphify/ralphs/docs/checks/docs-build
+    mkdir -p .ralphify/ralphs/tests/contexts/coverage
+
+    cat > .ralphify/checks/tests/CHECK.md << 'EOF'
+    ---
+    command: uv run pytest -x
+    timeout: 120
+    ---
+    Fix all failing tests. Do not skip or delete tests.
+    EOF
+
+    cat > .ralphify/checks/lint/CHECK.md << 'EOF'
+    ---
+    command: uv run ruff check .
+    timeout: 60
+    ---
+    Fix all lint errors. Do not suppress warnings with noqa comments.
+    EOF
+
+    cat > .ralphify/contexts/git-log/CONTEXT.md << 'EOF'
+    ---
+    command: git log --oneline -10
+    ---
+    ## Recent commits
+    EOF
+
+    cat > .ralphify/ralphs/features/RALPH.md << 'EOF'
+    ---
+    description: Implement features from the task list
+    checks: [tests, lint]
+    contexts: [git-log]
+    ---
+
+    # Prompt
+
+    You are an autonomous coding agent running in a loop. Each iteration
+    starts with a fresh context. Your progress lives in the code and git.
+
+    {{ contexts.git-log }}
+
+    Read TODO.md for the current task list. Pick the top uncompleted task,
+    implement it fully, then mark it done.
+
+    ## Rules
+
+    - One task per iteration
+    - No placeholder code — full, working implementations only
+    - Run tests before committing
+    - Commit with a descriptive message like `feat: add X` or `fix: resolve Y`
+    - Mark the completed task in TODO.md
+    EOF
+
+    cat > .ralphify/ralphs/docs/RALPH.md << 'EOF'
+    ---
+    description: Improve project documentation
+    checks: [lint]
+    contexts: [git-log]
+    ---
+
+    # Prompt
+
+    You are an autonomous documentation agent running in a loop. Each
+    iteration starts with a fresh context. Your progress lives in the code
+    and git.
+
+    {{ contexts.git-log }}
+
+    Read the codebase and existing docs. Find the biggest gap between what
+    the code can do and what the docs explain. Write or improve one page
+    per iteration.
+
+    ## Rules
+
+    - Do one meaningful documentation improvement per iteration
+    - No placeholder content — full, accurate, useful writing only
+    - Verify any code examples actually run before committing
+    - Commit with `docs: explain X for users who want to Y`
+    EOF
+
+    cat > .ralphify/ralphs/docs/checks/docs-build/CHECK.md << 'EOF'
+    ---
+    command: uv run mkdocs build --strict
+    timeout: 60
+    ---
+    The docs build failed. Fix any warnings or errors in the markdown files.
+    Check for broken cross-links and invalid admonition syntax.
+    EOF
+
+    cat > .ralphify/ralphs/tests/RALPH.md << 'EOF'
+    ---
+    description: Increase test coverage
+    checks: [tests]
+    contexts: [coverage]
+    ---
+
+    # Prompt
+
+    You are an autonomous test-writing agent running in a loop. Each
+    iteration starts with a fresh context. Your progress lives in the code
+    and git.
+
+    {{ contexts.coverage }}
+
+    Find the module with the lowest coverage that has meaningful logic
+    worth testing. Write thorough tests for that module.
+
+    ## Rules
+
+    - One module per iteration
+    - Write tests that verify behavior, not implementation details
+    - Do NOT modify source code to make it easier to test
+    - Commit with `test: add tests for <module name>`
+    EOF
+
+    cat > .ralphify/ralphs/tests/contexts/coverage/CONTEXT.md << 'EOF'
+    ---
+    timeout: 60
+    ---
+    ## Current test coverage
+    EOF
+
+    cat > .ralphify/ralphs/tests/contexts/coverage/run.sh << 'EOF'
+    #!/bin/bash
+    uv run pytest --cov=src --cov-report=term-missing -q 2>/dev/null || true
+    EOF
+    chmod +x .ralphify/ralphs/tests/contexts/coverage/run.sh
+    ```
