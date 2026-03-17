@@ -680,7 +680,7 @@ footer {
   justify-content: center;
 }
 
-.footer-col h4 {
+.footer-col h3 {
   color: var(--text);
   font-size: 0.85rem;
   font-weight: 600;
