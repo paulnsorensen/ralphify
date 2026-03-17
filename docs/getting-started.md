@@ -103,10 +103,10 @@ Checks run **after** each iteration to validate the agent's work. If a check fai
 Create a check that runs your test suite:
 
 ```bash
-ralph new check tests
+mkdir -p .ralphify/checks/tests
 ```
 
-This creates `.ralphify/checks/tests/CHECK.md`. Edit it:
+Create `.ralphify/checks/tests/CHECK.md`:
 
 ```markdown
 ---
@@ -125,10 +125,10 @@ The text below the frontmatter is the **failure instruction** — it gets includ
 Add a second check for linting:
 
 ```bash
-ralph new check lint
+mkdir -p .ralphify/checks/lint
 ```
 
-Edit `.ralphify/checks/lint/CHECK.md`:
+Create `.ralphify/checks/lint/CHECK.md`:
 
 ```markdown
 ---
@@ -144,10 +144,10 @@ Fix all lint errors. Do not suppress warnings with noqa comments.
 Contexts inject dynamic data into the prompt before each iteration. A useful default is recent git history — it helps the agent understand what's already been done.
 
 ```bash
-ralph new context git-log
+mkdir -p .ralphify/contexts/git-log
 ```
 
-Edit `.ralphify/contexts/git-log/CONTEXT.md`:
+Create `.ralphify/contexts/git-log/CONTEXT.md`:
 
 ```markdown
 ---
@@ -159,6 +159,9 @@ enabled: true
 ```
 
 The command runs each iteration and its output is appended to the prompt. The body text ("## Recent commits") appears above the command output as a label.
+
+!!! tip "Use `ralph new` for AI-guided setup"
+    Instead of creating primitive files manually, you can run `ralph new` to launch an AI-guided session that creates a complete ralph — prompt, checks, and contexts — via conversation with your agent.
 
 ### Declare your primitives and place the context
 

@@ -115,10 +115,10 @@ The simple loop works, but ralphify's real power comes from three primitives tha
 Checks validate the agent's work after each iteration. When one fails, its output automatically feeds into the next iteration so the agent can fix its own mistakes.
 
 ```bash
-ralph new check tests
+mkdir -p .ralphify/checks/tests
 ```
 
-Edit `.ralphify/checks/tests/CHECK.md`:
+Create `.ralphify/checks/tests/CHECK.md`:
 
 ```markdown
 ---
@@ -143,10 +143,10 @@ You define what "valid" means. Ralphify feeds failures back automatically.
 Contexts inject fresh data into the prompt each iteration — git history, test status, anything a shell command can produce.
 
 ```bash
-ralph new context git-log
+mkdir -p .ralphify/contexts/git-log
 ```
 
-Edit `.ralphify/contexts/git-log/CONTEXT.md`:
+Create `.ralphify/contexts/git-log/CONTEXT.md`:
 
 ```markdown
 ---
@@ -162,8 +162,8 @@ The command runs before each iteration. Use `{{ contexts.git-log }}` in your `RA
 Keep multiple ralphs for different jobs and switch between them at run time:
 
 ```bash
-ralph new ralph docs
-ralph new ralph refactor
+ralph new docs
+ralph new refactor
 ```
 
 Edit `.ralphify/ralphs/docs/RALPH.md` with your documentation-focused prompt, then:
