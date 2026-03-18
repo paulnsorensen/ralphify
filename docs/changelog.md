@@ -6,6 +6,14 @@ description: Ralphify release history — new features, bug fixes, and breaking 
 
 All notable changes to ralphify are documented here.
 
+## 0.1.10 — 2026-03-18
+
+### Added
+
+- **User arguments for ralphs** — pass `--name value` flags or positional args to `ralph run` and reference them in prompts with `{{ args.name }}` placeholders. Declare positional arg names in frontmatter with `args: [dir, focus]`. Context and check scripts receive user arguments as `RALPH_ARG_<KEY>` environment variables.
+
+---
+
 ## 0.1.9 — 2026-03-16
 
 Tightened the primitive system: global primitives are now opt-in, context placeholders must be named, and primitives are re-discovered every iteration.

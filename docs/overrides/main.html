@@ -1,12 +1,5 @@
 {% extends "base.html" %}
 
-{% block announce %}
-  <a href="{{ 'changelog/#019-2026-03-16' | url }}">
-    <strong>v0.1.9</strong> — breaking changes: explicit primitive dependencies, named-only context placeholders.
-    <strong>Read the migration guide &rarr;</strong>
-  </a>
-{% endblock %}
-
 {% block extrahead %}
   {% if page and page.title %}
     {% set page_title = page.title ~ " - " ~ config.site_name %}

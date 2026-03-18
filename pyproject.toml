@@ -1,6 +1,6 @@
 [project]
 name = "ralphify"
-version = "0.1.9"
+version = "0.1.10"
 description = "Harness toolkit for autonomous AI coding loops"
 readme = "README.md"
 license = "MIT"
