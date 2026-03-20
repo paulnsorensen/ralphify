@@ -186,6 +186,8 @@
     <section class="hero" aria-label="Introduction">
       <div class="hero-glow" aria-hidden="true"></div>
       <div class="hero-glow-orange" aria-hidden="true"></div>
+      <div class="hero-orb hero-orb-1" aria-hidden="true"></div>
+      <div class="hero-orb hero-orb-2" aria-hidden="true"></div>
 
       <p class="hero-eyebrow">Open-source CLI tool</p>
       <h1 class="hero-headline">Stop stressing over<br>not having an agent running.</h1>
@@ -208,31 +210,56 @@
       </div>
     </section>
 
+    <!-- ── The new normal ──────────────────────────────────── -->
+    <section class="new-normal" aria-labelledby="new-normal-heading">
+      <h2 id="new-normal-heading" class="sr-only">The new normal</h2>
+      <div class="new-normal-inner">
+        <div class="quote-card">
+          <p class="quote-text">&ldquo;Do you have an agent running right now?&rdquo;</p>
+          <p class="quote-sub">The question every developer is asking each other in 2025.</p>
+        </div>
+        <div class="new-normal-grid">
+          <div class="stat-card">
+            <div class="stat-number">3am</div>
+            <p class="stat-label">Someone's agent just merged a PR while they slept</p>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">&#x221e;</div>
+            <p class="stat-label">Iterations. Fresh context. No conversation decay.</p>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">0</div>
+            <p class="stat-label">Times you need to babysit it</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ── The tension ────────────────────────────────────── -->
     <section class="tension" aria-labelledby="tension-heading">
-      <h2 id="tension-heading" class="sr-only">The problem</h2>
+      <h2 id="tension-heading" class="tension-section-title">You know the feeling.</h2>
       <div class="tension-grid">
         <div class="tension-card">
-          <div class="tension-icon">&#x23F8;</div>
-          <h3 class="tension-title">Your agent finished. Now what?</h3>
-          <p class="tension-text">It completed the task and&hellip; stopped. You stare at the terminal. Re-read the output. Re-type the prompt. Hit enter. Again. And again.</p>
+          <div class="tension-number">1</div>
+          <h3 class="tension-title">The agent finished.</h3>
+          <p class="tension-text">It did the thing. Great. Now it's sitting there, cursor blinking, waiting for you to type another prompt. So you do. And again. And again.</p>
         </div>
         <div class="tension-card">
-          <div class="tension-icon">&#x1F4AD;</div>
-          <h3 class="tension-title">Everyone else is shipping in their sleep.</h3>
-          <p class="tension-text">Your timeline is full of people whose agents are autonomously merging PRs at 3am. Their agents are running. Yours is waiting for you to babysit it.</p>
+          <div class="tension-number">2</div>
+          <h3 class="tension-title">You close the laptop.</h3>
+          <p class="tension-text">The agent stops. Nothing happens until you come back. Meanwhile, somewhere, someone's agent is committing code at 4am.</p>
         </div>
         <div class="tension-card accent">
-          <div class="tension-icon">&#x221e;</div>
+          <div class="tension-number">&#x221e;</div>
           <h3 class="tension-title">What if it just kept going?</h3>
-          <p class="tension-text">Read the prompt. Do the work. Check itself. Loop &mdash; with <em>fresh context every time</em>. No conversation decay. No babysitting. That's Ralph.</p>
+          <p class="tension-text">Read the prompt. Do the work. Check itself. Loop &mdash; with <em>fresh context every time</em>. No babysitting. That's Ralph.</p>
         </div>
       </div>
     </section>
 
     <!-- ── Terminal demo ─────────────────────────────────── -->
     <section class="demo" aria-label="CLI demo">
-      <h2 class="demo-heading">Three commands. Ralph takes it from here.</h2>
+      <h2 class="demo-heading">Three commands. Walk away.</h2>
       <figure class="terminal">
         <div class="terminal-window" role="img" aria-label="Terminal showing ralph new and ralph run commands with three iterations — iteration 2 fails a test, iteration 3 automatically fixes it">
           <div class="terminal-header">
@@ -276,6 +303,7 @@
     <section class="how-it-works" aria-labelledby="how-it-works-heading">
       <h2 id="how-it-works-heading">The loop</h2>
       <p class="section-subtitle">Three steps, every iteration. Fresh context, no conversation history, no drift.</p>
+
       <div class="loop-visual" aria-hidden="true">
         <div class="loop-track">
           <div class="loop-step-wrap">
@@ -296,6 +324,7 @@
           <div class="loop-return-label">&#x21A9;</div>
         </div>
       </div>
+
       <div class="steps">
         <div class="step">
           <div class="step-number">1</div>
@@ -346,7 +375,7 @@
     <!-- ── What is a ralph ───────────────────────────────── -->
     <section class="what-is-ralph" aria-labelledby="what-is-ralph-heading">
       <h2 id="what-is-ralph-heading">A ralph is just a directory</h2>
-      <p class="section-subtitle">No config files, no project scaffolding. A ralph is a directory with a <code>RALPH.md</code> file. That's the whole primitive.</p>
+      <p class="section-subtitle">No config files, no project scaffolding. One file. That's the whole primitive.</p>
       <div class="ralph-demo">
         <div class="terminal-window terminal-small">
           <div class="terminal-header">
