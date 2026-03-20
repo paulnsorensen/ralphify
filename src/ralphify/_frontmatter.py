@@ -50,7 +50,10 @@ def parse_frontmatter(text: str) -> tuple[dict, str]:
     """
     fm_raw, body = _extract_frontmatter_block(text)
     if fm_raw:
-        frontmatter = yaml.safe_load(fm_raw) or {}
+        try:
+            frontmatter = yaml.safe_load(fm_raw) or {}
+        except yaml.YAMLError as exc:
+            raise ValueError(f"Invalid YAML in frontmatter: {exc}") from exc
     else:
         frontmatter = {}
     body = _HTML_COMMENT_RE.sub("", body).strip()

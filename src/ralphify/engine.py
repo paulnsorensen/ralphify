@@ -191,10 +191,9 @@ def _run_iteration(
         command_outputs = _run_commands(
             config.commands, config.ralph_dir, config.project_root,
         )
-        passed = sum(1 for _ in command_outputs.values())
         emit(EventType.COMMANDS_COMPLETED, {
             "iteration": iteration,
-            "passed": passed,
+            "passed": len(command_outputs),
             "failed": 0,
         })
 
