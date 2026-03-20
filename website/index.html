@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ralphify — Stop stressing. Ralph is always running.</title>
-  <meta name="description" content="Ralphify runs your AI coding agent in an autonomous loop. Pipe a prompt, validate with checks, and let the self-healing feedback cycle ship your code.">
+  <meta name="description" content="Ralphify puts your AI coding agent in an autonomous while-true loop. Write a prompt, point it at Claude Code or any CLI agent, walk away. Ralph keeps shipping.">
 
   <!-- Open Graph -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="Ralphify — Stop stressing. Ralph is always running.">
-  <meta property="og:description" content="Ralphify runs your AI coding agent in an autonomous loop. Pipe a prompt, validate with checks, and let the self-healing feedback cycle ship your code.">
+  <meta property="og:description" content="Ralphify puts your AI coding agent in an autonomous while-true loop. Write a prompt, point it at Claude Code or any CLI agent, walk away. Ralph keeps shipping.">
   <meta property="og:url" content="https://computerlovetech.github.io/ralphify/">
   <meta property="og:site_name" content="Ralphify">
   <meta property="og:image" content="https://computerlovetech.github.io/ralphify/docs/assets/cli-banner.png">
@@ -21,7 +21,7 @@
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Ralphify — Stop stressing. Ralph is always running.">
-  <meta name="twitter:description" content="Ralphify runs your AI coding agent in an autonomous loop. Pipe a prompt, validate with checks, and let the self-healing feedback cycle ship your code.">
+  <meta name="twitter:description" content="Ralphify puts your AI coding agent in an autonomous while-true loop. Write a prompt, point it at Claude Code or any CLI agent, walk away. Ralph keeps shipping.">
   <meta name="twitter:image" content="https://computerlovetech.github.io/ralphify/docs/assets/cli-banner.png">
   <meta name="twitter:image:alt" content="Ralphify CLI showing an autonomous AI coding loop with three iterations — the agent detects a test failure and self-corrects">
 
@@ -37,7 +37,7 @@
     "@type": "WebSite",
     "name": "Ralphify",
     "url": "https://computerlovetech.github.io/ralphify/",
-    "description": "Minimal CLI harness for autonomous AI coding loops. Pipe a prompt to an AI coding agent, validate with checks, repeat.",
+    "description": "Minimal CLI harness for autonomous AI coding loops. Put your AI coding agent in a while-true loop and let it ship.",
     "publisher": {
       "@type": "Organization",
       "name": "Computerlove Technologies",
@@ -50,7 +50,7 @@
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "name": "Ralphify",
-    "description": "Ralphify runs your AI coding agent in an autonomous loop. Pipe a prompt, validate with checks, and let the self-healing feedback cycle ship your code.",
+    "description": "Ralphify puts your AI coding agent in an autonomous while-true loop. Write a prompt, point it at any CLI agent, walk away. Ralph keeps shipping.",
     "url": "https://computerlovetech.github.io/ralphify/",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Linux, macOS, Windows",
@@ -173,6 +173,7 @@
       <a href="./" class="logo" aria-label="Ralphify home"><span class="logo-symbol">&#x221e;</span> Ralphify</a>
       <div class="nav-links">
         <a href="docs/">Docs</a>
+        <a href="docs/cookbook/">Cookbook</a>
         <a href="https://github.com/computerlovetech/ralphify" target="_blank" rel="noopener noreferrer">GitHub</a>
         <a href="https://pypi.org/project/ralphify/" target="_blank" rel="noopener noreferrer">PyPI</a>
       </div>
@@ -184,73 +185,92 @@
     <!-- ── Hero ──────────────────────────────────────────── -->
     <section class="hero" aria-label="Introduction">
       <div class="hero-glow" aria-hidden="true"></div>
-      <div class="ascii-banner" aria-hidden="true">
-        <div class="ascii-line l1">&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9619;&#9617;&#9617;&#9608;&#9608;&#9608;&#9608;&#9608;&#9619;&#9617;&#9608;&#9608;&#9619;&#9617;&#9617;&#9617;&#9617;&#9617;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9619;&#9617;&#9608;&#9608;&#9619;&#9617;&#9617;&#9608;&#9608;&#9619;&#9608;&#9608;&#9619;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9619;&#9608;&#9608;&#9619;&#9617;&#9617;&#9617;&#9608;&#9608;&#9619;</div>
-        <div class="ascii-line l2">&#9608;&#9608;&#9617;&#9617;&#9608;&#9608;&#9619;&#9608;&#9608;&#9617;&#9617;&#9608;&#9608;&#9619;&#9608;&#9608;&#9619;&#9617;&#9617;&#9617;&#9617;&#9617;&#9608;&#9608;&#9617;&#9617;&#9608;&#9608;&#9619;&#9608;&#9608;&#9619;&#9617;&#9617;&#9608;&#9608;&#9619;&#9608;&#9608;&#9619;&#9608;&#9608;&#9617;&#9604;&#9604;&#9604;&#9604;&#9619;&#9617;&#9608;&#9608;&#9619;&#9617;&#9608;&#9608;&#9617;&#9618;</div>
-        <div class="ascii-line l3">&#9608;&#9608;&#9608;&#9608;&#9608;&#9617;&#9618;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9619;&#9608;&#9608;&#9619;&#9617;&#9617;&#9617;&#9617;&#9617;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9617;&#9618;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9619;&#9608;&#9608;&#9619;&#9608;&#9608;&#9608;&#9608;&#9608;&#9619;&#9617;&#9617;&#9617;&#9608;&#9608;&#9608;&#9608;&#9617;&#9618;</div>
-        <div class="ascii-line l4">&#9608;&#9608;&#9617;&#9617;&#9608;&#9608;&#9619;&#9608;&#9608;&#9617;&#9617;&#9608;&#9608;&#9619;&#9608;&#9608;&#9619;&#9617;&#9617;&#9617;&#9617;&#9617;&#9608;&#9608;&#9617;&#9604;&#9604;&#9604;&#9619;&#9617;&#9608;&#9608;&#9617;&#9617;&#9608;&#9608;&#9619;&#9608;&#9608;&#9619;&#9608;&#9608;&#9617;&#9617;&#9604;&#9619;&#9617;&#9617;&#9617;&#9617;&#9608;&#9608;&#9617;&#9618;&#9617;</div>
-        <div class="ascii-line l5">&#9608;&#9608;&#9619;&#9617;&#9617;&#9608;&#9608;&#9619;&#9608;&#9608;&#9619;&#9617;&#9617;&#9608;&#9608;&#9619;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9608;&#9619;&#9608;&#9608;&#9619;&#9617;&#9617;&#9617;&#9617;&#9617;&#9608;&#9608;&#9619;&#9617;&#9617;&#9608;&#9608;&#9619;&#9608;&#9608;&#9619;&#9608;&#9608;&#9619;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9608;&#9608;&#9619;&#9617;&#9617;</div>
-        <div class="ascii-line l6">&#9604;&#9604;&#9619;&#9617;&#9617;&#9604;&#9604;&#9619;&#9604;&#9604;&#9619;&#9617;&#9617;&#9604;&#9604;&#9619;&#9604;&#9604;&#9604;&#9604;&#9604;&#9604;&#9604;&#9617;&#9604;&#9604;&#9619;&#9617;&#9617;&#9617;&#9617;&#9617;&#9604;&#9604;&#9619;&#9617;&#9617;&#9604;&#9604;&#9619;&#9604;&#9604;&#9619;&#9604;&#9604;&#9619;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9604;&#9604;&#9619;&#9617;&#9617;</div>
-      </div>
+      <div class="hero-glow-orange" aria-hidden="true"></div>
 
-      <p class="tagline">Stop stressing over not having an agent running.</p>
-      <h1 class="tagline-punch">Ralph is always running <span class="runner" aria-hidden="true">&#x1F3C3;</span></h1>
-      <p class="subtitle">Put your AI coding agent in a <code>while True</code> loop.<br>Write a prompt. Point it at an agent. Walk away.</p>
+      <p class="hero-eyebrow">Open-source CLI tool</p>
+      <h1 class="hero-headline">Stop stressing over<br>not having an agent running.</h1>
+      <p class="hero-punchline">Ralph is always running <span class="runner" aria-hidden="true">&#x1F3C3;</span></p>
+      <p class="hero-sub">Put your AI coding agent in a <code>while True</code> loop.<br>Write a prompt. Point it at an agent. Walk away.</p>
 
       <div class="cta">
         <a href="docs/getting-started/" class="btn btn-primary">Get Started</a>
         <a href="docs/cookbook/" class="btn btn-secondary">View Cookbook</a>
       </div>
-      <p class="agent-compat">Works with <a href="docs/agents/">Claude Code</a>, <a href="docs/agents/">Aider</a>, <a href="docs/agents/">Codex CLI</a>, and <a href="docs/agents/">any CLI agent</a></p>
+
+      <div class="agent-strip">
+        <span class="agent-strip-label">Works with</span>
+        <div class="agent-strip-list">
+          <a href="docs/agents/" class="agent-chip">Claude Code</a>
+          <a href="docs/agents/" class="agent-chip">Aider</a>
+          <a href="docs/agents/" class="agent-chip">Codex CLI</a>
+          <a href="docs/agents/" class="agent-chip">Any CLI agent</a>
+        </div>
+      </div>
     </section>
 
-    <!-- ── The scene ─────────────────────────────────────── -->
-    <section class="scene" aria-labelledby="scene-heading">
-      <h2 id="scene-heading" class="sr-only">The scene</h2>
-      <div class="scene-content">
-        <div class="scene-text">
-          <p class="scene-setup">Everyone's running AI coding agents now.</p>
-          <p class="scene-problem">But every time yours finishes a task&hellip; it stops. You re-read the output. You re-type the prompt. You re-run the command. Again.</p>
-          <p class="scene-solution">What if your agent just <em>kept going</em>?</p>
+    <!-- ── The tension ────────────────────────────────────── -->
+    <section class="tension" aria-labelledby="tension-heading">
+      <h2 id="tension-heading" class="sr-only">The problem</h2>
+      <div class="tension-grid">
+        <div class="tension-card">
+          <div class="tension-icon">&#x23F8;</div>
+          <h3 class="tension-title">Your agent finished. Now what?</h3>
+          <p class="tension-text">It completed the task and&hellip; stopped. You stare at the terminal. Re-read the output. Re-type the prompt. Hit enter. Again. And again.</p>
+        </div>
+        <div class="tension-card">
+          <div class="tension-icon">&#x1F4AD;</div>
+          <h3 class="tension-title">Everyone else is shipping in their sleep.</h3>
+          <p class="tension-text">Your timeline is full of people whose agents are autonomously merging PRs at 3am. Their agents are running. Yours is waiting for you to babysit it.</p>
+        </div>
+        <div class="tension-card accent">
+          <div class="tension-icon">&#x221e;</div>
+          <h3 class="tension-title">What if it just kept going?</h3>
+          <p class="tension-text">Read the prompt. Do the work. Check itself. Loop &mdash; with <em>fresh context every time</em>. No conversation decay. No babysitting. That's Ralph.</p>
         </div>
       </div>
     </section>
 
     <!-- ── Terminal demo ─────────────────────────────────── -->
-    <figure class="terminal" aria-label="CLI demo">
-      <div class="terminal-window" role="img" aria-label="Terminal showing ralph new and ralph run commands with three iterations — iteration 2 fails a test, iteration 3 automatically fixes it">
-        <div class="terminal-header">
-          <span class="terminal-dot red"></span>
-          <span class="terminal-dot yellow"></span>
-          <span class="terminal-dot green"></span>
-          <span class="terminal-title">ralph</span>
-        </div>
-        <pre><code><span class="prompt">$</span> ralph new
+    <section class="demo" aria-label="CLI demo">
+      <h2 class="demo-heading">Three commands. Ralph takes it from here.</h2>
+      <figure class="terminal">
+        <div class="terminal-window" role="img" aria-label="Terminal showing ralph new and ralph run commands with three iterations — iteration 2 fails a test, iteration 3 automatically fixes it">
+          <div class="terminal-header">
+            <span class="terminal-dot red"></span>
+            <span class="terminal-dot yellow"></span>
+            <span class="terminal-dot green"></span>
+            <span class="terminal-title">ralph</span>
+          </div>
+          <pre><code><span class="prompt">$</span> uv tool install ralphify
+<span class="dim">Installed 1 package</span>
+
+<span class="prompt">$</span> ralph new
 <span class="dim">Created RALPH.md</span>
 
-<span class="prompt">$</span> ralph run -n 3
-<span class="dim">&boxdr;&boxh; Iteration 1 &boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;</span>
+<span class="prompt">$</span> ralph run
+<span class="dim">&#9484;&#9472; Iteration 1 &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;</span>
 <span class="success">&#x2713;</span> Iteration 1 completed <span class="dim">(52.3s)</span>
   Checks: 2 passed
     <span class="success">&#x2713;</span> lint
     <span class="success">&#x2713;</span> tests
 
-<span class="dim">&boxdr;&boxh; Iteration 2 &boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;</span>
+<span class="dim">&#9484;&#9472; Iteration 2 &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;</span>
 <span class="fail">&#x2717;</span> Iteration 2 failed with exit code 1 <span class="dim">(23.1s)</span>
   Checks: 1 passed, 1 failed
     <span class="success">&#x2713;</span> lint
     <span class="fail">&#x2717;</span> tests <span class="dim">(exit 1)</span>
 
-<span class="dim">&boxdr;&boxh; Iteration 3 &boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;&boxh;</span>
+<span class="dim">&#9484;&#9472; Iteration 3 &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;</span>
 <span class="success">&#x2713;</span> Iteration 3 completed <span class="dim">(41.7s)</span>
   Checks: 2 passed
     <span class="success">&#x2713;</span> lint
     <span class="success">&#x2713;</span> tests
 
 <span class="dim">Done: 3 iteration(s) &mdash; 2 succeeded, 1 failed</span></code></pre>
-      </div>
-      <figcaption class="terminal-caption">Iteration 2 broke a test. Iteration 3 saw the failure and fixed it. That's the loop.</figcaption>
-    </figure>
+        </div>
+        <figcaption class="terminal-caption">Iteration 2 broke a test. Iteration 3 saw the failure and fixed it. You didn't lift a finger.</figcaption>
+      </figure>
+    </section>
 
     <!-- ── How the loop works ────────────────────────────── -->
     <section class="how-it-works" aria-labelledby="how-it-works-heading">
@@ -272,6 +292,8 @@
             <div class="loop-node">3</div>
             <div class="loop-label">Repeat</div>
           </div>
+          <div class="loop-connector loop-connector-return"></div>
+          <div class="loop-return-label">&#x21A9;</div>
         </div>
       </div>
       <div class="steps">
@@ -296,7 +318,7 @@
     <!-- ── Why loops beat single runs ────────────────────── -->
     <section class="why" aria-labelledby="why-heading">
       <h2 id="why-heading">Why loops beat single runs</h2>
-      <p class="section-subtitle">A single agent conversation fills up, slows down, and loses the plot.</p>
+      <p class="section-subtitle">A single agent conversation fills up, slows down, and loses the plot. Ralph doesn't.</p>
       <div class="why-grid">
         <div class="why-item">
           <div class="why-icon">&gt;_</div>
@@ -402,9 +424,9 @@ pick the next task from TODO.md and implement it.</code></pre>
 
     <!-- ── Bottom CTA ────────────────────────────────────── -->
     <section class="cta-bottom" aria-labelledby="cta-bottom-heading">
-      <div class="cta-bottom-ascii" aria-hidden="true">&#x221e;</div>
+      <div class="cta-bottom-runner" aria-hidden="true">&#x1F3C3;</div>
       <h2 id="cta-bottom-heading">Let Ralph run so you don't have to.</h2>
-      <div class="install-command">
+      <div class="install-command cta-command">
         <code>uv tool install ralphify && ralph new && ralph run</code>
       </div>
       <div class="cta">
