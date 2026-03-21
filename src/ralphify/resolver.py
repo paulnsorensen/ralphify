@@ -9,15 +9,14 @@ prompt.  This forces explicit placement and avoids accidental data dumps.
 """
 
 import re
-from functools import lru_cache
 
+_COMMANDS_PATTERN = re.compile(r"\{\{\s*commands\.([a-zA-Z0-9_-]+)\s*\}\}")
+_ARGS_PATTERN = re.compile(r"\{\{\s*args\.([a-zA-Z0-9_-]+)\s*\}\}")
 
-@lru_cache(maxsize=2)
-def _get_pattern(kind: str) -> re.Pattern[str]:
-    """Return a compiled regex for the given placeholder kind, caching the result."""
-    return re.compile(
-        r"\{\{\s*" + re.escape(kind) + r"\.([a-zA-Z0-9_-]+)\s*\}\}"
-    )
+_PATTERNS: dict[str, re.Pattern[str]] = {
+    "commands": _COMMANDS_PATTERN,
+    "args": _ARGS_PATTERN,
+}
 
 
 def _resolve_kind(prompt: str, available: dict[str, str], kind: str) -> str:
@@ -28,7 +27,7 @@ def _resolve_kind(prompt: str, available: dict[str, str], kind: str) -> str:
     - Unreferenced items are silently excluded
     - When *available* is empty, all placeholders of this kind are cleared
     """
-    pattern = _get_pattern(kind)
+    pattern = _PATTERNS[kind]
 
     if not available:
         return pattern.sub("", prompt)
