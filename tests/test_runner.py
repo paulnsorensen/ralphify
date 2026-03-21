@@ -13,7 +13,7 @@ class TestRunCommand:
     @patch(MOCK_RUNNER_SUBPROCESS)
     def test_success_with_command(self, mock_run):
         mock_run.return_value = ok_result(stdout="ok\n")
-        result = run_command(script=None, command="echo hello", cwd=Path("/project"), timeout=60)
+        result = run_command(command="echo hello", cwd=Path("/project"), timeout=60)
 
         assert result.success is True
         assert result.returncode == 0
@@ -25,7 +25,7 @@ class TestRunCommand:
     @patch(MOCK_RUNNER_SUBPROCESS)
     def test_failure_with_command(self, mock_run):
         mock_run.return_value = fail_result(stderr="error\n")
-        result = run_command(script=None, command="ruff check", cwd=Path("/project"), timeout=60)
+        result = run_command(command="ruff check", cwd=Path("/project"), timeout=60)
 
         assert result.success is False
         assert result.returncode == 1
@@ -42,28 +42,28 @@ class TestRunCommand:
     @patch(MOCK_RUNNER_SUBPROCESS)
     def test_shlex_splits_command(self, mock_run):
         mock_run.return_value = ok_result()
-        run_command(script=None, command="ruff check --fix .", cwd=Path("/project"), timeout=60)
+        run_command(command="ruff check --fix .", cwd=Path("/project"), timeout=60)
 
         assert mock_run.call_args.args[0] == ["ruff", "check", "--fix", "."]
 
     @patch(MOCK_RUNNER_SUBPROCESS)
     def test_passes_cwd(self, mock_run):
         mock_run.return_value = ok_result()
-        run_command(script=None, command="echo", cwd=Path("/my/project"), timeout=60)
+        run_command(command="echo", cwd=Path("/my/project"), timeout=60)
 
         assert mock_run.call_args.kwargs["cwd"] == Path("/my/project")
 
     @patch(MOCK_RUNNER_SUBPROCESS)
     def test_passes_timeout(self, mock_run):
         mock_run.return_value = ok_result()
-        run_command(script=None, command="echo", cwd=Path("/project"), timeout=120)
+        run_command(command="echo", cwd=Path("/project"), timeout=120)
 
         assert mock_run.call_args.kwargs["timeout"] == 120
 
     @patch(MOCK_RUNNER_SUBPROCESS)
     def test_timeout_expired(self, mock_run):
         mock_run.side_effect = subprocess.TimeoutExpired(cmd="echo", timeout=60)
-        result = run_command(script=None, command="echo", cwd=Path("/project"), timeout=60)
+        result = run_command(command="echo", cwd=Path("/project"), timeout=60)
 
         assert result.success is False
         assert result.returncode == TIMEOUT_EXIT_CODE
@@ -72,7 +72,7 @@ class TestRunCommand:
     @patch(MOCK_RUNNER_SUBPROCESS)
     def test_combines_stdout_and_stderr(self, mock_run):
         mock_run.return_value = ok_result(stdout="out\n", stderr="err\n")
-        result = run_command(script=None, command="echo", cwd=Path("/project"), timeout=60)
+        result = run_command(command="echo", cwd=Path("/project"), timeout=60)
 
         assert "out" in result.output
         assert "err" in result.output
@@ -80,7 +80,7 @@ class TestRunCommand:
     @patch(MOCK_RUNNER_SUBPROCESS)
     def test_env_merged_with_parent(self, mock_run):
         mock_run.return_value = ok_result()
-        run_command(script=None, command="echo", cwd=Path("/project"), timeout=60, env={"RALPH_NAME": "docs"})
+        run_command(command="echo", cwd=Path("/project"), timeout=60, env={"RALPH_NAME": "docs"})
 
         passed_env = mock_run.call_args.kwargs["env"]
         assert passed_env["RALPH_NAME"] == "docs"
@@ -90,15 +90,15 @@ class TestRunCommand:
     @patch(MOCK_RUNNER_SUBPROCESS)
     def test_env_none_inherits_parent(self, mock_run):
         mock_run.return_value = ok_result()
-        run_command(script=None, command="echo", cwd=Path("/project"), timeout=60, env=None)
+        run_command(command="echo", cwd=Path("/project"), timeout=60, env=None)
 
         # env=None means subprocess.run inherits parent env
         assert mock_run.call_args.kwargs["env"] is None
 
     def test_raises_when_no_script_or_command(self):
         with pytest.raises(ValueError, match="Either 'script' or 'command' must be provided"):
-            run_command(script=None, command=None, cwd=Path("/project"), timeout=60)
+            run_command(cwd=Path("/project"), timeout=60)
 
     def test_raises_when_command_is_whitespace_only(self):
         with pytest.raises(ValueError, match="no tokens after parsing"):
-            run_command(script=None, command="   ", cwd=Path("/project"), timeout=60)
+            run_command(command="   ", cwd=Path("/project"), timeout=60)

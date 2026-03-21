@@ -116,7 +116,6 @@ def _run_commands(
         else:
             cwd = project_root
         result = run_command(
-            script=None,
             command=run_str,
             cwd=cwd,
             timeout=cmd.timeout,

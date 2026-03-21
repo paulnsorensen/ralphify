@@ -36,8 +36,8 @@ class RunResult:
 
 def run_command(
     *,
-    script: Path | None,
-    command: str | None,
+    script: Path | None = None,
+    command: str | None = None,
     cwd: Path,
     timeout: float,
     env: dict[str, str] | None = None,
