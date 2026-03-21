@@ -228,7 +228,7 @@
     <!-- Live terminal demo -->
     <section class="demo" aria-label="Terminal demo">
       <div class="demo-inner">
-        <div class="terminal-window terminal-hero">
+        <div class="terminal-window terminal-hero fade-up">
           <div class="terminal-header">
             <span class="terminal-dot red"></span>
             <span class="terminal-dot yellow"></span>
@@ -281,11 +281,11 @@
     <!-- The FOMO -->
     <section class="fomo" aria-labelledby="fomo-heading">
       <div class="fomo-inner">
-        <p class="fomo-eyebrow">Sound familiar?</p>
-        <h2 id="fomo-heading" class="section-heading">The agent FOMO is real.</h2>
-        <p class="section-subtitle">Every engineering team has that one person whose agent shipped 14 files while they slept.</p>
+        <p class="fomo-eyebrow fade-up">Sound familiar?</p>
+        <h2 id="fomo-heading" class="section-heading fade-up">The agent FOMO is real.</h2>
+        <p class="section-subtitle fade-up">Every engineering team has that one person whose agent shipped 14 files while they slept.</p>
 
-        <div class="fomo-grid">
+        <div class="fomo-grid fade-up">
           <div class="fomo-card fomo-card-slack">
             <div class="slack-channel"># eng-general</div>
             <div class="slack-msg">
@@ -340,7 +340,7 @@
     <section class="ralph-file" aria-labelledby="ralph-file-heading">
       <div class="ralph-file-inner">
         <div class="ralph-file-text">
-          <h2 id="ralph-file-heading" class="section-heading">A ralph is just<br>a Markdown file</h2>
+          <h2 id="ralph-file-heading" class="section-heading fade-up">A ralph is just<br>a Markdown file</h2>
           <p class="section-subtitle">No config files. No project scaffolding. No dashboard.<br>One file is the whole primitive.</p>
           <ul class="ralph-features">
             <li><strong>agent</strong> &mdash; which CLI agent to run</li>
@@ -378,10 +378,10 @@ pick the next task from TODO.md and implement it.</code></pre>
     <!-- How the loop works -->
     <section class="how-it-works" aria-labelledby="how-heading">
       <div class="how-inner">
-        <h2 id="how-heading" class="section-heading">The loop</h2>
-        <p class="section-subtitle">Three steps, every iteration. Fresh context, no drift.</p>
+        <h2 id="how-heading" class="section-heading fade-up">The loop</h2>
+        <p class="section-subtitle fade-up">Three steps, every iteration. Fresh context, no drift.</p>
 
-        <div class="loop-visual">
+        <div class="loop-visual fade-up">
           <div class="loop-steps">
             <div class="loop-step">
               <div class="loop-step-number">1</div>
@@ -410,9 +410,9 @@ pick the next task from TODO.md and implement it.</code></pre>
 
     <!-- Why loops beat single runs -->
     <section class="why" aria-labelledby="why-heading">
-      <h2 id="why-heading" class="section-heading">Why loops beat single runs</h2>
-      <p class="section-subtitle">A single agent conversation fills up, slows down, and loses the plot. Ralph doesn't.</p>
-      <div class="why-grid">
+      <h2 id="why-heading" class="section-heading fade-up">Why loops beat single runs</h2>
+      <p class="section-subtitle fade-up">A single agent conversation fills up, slows down, and loses the plot. Ralph doesn't.</p>
+      <div class="why-grid fade-up">
         <div class="why-card">
           <div class="why-icon">&gt;_</div>
           <h3>Fresh context, no decay</h3>
@@ -438,9 +438,9 @@ pick the next task from TODO.md and implement it.</code></pre>
 
     <!-- Install -->
     <section class="install" aria-labelledby="install-heading">
-      <h2 id="install-heading" class="section-heading">Get Ralph running</h2>
-      <p class="section-subtitle">Three commands. That's it.</p>
-      <div class="install-steps">
+      <h2 id="install-heading" class="section-heading fade-up">Get Ralph running</h2>
+      <p class="section-subtitle fade-up">Three commands. That's it.</p>
+      <div class="install-steps fade-up">
         <div class="install-step">
           <span class="install-label">Install</span>
           <div class="install-command">
@@ -467,8 +467,8 @@ pick the next task from TODO.md and implement it.</code></pre>
 
     <!-- FAQ -->
     <section class="faq" aria-labelledby="faq-heading">
-      <h2 id="faq-heading" class="section-heading">FAQ</h2>
-      <dl class="faq-list">
+      <h2 id="faq-heading" class="section-heading fade-up">FAQ</h2>
+      <dl class="faq-list fade-up">
         <div class="faq-item">
           <dt>What AI coding agents work with Ralphify?</dt>
           <dd>Any agent that accepts prompts via stdin or CLI arguments &mdash; Claude Code, Aider, Codex CLI, and others. Ralphify is agent-agnostic by design. See <a href="docs/agents/">supported agents</a>.</dd>
@@ -530,5 +530,19 @@ pick the next task from TODO.md and implement it.</code></pre>
     </nav>
     <p class="footer-copy">&copy; 2025&ndash;2026 Computerlove Technologies &middot; <a href="https://github.com/computerlovetech/ralphify/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License</a></p>
   </footer>
+
+  <script>
+    // Scroll-triggered fade-in animations
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+    document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+  </script>
 </body>
 </html>
