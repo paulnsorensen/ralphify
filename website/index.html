@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ralphify — Stop stressing. Ralph is always running.</title>
   <meta name="description" content="Stop stressing over not having an agent running. Ralphify puts your AI coding agent in an autonomous while-true loop. Write a prompt, point it at any CLI agent, walk away. Ralph keeps shipping.">
-  <meta name="keywords" content="AI coding agent, autonomous coding loop, CLI agent harness, AI agent loop, coding automation, ralphify, ralph loop, agentic engineering, AI pair programming">
+  <meta name="keywords" content="AI coding agent, autonomous coding loop, CLI agent harness, AI agent loop, coding automation, ralphify, ralph loop, agentic engineering, AI pair programming, while true loop, agent FOMO">
   <meta name="author" content="Computerlove Technologies">
   <meta name="robots" content="index, follow">
 
@@ -201,10 +201,12 @@
         </div>
 
         <h1 class="hero-headline">
-          Stop stressing over<br>not having an agent running.<br>
+          Stop stressing over<br>not having an agent running.
+        </h1>
+        <p class="hero-punchline">
           <span class="hero-gradient-text">Ralph is always running</span>
           <span class="runner-emoji" aria-hidden="true">&#x1F3C3;</span>
-        </h1>
+        </p>
 
         <p class="hero-sub">
           Put your AI coding agent in a <code>while True</code> loop.<br>
@@ -281,14 +283,14 @@
       </div>
     </div>
 
-    <!-- The FOMO -->
+    <!-- The FOMO — Storytelling arc -->
     <section class="fomo" aria-labelledby="fomo-heading">
       <div class="fomo-inner">
         <p class="fomo-eyebrow fade-up">Sound familiar?</p>
-        <h2 id="fomo-heading" class="section-heading fade-up">The agent FOMO is real.</h2>
-        <p class="section-subtitle fade-up">Every engineering team has that one person whose agent shipped 14 files while they slept.</p>
+        <h2 id="fomo-heading" class="section-heading fade-up">Everyone has an agent running.<br>Except you.</h2>
 
         <div class="fomo-grid fade-up">
+          <!-- The scene -->
           <div class="fomo-card fomo-card-slack">
             <div class="slack-channel"># eng-general</div>
             <div class="slack-msg">
@@ -317,23 +319,27 @@
             </div>
           </div>
 
-          <div class="fomo-card">
+          <!-- The tension -->
+          <div class="fomo-card fomo-card-tension">
+            <div class="fomo-tension-icon" aria-hidden="true">&#x1F4BB;</div>
             <div class="fomo-quote">&ldquo;Do you have an agent running?&rdquo;</div>
             <p class="fomo-context">The question that haunts every standup. Three people nod. You stare at your coffee.</p>
           </div>
 
-          <div class="fomo-card">
+          <div class="fomo-card fomo-card-tension">
+            <div class="fomo-tension-icon" aria-hidden="true">&#x1F634;</div>
             <div class="fomo-quote">&ldquo;I just let it run overnight.&rdquo;</div>
-            <p class="fomo-context">They went to bed and woke up to a PR with 23 commits. You closed your laptop and the agent died.</p>
+            <p class="fomo-context">They went to bed and woke up to a PR with 23 commits. You went to bed and woke up to nothing.</p>
           </div>
 
+          <!-- The solution -->
           <div class="fomo-card fomo-card-solution">
             <div class="fomo-solution-badge">
               <span class="status-dot"></span>
               The fix
             </div>
             <div class="fomo-quote">&ldquo;Ralph has been running since Tuesday.&rdquo;</div>
-            <p class="fomo-context">An autonomous loop that reads the prompt, does the work, and starts again. Fresh context every iteration. No babysitting.</p>
+            <p class="fomo-context">An autonomous loop that reads the prompt, does the work, and starts again. Fresh context every iteration. No babysitting. No dead agents.</p>
           </div>
         </div>
       </div>
@@ -343,15 +349,16 @@
     <section class="ralph-file" aria-labelledby="ralph-file-heading">
       <div class="ralph-file-inner">
         <div class="ralph-file-text">
+          <p class="section-eyebrow fade-up">The primitive</p>
           <h2 id="ralph-file-heading" class="section-heading fade-up">A ralph is just<br>a Markdown file</h2>
-          <p class="section-subtitle">No config files. No project scaffolding. No dashboard.<br>One file is the whole primitive.</p>
-          <ul class="ralph-features">
+          <p class="section-subtitle fade-up">No config files. No project scaffolding. No dashboard.<br>One file is the whole thing.</p>
+          <ul class="ralph-features fade-up">
             <li><strong>agent</strong> &mdash; which CLI agent to run</li>
             <li><strong>commands</strong> &mdash; shell commands whose output fills placeholders</li>
             <li><strong>The prompt body</strong> &mdash; what the agent sees every iteration</li>
           </ul>
         </div>
-        <div class="ralph-file-demo">
+        <div class="ralph-file-demo fade-up">
           <div class="terminal-window terminal-small">
             <div class="terminal-header">
               <span class="terminal-dot red"></span>
@@ -381,6 +388,7 @@ pick the next task from TODO.md and implement it.</code></pre>
     <!-- How the loop works -->
     <section class="how-it-works" aria-labelledby="how-heading">
       <div class="how-inner">
+        <p class="section-eyebrow fade-up">How it works</p>
         <h2 id="how-heading" class="section-heading fade-up">The loop</h2>
         <p class="section-subtitle fade-up">Three steps, every iteration. Fresh context, no drift.</p>
 
@@ -413,28 +421,31 @@ pick the next task from TODO.md and implement it.</code></pre>
 
     <!-- Why loops beat single runs -->
     <section class="why" aria-labelledby="why-heading">
-      <h2 id="why-heading" class="section-heading fade-up">Why loops beat single runs</h2>
-      <p class="section-subtitle fade-up">A single agent conversation fills up, slows down, and loses the plot. Ralph doesn't.</p>
-      <div class="why-grid fade-up">
-        <div class="why-card">
-          <div class="why-icon">&gt;_</div>
-          <h3>Fresh context, no decay</h3>
-          <p>Each iteration starts with a clean context window. No conversation bloat. The agent reads the actual codebase every loop.</p>
-        </div>
-        <div class="why-card">
-          <div class="why-icon">&lt;/&gt;</div>
-          <h3>Self-healing feedback</h3>
-          <p>When something breaks, the failure output feeds into the next iteration automatically. The agent sees what went wrong and fixes it.</p>
-        </div>
-        <div class="why-card">
-          <div class="why-icon">~/</div>
-          <h3>Steer while it runs</h3>
-          <p>The prompt is re-read every iteration. Edit it while the loop runs and the agent follows your new direction next cycle.</p>
-        </div>
-        <div class="why-card">
-          <div class="why-icon">&#x221e;</div>
-          <h3>Progress lives in git</h3>
-          <p>Every iteration commits. If something goes sideways, <code>git log</code> shows exactly what happened.</p>
+      <div class="why-inner">
+        <p class="section-eyebrow fade-up">Why loops</p>
+        <h2 id="why-heading" class="section-heading fade-up">Single runs decay.<br>Loops compound.</h2>
+        <p class="section-subtitle fade-up">A single agent conversation fills up, slows down, and loses the plot. Ralph doesn't.</p>
+        <div class="why-grid fade-up">
+          <div class="why-card">
+            <div class="why-icon">&gt;_</div>
+            <h3>Fresh context, no decay</h3>
+            <p>Each iteration starts with a clean context window. No conversation bloat. The agent reads the actual codebase every loop.</p>
+          </div>
+          <div class="why-card">
+            <div class="why-icon">&lt;/&gt;</div>
+            <h3>Self-healing feedback</h3>
+            <p>When something breaks, the failure output feeds into the next iteration automatically. The agent sees what went wrong and fixes it.</p>
+          </div>
+          <div class="why-card">
+            <div class="why-icon">~/</div>
+            <h3>Steer while it runs</h3>
+            <p>The prompt is re-read every iteration. Edit it while the loop runs and the agent follows your new direction next cycle.</p>
+          </div>
+          <div class="why-card">
+            <div class="why-icon">&#x221e;</div>
+            <h3>Progress lives in git</h3>
+            <p>Every iteration commits. If something goes sideways, <code>git log</code> shows exactly what happened.</p>
+          </div>
         </div>
       </div>
     </section>
@@ -546,6 +557,21 @@ pick the next task from TODO.md and implement it.</code></pre>
     }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
 
     document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+    // Iteration counter animation in hero
+    const counterEl = document.querySelector('.hero-counter-number');
+    if (counterEl) {
+      let count = 0;
+      const target = 48;
+      const duration = 2000;
+      const step = duration / target;
+      const tick = () => {
+        count++;
+        counterEl.textContent = count;
+        if (count < target) setTimeout(tick, step);
+      };
+      setTimeout(tick, 800);
+    }
   </script>
 </body>
 </html>
