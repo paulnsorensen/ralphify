@@ -54,7 +54,9 @@ def parse_frontmatter(text: str) -> tuple[dict, str]:
     fm_raw, body = _extract_frontmatter_block(text)
     if fm_raw:
         try:
-            frontmatter = yaml.safe_load(fm_raw) or {}
+            frontmatter = yaml.safe_load(fm_raw)
+            if frontmatter is None:
+                frontmatter = {}
         except yaml.YAMLError as exc:
             raise ValueError(f"Invalid YAML in frontmatter: {exc}") from exc
         if not isinstance(frontmatter, dict):
