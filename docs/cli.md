@@ -54,6 +54,7 @@ ralph run my-ralph --dir ./src             # Pass user args to the ralph
 | `--delay` | `-d` | `0` | Seconds to wait between iterations |
 | `--timeout` | `-t` | none | Max seconds per iteration |
 | `--log-dir` | `-l` | none | Directory for iteration log files |
+
 ### User arguments
 
 User arguments are passed as named flags after the ralph path. Use `{{ args.<name> }}` placeholders in your RALPH.md to reference them.

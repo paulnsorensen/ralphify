@@ -54,6 +54,7 @@ A loop focused on writing and improving documentation.
 
 ```bash
 ralph run docs --log-dir ralph_logs
+ralph run docs --focus "focus on the API reference pages"
 ```
 
 ---
