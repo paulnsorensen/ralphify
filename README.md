@@ -6,7 +6,7 @@
   <a href="https://pypi.org/project/ralphify/"><img src="https://img.shields.io/pypi/v/ralphify?color=blue" alt="PyPI version"></a>
   <a href="https://pypi.org/project/ralphify/"><img src="https://img.shields.io/pypi/pyversions/ralphify" alt="Python versions"></a>
   <a href="https://github.com/computerlovetech/ralphify/blob/main/LICENSE"><img src="https://img.shields.io/github/license/computerlovetech/ralphify" alt="License"></a>
-  <a href="https://computerlovetech.github.io/ralphify/docs/"><img src="https://img.shields.io/badge/docs-computerlovetech.github.io%2Fralphify%2Fdocs-blue" alt="Documentation"></a>
+  <a href="https://ralphify.co/docs/"><img src="https://img.shields.io/badge/docs-ralphify.co%2Fdocs-blue" alt="Documentation"></a>
 </p>
 
 Put your AI coding agent in a `while True` loop and let it ship.
@@ -142,7 +142,7 @@ Launches an interactive agent conversation to scaffold a new ralph with the righ
 
 ## Documentation
 
-Full documentation at **[computerlovetech.github.io/ralphify/docs](https://computerlovetech.github.io/ralphify/docs/)** — getting started tutorial, prompt writing guide, cookbook, and troubleshooting.
+Full documentation at **[ralphify.co/docs](https://ralphify.co/docs/)** — getting started tutorial, prompt writing guide, cookbook, and troubleshooting.
 
 ## Requirements
 

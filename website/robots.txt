@@ -1,5 +1,5 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://computerlovetech.github.io/ralphify/sitemap.xml
-Sitemap: https://computerlovetech.github.io/ralphify/docs/sitemap.xml
+Sitemap: https://ralphify.co/sitemap.xml
+Sitemap: https://ralphify.co/docs/sitemap.xml
