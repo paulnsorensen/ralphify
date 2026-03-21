@@ -27,6 +27,7 @@ from ralphify.resolver import resolve_args, resolve_commands
 
 # Maps terminal run status to the reason string emitted in RUN_STOPPED events.
 _STATUS_REASONS: dict[RunStatus, str] = {
+    RunStatus.COMPLETED: "completed",
     RunStatus.FAILED: "error",
     RunStatus.STOPPED: "user_requested",
 }
@@ -277,7 +278,7 @@ def run_loop(
     if state.status == RunStatus.RUNNING:
         state.status = RunStatus.COMPLETED
 
-    reason = _STATUS_REASONS.get(state.status, "completed")
+    reason = _STATUS_REASONS[state.status]
     emit(EventType.RUN_STOPPED, {
         "reason": reason,
         "total": state.total,
