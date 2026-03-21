@@ -60,13 +60,17 @@ class RunManager:
         self._runs: dict[str, ManagedRun] = {}
         self._lock = threading.Lock()
 
+    def _lookup(self, run_id: str) -> ManagedRun:
+        """Look up a run by ID. Caller must hold ``_lock``."""
+        try:
+            return self._runs[run_id]
+        except KeyError:
+            raise KeyError(f"No run with ID '{run_id}'") from None
+
     def _get_run(self, run_id: str) -> ManagedRun:
         """Look up a run by ID under the lock. Raises ``KeyError`` if missing."""
         with self._lock:
-            try:
-                return self._runs[run_id]
-            except KeyError:
-                raise KeyError(f"No run with ID '{run_id}'") from None
+            return self._lookup(run_id)
 
     def create_run(self, config: RunConfig) -> ManagedRun:
         """Create a new run from *config* and register it.
@@ -95,10 +99,7 @@ class RunManager:
         Raises ``KeyError`` if the run ID is not registered.
         """
         with self._lock:
-            try:
-                managed = self._runs[run_id]
-            except KeyError:
-                raise KeyError(f"No run with ID '{run_id}'") from None
+            managed = self._lookup(run_id)
             emitter = managed.build_emitter()
             thread = threading.Thread(
                 target=run_loop,

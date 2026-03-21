@@ -135,10 +135,10 @@ class ConsoleEmitter:
 
         # timed_out is a subset of failed — show non-timeout failures
         # and timeouts as separate categories for clarity.
-        errored = failed - timed_out_count
+        non_timeout_failures = failed - timed_out_count
         parts = [f"{completed} succeeded"]
-        if errored:
-            parts.append(f"{errored} failed")
+        if non_timeout_failures:
+            parts.append(f"{non_timeout_failures} failed")
         if timed_out_count:
             parts.append(f"{timed_out_count} timed out")
         detail = ", ".join(parts)
