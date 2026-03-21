@@ -51,7 +51,12 @@ def resolve_commands(prompt: str, command_outputs: dict[str, str]) -> str:
     """Replace ``{{ commands.name }}`` placeholders with command outputs.
 
     Delegates to :func:`resolve_placeholders` with ``kind="commands"``.
+    When *command_outputs* is empty, clears any remaining
+    ``{{ commands.* }}`` placeholders so they don't leak into the
+    assembled prompt.
     """
+    if not command_outputs:
+        return _get_pattern("commands").sub("", prompt)
     return resolve_placeholders(prompt, command_outputs, "commands")
 
 

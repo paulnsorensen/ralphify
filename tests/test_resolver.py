@@ -107,6 +107,24 @@ class TestResolveCommands:
         )
         assert result == "ok\nclean"
 
+    def test_empty_commands_clears_placeholders(self):
+        result = resolve_commands("Before {{ commands.tests }} after", {})
+        assert result == "Before  after"
+
+    def test_unknown_command_resolves_to_empty(self):
+        result = resolve_commands(
+            "{{ commands.known }} {{ commands.unknown }}",
+            {"known": "value"},
+        )
+        assert result == "value "
+
+    def test_does_not_touch_arg_placeholders(self):
+        result = resolve_commands(
+            "{{ commands.tests }} and {{ args.dir }}",
+            {"tests": "ok"},
+        )
+        assert result == "ok and {{ args.dir }}"
+
 
 class TestResolveArgs:
     def test_single_arg(self):
