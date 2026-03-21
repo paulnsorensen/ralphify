@@ -1,0 +1,163 @@
+"""Tests for run configuration and state data types."""
+
+import threading
+
+import pytest
+
+from ralphify._run_types import (
+    DEFAULT_COMMAND_TIMEOUT,
+    RUN_ID_LENGTH,
+    Command,
+    RunConfig,
+    RunState,
+    RunStatus,
+    generate_run_id,
+)
+
+
+class TestGenerateRunId:
+    def test_length(self):
+        run_id = generate_run_id()
+        assert len(run_id) == RUN_ID_LENGTH
+
+    def test_hex_characters(self):
+        run_id = generate_run_id()
+        assert all(c in "0123456789abcdef" for c in run_id)
+
+    def test_unique(self):
+        ids = {generate_run_id() for _ in range(100)}
+        assert len(ids) == 100
+
+
+class TestCommand:
+    def test_default_timeout(self):
+        cmd = Command(name="test", run="echo hi")
+        assert cmd.timeout == DEFAULT_COMMAND_TIMEOUT
+
+    def test_custom_timeout(self):
+        cmd = Command(name="slow", run="sleep 10", timeout=300)
+        assert cmd.timeout == 300
+
+
+class TestRunConfig:
+    def test_default_project_root_is_dot(self, tmp_path):
+        config = RunConfig(
+            agent="echo",
+            ralph_dir=tmp_path,
+            ralph_file=tmp_path / "RALPH.md",
+        )
+        from pathlib import Path
+
+        assert config.project_root == Path(".")
+
+    def test_defaults(self, tmp_path):
+        config = RunConfig(
+            agent="echo",
+            ralph_dir=tmp_path,
+            ralph_file=tmp_path / "RALPH.md",
+        )
+        assert config.commands == []
+        assert config.args == {}
+        assert config.max_iterations is None
+        assert config.delay == 0
+        assert config.timeout is None
+        assert config.stop_on_error is False
+        assert config.log_dir is None
+
+
+class TestRunState:
+    def test_initial_state(self):
+        state = RunState(run_id="r1")
+        assert state.status == RunStatus.PENDING
+        assert state.iteration == 0
+        assert state.completed == 0
+        assert state.failed == 0
+        assert state.timed_out == 0
+        assert state.started_at is None
+
+    def test_total_is_completed_plus_failed(self):
+        state = RunState(run_id="r1")
+        state.mark_completed()
+        state.mark_completed()
+        state.mark_failed()
+        assert state.total == 3
+
+    def test_mark_timed_out_increments_both_timed_out_and_failed(self):
+        state = RunState(run_id="r1")
+        state.mark_timed_out()
+        assert state.timed_out == 1
+        assert state.failed == 1
+        assert state.completed == 0
+
+    def test_not_paused_initially(self):
+        state = RunState(run_id="r1")
+        assert not state.paused
+
+    def test_not_stop_requested_initially(self):
+        state = RunState(run_id="r1")
+        assert not state.stop_requested
+
+    def test_request_pause_and_resume(self):
+        state = RunState(run_id="r1")
+        state.status = RunStatus.RUNNING
+
+        state.request_pause()
+        assert state.paused
+        assert state.status == RunStatus.PAUSED
+
+        state.request_resume()
+        assert not state.paused
+        assert state.status == RunStatus.RUNNING
+
+    def test_request_stop_unblocks_pause(self):
+        state = RunState(run_id="r1")
+        state.request_pause()
+        assert state.paused
+
+        state.request_stop()
+        assert state.stop_requested
+        # Stop sets the resume event so wait_for_unpause unblocks
+        assert not state.paused
+
+    def test_wait_for_unpause_returns_immediately_when_not_paused(self):
+        state = RunState(run_id="r1")
+        assert state.wait_for_unpause(timeout=0.01) is True
+
+    def test_wait_for_unpause_blocks_until_resumed(self):
+        state = RunState(run_id="r1")
+        state.request_pause()
+
+        resumed = threading.Event()
+
+        def resume_later():
+            state.request_resume()
+            resumed.set()
+
+        timer = threading.Timer(0.05, resume_later)
+        timer.start()
+
+        result = state.wait_for_unpause(timeout=1.0)
+        assert result is True
+        resumed.wait(timeout=1.0)
+
+    def test_wait_for_unpause_times_out(self):
+        state = RunState(run_id="r1")
+        state.request_pause()
+        result = state.wait_for_unpause(timeout=0.01)
+        assert result is False
+
+
+class TestRunStatus:
+    @pytest.mark.parametrize(
+        "status,value",
+        [
+            (RunStatus.PENDING, "pending"),
+            (RunStatus.RUNNING, "running"),
+            (RunStatus.PAUSED, "paused"),
+            (RunStatus.STOPPED, "stopped"),
+            (RunStatus.COMPLETED, "completed"),
+            (RunStatus.FAILED, "failed"),
+        ],
+    )
+    def test_enum_values(self, status, value):
+        assert status.value == value

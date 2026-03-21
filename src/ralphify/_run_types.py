@@ -76,7 +76,7 @@ class RunConfig:
     timeout: float | None = None
     stop_on_error: bool = False
     log_dir: str | None = None
-    project_root: Path = field(default_factory=lambda: Path("."))
+    project_root: Path = field(default=Path("."))
 
 
 @dataclass
@@ -102,7 +102,7 @@ class RunState:
     started_at: datetime | None = None
 
     _stop_requested: bool = field(default=False, init=False, repr=False, compare=False)
-    _pause_event: threading.Event = field(default_factory=threading.Event, init=False, repr=False, compare=False)
+    _resume_event: threading.Event = field(default_factory=threading.Event, init=False, repr=False, compare=False)
 
     @property
     def total(self) -> int:
@@ -110,22 +110,23 @@ class RunState:
         return self.completed + self.failed
 
     def __post_init__(self) -> None:
-        self._pause_event.set()
+        # Set initially: the run starts in an unpaused (resumed) state.
+        self._resume_event.set()
 
     def request_stop(self) -> None:
         """Signal the loop to stop after the current iteration."""
         self._stop_requested = True
-        self._pause_event.set()
+        self._resume_event.set()
 
     def request_pause(self) -> None:
         """Pause the loop between iterations until resumed."""
         self.status = RunStatus.PAUSED
-        self._pause_event.clear()
+        self._resume_event.clear()
 
     def request_resume(self) -> None:
         """Resume a paused loop."""
         self.status = RunStatus.RUNNING
-        self._pause_event.set()
+        self._resume_event.set()
 
     @property
     def stop_requested(self) -> bool:
@@ -135,11 +136,11 @@ class RunState:
     @property
     def paused(self) -> bool:
         """Whether the run is currently paused."""
-        return not self._pause_event.is_set()
+        return not self._resume_event.is_set()
 
     def wait_for_unpause(self, timeout: float | None = None) -> bool:
         """Block until unpaused or timeout. Returns True if unpaused."""
-        return self._pause_event.wait(timeout=timeout)
+        return self._resume_event.wait(timeout=timeout)
 
     def mark_completed(self) -> None:
         """Record a successful iteration."""
