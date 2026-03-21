@@ -428,3 +428,15 @@ class TestParseCommands:
     def test_non_dict_entry_errors(self):
         with pytest.raises(typer.Exit):
             _parse_commands(["not-a-dict"])
+
+    def test_non_numeric_timeout_errors(self):
+        with pytest.raises(typer.Exit):
+            _parse_commands([{"name": "test", "run": "echo hi", "timeout": "fast"}])
+
+    def test_negative_timeout_errors(self):
+        with pytest.raises(typer.Exit):
+            _parse_commands([{"name": "test", "run": "echo hi", "timeout": -10}])
+
+    def test_zero_timeout_errors(self):
+        with pytest.raises(typer.Exit):
+            _parse_commands([{"name": "test", "run": "echo hi", "timeout": 0}])
