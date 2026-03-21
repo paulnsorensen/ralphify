@@ -202,6 +202,7 @@
         <div class="mesh-blob mesh-1"></div>
         <div class="mesh-blob mesh-2"></div>
         <div class="mesh-blob mesh-3"></div>
+        <div class="mesh-blob mesh-4"></div>
       </div>
 
       <div class="hero-content">
@@ -219,13 +220,26 @@
         </p>
 
         <p class="hero-sub">
-          Put your AI coding agent in a <code>while True</code> loop.<br>
-          Write a prompt. Walk away. Wake up to commits.
+          Your AI coding agent. A <code>while True</code> loop.<br>
+          Commits while you sleep. That's it.
         </p>
 
         <div class="cta">
           <a href="docs/getting-started/" class="btn btn-primary">Get Started</a>
           <a href="docs/cookbook/" class="btn btn-secondary">View Cookbook</a>
+        </div>
+      </div>
+
+      <!-- Floating notification — the FOMO moment -->
+      <div class="hero-notification" aria-hidden="true">
+        <div class="notif-avatar">A</div>
+        <div class="notif-body">
+          <div class="notif-header">
+            <span class="notif-name">@alex</span>
+            <span class="notif-channel">#engineering</span>
+            <span class="notif-time">7:02 AM</span>
+          </div>
+          <div class="notif-text">just woke up to 23 commits from ralph. all tests green. my backlog is empty&thinsp;&#x1F3C3;</div>
         </div>
       </div>
 
@@ -296,36 +310,6 @@
       </div>
     </section>
 
-    <!-- Social proof — agent FOMO quotes -->
-    <section class="social-proof" aria-labelledby="social-heading">
-      <h2 id="social-heading" class="sr-only">What developers are saying</h2>
-      <div class="social-inner">
-        <div class="quote-grid fade-up">
-          <blockquote class="quote-card">
-            <p>&ldquo;I close my laptop at midnight and wake up to 20+ commits with all tests passing. Agent FOMO? Cured.&rdquo;</p>
-            <footer>
-              <span class="quote-name">@devops_dan</span>
-              <span class="quote-role">Platform Engineer</span>
-            </footer>
-          </blockquote>
-          <blockquote class="quote-card quote-card-highlight">
-            <p>&ldquo;Everyone on my team kept talking about how their agents ship code overnight. I set up Ralph in 2 minutes and now I'm one of them.&rdquo;</p>
-            <footer>
-              <span class="quote-name">@sarah_codes</span>
-              <span class="quote-role">Senior Backend Engineer</span>
-            </footer>
-          </blockquote>
-          <blockquote class="quote-card">
-            <p>&ldquo;The self-healing loop is the killer feature. Agent breaks a test, next iteration fixes it. No babysitting.&rdquo;</p>
-            <footer>
-              <span class="quote-name">@rustacean_mike</span>
-              <span class="quote-role">Staff Engineer</span>
-            </footer>
-          </blockquote>
-        </div>
-      </div>
-    </section>
-
     <!-- The FOMO -->
     <section class="fomo" aria-labelledby="fomo-heading">
       <div class="fomo-inner">
@@ -335,7 +319,7 @@
         </h2>
         <p class="section-subtitle fade-up">
           They close their laptops and wake up to PRs.<br>
-          You close your laptop and wake up to&hellip; nothing.
+          You close yours and wake up to&hellip; nothing.
         </p>
 
         <div class="fomo-contrast fade-up">
@@ -369,6 +353,36 @@
               <div class="fomo-line"><span class="fomo-time">7:00 AM</span> <span class="fomo-highlight">23 commits &middot; 3 PRs ready</span></div>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Social proof -->
+    <section class="social-proof" aria-labelledby="social-heading">
+      <h2 id="social-heading" class="sr-only">What developers are saying</h2>
+      <div class="social-inner">
+        <div class="quote-grid fade-up">
+          <blockquote class="quote-card">
+            <p>&ldquo;My teammate asked what I shipped overnight. I said &lsquo;let me check.&rsquo; 23 commits. All tests passing. I didn't write any of them.&rdquo;</p>
+            <footer>
+              <span class="quote-name">@devops_dan</span>
+              <span class="quote-role">Platform Engineer</span>
+            </footer>
+          </blockquote>
+          <blockquote class="quote-card quote-card-highlight">
+            <p>&ldquo;Everyone in standup kept talking about what their agent shipped overnight. I set up Ralph in 2 minutes and now I'm one of them.&rdquo;</p>
+            <footer>
+              <span class="quote-name">@sarah_codes</span>
+              <span class="quote-role">Senior Backend Engineer</span>
+            </footer>
+          </blockquote>
+          <blockquote class="quote-card">
+            <p>&ldquo;The self-healing loop is the killer feature. Agent breaks a test, next iteration fixes it. Zero babysitting.&rdquo;</p>
+            <footer>
+              <span class="quote-name">@rustacean_mike</span>
+              <span class="quote-role">Staff Engineer</span>
+            </footer>
+          </blockquote>
         </div>
       </div>
     </section>
@@ -754,6 +768,14 @@ pick the next task from TODO.md and implement it.</code></pre>
         });
       }, { threshold: 0.2 });
       quoteObs.observe(quoteGrid);
+    }
+
+    // Notification entrance animation
+    const notif = document.querySelector('.hero-notification');
+    if (notif) {
+      setTimeout(() => {
+        notif.classList.add('visible');
+      }, 2800);
     }
   </script>
 </body>

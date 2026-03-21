@@ -25,7 +25,7 @@
   --max-width: 1200px;
 }
 
-/* ── Utilities ─────────────────────────────────────────── */
+/* -- Utilities ------------------------------------------------ */
 
 .sr-only {
   position: absolute;
@@ -59,7 +59,7 @@
   text-decoration: none;
 }
 
-/* ── Base ──────────────────────────────────────────────── */
+/* -- Base ----------------------------------------------------- */
 
 html {
   color-scheme: dark;
@@ -83,7 +83,7 @@ body::before {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.03;
+  opacity: 0.025;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-repeat: repeat;
   background-size: 256px 256px;
@@ -116,7 +116,7 @@ a:hover {
   text-decoration: underline;
 }
 
-/* ── Section shared ────────────────────────────────────── */
+/* -- Section shared ------------------------------------------- */
 
 .section-heading {
   font-size: clamp(2rem, 4vw, 3.25rem);
@@ -147,7 +147,7 @@ a:hover {
   font-weight: 600;
 }
 
-/* ── Nav ─────────────────────────────────────────────────── */
+/* -- Nav ------------------------------------------------------ */
 
 header {
   background: rgba(6, 6, 12, 0.85);
@@ -208,7 +208,7 @@ nav {
   text-decoration: none;
 }
 
-/* Hamburger toggle — hidden on desktop */
+/* Hamburger toggle */
 .nav-toggle {
   display: none;
   background: none;
@@ -240,7 +240,7 @@ nav {
   transform: translateY(-6px) rotate(-45deg);
 }
 
-/* ── Hero ──────────────────────────────────────────────── */
+/* -- Hero ----------------------------------------------------- */
 
 .hero {
   position: relative;
@@ -249,7 +249,7 @@ nav {
   background: var(--bg);
 }
 
-/* Animated gradient mesh background */
+/* Animated gradient mesh background — more dramatic */
 .hero-mesh {
   position: absolute;
   inset: 0;
@@ -261,49 +261,63 @@ nav {
 .mesh-blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(100px);
+  filter: blur(120px);
 }
 
 .mesh-1 {
-  width: 800px;
-  height: 800px;
-  top: -30%;
-  left: 10%;
-  background: radial-gradient(circle, rgba(139, 108, 240, 0.2) 0%, transparent 70%);
+  width: 900px;
+  height: 900px;
+  top: -25%;
+  left: 5%;
+  background: radial-gradient(circle, rgba(139, 108, 240, 0.28) 0%, transparent 70%);
   animation: mesh-drift-1 20s ease-in-out infinite alternate;
 }
 
 .mesh-2 {
-  width: 600px;
-  height: 600px;
-  top: 10%;
-  right: 5%;
-  background: radial-gradient(circle, rgba(232, 123, 74, 0.12) 0%, transparent 70%);
+  width: 700px;
+  height: 700px;
+  top: 5%;
+  right: 0%;
+  background: radial-gradient(circle, rgba(232, 123, 74, 0.18) 0%, transparent 70%);
   animation: mesh-drift-2 24s ease-in-out infinite alternate;
 }
 
 .mesh-3 {
-  width: 500px;
-  height: 500px;
-  bottom: -20%;
-  left: 40%;
-  background: radial-gradient(circle, rgba(124, 77, 255, 0.1) 0%, transparent 70%);
+  width: 600px;
+  height: 600px;
+  bottom: -15%;
+  left: 35%;
+  background: radial-gradient(circle, rgba(124, 77, 255, 0.15) 0%, transparent 70%);
   animation: mesh-drift-3 18s ease-in-out infinite alternate;
+}
+
+.mesh-4 {
+  width: 400px;
+  height: 400px;
+  top: 40%;
+  right: 20%;
+  background: radial-gradient(circle, rgba(232, 123, 74, 0.1) 0%, transparent 70%);
+  animation: mesh-drift-4 22s ease-in-out infinite alternate;
 }
 
 @keyframes mesh-drift-1 {
   0% { transform: translate(0, 0) scale(1); }
-  100% { transform: translate(60px, -40px) scale(1.2); }
+  100% { transform: translate(80px, -50px) scale(1.25); }
 }
 
 @keyframes mesh-drift-2 {
   0% { transform: translate(0, 0) scale(1); }
-  100% { transform: translate(-50px, 30px) scale(1.15); }
+  100% { transform: translate(-60px, 40px) scale(1.2); }
 }
 
 @keyframes mesh-drift-3 {
   0% { transform: translate(0, 0) scale(1); }
-  100% { transform: translate(30px, -20px) scale(1.1); }
+  100% { transform: translate(40px, -30px) scale(1.15); }
+}
+
+@keyframes mesh-drift-4 {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-30px, -40px) scale(1.1); }
 }
 
 /* Centered hero content */
@@ -312,7 +326,7 @@ nav {
   z-index: 1;
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: 7rem 2rem 3rem;
+  padding: 8rem 2rem 3.5rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -362,20 +376,20 @@ nav {
 }
 
 .hero-headline {
-  font-size: clamp(2.75rem, 5.5vw, 4.5rem);
+  font-size: clamp(2.75rem, 6vw, 5rem);
   font-weight: 800;
-  line-height: 1.04;
+  line-height: 1.02;
   color: #fff;
   margin-bottom: 0.5rem;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.045em;
   max-width: 900px;
 }
 
 .hero-punchline {
-  font-size: clamp(2.75rem, 5.5vw, 4.5rem);
+  font-size: clamp(2.75rem, 6vw, 5rem);
   font-weight: 800;
-  line-height: 1.04;
-  letter-spacing: -0.04em;
+  line-height: 1.02;
+  letter-spacing: -0.045em;
   margin-bottom: 2rem;
 }
 
@@ -405,7 +419,7 @@ nav {
 }
 
 .hero-sub {
-  font-size: clamp(1.05rem, 1.4vw, 1.25rem);
+  font-size: clamp(1.05rem, 1.4vw, 1.3rem);
   color: var(--text-muted);
   margin-bottom: 2.5rem;
   line-height: 1.7;
@@ -421,7 +435,96 @@ nav {
   border: 1px solid rgba(139, 108, 240, 0.15);
 }
 
-/* ── Hero terminal showcase ───────────────────────────── */
+/* -- Floating notification (the FOMO moment) ------------------ */
+
+.hero-notification {
+  position: relative;
+  z-index: 2;
+  max-width: 520px;
+  margin: 0 auto 3rem;
+  padding: 0 2rem;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.hero-notification.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hero-notification > .notif-avatar,
+.hero-notification > .notif-body {
+  /* inner flex layout */
+}
+
+.hero-notification {
+  display: flex;
+  gap: 0.75rem;
+  background: rgba(139, 108, 240, 0.06);
+  border: 1px solid rgba(139, 108, 240, 0.15);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.notif-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--purple), var(--orange));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.notif-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.notif-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.notif-name {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--purple-light);
+}
+
+.notif-channel {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.notif-time {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  opacity: 0.5;
+  margin-left: auto;
+}
+
+.notif-text {
+  font-size: 0.88rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* -- Hero terminal showcase ----------------------------------- */
 
 .hero-terminal-wrap {
   position: relative;
@@ -436,9 +539,9 @@ nav {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 130%;
-  height: 160%;
-  background: radial-gradient(ellipse, rgba(139, 108, 240, 0.12) 0%, rgba(232, 123, 74, 0.04) 40%, transparent 65%);
+  width: 140%;
+  height: 180%;
+  background: radial-gradient(ellipse, rgba(139, 108, 240, 0.15) 0%, rgba(232, 123, 74, 0.06) 35%, transparent 60%);
   pointer-events: none;
   z-index: -1;
 }
@@ -455,7 +558,7 @@ nav {
   inset: -1px;
   border-radius: 13px;
   padding: 1px;
-  background: linear-gradient(135deg, rgba(139, 108, 240, 0.4), rgba(232, 123, 74, 0.2), rgba(139, 108, 240, 0.1));
+  background: linear-gradient(135deg, rgba(139, 108, 240, 0.5), rgba(232, 123, 74, 0.25), rgba(139, 108, 240, 0.15));
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;
@@ -509,7 +612,7 @@ nav {
   color: var(--purple-light);
 }
 
-/* ── Agent strip ────────────────────────────────────────── */
+/* -- Agent strip ---------------------------------------------- */
 
 .agent-strip {
   border-top: 1px solid var(--border-subtle);
@@ -567,7 +670,7 @@ nav {
   text-decoration: none;
 }
 
-/* ── Buttons ─────────────────────────────────────────────── */
+/* -- Buttons -------------------------------------------------- */
 
 .cta {
   display: flex;
@@ -618,7 +721,7 @@ nav {
   border-color: rgba(167, 139, 245, 0.45);
 }
 
-/* ── Terminal ────────────────────────────────────────────── */
+/* -- Terminal ------------------------------------------------- */
 
 .terminal-window {
   background: #080814;
@@ -628,7 +731,7 @@ nav {
   box-shadow:
     0 0 0 1px rgba(139, 108, 240, 0.06),
     0 24px 80px rgba(0, 0, 0, 0.5),
-    0 0 120px rgba(139, 108, 240, 0.06);
+    0 0 120px rgba(139, 108, 240, 0.08);
 }
 
 .terminal-header {
@@ -689,75 +792,7 @@ nav {
   51%, 100% { opacity: 0; }
 }
 
-/* ── Social proof / quotes ────────────────────────────── */
-
-.social-proof {
-  padding: 5rem 2rem;
-  background: var(--bg);
-  position: relative;
-  z-index: 1;
-  border-top: 1px solid var(--border-subtle);
-}
-
-.social-inner {
-  max-width: var(--max-width);
-  margin: 0 auto;
-}
-
-.quote-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
-}
-
-.quote-card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 2rem;
-  opacity: 0;
-  transform: translateY(16px);
-  transition: opacity 0.5s ease, transform 0.5s ease;
-}
-
-.quote-card.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.quote-card p {
-  font-size: 1rem;
-  line-height: 1.65;
-  color: var(--text);
-  margin-bottom: 1.25rem;
-}
-
-.quote-card footer {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.quote-name {
-  font-family: var(--mono);
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--purple-light);
-}
-
-.quote-role {
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  color: var(--text-muted);
-}
-
-.quote-card-highlight {
-  border-color: rgba(139, 108, 240, 0.25);
-  background: rgba(139, 108, 240, 0.04);
-  border-left: 3px solid var(--purple);
-}
-
-/* ── FOMO contrast section ─────────────────────────────── */
+/* -- FOMO contrast section ------------------------------------ */
 
 .fomo {
   padding: 7rem 2rem;
@@ -874,11 +909,81 @@ nav {
   font-weight: 600;
 }
 
-/* ── Overnight / Git timeline section ───────────────────── */
+/* -- Social proof / quotes ------------------------------------ */
+
+.social-proof {
+  padding: 5rem 2rem;
+  background: var(--bg);
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.social-inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+}
+
+.quote-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+.quote-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 2rem;
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.quote-card.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.quote-card p {
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--text);
+  margin-bottom: 1.25rem;
+}
+
+.quote-card footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.quote-name {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--purple-light);
+}
+
+.quote-role {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.quote-card-highlight {
+  border-color: rgba(139, 108, 240, 0.25);
+  background: rgba(139, 108, 240, 0.04);
+  border-left: 3px solid var(--purple);
+}
+
+/* -- Overnight / Git timeline section ------------------------- */
 
 .overnight {
   padding: 7rem 2rem;
-  background: var(--bg);
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
   position: relative;
   z-index: 1;
 }
@@ -935,7 +1040,7 @@ nav {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  border: 3px solid var(--bg);
+  border: 3px solid var(--bg-surface);
   transform: translateX(-3px);
 }
 
@@ -1001,13 +1106,11 @@ nav {
   font-style: italic;
 }
 
-/* ── Ralph file section ──────────────────────────────── */
+/* -- Ralph file section --------------------------------------- */
 
 .ralph-file {
   padding: 7rem 2rem;
-  background: var(--bg-surface);
-  border-top: 1px solid var(--border-subtle);
-  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg);
   position: relative;
   z-index: 1;
 }
@@ -1059,11 +1162,13 @@ nav {
   color: var(--text);
 }
 
-/* ── How it works ─────────────────────────────────────── */
+/* -- How it works --------------------------------------------- */
 
 .how-it-works {
   padding: 7rem 2rem;
-  background: var(--bg);
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
   position: relative;
   z-index: 1;
 }
@@ -1085,7 +1190,7 @@ nav {
 }
 
 .loop-step {
-  background: var(--bg-surface);
+  background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   padding: 2rem;
@@ -1151,13 +1256,11 @@ nav {
   opacity: 0.5;
 }
 
-/* ── Why cards ────────────────────────────────────────── */
+/* -- Why cards ------------------------------------------------ */
 
 .why {
   padding: 7rem 2rem;
-  background: var(--bg-surface);
-  border-top: 1px solid var(--border-subtle);
-  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg);
   position: relative;
   z-index: 1;
 }
@@ -1175,7 +1278,7 @@ nav {
 }
 
 .why-card {
-  background: var(--bg-elevated);
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   padding: 2rem;
@@ -1215,11 +1318,13 @@ nav {
   line-height: 1.6;
 }
 
-/* ── Install ──────────────────────────────────────────── */
+/* -- Install -------------------------------------------------- */
 
 .install {
   padding: 7rem 2rem;
-  background: var(--bg);
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
   position: relative;
   z-index: 1;
 }
@@ -1250,7 +1355,7 @@ nav {
 }
 
 .install-command {
-  background: var(--bg-surface);
+  background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
   padding: 0.85rem 1.5rem;
@@ -1305,13 +1410,11 @@ nav {
   margin-top: 1.5rem;
 }
 
-/* ── FAQ ──────────────────────────────────────────────── */
+/* -- FAQ ------------------------------------------------------ */
 
 .faq {
   padding: 7rem 2rem;
-  background: var(--bg-surface);
-  border-top: 1px solid var(--border-subtle);
-  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg);
   position: relative;
   z-index: 1;
 }
@@ -1343,11 +1446,12 @@ nav {
   line-height: 1.6;
 }
 
-/* ── Bottom CTA ──────────────────────────────────────── */
+/* -- Bottom CTA ----------------------------------------------- */
 
 .cta-bottom {
   padding: 8rem 2rem;
-  background: var(--bg);
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-subtle);
   position: relative;
   z-index: 1;
   text-align: center;
@@ -1364,12 +1468,12 @@ nav {
 .cta-bottom-glow::before {
   content: "";
   position: absolute;
-  width: 800px;
-  height: 800px;
+  width: 900px;
+  height: 900px;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: radial-gradient(circle, rgba(139, 108, 240, 0.1) 0%, transparent 60%);
+  background: radial-gradient(circle, rgba(139, 108, 240, 0.12) 0%, rgba(232, 123, 74, 0.04) 40%, transparent 60%);
   filter: blur(60px);
 }
 
@@ -1408,10 +1512,10 @@ nav {
   display: inline-block;
 }
 
-/* ── Footer ──────────────────────────────────────────── */
+/* -- Footer --------------------------------------------------- */
 
 footer {
-  background: var(--bg-surface);
+  background: var(--bg);
   border-top: 1px solid var(--border-subtle);
   padding: 3rem 2rem 2rem;
 }
@@ -1467,7 +1571,7 @@ footer {
   color: inherit;
 }
 
-/* ── Scroll animations ────────────────────────────────── */
+/* -- Scroll animations ---------------------------------------- */
 
 .fade-up {
   opacity: 0;
@@ -1484,7 +1588,7 @@ footer {
 .fade-up:nth-child(3) { transition-delay: 0.2s; }
 .fade-up:nth-child(4) { transition-delay: 0.3s; }
 
-/* ── Responsive ───────────────────────────────────────── */
+/* -- Responsive ----------------------------------------------- */
 
 @media (max-width: 1100px) {
   .hero-headline {
@@ -1611,6 +1715,11 @@ footer {
     padding: 0 1rem 3rem;
   }
 
+  .hero-notification {
+    margin-bottom: 2rem;
+    padding: 0 1rem;
+  }
+
   .terminal-body {
     padding: 1rem;
     font-size: 0.72rem;
@@ -1661,7 +1770,7 @@ footer {
   }
 }
 
-/* ── Reduced motion ──────────────────────────────────── */
+/* -- Reduced motion ------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
   .mesh-blob {
@@ -1709,6 +1818,12 @@ footer {
   }
 
   .hero-terminal .terminal-window {
+    transform: none;
+    transition: none;
+  }
+
+  .hero-notification {
+    opacity: 1;
     transform: none;
     transition: none;
   }
