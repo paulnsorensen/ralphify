@@ -1318,16 +1318,34 @@ footer {
 /* -- Responsive ----------------------------------------------- */
 
 @media (max-width: 768px) {
+  /* Prevent horizontal overflow */
+  body {
+    overflow-x: hidden;
+  }
+
+  .terminal-window,
+  .hero-terminal-wrapper,
+  .install-cmd,
+  .cta-cmd {
+    max-width: 100%;
+  }
+
   section {
-    padding: 4rem 1.25rem;
+    padding: 3.5rem 1rem;
   }
 
   .hero {
-    padding: 0 1.25rem 3rem;
+    padding: 0 1rem 2.5rem;
   }
 
   .hero-content {
-    padding-top: 4rem;
+    padding-top: 3rem;
+  }
+
+  .hero-badge {
+    font-size: 0.75rem;
+    padding: 0.45rem 1rem;
+    gap: 0.5rem;
   }
 
   .hero-line-muted {
@@ -1346,12 +1364,33 @@ footer {
 
   .btn {
     width: 100%;
+    min-height: 44px;
+    padding: 0.75rem 1.6rem;
   }
 
   .hero-install {
-    flex-wrap: wrap;
-    justify-content: center;
-    text-align: center;
+    max-width: 100%;
+    font-size: 0.75rem;
+    padding: 0.5rem 0.6rem 0.5rem 0.9rem;
+  }
+
+  .copy-btn {
+    min-height: 36px;
+    min-width: 44px;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.72rem;
+  }
+
+  /* Terminal mobile */
+  .term-line {
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .terminal-body {
+    font-size: 0.72rem;
+    padding: 0.75rem 1rem;
+    min-height: 200px;
   }
 
   /* Nav mobile */
@@ -1385,6 +1424,20 @@ footer {
     margin-right: auto;
   }
 
+  .scene-card {
+    padding: 1.5rem 1.25rem;
+  }
+
+  .scene-card-icon {
+    font-size: 2rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .scene-punchline {
+    font-size: 1.1rem;
+    margin-top: 2rem;
+  }
+
   /* Fix comparison stack */
   .fix-comparison {
     grid-template-columns: 1fr;
@@ -1398,6 +1451,20 @@ footer {
     padding-top: 0;
   }
 
+  .fix-card-body {
+    padding: 0.75rem 1rem;
+  }
+
+  .fix-line {
+    gap: 0.5rem;
+    font-size: 0.72rem;
+  }
+
+  .fix-ts {
+    min-width: 65px;
+    font-size: 0.65rem;
+  }
+
   /* Loop steps stack */
   .loop-visual {
     flex-direction: column;
@@ -1407,6 +1474,10 @@ footer {
   .loop-arrow {
     transform: rotate(90deg);
     margin: 0;
+  }
+
+  .loop-step {
+    max-width: 100%;
   }
 
   /* Ralph split stack */
@@ -1427,14 +1498,27 @@ footer {
     text-align: center;
   }
 
+  .ralph-code pre {
+    font-size: 0.72rem;
+    padding: 1rem;
+  }
+
   /* Cards stack */
   .card-grid {
     grid-template-columns: 1fr;
   }
 
+  .card {
+    padding: 1.5rem 1.25rem;
+  }
+
   /* Agents 2 col */
   .agent-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .agent-card {
+    padding: 1.5rem 0.75rem;
   }
 
   /* Install steps stack */
@@ -1448,14 +1532,31 @@ footer {
     margin: 0;
   }
 
+  .install-cmd {
+    font-size: 0.72rem;
+    padding: 0.5rem 0.6rem 0.5rem 0.9rem;
+    overflow-x: auto;
+  }
+
   /* Footer */
   .footer-nav {
     flex-direction: column;
     gap: 2rem;
   }
 
+  /* Bottom CTA */
   .cta-bottom {
-    padding: 5rem 1.25rem;
+    padding: 4rem 1rem;
+  }
+
+  .cta-cmd {
+    overflow-x: auto;
+    max-width: 100%;
+    font-size: 0.68rem;
+  }
+
+  .cta-cmd code {
+    white-space: nowrap;
   }
 
   .cta-buttons {
@@ -1470,16 +1571,181 @@ footer {
 }
 
 @media (max-width: 480px) {
-  .agent-grid {
-    grid-template-columns: 1fr;
+  section {
+    padding: 3rem 0.75rem;
   }
 
-  .terminal-body {
-    font-size: 0.7rem;
-    min-height: 200px;
+  /* Hero */
+  .hero {
+    padding: 0 0.75rem 2rem;
+  }
+
+  .hero-content {
+    padding-top: 2.5rem;
+  }
+
+  .hero-badge {
+    font-size: 0.68rem;
+    padding: 0.4rem 0.8rem;
+    letter-spacing: 0;
+  }
+
+  .hero-line-muted {
+    font-size: clamp(1rem, 5vw, 1.4rem);
+  }
+
+  .hero-line-bright {
+    font-size: clamp(1.8rem, 8vw, 2.5rem);
+  }
+
+  .hero-sub {
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
   }
 
   .hero-sub br {
     display: none;
+  }
+
+  .hero-install {
+    font-size: 0.68rem;
+    padding: 0.45rem 0.5rem 0.45rem 0.75rem;
+  }
+
+  /* Terminal */
+  .terminal-body {
+    font-size: 0.65rem;
+    min-height: 180px;
+    padding: 0.6rem 0.75rem;
+  }
+
+  .terminal-status {
+    font-size: 0.6rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  /* Scene */
+  .scene-grid {
+    max-width: 100%;
+  }
+
+  .scene-card {
+    padding: 1.25rem 1rem;
+  }
+
+  .scene-card-icon {
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .scene-card-quote {
+    font-size: 0.9rem;
+  }
+
+  .scene-punchline {
+    font-size: 1rem;
+  }
+
+  /* Fix comparison */
+  .fix-comparison {
+    max-width: 100%;
+  }
+
+  .fix-card-header {
+    font-size: 0.68rem;
+    padding: 0.65rem 0.9rem;
+  }
+
+  .fix-card-body {
+    padding: 0.6rem 0.75rem;
+  }
+
+  .fix-line {
+    font-size: 0.65rem;
+    gap: 0.4rem;
+  }
+
+  .fix-ts {
+    min-width: 55px;
+    font-size: 0.6rem;
+  }
+
+  /* Loop */
+  .loop-step h3 {
+    font-size: 1rem;
+  }
+
+  .loop-step p {
+    font-size: 0.85rem;
+  }
+
+  /* Ralph code */
+  .ralph-code pre {
+    font-size: 0.65rem;
+    padding: 0.75rem;
+    line-height: 1.6;
+  }
+
+  /* Cards */
+  .card {
+    padding: 1.25rem 1rem;
+  }
+
+  .card h3 {
+    font-size: 1rem;
+  }
+
+  .card p {
+    font-size: 0.85rem;
+  }
+
+  /* Agents */
+  .agent-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .agent-card {
+    padding: 1.25rem 0.75rem;
+  }
+
+  /* Install */
+  .install-cmd {
+    font-size: 0.65rem;
+  }
+
+  /* Bottom CTA */
+  .cta-bottom {
+    padding: 3rem 0.75rem;
+  }
+
+  .cta-cmd {
+    font-size: 0.6rem;
+  }
+
+  .cta-bottom-headline {
+    font-size: clamp(2rem, 5.5vw, 3rem);
+    margin-bottom: 2rem;
+  }
+
+  /* Section headings */
+  .section-heading {
+    font-size: clamp(1.8rem, 5vw, 2.8rem);
+  }
+
+  .section-sub {
+    font-size: 0.95rem;
+  }
+
+  .section-eyebrow {
+    font-size: 0.65rem;
+  }
+
+  /* Footer */
+  footer {
+    padding: 2.5rem 0.75rem 2rem;
+  }
+
+  .footer-nav {
+    gap: 1.5rem;
   }
 }
