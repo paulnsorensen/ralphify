@@ -165,6 +165,22 @@ Lifecycle status of a run.
 
 ---
 
+## `StopReason`
+
+A `Literal` type indicating why a run stopped. Used in the `RUN_STOPPED` event's `reason` field.
+
+| Value | Description |
+|---|---|
+| `"completed"` | Reached `max_iterations` or finished naturally |
+| `"error"` | Crashed with an unhandled exception |
+| `"user_requested"` | Stopped via `request_stop()` or `Ctrl+C` |
+
+```python
+from ralphify import StopReason
+```
+
+---
+
 ## Event system
 
 The loop emits structured events at each step. Implement the `EventEmitter` protocol (a single `emit(event)` method) to listen.
@@ -209,7 +225,7 @@ Use `event.to_dict()` to serialize to a JSON-compatible dict.
 | Event | Data fields |
 |---|---|
 | `RUN_STARTED` | `commands` (int count), `max_iterations`, `timeout`, `delay` |
-| `RUN_STOPPED` | `reason`, `total`, `completed`, `failed`, `timed_out` |
+| `RUN_STOPPED` | `reason` (`StopReason`), `total`, `completed`, `failed`, `timed_out` |
 | `RUN_PAUSED` | -- |
 | `RUN_RESUMED` | -- |
 
