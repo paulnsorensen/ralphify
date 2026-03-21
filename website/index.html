@@ -196,7 +196,7 @@
 
   <main id="main-content">
 
-    <!-- Hero — split layout -->
+    <!-- Hero — centered, massive impact -->
     <section class="hero" aria-label="Introduction">
       <div class="hero-bg" aria-hidden="true">
         <div class="hero-gradient-orb hero-orb-1"></div>
@@ -205,32 +205,30 @@
       </div>
 
       <div class="hero-inner">
-        <div class="hero-text">
-          <div class="hero-badge">
-            <span class="status-dot"></span>
-            Open-source &middot; pip install ralphify
-          </div>
+        <div class="hero-badge">
+          <span class="status-dot"></span>
+          Open-source &middot; pip install ralphify
+        </div>
 
-          <h1 class="hero-headline">
-            Stop stressing.<br>
-            <span class="hero-gradient-text">Ralph is always running</span>
-            <span class="runner-emoji" aria-hidden="true">&#x1F3C3;</span>
-          </h1>
+        <h1 class="hero-headline">
+          Stop stressing over<br>not having an agent running.<br>
+          <span class="hero-gradient-text">Ralph is always running</span>
+          <span class="runner-emoji" aria-hidden="true">&#x1F3C3;</span>
+        </h1>
 
-          <p class="hero-sub">
-            Everyone else has an AI coding agent shipping code overnight.
-            Put yours in a <code>while True</code> loop and join them.
-          </p>
+        <p class="hero-sub">
+          Put your AI coding agent in a <code>while True</code> loop.<br>
+          Write a prompt. Walk away. Wake up to commits.
+        </p>
 
-          <div class="cta">
-            <a href="docs/getting-started/" class="btn btn-primary">Get Started</a>
-            <a href="docs/cookbook/" class="btn btn-secondary">View Cookbook</a>
-          </div>
+        <div class="cta">
+          <a href="docs/getting-started/" class="btn btn-primary">Get Started</a>
+          <a href="docs/cookbook/" class="btn btn-secondary">View Cookbook</a>
+        </div>
 
-          <div class="hero-install">
-            <code>uv tool install ralphify</code>
-            <button class="copy-btn" aria-label="Copy install command" onclick="copyCommand(this, 'uv tool install ralphify')">Copy</button>
-          </div>
+        <div class="hero-install">
+          <code>uv tool install ralphify</code>
+          <button class="copy-btn" aria-label="Copy install command" onclick="copyCommand(this, 'uv tool install ralphify')">Copy</button>
         </div>
 
         <div class="hero-terminal">
@@ -284,22 +282,23 @@
     <!-- The FOMO contrast -->
     <section class="fomo" aria-labelledby="fomo-heading">
       <div class="fomo-inner">
-        <p class="section-eyebrow fade-up">The reality</p>
+        <p class="section-eyebrow fade-up">Meanwhile, at standup</p>
         <h2 id="fomo-heading" class="section-heading fade-up">
-          You closed your laptop.<br>Your agent didn't.
+          &ldquo;What did your agent<br>ship overnight?&rdquo;
         </h2>
+        <p class="section-subtitle fade-up">Everyone in your standup has an agent running. Here's what that looks like.</p>
 
         <div class="fomo-contrast fade-up">
           <div class="fomo-card fomo-without">
             <div class="fomo-card-label">
               <span class="status-dot status-dot-dead"></span>
-              Without Ralph
+              You, without Ralph
             </div>
             <div class="fomo-card-body">
               <div class="fomo-line"><span class="fomo-time">11:47 PM</span> Closed laptop</div>
               <div class="fomo-line fomo-dim"><span class="fomo-time">11:48 PM</span> &hellip;</div>
               <div class="fomo-line fomo-dim"><span class="fomo-time">7:00 AM</span> &hellip;</div>
-              <div class="fomo-line"><span class="fomo-time">7:01 AM</span> Opened laptop</div>
+              <div class="fomo-line"><span class="fomo-time">9:00 AM</span> Opened laptop</div>
               <div class="fomo-line fomo-nothing"><span class="fomo-time"></span> 0 commits. 0 PRs. Same backlog.</div>
             </div>
           </div>
@@ -309,7 +308,7 @@
           <div class="fomo-card fomo-with">
             <div class="fomo-card-label">
               <span class="status-dot"></span>
-              With Ralph
+              You, with Ralph
             </div>
             <div class="fomo-card-body">
               <div class="fomo-line"><span class="fomo-time">11:47 PM</span> Closed laptop</div>
@@ -317,7 +316,7 @@
               <div class="fomo-line"><span class="fomo-time">2:18 AM</span> <span class="success">&#x2713;</span> fix: session store race</div>
               <div class="fomo-line"><span class="fomo-time">4:03 AM</span> <span class="success">&#x2713;</span> feat: add pagination</div>
               <div class="fomo-line"><span class="fomo-time">5:44 AM</span> <span class="success">&#x2713;</span> refactor: extract auth</div>
-              <div class="fomo-line"><span class="fomo-time">7:00 AM</span> <span class="fomo-highlight">23 commits &middot; 3 PRs ready</span></div>
+              <div class="fomo-line"><span class="fomo-time">9:00 AM</span> <span class="fomo-highlight">23 commits &middot; 3 PRs ready</span></div>
             </div>
           </div>
         </div>
@@ -328,9 +327,9 @@
     <section class="ralph-file" aria-labelledby="ralph-file-heading">
       <div class="ralph-file-inner">
         <div class="ralph-file-text">
-          <p class="section-eyebrow fade-up">The primitive</p>
+          <p class="section-eyebrow fade-up">One file. That's the whole thing.</p>
           <h2 id="ralph-file-heading" class="section-heading fade-up">A ralph is just<br>a Markdown file</h2>
-          <p class="section-subtitle fade-up">No config files. No project scaffolding. No dashboard.<br>One file is the whole thing.</p>
+          <p class="section-subtitle fade-up">No config files. No project scaffolding. No dashboard.<br>Create a <code>RALPH.md</code>, and you have an autonomous agent loop.</p>
           <ul class="ralph-features fade-up">
             <li><strong>agent</strong> &mdash; which CLI agent to run</li>
             <li><strong>commands</strong> &mdash; checks that validate each iteration</li>
@@ -433,8 +432,8 @@ pick the next task from TODO.md and implement it.</code></pre>
     <section class="agents" aria-labelledby="agents-heading">
       <div class="agents-inner">
         <p class="section-eyebrow fade-up">Works with everything</p>
-        <h2 id="agents-heading" class="section-heading fade-up">Any agent. Any language. Any stack.</h2>
-        <p class="section-subtitle fade-up">Ralphify is agent-agnostic. If it takes a prompt via stdin, it works.</p>
+        <h2 id="agents-heading" class="section-heading fade-up">Any agent that reads stdin.</h2>
+        <p class="section-subtitle fade-up">Ralphify is agent-agnostic. Pipe to whatever you want.</p>
         <div class="agent-grid fade-up">
           <a href="docs/agents/" class="agent-card">
             <div class="agent-card-name">Claude Code</div>
@@ -618,7 +617,7 @@ pick the next task from TODO.md and implement it.</code></pre>
           line.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
           line.style.opacity = '1';
           line.style.transform = 'translateY(0)';
-        }, 600 + i * 200);
+        }, 1200 + i * 200);
       });
     }
 
