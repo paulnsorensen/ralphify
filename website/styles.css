@@ -1,4 +1,4 @@
-/* Ralphify landing page — cinematic, dark, alive */
+/* Ralphify landing page — cinematic dark theme */
 
 * {
   margin: 0;
@@ -119,7 +119,7 @@ a:hover {
   font-size: 1.1rem;
   color: var(--text-muted);
   text-align: center;
-  max-width: 560px;
+  max-width: 600px;
   margin: 1.25rem auto 0;
   line-height: 1.7;
 }
@@ -245,7 +245,7 @@ nav {
   transform: translateY(-6px) rotate(-45deg);
 }
 
-/* -- Hero — centered layout ----------------------------------- */
+/* -- Hero — massive centered layout --------------------------- */
 
 .hero {
   position: relative;
@@ -353,7 +353,7 @@ nav {
   z-index: 1;
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: 5rem 2rem 2.5rem;
+  padding: 6rem 2rem 3rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -371,7 +371,7 @@ nav {
   border-radius: 100px;
   border: 1px solid rgba(139, 108, 240, 0.12);
   background: rgba(139, 108, 240, 0.04);
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem;
   letter-spacing: 0.03em;
   backdrop-filter: blur(8px);
 }
@@ -403,44 +403,28 @@ nav {
   50% { opacity: 0.6; box-shadow: 0 0 16px rgba(52, 211, 153, 0.3); }
 }
 
-/* Hero headline — massive, centered */
+/* Hero headline — massive, two-part structure */
 .hero-headline {
-  font-size: clamp(3rem, 6.5vw, 5.5rem);
-  font-weight: 800;
-  line-height: 1.0;
-  color: #fff;
-  margin-bottom: 0.5rem;
-  letter-spacing: -0.055em;
-  text-align: center;
-  max-width: 900px;
+  max-width: 950px;
+  margin-bottom: 1.5rem;
 }
 
-.hero-line-small,
-.hero-line-big {
+.hero-line-prelude {
   display: block;
-}
-
-.hero-line-small {
-  color: rgba(255, 255, 255, 0.40);
-  font-size: 0.42em;
-  letter-spacing: -0.02em;
-  margin-bottom: 0.35em;
+  font-size: clamp(1.3rem, 2.5vw, 2rem);
   font-weight: 600;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  margin-bottom: 0.5rem;
 }
 
-.hero-line-big {
-  color: #fff;
-  text-shadow: 0 0 80px rgba(139, 108, 240, 0.15);
-}
-
-.hero-tagline {
-  font-size: clamp(2.4rem, 5vw, 4rem);
+.hero-line-punchline {
+  display: block;
+  font-size: clamp(3.2rem, 7vw, 6rem);
   font-weight: 800;
   line-height: 1.0;
-  letter-spacing: -0.05em;
-  margin-bottom: 2rem;
-  margin-top: 0.15em;
-  text-align: center;
+  letter-spacing: -0.055em;
 }
 
 .hero-gradient-text {
@@ -456,12 +440,12 @@ nav {
 }
 
 .runner-emoji {
-  font-size: clamp(1.4rem, 3vw, 2.5rem);
+  font-size: clamp(1.8rem, 3.5vw, 3.5rem);
   display: inline-block;
   animation: bounce-run 1s ease-in-out infinite;
   vertical-align: middle;
   -webkit-text-fill-color: initial;
-  margin-left: 0.1em;
+  margin-left: 0.15em;
 }
 
 .runner-emoji-sm {
@@ -470,13 +454,13 @@ nav {
 
 @keyframes bounce-run {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
+  50% { transform: translateY(-8px); }
 }
 
 .hero-sub {
   font-size: clamp(1rem, 1.3vw, 1.15rem);
   color: var(--text-muted);
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem;
   line-height: 1.7;
   max-width: 480px;
   text-align: center;
@@ -514,14 +498,14 @@ nav {
   color: var(--text-muted);
 }
 
-/* Hero terminal — below hero text */
+/* Hero terminal — below hero text, with typing animation */
 .hero-terminal-wrapper {
   position: relative;
   z-index: 1;
   max-width: 620px;
   width: 100%;
   margin: 0 auto;
-  padding: 0 2rem 4rem;
+  padding: 0 2rem 5rem;
 }
 
 .hero-terminal {
@@ -550,7 +534,7 @@ nav {
 }
 
 .hero-terminal .terminal-window {
-  animation: terminal-appear 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.9s both;
+  animation: terminal-appear 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.0s both;
 }
 
 @keyframes terminal-appear {
@@ -708,6 +692,9 @@ nav {
   font-family: var(--mono);
   font-size: 0.82rem;
   line-height: 1.8;
+  min-height: 240px;
+  max-height: 320px;
+  overflow: hidden;
 }
 
 .term-line {
@@ -754,57 +741,24 @@ nav {
   50% { opacity: 0; }
 }
 
-/* -- Ticker strip --------------------------------------------- */
+/* -- Section divider (shared) --------------------------------- */
 
-.ticker-section {
-  position: relative;
-  z-index: 1;
-  border-top: 1px solid var(--border-subtle);
-  border-bottom: 1px solid var(--border-subtle);
-  background: rgba(139, 108, 240, 0.015);
-  overflow: hidden;
-  padding: 0.75rem 0;
-}
-
-.ticker-strip {
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.ticker-track {
-  display: inline-flex;
-  gap: 3rem;
-  animation: ticker-scroll 40s linear infinite;
-}
-
-.ticker-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-family: var(--mono);
-  font-size: 0.74rem;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.ticker-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #34D399;
-  box-shadow: 0 0 6px rgba(52, 211, 153, 0.4);
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-
-@keyframes ticker-scroll {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+.section-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(139, 108, 240, 0.15) 30%,
+    rgba(139, 108, 240, 0.25) 50%,
+    rgba(139, 108, 240, 0.15) 70%,
+    transparent 100%
+  );
 }
 
 /* -- FOMO section --------------------------------------------- */
 
 .fomo {
-  padding: 7rem 2rem;
+  padding: 8rem 2rem;
   background: var(--bg-surface);
   border-top: none;
   position: relative;
@@ -857,7 +811,7 @@ nav {
   padding: 2.25rem;
   opacity: 0;
   transform: translateY(20px);
-  transition: opacity 0.5s ease, transform 0.5s ease;
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .fomo-card.visible {
@@ -942,14 +896,27 @@ nav {
   font-weight: 700;
 }
 
-.fomo-vs {
+/* FOMO divider — vertical line with "vs" label */
+.fomo-divider {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem 0;
+}
+
+.fomo-divider-line {
+  width: 1px;
+  flex: 1;
+  background: linear-gradient(180deg, transparent, rgba(139, 108, 240, 0.2), transparent);
+}
+
+.fomo-divider-label {
   font-family: var(--mono);
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
-  opacity: 0.2;
+  opacity: 0.3;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-weight: 700;
@@ -958,7 +925,7 @@ nav {
 /* -- Ralph file section --------------------------------------- */
 
 .ralph-file {
-  padding: 7rem 2rem;
+  padding: 8rem 2rem;
   background: var(--bg);
   border-top: none;
   position: relative;
@@ -1050,7 +1017,7 @@ nav {
 /* -- How it works --------------------------------------------- */
 
 .how-it-works {
-  padding: 7rem 2rem;
+  padding: 8rem 2rem;
   background: var(--bg-surface);
   border-top: none;
   position: relative;
@@ -1169,7 +1136,7 @@ nav {
 /* -- Why loops ------------------------------------------------ */
 
 .why {
-  padding: 7rem 2rem;
+  padding: 8rem 2rem;
   background: var(--bg);
   border-top: none;
   position: relative;
@@ -1369,6 +1336,7 @@ nav {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1.25rem;
+  margin-top: 3rem;
 }
 
 .quote-card {
@@ -1434,7 +1402,7 @@ nav {
 /* -- Install -------------------------------------------------- */
 
 .install {
-  padding: 7rem 2rem;
+  padding: 8rem 2rem;
   background: var(--bg-surface);
   border-top: none;
   position: relative;
@@ -1628,7 +1596,7 @@ nav {
 /* -- Bottom CTA ----------------------------------------------- */
 
 .cta-bottom {
-  padding: 8rem 2rem;
+  padding: 9rem 2rem;
   background: var(--bg-surface);
   text-align: center;
   position: relative;
@@ -1818,12 +1786,12 @@ footer::before {
     padding: 5rem 1.5rem 3rem;
   }
 
-  .hero-headline {
+  .hero-line-punchline {
     font-size: clamp(2.6rem, 9vw, 4rem);
   }
 
-  .hero-tagline {
-    font-size: clamp(2rem, 7vw, 3rem);
+  .hero-line-prelude {
+    font-size: clamp(1.1rem, 3vw, 1.5rem);
   }
 
   .hero-terminal-wrapper {
@@ -1835,8 +1803,14 @@ footer::before {
     gap: 1rem;
   }
 
-  .fomo-vs {
-    display: none;
+  .fomo-divider {
+    flex-direction: row;
+    padding: 0 2rem;
+  }
+
+  .fomo-divider-line {
+    width: auto;
+    height: 1px;
   }
 
   .ralph-file-inner {
@@ -1927,20 +1901,16 @@ footer::before {
     padding: 4rem 1rem 2rem;
   }
 
-  .hero-headline {
+  .hero-line-punchline {
     font-size: 2.4rem;
   }
 
-  .hero-tagline {
-    font-size: 1.8rem;
+  .hero-line-prelude {
+    font-size: 1rem;
   }
 
   .hero-terminal-wrapper {
     padding: 0 1rem 3rem;
-  }
-
-  .hero-line-small {
-    font-size: 0.5em;
   }
 
   .fomo,
@@ -1959,6 +1929,7 @@ footer::before {
     font-size: 0.72rem;
     padding: 1rem;
     overflow-x: auto;
+    min-height: 200px;
   }
 
   .install-command {

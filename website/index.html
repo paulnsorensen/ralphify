@@ -198,7 +198,9 @@
 
   <main id="main-content">
 
-    <!-- Hero — centered, massive impact -->
+    <!-- ============================================ -->
+    <!-- HERO — cinematic, massive typography          -->
+    <!-- ============================================ -->
     <section class="hero" aria-label="Introduction">
       <div class="hero-bg" aria-hidden="true">
         <div class="hero-gradient-wash"></div>
@@ -212,18 +214,16 @@
       <div class="hero-center">
         <div class="hero-badge">
           <span class="status-dot"></span>
-          Open-source &middot; pip install ralphify
+          Open-source CLI tool &middot; pip install ralphify
         </div>
 
         <h1 class="hero-headline">
-          <span class="hero-line-small">Stop stressing over</span>
-          <span class="hero-line-big">not having an<br>agent running.</span>
+          <span class="hero-line-prelude">Stop stressing over not having an agent running.</span>
+          <span class="hero-line-punchline">
+            <span class="hero-gradient-text">Ralph is always running</span>
+            <span class="runner-emoji" aria-hidden="true">&#x1F3C3;</span>
+          </span>
         </h1>
-
-        <p class="hero-tagline">
-          <span class="hero-gradient-text">Ralph is always running</span>
-          <span class="runner-emoji" aria-hidden="true">&#x1F3C3;</span>
-        </p>
 
         <p class="hero-sub">
           Put your AI coding agent in a <code>while True</code> loop.<br>
@@ -252,22 +252,7 @@
               <span class="terminal-title">ralph run</span>
             </div>
             <div class="terminal-body" id="hero-term">
-              <div class="term-line"><span class="term-dim">&mdash;&mdash;&mdash; iteration 1 &mdash;&mdash;&mdash;</span></div>
-              <div class="term-line"><span class="term-success">&#x2713;</span> 47/47 tests passed</div>
-              <div class="term-line"><span class="term-success">&#x2713;</span> committed: <span class="term-purple">feat: add rate limiting</span></div>
-              <div class="term-line">&nbsp;</div>
-              <div class="term-line"><span class="term-dim">&mdash;&mdash;&mdash; iteration 2 &mdash;&mdash;&mdash;</span></div>
-              <div class="term-line"><span class="term-fail">&#x2717;</span> 1 test failed &mdash; feeding back to agent</div>
-              <div class="term-line">&nbsp;</div>
-              <div class="term-line"><span class="term-dim">&mdash;&mdash;&mdash; iteration 3 &mdash;&mdash;&mdash;</span></div>
-              <div class="term-line"><span class="term-success">&#x2713;</span> 48/48 tests passed <span class="term-dim">&mdash; self-healed</span></div>
-              <div class="term-line"><span class="term-success">&#x2713;</span> committed: <span class="term-purple">fix: correct mutex ordering</span></div>
-              <div class="term-line">&nbsp;</div>
-              <div class="term-line"><span class="term-dim">&mdash;&mdash;&mdash; iteration 4 &mdash;&mdash;&mdash;</span></div>
-              <div class="term-line">
-                <span class="term-dim">running agent&hellip;</span>
-                <span class="cursor-blink">&#x2588;</span>
-              </div>
+              <!-- Lines are injected by the typing animation script -->
             </div>
           </div>
         </div>
@@ -275,33 +260,16 @@
       <div class="hero-horizon" aria-hidden="true"></div>
     </section>
 
-    <!-- Ticker -->
-    <section class="ticker-section" aria-labelledby="ticker-heading">
-      <h2 id="ticker-heading" class="sr-only">What's happening right now</h2>
-      <div class="ticker-strip">
-        <div class="ticker-track" aria-hidden="true">
-          <span class="ticker-item"><span class="ticker-dot"></span> @maya shipped 14 commits overnight</span>
-          <span class="ticker-item"><span class="ticker-dot"></span> @dan's agent just fixed a race condition</span>
-          <span class="ticker-item"><span class="ticker-dot"></span> @alex woke up to 3 PRs ready for review</span>
-          <span class="ticker-item"><span class="ticker-dot"></span> @kai's backlog is empty since Tuesday</span>
-          <span class="ticker-item"><span class="ticker-dot"></span> @priya's agent refactored the auth module at 3 AM</span>
-          <span class="ticker-item"><span class="ticker-dot"></span> @maya shipped 14 commits overnight</span>
-          <span class="ticker-item"><span class="ticker-dot"></span> @dan's agent just fixed a race condition</span>
-          <span class="ticker-item"><span class="ticker-dot"></span> @alex woke up to 3 PRs ready for review</span>
-          <span class="ticker-item"><span class="ticker-dot"></span> @kai's backlog is empty since Tuesday</span>
-          <span class="ticker-item"><span class="ticker-dot"></span> @priya's agent refactored the auth module at 3 AM</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Agent FOMO narrative -->
+    <!-- ============================================ -->
+    <!-- FOMO — the standup moment                     -->
+    <!-- ============================================ -->
     <section class="fomo" aria-labelledby="fomo-heading">
       <div class="fomo-inner">
-        <p class="section-eyebrow fade-up">The morning standup question</p>
+        <p class="section-eyebrow fade-up">The feeling you know too well</p>
         <h2 id="fomo-heading" class="section-heading fade-up">
-          &ldquo;What did your agent<br>ship overnight?&rdquo;
+          Everyone shipped<br>while they slept.
         </h2>
-        <p class="section-subtitle fade-up">Everyone at standup shipped while they slept. You didn't.<br>Not anymore.</p>
+        <p class="section-subtitle fade-up">It's 9 AM. Your teammate mentions the 14 commits their agent pushed overnight. You open your laptop. Same codebase. Same backlog. Zero progress.</p>
 
         <div class="fomo-contrast fade-up">
           <div class="fomo-card fomo-without">
@@ -318,7 +286,11 @@
             </div>
           </div>
 
-          <div class="fomo-vs" aria-hidden="true">vs</div>
+          <div class="fomo-divider" aria-hidden="true">
+            <div class="fomo-divider-line"></div>
+            <span class="fomo-divider-label">vs</span>
+            <div class="fomo-divider-line"></div>
+          </div>
 
           <div class="fomo-card fomo-with">
             <div class="fomo-card-label">
@@ -338,7 +310,9 @@
       </div>
     </section>
 
-    <!-- A ralph is just a file -->
+    <!-- ============================================ -->
+    <!-- WHAT IS A RALPH — one file, that's it         -->
+    <!-- ============================================ -->
     <section class="ralph-file" aria-labelledby="ralph-file-heading">
       <div class="ralph-file-inner">
         <div class="ralph-file-text">
@@ -378,7 +352,9 @@ pick the next task from TODO.md and implement it.</code></pre>
       </div>
     </section>
 
-    <!-- How it works -->
+    <!-- ============================================ -->
+    <!-- THE LOOP — how it works                       -->
+    <!-- ============================================ -->
     <section class="how-it-works" aria-labelledby="how-heading">
       <div class="how-inner">
         <p class="section-eyebrow fade-up">How it works</p>
@@ -389,20 +365,20 @@ pick the next task from TODO.md and implement it.</code></pre>
           <div class="loop-steps">
             <div class="loop-step">
               <div class="loop-step-number">1</div>
-              <h3>Assemble the prompt</h3>
-              <p>Ralphify reads your <code>RALPH.md</code>, runs commands to gather live data, and injects results into the prompt.</p>
+              <h3>Assemble</h3>
+              <p>Reads your <code>RALPH.md</code>, runs commands to gather live data, injects results into the prompt.</p>
             </div>
             <div class="loop-connector-h" aria-hidden="true"></div>
             <div class="loop-step">
               <div class="loop-step-number">2</div>
-              <h3>Pipe to the agent</h3>
-              <p>The assembled prompt goes to your agent. It reads the codebase, does one unit of work, commits, and exits.</p>
+              <h3>Execute</h3>
+              <p>The assembled prompt pipes to your agent. It reads code, does one unit of work, commits, exits.</p>
             </div>
             <div class="loop-connector-h" aria-hidden="true"></div>
             <div class="loop-step">
               <div class="loop-step-number">3</div>
               <h3>Repeat</h3>
-              <p>Back to step 1. Fresh context window, latest code. Edit the prompt while it runs &mdash; changes take effect next cycle.</p>
+              <p>Back to step 1. Fresh context window, latest code. Edit the prompt while it runs.</p>
             </div>
           </div>
           <div class="loop-return" aria-hidden="true">
@@ -412,7 +388,9 @@ pick the next task from TODO.md and implement it.</code></pre>
       </div>
     </section>
 
-    <!-- Why loops -->
+    <!-- ============================================ -->
+    <!-- WHY LOOPS — single runs decay                 -->
+    <!-- ============================================ -->
     <section class="why" aria-labelledby="why-heading">
       <div class="why-inner">
         <p class="section-eyebrow fade-up">Why loops beat single runs</p>
@@ -421,13 +399,13 @@ pick the next task from TODO.md and implement it.</code></pre>
         <div class="why-grid fade-up">
           <div class="why-card">
             <div class="why-icon">&gt;_</div>
-            <h3>Fresh context, no decay</h3>
-            <p>Each iteration starts with a clean context window. No conversation bloat. The agent reads the actual codebase every loop.</p>
+            <h3>Fresh context every iteration</h3>
+            <p>No conversation bloat. The agent reads the actual codebase every loop &mdash; not a stale 200-message thread.</p>
           </div>
           <div class="why-card">
             <div class="why-icon">&lt;/&gt;</div>
             <h3>Self-healing feedback</h3>
-            <p>When something breaks, the failure output feeds into the next iteration automatically. The agent sees what went wrong and fixes it.</p>
+            <p>When something breaks, the failure output feeds into the next iteration. The agent sees what went wrong and fixes it.</p>
           </div>
           <div class="why-card">
             <div class="why-icon">~/</div>
@@ -443,7 +421,9 @@ pick the next task from TODO.md and implement it.</code></pre>
       </div>
     </section>
 
-    <!-- Agent compatibility -->
+    <!-- ============================================ -->
+    <!-- AGENTS — works with everything                -->
+    <!-- ============================================ -->
     <section class="agents" aria-labelledby="agents-heading">
       <div class="agents-inner">
         <p class="section-eyebrow fade-up">Works with everything</p>
@@ -458,7 +438,7 @@ pick the next task from TODO.md and implement it.</code></pre>
           <a href="docs/agents/" class="agent-card">
             <div class="agent-card-icon">&gt;_</div>
             <div class="agent-card-name">Aider</div>
-            <div class="agent-card-desc">AI pair programming in terminal</div>
+            <div class="agent-card-desc">AI pair programming</div>
           </a>
           <a href="docs/agents/" class="agent-card">
             <div class="agent-card-icon">&#x25B6;</div>
@@ -474,12 +454,14 @@ pick the next task from TODO.md and implement it.</code></pre>
       </div>
     </section>
 
-    <!-- Social proof -->
+    <!-- ============================================ -->
+    <!-- SOCIAL PROOF                                  -->
+    <!-- ============================================ -->
     <section class="social-proof" aria-labelledby="social-heading">
       <div class="social-inner">
         <p class="section-eyebrow fade-up">What developers are saying</p>
         <h2 id="social-heading" class="section-heading fade-up">Agent FOMO, cured.</h2>
-        <div class="quote-grid fade-up" style="margin-top: 3rem;">
+        <div class="quote-grid fade-up">
           <blockquote class="quote-card">
             <p>&ldquo;My teammate asked what I shipped overnight. I said &lsquo;let me check.&rsquo; 23 commits. All tests passing. I didn't write any of them.&rdquo;</p>
             <footer>
@@ -505,7 +487,9 @@ pick the next task from TODO.md and implement it.</code></pre>
       </div>
     </section>
 
-    <!-- Install CTA -->
+    <!-- ============================================ -->
+    <!-- INSTALL — get Ralph running                   -->
+    <!-- ============================================ -->
     <section class="install" aria-labelledby="install-heading">
       <p class="section-eyebrow fade-up">Ready in 2 minutes</p>
       <h2 id="install-heading" class="section-heading fade-up">Get Ralph running</h2>
@@ -541,7 +525,9 @@ pick the next task from TODO.md and implement it.</code></pre>
       <p class="install-alt">Also available via <code>pip install ralphify</code> or <code>pipx install ralphify</code></p>
     </section>
 
-    <!-- FAQ -->
+    <!-- ============================================ -->
+    <!-- FAQ                                           -->
+    <!-- ============================================ -->
     <section class="faq" aria-labelledby="faq-heading">
       <h2 id="faq-heading" class="section-heading fade-up">FAQ</h2>
       <div class="faq-list fade-up">
@@ -568,7 +554,9 @@ pick the next task from TODO.md and implement it.</code></pre>
       </div>
     </section>
 
-    <!-- Bottom CTA -->
+    <!-- ============================================ -->
+    <!-- BOTTOM CTA                                    -->
+    <!-- ============================================ -->
     <section class="cta-bottom" aria-labelledby="cta-bottom-heading">
       <div class="cta-bottom-bg" aria-hidden="true">
         <div class="cta-bottom-orb cta-orb-1"></div>
@@ -630,19 +618,120 @@ pick the next task from TODO.md and implement it.</code></pre>
 
     document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
 
-    // Hero terminal lines staggered reveal
-    const heroTerminal = document.getElementById('hero-term');
-    if (heroTerminal) {
-      const lines = heroTerminal.querySelectorAll('.term-line');
-      lines.forEach((line, i) => {
+    // Hero text entrance animations
+    const heroCenter = document.querySelector('.hero-center');
+    if (heroCenter) {
+      const animElements = heroCenter.querySelectorAll('.hero-badge, .hero-line-prelude, .hero-line-punchline, .hero-sub, .hero-actions');
+      animElements.forEach((el, i) => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(30px)';
+        setTimeout(() => {
+          el.style.transition = 'opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1), transform 0.9s cubic-bezier(0.16, 1, 0.3, 1)';
+          el.style.opacity = '1';
+          el.style.transform = 'translateY(0)';
+        }, 150 + i * 150);
+      });
+    }
+
+    // Hero terminal — typing animation that loops
+    const terminalData = [
+      { type: 'header', text: '--- iteration 1 ---' },
+      { type: 'check', text: '  running checks...' },
+      { type: 'success', text: '  \u2713 47/47 tests passed' },
+      { type: 'agent', text: '  running agent...' },
+      { type: 'commit', text: '  \u2713 committed: feat: add rate limiting' },
+      { type: 'blank' },
+      { type: 'header', text: '--- iteration 2 ---' },
+      { type: 'check', text: '  running checks...' },
+      { type: 'fail', text: '  \u2717 1 test failed' },
+      { type: 'agent', text: '  feeding failure to agent...' },
+      { type: 'blank' },
+      { type: 'header', text: '--- iteration 3 ---' },
+      { type: 'check', text: '  running checks...' },
+      { type: 'success', text: '  \u2713 48/48 tests passed \u2014 self-healed' },
+      { type: 'agent', text: '  running agent...' },
+      { type: 'commit', text: '  \u2713 committed: fix: correct mutex ordering' },
+      { type: 'blank' },
+      { type: 'header', text: '--- iteration 4 ---' },
+      { type: 'check', text: '  running checks...' },
+      { type: 'success', text: '  \u2713 49/49 tests passed' },
+      { type: 'agent', text: '  running agent...' },
+      { type: 'commit', text: '  \u2713 committed: feat: add webhook handler' },
+      { type: 'blank' },
+      { type: 'header', text: '--- iteration 5 ---' },
+      { type: 'cursor', text: '  running agent...' },
+    ];
+
+    function createTermLine(data) {
+      const line = document.createElement('div');
+      line.className = 'term-line';
+      if (data.type === 'blank') {
+        line.innerHTML = '&nbsp;';
+      } else if (data.type === 'header') {
+        line.innerHTML = '<span class="term-dim">' + data.text + '</span>';
+      } else if (data.type === 'success') {
+        line.innerHTML = '<span class="term-success">' + data.text + '</span>';
+      } else if (data.type === 'fail') {
+        line.innerHTML = '<span class="term-fail">' + data.text + '</span>';
+      } else if (data.type === 'commit') {
+        const parts = data.text.split(': ');
+        const prefix = parts[0] + ': ';
+        const msg = parts.slice(1).join(': ');
+        line.innerHTML = '<span class="term-success">' + prefix + '</span><span class="term-purple">' + msg + '</span>';
+      } else if (data.type === 'check' || data.type === 'agent') {
+        line.innerHTML = '<span class="term-dim">' + data.text + '</span>';
+      } else if (data.type === 'cursor') {
+        line.innerHTML = '<span class="term-dim">' + data.text + '</span><span class="cursor-blink">\u2588</span>';
+      }
+      return line;
+    }
+
+    const heroTerm = document.getElementById('hero-term');
+    if (heroTerm) {
+      let lineIndex = 0;
+      const MAX_LINES = 14;
+
+      function addNextLine() {
+        if (lineIndex >= terminalData.length) return;
+
+        const data = terminalData[lineIndex];
+        const line = createTermLine(data);
         line.style.opacity = '0';
         line.style.transform = 'translateY(4px)';
-        setTimeout(() => {
+        heroTerm.appendChild(line);
+
+        // Scroll to bottom
+        heroTerm.scrollTop = heroTerm.scrollHeight;
+
+        // Trim old lines if too many
+        while (heroTerm.children.length > MAX_LINES) {
+          heroTerm.removeChild(heroTerm.firstChild);
+        }
+
+        // Animate in
+        requestAnimationFrame(() => {
           line.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
           line.style.opacity = '1';
           line.style.transform = 'translateY(0)';
-        }, 1200 + i * 200);
-      });
+        });
+
+        lineIndex++;
+
+        // Schedule next line
+        let delay = 120;
+        if (data.type === 'header') delay = 400;
+        else if (data.type === 'check' || data.type === 'agent') delay = 800;
+        else if (data.type === 'success' || data.type === 'fail') delay = 300;
+        else if (data.type === 'commit') delay = 500;
+        else if (data.type === 'cursor') delay = 0; // stop
+
+        if (lineIndex < terminalData.length) {
+          setTimeout(addNextLine, delay);
+        }
+      }
+
+      // Start typing after page loads
+      setTimeout(addNextLine, 1400);
     }
 
     // FOMO cards staggered reveal
@@ -653,7 +742,7 @@ pick the next task from TODO.md and implement it.</code></pre>
         entries.forEach(entry => {
           if (entry.isIntersecting) {
             cards.forEach((card, i) => {
-              setTimeout(() => card.classList.add('visible'), i * 250);
+              setTimeout(() => card.classList.add('visible'), i * 300);
             });
             fomoObs.unobserve(entry.target);
           }
@@ -689,21 +778,6 @@ pick the next task from TODO.md and implement it.</code></pre>
         });
       }, { threshold: 0.2 });
       quoteObs.observe(quoteGrid);
-    }
-
-    // Hero text entrance animations
-    const heroCenter = document.querySelector('.hero-center');
-    if (heroCenter) {
-      const animElements = heroCenter.querySelectorAll('.hero-badge, .hero-line-small, .hero-line-big, .hero-tagline, .hero-sub, .hero-actions');
-      animElements.forEach((el, i) => {
-        el.style.opacity = '0';
-        el.style.transform = 'translateY(24px)';
-        setTimeout(() => {
-          el.style.transition = 'opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)';
-          el.style.opacity = '1';
-          el.style.transform = 'translateY(0)';
-        }, 100 + i * 120);
-      });
     }
   </script>
 </body>
