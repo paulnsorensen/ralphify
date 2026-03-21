@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 from ralphify._events import Event, QueueEmitter
+from ralphify._frontmatter import serialize_frontmatter
 from ralphify._run_types import RunConfig, RunState
 
 
@@ -35,6 +36,30 @@ MOCK_ENGINE_SLEEP = "ralphify.engine.time.sleep"
 
 
 # ── Factory helpers ───────────────────────────────────────────────────
+
+
+def make_ralph(
+    tmp_path: Path,
+    prompt: str = "go",
+    agent: str = "claude -p --dangerously-skip-permissions",
+    commands: list[dict] | None = None,
+    args: list[str] | None = None,
+) -> Path:
+    """Create a ralph directory with a proper RALPH.md for CLI-level tests.
+
+    Returns the ralph directory path.  Uses :func:`serialize_frontmatter`
+    to build the file, so the YAML is always well-formed.
+    """
+    ralph_dir = tmp_path / "my-ralph"
+    ralph_dir.mkdir(exist_ok=True)
+    frontmatter: dict = {"agent": agent}
+    if commands:
+        frontmatter["commands"] = commands
+    if args:
+        frontmatter["args"] = args
+    content = serialize_frontmatter(frontmatter, prompt)
+    (ralph_dir / "RALPH.md").write_text(content)
+    return ralph_dir
 
 
 def make_config(tmp_path: Path, ralph_content: str = "test prompt", **overrides) -> RunConfig:
