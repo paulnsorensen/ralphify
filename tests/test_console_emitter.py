@@ -51,13 +51,6 @@ class TestIterationLifecycle:
         output = console.export_text()
         assert "Iteration 1" in output
 
-    def test_iteration_started_uses_fallback_when_iteration_missing(self):
-        emitter, console = _capture_emitter()
-        emitter.emit(_make_event(EventType.ITERATION_STARTED))
-        emitter._stop_live()
-        output = console.export_text()
-        assert "Iteration ?" in output
-
     @pytest.mark.parametrize("event_type,detail,expected", [
         (EventType.ITERATION_COMPLETED, "completed (5s)", "completed (5s)"),
         (EventType.ITERATION_FAILED, "failed with exit code 1 (3s)", "failed with exit code 1"),
@@ -193,50 +186,6 @@ class TestRunStopped:
         assert "3 succeeded" in output
         assert "failed" not in output
         assert "timed out" not in output
-
-
-class TestMissingEventData:
-    """Verify handlers degrade gracefully when event data keys are missing."""
-
-    def test_run_started_with_empty_data(self):
-        emitter, console = _capture_emitter()
-        emitter.emit(_make_event(EventType.RUN_STARTED))
-        output = console.export_text()
-        # No timeout or commands → no output
-        assert output.strip() == ""
-
-    def test_run_started_with_none_timeout(self):
-        emitter, console = _capture_emitter()
-        emitter.emit(_make_event(EventType.RUN_STARTED, timeout=None, commands=2))
-        output = console.export_text()
-        # None timeout treated as 0 via `or 0` → no timeout line
-        assert "Timeout" not in output
-        assert "2 configured" in output
-
-    def test_iteration_ended_with_empty_data(self):
-        emitter, console = _capture_emitter()
-        emitter.emit(_make_event(EventType.ITERATION_COMPLETED))
-        output = console.export_text()
-        assert "Iteration ?" in output
-
-    def test_log_message_with_empty_data(self):
-        emitter, console = _capture_emitter()
-        emitter.emit(_make_event(EventType.LOG_MESSAGE))
-        # Should not raise — defaults to empty message, info level
-
-    def test_commands_completed_with_empty_data(self):
-        emitter, console = _capture_emitter()
-        emitter.emit(_make_event(EventType.COMMANDS_COMPLETED))
-        output = console.export_text()
-        # count defaults to 0 → no output
-        assert output.strip() == ""
-
-    def test_run_stopped_with_empty_data(self):
-        emitter, console = _capture_emitter()
-        # reason won't match "completed", so handler returns early
-        emitter.emit(_make_event(EventType.RUN_STOPPED))
-        output = console.export_text()
-        assert output.strip() == ""
 
 
 class TestIterationSpinner:

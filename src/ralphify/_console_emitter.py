@@ -74,10 +74,10 @@ class ConsoleEmitter:
             handler(event.data)
 
     def _on_run_started(self, data: RunStartedData) -> None:
-        timeout = data.get("timeout") or 0
-        if timeout > 0:
+        timeout = data["timeout"]
+        if timeout is not None and timeout > 0:
             self._console.print(f"[dim]Timeout: {format_duration(timeout)} per iteration[/dim]")
-        command_count = data.get("commands", 0)
+        command_count = data["commands"]
         if command_count > 0:
             self._console.print(f"[dim]Commands: {command_count} configured[/dim]")
 
@@ -97,32 +97,32 @@ class ConsoleEmitter:
             self._live = None
 
     def _on_iteration_started(self, data: IterationStartedData) -> None:
-        iteration = data.get("iteration", "?")
+        iteration = data["iteration"]
         self._console.print(f"\n[bold blue]── Iteration {iteration} ──[/bold blue]")
         self._start_live()
 
     def _on_iteration_ended(self, data: IterationEndedData, color: str, icon: str) -> None:
         self._stop_live()
-        iteration = data.get("iteration", "?")
-        detail = data.get("detail", "")
+        iteration = data["iteration"]
+        detail = data["detail"]
         status_msg = f"[{color}]{icon} Iteration {iteration} {detail}"
-        log_file = data.get("log_file")
+        log_file = data["log_file"]
         if log_file:
             status_msg += f" {_ICON_ARROW}\n{log_file}"
         status_msg += f"[/{color}]"
         self._console.print(status_msg)
-        result_text = data.get("result_text")
+        result_text = data["result_text"]
         if result_text:
             self._console.print(f"  [dim]{result_text}[/dim]")
 
     def _on_commands_completed(self, data: CommandsCompletedData) -> None:
-        count = data.get("count", 0)
+        count = data["count"]
         if count:
             self._console.print(f"  [bold]Commands:[/bold] {count} ran")
 
     def _on_log_message(self, data: LogMessageData) -> None:
-        msg = data.get("message", "")
-        level = data.get("level", "info")
+        msg = data["message"]
+        level = data["level"]
         if level == "error":
             self._console.print(f"[red]{msg}[/red]")
             tb = data.get("traceback")
@@ -133,13 +133,13 @@ class ConsoleEmitter:
 
     def _on_run_stopped(self, data: RunStoppedData) -> None:
         self._stop_live()
-        if data.get("reason") != RunStatus.COMPLETED.reason:
+        if data["reason"] != RunStatus.COMPLETED.reason:
             return
 
-        total = data.get("total", 0)
-        completed = data.get("completed", 0)
-        failed = data.get("failed", 0)
-        timed_out_count = data.get("timed_out", 0)
+        total = data["total"]
+        completed = data["completed"]
+        failed = data["failed"]
+        timed_out_count = data["timed_out"]
 
         # timed_out is a subset of failed — show non-timeout failures
         # and timeouts as separate categories for clarity.

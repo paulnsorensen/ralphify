@@ -70,8 +70,8 @@ class EventType(Enum):
 class RunStartedData(TypedDict):
     commands: int
     max_iterations: int | None
-    timeout: int
-    delay: int
+    timeout: float | None
+    delay: float
 
 
 class RunStoppedData(TypedDict):
