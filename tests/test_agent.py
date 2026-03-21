@@ -3,10 +3,10 @@
 import io
 import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-from helpers import MOCK_POPEN, MOCK_SUBPROCESS, fail_result, ok_result
+from helpers import MOCK_POPEN, MOCK_SUBPROCESS, fail_result, make_mock_popen, ok_result
 
 from ralphify._agent import (
     AgentResult,
@@ -223,24 +223,12 @@ class TestAgentResult:
         assert result.success is False
 
 
-def _make_mock_popen(stdout_lines="", stderr_text="", returncode=0):
-    """Create a MagicMock that mimics subprocess.Popen for the streaming path."""
-    proc = MagicMock()
-    proc.stdin = MagicMock()
-    proc.stdout = io.StringIO(stdout_lines)
-    proc.stderr = io.StringIO(stderr_text)
-    proc.returncode = returncode
-    proc.wait.return_value = returncode
-    proc.poll.return_value = returncode  # not None → process finished
-    return proc
-
-
 class TestExecuteAgentStreaming:
     """Tests for the streaming execution path (_run_agent_streaming)."""
 
     @patch(MOCK_POPEN)
     def test_success(self, mock_popen):
-        mock_popen.return_value = _make_mock_popen(
+        mock_popen.return_value = make_mock_popen(
             stdout_lines='{"type": "status", "msg": "working"}\n',
             returncode=0,
         )
@@ -254,7 +242,7 @@ class TestExecuteAgentStreaming:
 
     @patch(MOCK_POPEN)
     def test_failure(self, mock_popen):
-        mock_popen.return_value = _make_mock_popen(returncode=1)
+        mock_popen.return_value = make_mock_popen(returncode=1)
         result = _run_agent_streaming(
             ["claude", "-p"], "prompt", timeout=None, log_path_dir=None, iteration=1,
         )
@@ -265,7 +253,7 @@ class TestExecuteAgentStreaming:
 
     @patch(MOCK_POPEN)
     def test_captures_result_text(self, mock_popen):
-        mock_popen.return_value = _make_mock_popen(
+        mock_popen.return_value = make_mock_popen(
             stdout_lines='{"type": "result", "result": "All tests passed"}\n',
             returncode=0,
         )
@@ -277,7 +265,7 @@ class TestExecuteAgentStreaming:
 
     @patch(MOCK_POPEN)
     def test_sends_prompt_to_stdin(self, mock_popen):
-        proc = _make_mock_popen(returncode=0)
+        proc = make_mock_popen(returncode=0)
         mock_popen.return_value = proc
         _run_agent_streaming(
             ["claude", "-p"], "my prompt text", timeout=None, log_path_dir=None, iteration=1,
@@ -288,7 +276,7 @@ class TestExecuteAgentStreaming:
 
     @patch(MOCK_POPEN)
     def test_adds_stream_json_flags(self, mock_popen):
-        mock_popen.return_value = _make_mock_popen(returncode=0)
+        mock_popen.return_value = make_mock_popen(returncode=0)
         _run_agent_streaming(
             ["claude", "-p"], "prompt", timeout=None, log_path_dir=None, iteration=1,
         )
@@ -301,7 +289,7 @@ class TestExecuteAgentStreaming:
 
     @patch(MOCK_POPEN)
     def test_writes_log_on_success(self, mock_popen, tmp_path):
-        mock_popen.return_value = _make_mock_popen(
+        mock_popen.return_value = make_mock_popen(
             stdout_lines="agent output\n",
             stderr_text="some stderr\n",
             returncode=0,
@@ -319,7 +307,7 @@ class TestExecuteAgentStreaming:
 
     @patch(MOCK_POPEN)
     def test_no_log_when_dir_not_set(self, mock_popen):
-        mock_popen.return_value = _make_mock_popen(returncode=0)
+        mock_popen.return_value = make_mock_popen(returncode=0)
         result = _run_agent_streaming(
             ["claude", "-p"], "prompt", timeout=None, log_path_dir=None, iteration=1,
         )
@@ -328,7 +316,7 @@ class TestExecuteAgentStreaming:
 
     @patch(MOCK_POPEN)
     def test_on_activity_callback_invoked(self, mock_popen):
-        mock_popen.return_value = _make_mock_popen(
+        mock_popen.return_value = make_mock_popen(
             stdout_lines='{"type": "status", "msg": "working"}\n{"type": "progress"}\n',
             returncode=0,
         )
@@ -347,7 +335,7 @@ class TestExecuteAgentStreaming:
     def test_timeout_kills_process(self, mock_popen, mock_time):
         # Simulate: start=0, deadline check after reading first line = 100 (past deadline)
         mock_time.side_effect = [0.0, 100.0, 100.0]
-        proc = _make_mock_popen(
+        proc = make_mock_popen(
             stdout_lines="line1\nline2\n",
             returncode=0,
         )

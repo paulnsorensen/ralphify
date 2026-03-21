@@ -4,8 +4,10 @@ Import these directly: ``from helpers import MOCK_SUBPROCESS, ok_result``
 Fixtures stay in conftest.py — pytest discovers them automatically.
 """
 
+import io
 import subprocess
 from pathlib import Path
+from unittest.mock import MagicMock
 
 from ralphify._events import Event, QueueEmitter
 from ralphify._run_types import RunConfig, RunState
@@ -75,6 +77,18 @@ def fail_result(*args, stdout="", stderr="", **kwargs) -> subprocess.CompletedPr
     as a direct factory: ``fail_result(stderr="err\\n")``.
     """
     return subprocess.CompletedProcess(args=args, returncode=1, stdout=stdout, stderr=stderr)
+
+
+def make_mock_popen(stdout_lines="", stderr_text="", returncode=0):
+    """Create a MagicMock that mimics subprocess.Popen for the streaming path."""
+    proc = MagicMock()
+    proc.stdin = MagicMock()
+    proc.stdout = io.StringIO(stdout_lines)
+    proc.stderr = io.StringIO(stderr_text)
+    proc.returncode = returncode
+    proc.wait.return_value = returncode
+    proc.poll.return_value = returncode  # not None → process finished
+    return proc
 
 
 def drain_events(emitter: QueueEmitter) -> list[Event]:
