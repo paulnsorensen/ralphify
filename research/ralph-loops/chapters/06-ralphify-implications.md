@@ -249,6 +249,48 @@ The completion promise pattern (machine-verifiable exit markers + stop hooks) ad
 
 This is complementary to command-based verification — commands verify *state*, completion promises verify *intent*.
 
+## MCP Server Integration
+
+The MCP ecosystem (5,000+ servers, 97M monthly SDK downloads) creates an opportunity for ralphify to extend what ralph loops can do without framework complexity.
+
+### The Complementary Model
+
+MCP servers and ralphify's command system serve different roles:
+- **Commands** = deterministic, pre-iteration context (test results, metrics, file state). The harness controls what runs.
+- **MCP servers** = dynamic, agent-invoked capabilities (debugging, profiling, docs lookup). The agent controls what to call.
+
+A ralph loop with MCP servers active can use `{{ commands.test_results }}` for verification AND use CodSpeed for profiling, Context7 for docs, and Playwright for browser testing — all within the same iteration.
+
+### Recommended MCP Servers for Ralph Authors
+
+| Use Case | MCP Server | Why |
+|---|---|---|
+| Eliminate hallucinated APIs | Context7 (Upstash) | Live docs for 9K+ libraries in context |
+| Performance optimization loops | CodSpeed | Flamegraphs + benchmark comparison — natural autoresearch pattern |
+| Cost awareness | Agent Budget Guard | Circuit breaker before $47K incidents |
+| Autonomous debugging | Deebo | Parallel hypothesis testing on git branches |
+| Cross-session memory | Hive Memory | Persistent learnings without manual state files |
+
+### The Context Window Risk
+
+MCP tool definitions can consume up to 72% of context window. For ralph loops with fresh context each iteration, this is critical. Recommendations:
+1. **Limit to 3-5 MCP servers per ralph** — tool selection accuracy drops 3x with bloated toolsets
+2. **Use dynamic tool loading** when available (Anthropic's Tool Search: 85% token reduction)
+3. **Document which MCP servers a ralph expects** in the RALPH.md frontmatter or README
+
+### Potential Framework Support
+
+A `mcp` field in RALPH.md could declare which MCP servers a ralph needs:
+
+```yaml
+mcp:
+  - context7
+  - codspeed
+  - agent-budget-guard
+```
+
+This would serve as documentation (what tools does this ralph use?) and eventually as a setup command (`ralph install-mcp` that configures the agent's MCP settings).
+
 ## Competitive Positioning
 
 Ralphify sits at a validated sweet spot: simpler than full orchestration frameworks (LangGraph, CrewAI) but more structured than raw bash loops. The Karpathy autoresearch moment — 630 lines running 700 experiments — proves that "simple harness, powerful results" wins.

@@ -8,7 +8,7 @@
 
 **What was done:**
 - Searched across HN, blogs, engineering posts, YouTube references for agent loop/harness patterns
-- Deep-read 12+ high-signal sources including Anthropic, Spotify, Meta, Karpathy, OpenAI, Addy Osmani
+- Deep-read 12+ high-signal sources including Anthropic, Spotify, Meta, Karpathy, OpenAI
 - Established workspace with full report structure (6 chapters)
 - Captured 20+ sources, 15+ insights, answered 7 research questions, identified 10 open questions
 
@@ -200,8 +200,23 @@
 - Huntley pushes to master with no branches, deploys in 30 seconds, no code review — extreme but directionally correct
 - Ralph TUI tracks cost per feature ($1.50 target vs $5+ typical) — first dedicated observability dashboard for agent loops
 - Completion promise gating has been formalized as the architectural fix for ReAct's self-assessment weakness
-- Phil Schmid frames harness layers as permanent (context, constraints, safety) vs temporary (reasoning, loop detection, planning) — the first clear taxonomy
+- Phil Schmid frames harness layers as permanent (context, constraints, safety) vs temporary (reasoning optimization, loop detection, planning) — the first clear taxonomy
 
 **Next iteration should focus on:**
 - Refine cycle (iteration 10): 12 chapters may be too many — consider consolidation. REPORT.md now has 20 insights — trim back to ~17. Update Ch06 implications with new findings (entropy ralph, rippable harness, completion promises, observability).
 - Or: explore the "cleanup ralph" pattern in more depth — how do teams actually implement periodic codebase maintenance agents?
+
+## Iteration 10 — 2026-03-22
+
+**Decision: HYBRID — refine + targeted research**
+
+**Refine focus (primary):**
+1. REPORT.md: trim 20 → 17 insights by merging related pairs
+   - Merge #5 (probabilistic/deterministic) into #2 (verification) — #5 is the design principle behind verification
+   - Merge #18 (rippable harness) + #19 (entropy management) → single "harness evolution" insight
+   - Fold #8 ("on the loop") into intro paragraph — it's a meta-observation, not a finding
+2. Tighten chapter structure — consider whether any chapters should merge
+
+**Research focus (secondary):**
+- **MCP servers and the agent infrastructure layer** — the most under-explored topic with high practitioner relevance. How are MCP servers changing what autonomous loops can do? What new capabilities do they unlock for ralph loops?
+- This addresses the gap: research covers architecture, verification, anti-patterns, trust, testing, entropy — but NOT the tooling/infrastructure layer that practitioners are building around their loops

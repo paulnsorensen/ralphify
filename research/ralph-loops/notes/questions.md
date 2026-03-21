@@ -19,6 +19,9 @@
 - [ ] What's the right cadence for garbage-collection/cleanup ralphs — daily, weekly, event-triggered? OpenAI did it weekly (Fridays) before automating.
 - [ ] How do teams decide which harness layers to rip when a new model ships — is there a systematic evaluation process?
 - [ ] What does Huntley's Level 9 "evolutionary software" look like at scale beyond a single developer? Is the no-branches, push-to-master model viable for teams?
+- [ ] What's the optimal number of MCP servers per agent loop before tool selection accuracy degrades? Speakeasy handles 400 tools with Search-Describe-Execute, but what about in practice?
+- [ ] How do MCP gateway solutions (Composio, TrueFoundry) compare for multi-agent ralph loop deployments?
+- [ ] Will MCP's Tasks primitive enable a new class of async ralph loops that hibernate between MCP task completions?
 
 ## Answered
 - [x] What are the most effective patterns for keeping agents on track during long-running loops? — Fresh context resets + file-based state + verification gates. See chapters 01-02.

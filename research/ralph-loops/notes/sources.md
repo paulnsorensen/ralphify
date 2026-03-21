@@ -125,6 +125,22 @@
 - https://linearb.io/dev-interrupted/podcast/inventing-the-ralph-wiggum-loop — Dev Interrupted / LinearB — Geoffrey Huntley podcast: Loom/Gas Town, Level 9 evolutionary software, agents push to master with 30-second deploys — **high**
 - https://www.infoq.com/news/2026/02/openai-harness-engineering-codex/ — InfoQ — OpenAI harness engineering: 1M+ lines with zero hand-written code, three pillars (context engineering, architectural constraints, entropy management), Friday cleanup → automated GC agents — **high**
 
+- https://www.anthropic.com/engineering/advanced-tool-use — Anthropic — Tool Search + Programmatic Tool Calling: 85% token reduction, 13-point accuracy improvement, dynamic tool loading GA Feb 2026 — **high**
+- https://hackteam.io/blog/tool-calling-is-broken-without-mcp-server-composition/ — Roy Derks / Hackteam — 4 MCP composition patterns: client-side, virtual server, dynamic selection, programmatic execution — **high**
+- https://a16z.com/a-deep-dive-into-mcp-and-the-future-of-ai-tooling/ — a16z — MCP architecture deep dive: agent-centric execution model vs LSP reactive model, 97M monthly downloads — **high**
+- https://www.speakeasy.com/mcp/tool-design/dynamic-tool-discovery — Speakeasy — Search-Describe-Execute pattern: 160x token reduction, 100% success rate across 40-400 tools — **high**
+- https://www.docker.com/blog/dynamic-mcps-stop-hardcoding-your-agents-world/ — Docker — Dynamic MCPs: agents discover, configure, and compose tools at runtime in sandbox — **high**
+- https://github.com/snagasuri/deebo-prototype — Sriram Nagasuri — Deebo: autonomous debugging MCP server, parallel git branches for hypothesis testing — **high**
+- https://codspeed.io/changelog/2026-03-16-mcp-server — CodSpeed — Performance engineering MCP: flamegraphs, benchmark comparison, optimize-measure-repeat loops — **high**
+- https://github.com/upstash/context7 — Upstash — Context7 MCP: live docs for 9K+ libraries, eliminates hallucinated APIs — **high**
+- https://news.ycombinator.com/item?id=47207442 — HN — Hive Memory: cross-project persistent memory for coding agents, ~/.cortex/ storage — **medium**
+- https://news.ycombinator.com/item?id=46692102 — HN — Mother MCP: auto-detect tech stack, install modular ~500-token skills, 25+ skill registries — **medium**
+- https://www.bannerbear.com/blog/8-best-mcp-servers-for-claude-code-developers-in-2026/ — Bannerbear — Curated MCP server list for Claude Code developers — **medium**
+- https://github.com/alfredolopez80/multi-agent-ralph-loop — alfredolopez80 — Multi-agent ralph loop with 13 MCP servers, specialized sub-agents (coder/reviewer/tester/researcher) — **high**
+- https://news.ycombinator.com/item?id=44678426 — HN — "What is so good about MCP servers?" — practitioner debate: productivity gains vs reliability concerns, cargo-culting criticism — **medium**
+- https://blog.modelcontextprotocol.io/posts/2026-mcp-roadmap/ — MCP team — 2026 roadmap: transport scalability, Tasks primitive, governance, enterprise readiness — **medium**
+- https://www.truefoundry.com/blog/best-mcp-gateways — TrueFoundry — MCP gateway comparison: Composio, TrueFoundry, Portkey — **medium**
+
 ## Lower Relevance
 
 - https://www.permit.io/blog/human-in-the-loop-for-ai-agents-best-practices-frameworks-use-cases-and-demo — Permit.io — Human-in-the-loop patterns for AI agents — **low**

@@ -267,9 +267,10 @@ Use `event.to_dict()` to serialize to a JSON-compatible dict.
 | `NullEmitter` | Discards all events silently. Default when no emitter is passed. |
 | `QueueEmitter` | Pushes events into a `queue.Queue` for async consumption. |
 | `FanoutEmitter` | Broadcasts each event to multiple emitters. |
+| `BoundEmitter` | Wraps any emitter with a fixed `run_id` so you don't have to construct `Event` objects manually. |
 
 ```python
-from ralphify import QueueEmitter, FanoutEmitter
+from ralphify import QueueEmitter, FanoutEmitter, BoundEmitter
 
 # Consume events from a queue
 q_emitter = QueueEmitter()
@@ -281,6 +282,10 @@ while not q_emitter.queue.empty():
 # Broadcast to multiple listeners
 fanout = FanoutEmitter([q_emitter, MyEmitter()])
 run_loop(config, state, emitter=fanout)
+
+# Emit events without constructing Event objects
+bound = BoundEmitter(q_emitter, run_id="my-run")
+bound(EventType.LOG_MESSAGE, {"message": "hello", "level": "info"})
 ```
 
 ---

@@ -102,6 +102,17 @@
 - **Three operational modes for loops: forward (build), reverse (clean room), loop mindset (continuous).** The "loop mindset" is the key shift — ralph as continuous process, not one-time execution.
 - **Model tiering within loops cuts costs.** Cheaper models (Haiku) for routine tasks, premium models (Opus) for complex logic. Cost optimization happens per-iteration, not per-loop.
 
+## MCP & Agent Infrastructure (NEW — Iteration 10)
+- **MCP servers extend the harness, not the loop.** The loop remains prompt-pipe-repeat; MCP adds debugging, profiling, browser testing, docs, cost management. The iteration boundary, state management, and verification gates are unchanged.
+- **Tool definitions consume up to 72% of context window with 50+ tools.** Dynamic tool loading (Anthropic's Tool Search) achieves 85% token reduction. For ralph loops with fresh context per iteration, this waste is multiplied by iteration count.
+- **Speakeasy's Search-Describe-Execute achieves 160x token reduction with 100% success.** The pattern works across 40-400 tools — the most efficient approach for MCP-heavy agent loops.
+- **5,000+ MCP servers exist but reliability is unproven.** HN practitioners report "doesn't know when to call the MCP" 9/10 times. Start with 3-5 high-value servers, not 50.
+- **MCP + commands are complementary, not competing.** Commands = deterministic pre-iteration context (harness-controlled). MCP = dynamic agent-invoked capabilities (agent-controlled). Both in the same loop.
+- **Multi-agent ralph loops with MCP already exist.** alfredolopez80's project runs 13 MCP servers with specialized sub-agents (coder, reviewer, tester, researcher), each with focused context windows, coordinating via git.
+- **MCP's Tasks primitive enables structured hibernate-and-wake.** An agent can submit a task to an MCP server, exit the iteration, and resume when the task completes — the Meta REA pattern made protocol-native.
+- **Mother MCP solves the instruction ceiling differently.** Instead of one monolithic CLAUDE.md, auto-detect tech stack and load modular ~500-token skills. 25+ skill registries. An alternative to the "router" approach from Ch08.
+- **MCP gateways (Composio, TrueFoundry) are emerging for production agent deployments.** Centralized auth, observability, and cost tracking across MCP servers. Important for multi-agent ralph loops running in CI/scheduled.
+
 ## Ralphify-Specific
 - **Ralphify's command system naturally supports the "commands as verifiers" pattern.** Running tests/metrics as commands and injecting results into the prompt is exactly what Spotify and Karpathy do — ralphify just needs to formalize verification as a first-class concept.
 - **Agent skills as portable packages is a validated trend.** Ralphify's skill system aligns with the industry direction of installable, reusable instruction sets.

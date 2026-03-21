@@ -44,6 +44,8 @@
 
 20. **Completion promise gating replaces subjective self-assessment.** Machine-verifiable exit markers (`<promise>COMPLETE</promise>`) combined with stop hooks prevent premature loop exit. The agent exits only when external verification passes — not when it *thinks* it's done. This is the architectural fix for the fundamental weakness in ReAct-style self-assessment.
 
+21. **MCP servers extend the harness, not the loop.** 5,000+ MCP servers and 97M monthly SDK downloads have created an infrastructure layer for agent loops — debugging (Deebo), profiling (CodSpeed), live docs (Context7), cost tracking (Budget Guard), browser testing (Playwright). But tool definitions consume up to 72% of context window; dynamic tool loading (85% token reduction via Anthropic's Tool Search) is essential. Start with 3-5 high-value servers, not 50.
+
 ## Chapters
 
 | # | Chapter | Summary |
@@ -60,6 +62,7 @@
 | 10 | [Operational Reality](chapters/10-operational-reality.md) | Ecosystem landscape, cost control, circuit breakers, daily practitioner workflows |
 | 11 | [Trust, Testing, and Convergence](chapters/11-trust-testing-convergence.md) | Autonomy scaling data, harness testing pyramids, spec+ralph integration |
 | 12 | [Harness Evolution & Entropy Management](chapters/12-harness-evolution-entropy.md) | Rippable harnesses, garbage collection agents, completion promises, evolutionary software |
+| 13 | [MCP & the Agent Infrastructure Layer](chapters/13-mcp-agent-infrastructure.md) | 5,000+ MCP servers, dynamic tool loading, context window management, ralph+MCP integration |
 
 ## Open Questions
 
@@ -71,6 +74,8 @@
 - How effective is the "meta-ralph" pattern — a ralph that optimizes other ralphs via eval feedback?
 - What's the right cadence for garbage-collection/cleanup ralphs — daily, weekly, event-triggered?
 - How do teams decide which harness layers to rip when a new model ships — is there a systematic evaluation process?
+- What's the optimal number of MCP servers per agent loop before tool selection accuracy degrades?
+- How do MCP gateway solutions (Composio, TrueFoundry) compare for multi-agent ralph loop deployments?
 
 ## Key Sources
 
@@ -104,3 +109,6 @@
 - [The Importance of Agent Harness in 2026](https://www.philschmid.de/agent-harness-2026) — Phil Schmid (build-to-delete, rippable harness framework)
 - [Harness Engineering (OpenAI)](https://openai.com/index/harness-engineering/) — OpenAI (entropy management, garbage collection agents, 1M+ lines with zero hand-written code)
 - [Everything is a Ralph Loop](https://ghuntley.com/loop/) — Geoffrey Huntley (evolutionary software, Loom, Level 9)
+- [Advanced Tool Use](https://www.anthropic.com/engineering/advanced-tool-use) — Anthropic (Tool Search, 85% token reduction, dynamic loading)
+- [Tool Calling Without MCP Server Composition](https://hackteam.io/blog/tool-calling-is-broken-without-mcp-server-composition/) — Hackteam (RAG-MCP, 4 composition patterns)
+- [Deep Dive into MCP](https://a16z.com/a-deep-dive-into-mcp-and-the-future-of-ai-tooling/) — a16z (MCP architecture, agent-centric execution model)
