@@ -21,7 +21,7 @@ class TestReadBundledSkill:
         assert "RALPH.md" in content
 
     def test_raises_for_nonexistent_skill(self):
-        with pytest.raises(Exception):
+        with pytest.raises(FileNotFoundError):
             read_bundled_skill("does-not-exist")
 
 

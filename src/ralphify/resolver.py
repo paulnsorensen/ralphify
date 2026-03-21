@@ -11,6 +11,16 @@ prompt.  This forces explicit placement and avoids accidental data dumps.
 import re
 
 _ARGS_CLEANUP_RE = re.compile(r"\{\{\s*args\.[a-zA-Z0-9_-]+\s*\}\}")
+_PATTERN_CACHE: dict[str, re.Pattern[str]] = {}
+
+
+def _get_pattern(kind: str) -> re.Pattern[str]:
+    """Return a compiled regex for the given placeholder kind, caching the result."""
+    if kind not in _PATTERN_CACHE:
+        _PATTERN_CACHE[kind] = re.compile(
+            r"\{\{\s*" + re.escape(kind) + r"\.([a-zA-Z0-9_-]+)\s*\}\}"
+        )
+    return _PATTERN_CACHE[kind]
 
 
 def resolve_placeholders(
@@ -29,7 +39,7 @@ def resolve_placeholders(
     if not available:
         return prompt
 
-    named_pattern = re.compile(r"\{\{\s*" + re.escape(kind) + r"\.([a-zA-Z0-9_-]+)\s*\}\}")
+    named_pattern = _get_pattern(kind)
 
     def _replace_named(match: re.Match) -> str:
         name = match.group(1)

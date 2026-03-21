@@ -76,7 +76,7 @@ def _run_commands(
     commands: list[Command],
     ralph_dir: Path,
     project_root: Path,
-    timeout: int = DEFAULT_COMMAND_TIMEOUT,
+    timeout: int | float = DEFAULT_COMMAND_TIMEOUT,
 ) -> dict[str, str]:
     """Execute all commands and return a dict of name→output.
 
