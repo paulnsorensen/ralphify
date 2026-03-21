@@ -195,8 +195,8 @@ def _parse_user_args(
         else:
             if not declared_names:
                 raise typer.BadParameter(
-                    f"Positional argument '{token}' requires args declared in RALPH.md frontmatter. "
-                    f"Use --name value syntax or add 'args: [...]' to your RALPH.md."
+                    f"Positional argument '{token}' requires args declared in {RALPH_MARKER} frontmatter. "
+                    f"Use --name value syntax or add 'args: [...]' to your {RALPH_MARKER}."
                 )
             if positional_index >= len(declared_names):
                 raise typer.BadParameter(
@@ -252,10 +252,10 @@ def _resolve_ralph_paths(ralph_path: str) -> tuple[Path, Path]:
         ralph_dir = path.parent
         ralph_file = path
     else:
-        _exit_error(f"'{ralph_path}' is not a directory or RALPH.md file.")
+        _exit_error(f"'{ralph_path}' is not a directory or {RALPH_MARKER} file.")
 
     if not ralph_file.exists():
-        _exit_error(f"RALPH.md not found at '{ralph_file}'.")
+        _exit_error(f"{RALPH_MARKER} not found at '{ralph_file}'.")
 
     return ralph_dir, ralph_file
 
@@ -278,13 +278,13 @@ def _build_run_config(
     # Validate required agent field
     agent = fm.get(FIELD_AGENT)
     if not isinstance(agent, str) or not agent.strip():
-        _exit_error(f"Missing or empty '{FIELD_AGENT}' field in RALPH.md frontmatter.")
+        _exit_error(f"Missing or empty '{FIELD_AGENT}' field in {RALPH_MARKER} frontmatter.")
 
     # Validate agent command exists
     try:
         agent_binary = shlex.split(agent)[0]
     except ValueError as exc:
-        _exit_error(f"Malformed '{FIELD_AGENT}' field in RALPH.md frontmatter: {exc}")
+        _exit_error(f"Malformed '{FIELD_AGENT}' field in {RALPH_MARKER} frontmatter: {exc}")
     if not shutil.which(agent_binary):
         _exit_error(f"Agent command '{agent_binary}' not found on PATH.")
 
