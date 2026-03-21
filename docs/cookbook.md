@@ -347,7 +347,7 @@ ralph run bugfix -n 10 --log-dir ralph_logs
 
 ## Parameterized research loop
 
-A reusable ralph for researching any part of a codebase.
+A reusable ralph for researching any part of a codebase. Args work in both the prompt body and command `run` fields, so the same ralph adapts to any target.
 
 **`research/RALPH.md`**
 
@@ -355,13 +355,29 @@ A reusable ralph for researching any part of a codebase.
 ---
 agent: claude -p --dangerously-skip-permissions
 args: [dir, focus]
+commands:
+  - name: git-log
+    run: git log --oneline -10 -- {{ args.dir }}
+  - name: research-so-far
+    run: cat RESEARCH.md
 ---
+
+## Recent changes in {{ args.dir }}
+
+{{ commands.git-log }}
+
+## Research so far
+
+{{ commands.research-so-far }}
 
 You are an autonomous research agent. Each iteration starts with
 a fresh context.
 
 Research the codebase at {{ args.dir }}.
 Focus area: {{ args.focus }}
+
+If RESEARCH.md already has findings, go deeper on areas that need
+more detail rather than repeating what's there.
 
 ## Rules
 
@@ -375,3 +391,5 @@ Focus area: {{ args.focus }}
 ralph run research -- --dir ./api --focus "error handling"
 ralph run research -- --dir ./frontend --focus "state management"
 ```
+
+The `git-log` command uses `{{ args.dir }}` in the `run` field to show only recent commits touching the target directory. The `research-so-far` command feeds previous findings back into the prompt so the agent builds on its earlier work instead of repeating it.
