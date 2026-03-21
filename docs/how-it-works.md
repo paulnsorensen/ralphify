@@ -31,7 +31,7 @@ The ralph file is read from disk **every iteration**. This means you can edit th
 
 ### 2. Run commands
 
-Each command defined in the `commands` frontmatter runs in order and captures its output (stdout + stderr). Commands run with the project root as the working directory.
+Each command defined in the `commands` frontmatter runs in order and captures its output (stdout + stderr). Commands run from the **project root** by default. Commands starting with `./` run relative to the **ralph directory** instead — useful for scripts bundled alongside your `RALPH.md`.
 
 Command output is captured **regardless of exit code** — a command like `pytest -x` exits non-zero when tests fail, but its output is exactly what you want in the prompt.
 

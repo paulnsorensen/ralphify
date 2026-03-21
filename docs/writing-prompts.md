@@ -306,6 +306,7 @@ Rules of thumb:
 - **Commands:** Pick the 2-3 most useful signals. Don't add commands whose output the agent doesn't need.
 - **User args:** Use `{{ args.name }}` to make ralphs reusable — pass project-specific values from the CLI instead of hardcoding them in the prompt. Args also work in command `run` strings (e.g., `run: gh issue view {{ args.issue }}`).
 - **Command output:** Can be long. If your commands produce verbose output, consider using scripts that filter to the relevant lines.
+- **Working directory:** Commands run from the project root by default. Commands starting with `./` run from the ralph directory — handy for bundling helper scripts next to your `RALPH.md`.
 
 ## Next steps
 
