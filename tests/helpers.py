@@ -133,7 +133,7 @@ def ok_run_result(
 
     Mirrors :func:`ok_result` but for the runner module's return type.
     """
-    return RunResult(success=True, returncode=0, output=output)
+    return RunResult(returncode=0, output=output)
 
 
 def make_mock_popen(

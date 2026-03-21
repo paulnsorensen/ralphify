@@ -18,12 +18,21 @@ from ralphify._output import SUBPROCESS_TEXT_KWARGS, collect_output
 
 @dataclass
 class RunResult:
-    """Result of running a command or script."""
+    """Result of running a command or script.
 
-    success: bool
+    *returncode* is the process exit code, or ``None`` when the process
+    timed out.  *timed_out* makes the timeout condition explicit — prefer
+    checking ``timed_out`` over ``returncode is None``.
+    """
+
     returncode: int | None
     output: str
     timed_out: bool = False
+
+    @property
+    def success(self) -> bool:
+        """Whether the command exited successfully (code 0, no timeout)."""
+        return self.returncode == 0 and not self.timed_out
 
 
 def run_command(
@@ -61,13 +70,11 @@ def run_command(
             env=merged_env,
         )
         return RunResult(
-            success=result.returncode == 0,
             returncode=result.returncode,
             output=collect_output(result.stdout, result.stderr),
         )
     except subprocess.TimeoutExpired as e:
         return RunResult(
-            success=False,
             returncode=None,
             output=collect_output(e.stdout, e.stderr),
             timed_out=True,
