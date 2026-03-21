@@ -14,7 +14,7 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
-from ralphify._events import StopReason
+from ralphify._events import STOP_COMPLETED, STOP_ERROR, STOP_USER_REQUESTED, StopReason
 
 
 DEFAULT_COMMAND_TIMEOUT: float = 60
@@ -61,9 +61,9 @@ class RunStatus(Enum):
 
 # Maps terminal run statuses to the reason string emitted in RUN_STOPPED events.
 _STATUS_REASONS: dict[RunStatus, StopReason] = {
-    RunStatus.COMPLETED: "completed",
-    RunStatus.FAILED: "error",
-    RunStatus.STOPPED: "user_requested",
+    RunStatus.COMPLETED: STOP_COMPLETED,
+    RunStatus.FAILED: STOP_ERROR,
+    RunStatus.STOPPED: STOP_USER_REQUESTED,
 }
 
 

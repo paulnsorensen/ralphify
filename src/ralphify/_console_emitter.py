@@ -17,6 +17,8 @@ from rich.spinner import Spinner
 from rich.text import Text
 
 from ralphify._events import (
+    LOG_ERROR,
+    STOP_COMPLETED,
     CommandsCompletedData,
     Event,
     EventType,
@@ -123,7 +125,7 @@ class ConsoleEmitter:
     def _on_log_message(self, data: LogMessageData) -> None:
         msg = escape_markup(data["message"])
         level = data["level"]
-        if level == "error":
+        if level == LOG_ERROR:
             self._console.print(f"[red]{msg}[/red]")
             tb = data.get("traceback")
             if tb:
@@ -133,7 +135,7 @@ class ConsoleEmitter:
 
     def _on_run_stopped(self, data: RunStoppedData) -> None:
         self._stop_live()
-        if data["reason"] != "completed":
+        if data["reason"] != STOP_COMPLETED:
             return
 
         total = data["total"]
