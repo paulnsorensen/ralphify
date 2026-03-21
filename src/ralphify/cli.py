@@ -5,6 +5,8 @@ loop.  Terminal rendering of events is handled by
 :class:`~ralphify._console_emitter.ConsoleEmitter`.
 """
 
+from __future__ import annotations
+
 import os
 import shlex
 import shutil

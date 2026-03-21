@@ -8,6 +8,8 @@ HTML comments in the body are stripped so users can leave notes that
 don't leak into the assembled prompt.
 """
 
+from __future__ import annotations
+
 import re
 from typing import Any
 

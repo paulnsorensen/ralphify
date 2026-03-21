@@ -8,6 +8,8 @@ Items not referenced by a named placeholder are excluded from the
 prompt.  This forces explicit placement and avoids accidental data dumps.
 """
 
+from __future__ import annotations
+
 import re
 
 # Shared pattern for Mustache-style placeholders: {{ kind.name }}
