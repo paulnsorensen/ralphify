@@ -202,8 +202,7 @@ def _run_iteration(
         )
         emit(EventType.COMMANDS_COMPLETED, {
             "iteration": iteration,
-            "passed": len(command_outputs),
-            "failed": 0,
+            "count": len(command_outputs),
         })
 
     # Assemble prompt

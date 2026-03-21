@@ -85,22 +85,15 @@ class TestIterationLifecycle:
 
 
 class TestCommandsCompleted:
-    def test_shows_passed_count(self):
+    def test_shows_command_count(self):
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(EventType.COMMANDS_COMPLETED, passed=3, failed=0))
+        emitter.emit(_make_event(EventType.COMMANDS_COMPLETED, count=3))
         output = console.export_text()
-        assert "3 passed" in output
+        assert "3 ran" in output
 
-    def test_shows_failed_count(self):
+    def test_no_output_when_zero_count(self):
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(EventType.COMMANDS_COMPLETED, passed=2, failed=1))
-        output = console.export_text()
-        assert "1 failed" in output
-        assert "2 passed" in output
-
-    def test_no_output_when_zero_counts(self):
-        emitter, console = _capture_emitter()
-        emitter.emit(_make_event(EventType.COMMANDS_COMPLETED, passed=0, failed=0))
+        emitter.emit(_make_event(EventType.COMMANDS_COMPLETED, count=0))
         output = console.export_text()
         assert output.strip() == ""
 

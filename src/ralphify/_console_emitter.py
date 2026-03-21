@@ -103,15 +103,9 @@ class ConsoleEmitter:
             self._rprint(f"  [dim]{data['result_text']}[/dim]")
 
     def _on_commands_completed(self, data: dict) -> None:
-        passed = data.get("passed", 0)
-        failed = data.get("failed", 0)
-        if passed or failed:
-            parts = []
-            if passed:
-                parts.append(f"{passed} passed")
-            if failed:
-                parts.append(f"{failed} failed")
-            self._rprint(f"  [bold]Commands:[/bold] {', '.join(parts)}")
+        count = data.get("count", 0)
+        if count:
+            self._rprint(f"  [bold]Commands:[/bold] {count} ran")
 
     def _on_log_message(self, data: dict) -> None:
         msg = data.get("message", "")

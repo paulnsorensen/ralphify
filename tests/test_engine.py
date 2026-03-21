@@ -107,10 +107,11 @@ class TestRunLoopEvents:
         events = drain_events(q)
         types = [e.type for e in events]
         assert types[0] == EventType.RUN_STARTED
-        assert EventType.ITERATION_STARTED in types
-        assert EventType.PROMPT_ASSEMBLED in types
-        assert EventType.ITERATION_COMPLETED in types
         assert types[-1] == EventType.RUN_STOPPED
+        # Verify lifecycle ordering within the iteration
+        assert types.index(EventType.ITERATION_STARTED) < types.index(EventType.PROMPT_ASSEMBLED)
+        assert types.index(EventType.PROMPT_ASSEMBLED) < types.index(EventType.ITERATION_COMPLETED)
+        assert types.index(EventType.ITERATION_COMPLETED) < types.index(EventType.RUN_STOPPED)
 
     @patch(MOCK_SUBPROCESS, side_effect=fail_result)
     def test_failure_event_emitted(self, mock_run, tmp_path):
