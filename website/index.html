@@ -276,42 +276,10 @@
       </div>
     </section>
 
-    <!-- The Morning After — before/after contrast -->
-    <section class="morning" aria-labelledby="morning-heading">
-      <div class="morning-inner">
-        <p class="section-eyebrow fade-up">The morning after</p>
-        <h2 id="morning-heading" class="section-heading fade-up">You went to bed.<br>So did your agent.</h2>
-
-        <div class="morning-grid fade-up">
-          <div class="morning-card morning-card-them">
-            <div class="morning-label">
-              <span class="status-dot"></span>
-              Your teammate
-            </div>
-            <div class="morning-stat">23</div>
-            <div class="morning-stat-label">commits overnight</div>
-            <div class="morning-detail">48 iterations &middot; 3 PRs ready for review &middot; all tests passing</div>
-          </div>
-
-          <div class="morning-vs" aria-hidden="true">vs</div>
-
-          <div class="morning-card morning-card-you">
-            <div class="morning-label">
-              <span class="status-dot status-dot-dead"></span>
-              You
-            </div>
-            <div class="morning-stat">0</div>
-            <div class="morning-stat-label">commits overnight</div>
-            <div class="morning-detail">Closed laptop &middot; agent died &middot; woke up to nothing</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- The FOMO — Slack scene -->
+    <!-- The FOMO — combined storytelling section -->
     <section class="fomo" aria-labelledby="fomo-heading">
       <div class="fomo-inner">
-        <p class="fomo-eyebrow fade-up">Sound familiar?</p>
+        <p class="section-eyebrow fomo-eyebrow fade-up">Sound familiar?</p>
         <h2 id="fomo-heading" class="section-heading fade-up">Everyone has an agent running.<br>Except you.</h2>
 
         <div class="fomo-content fade-up">
@@ -344,17 +312,26 @@
             </div>
           </div>
 
-          <!-- Side quotes -->
-          <div class="fomo-quotes">
-            <div class="fomo-quote-card">
-              <div class="fomo-tension-icon" aria-hidden="true">&#x1F4BB;</div>
-              <div class="fomo-quote">&ldquo;Do you have an agent running?&rdquo;</div>
-              <p class="fomo-context">The question that haunts every standup. Three people nod. You stare at your coffee.</p>
+          <!-- Stats contrast -->
+          <div class="fomo-contrast">
+            <div class="fomo-contrast-card fomo-contrast-them">
+              <div class="fomo-contrast-label">
+                <span class="status-dot"></span>
+                Your teammate
+              </div>
+              <div class="fomo-contrast-stat">23</div>
+              <div class="fomo-contrast-unit">commits overnight</div>
+              <div class="fomo-contrast-detail">48 iterations &middot; 3 PRs ready &middot; all tests green</div>
             </div>
-            <div class="fomo-quote-card">
-              <div class="fomo-tension-icon" aria-hidden="true">&#x1F634;</div>
-              <div class="fomo-quote">&ldquo;I just let it run overnight.&rdquo;</div>
-              <p class="fomo-context">They went to bed and woke up to a PR with 23 commits. You woke up to nothing.</p>
+
+            <div class="fomo-contrast-card fomo-contrast-you">
+              <div class="fomo-contrast-label">
+                <span class="status-dot status-dot-dead"></span>
+                You
+              </div>
+              <div class="fomo-contrast-stat">0</div>
+              <div class="fomo-contrast-unit">commits overnight</div>
+              <div class="fomo-contrast-detail">Closed laptop &middot; agent died &middot; woke up to nothing</div>
             </div>
           </div>
         </div>
@@ -630,6 +607,38 @@ pick the next task from TODO.md and implement it.</code></pre>
         });
       }, { threshold: 0.3 });
       termObs.observe(terminalBody.closest('.terminal-window'));
+    }
+
+    // Animate FOMO contrast stats when visible
+    const animateCounters = () => {
+      document.querySelectorAll('.fomo-contrast-stat').forEach(el => {
+        const target = parseInt(el.textContent, 10);
+        if (isNaN(target) || target === 0) return;
+        el.textContent = '0';
+        let current = 0;
+        const step = Math.max(1, Math.floor(target / 30));
+        const interval = setInterval(() => {
+          current += step;
+          if (current >= target) {
+            current = target;
+            clearInterval(interval);
+          }
+          el.textContent = current;
+        }, 40);
+      });
+    };
+
+    const fomoContent = document.querySelector('.fomo-content');
+    if (fomoContent) {
+      const fomoObs = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            animateCounters();
+            fomoObs.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.3 });
+      fomoObs.observe(fomoContent);
     }
   </script>
 </body>
