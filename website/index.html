@@ -182,6 +182,9 @@
   <header>
     <nav aria-label="Main navigation">
       <a href="./" class="logo" aria-label="Ralphify home"><span class="logo-symbol">&#x221e;</span> Ralphify</a>
+      <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false" onclick="this.setAttribute('aria-expanded', this.getAttribute('aria-expanded') === 'false' ? 'true' : 'false'); this.nextElementSibling.classList.toggle('open')">
+        <span></span><span></span><span></span>
+      </button>
       <div class="nav-links">
         <a href="docs/">Docs</a>
         <a href="docs/cookbook/">Cookbook</a>
