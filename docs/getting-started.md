@@ -88,6 +88,9 @@ cat ralph_logs/001_*.log
 
 If the agent produced useful work, you're ready to add test feedback.
 
+!!! info "Something not working?"
+    If the agent errored or didn't do anything useful, check [Troubleshooting](troubleshooting.md) for common issues — agent hangs, missing commands, and frontmatter mistakes are all covered there.
+
 ## Step 4: Add a test command
 
 Commands run each iteration and their output is available in the prompt via placeholders. Add a test command to your `RALPH.md` frontmatter:
@@ -218,6 +221,8 @@ Watch the output. Each iteration runs the commands, assembles the prompt with th
 
 ── Iteration 3 ──
 ✓ Iteration 3 completed (38.5s) → ralph_logs/003_20250115-142812.log
+
+Done: 3 iteration(s) — 2 succeeded, 1 failed
 ```
 
 If the agent breaks a test, the next iteration sees the failure output via `{{ commands.tests }}` and fixes it automatically.
@@ -229,4 +234,5 @@ Once you're confident the loop works, drop the `-n 3` to let it run indefinitely
 - [Writing Prompts](writing-prompts.md) — patterns for writing effective autonomous loop prompts
 - [Cookbook](cookbook.md) — copy-pasteable setups for Python, TypeScript, Rust, and more
 - [How it Works](how-it-works.md) — what happens inside each iteration
+- [Troubleshooting](troubleshooting.md) — when things don't work as expected
 - [CLI Reference](cli.md) — all commands and options
