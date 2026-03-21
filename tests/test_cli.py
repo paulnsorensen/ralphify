@@ -168,6 +168,20 @@ class TestRun:
         assert result.exit_code == 1
         assert "positive number" in result.output.lower()
 
+    def test_errors_with_nan_timeout(self, mock_which, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        ralph_dir = make_ralph(tmp_path)
+        result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1", "--timeout", "nan"])
+        assert result.exit_code == 1
+        assert "positive number" in result.output.lower()
+
+    def test_errors_with_nan_delay(self, mock_which, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        ralph_dir = make_ralph(tmp_path)
+        result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1", "--delay", "nan"])
+        assert result.exit_code == 1
+        assert "non-negative" in result.output.lower()
+
     @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_runs_when_valid(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -601,6 +615,16 @@ class TestParseCommands:
     def test_boolean_false_timeout_errors(self):
         with pytest.raises(typer.Exit):
             _parse_commands([{"name": "test", "run": "echo hi", "timeout": False}])
+
+    def test_nan_timeout_errors(self):
+        """timeout: .nan in YAML produces float('nan'); must be rejected."""
+        with pytest.raises(typer.Exit):
+            _parse_commands([{"name": "test", "run": "echo hi", "timeout": float("nan")}])
+
+    def test_inf_timeout_errors(self):
+        """timeout: .inf in YAML produces float('inf'); must be rejected."""
+        with pytest.raises(typer.Exit):
+            _parse_commands([{"name": "test", "run": "echo hi", "timeout": float("inf")}])
 
 
 @patch(MOCK_WHICH, return_value="/usr/bin/claude")

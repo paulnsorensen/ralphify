@@ -7,6 +7,7 @@ loop.  Terminal rendering of events is handled by
 
 from __future__ import annotations
 
+import math
 import os
 import shlex
 import shutil
@@ -224,7 +225,7 @@ def _parse_commands(raw_commands: list[dict[str, Any]]) -> list[Command]:
             _exit_error(f"Duplicate command name '{cmd_name}'.")
         seen_names.add(cmd_name)
         timeout = cmd_def.get(CMD_FIELD_TIMEOUT, DEFAULT_COMMAND_TIMEOUT)
-        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0:
+        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or timeout <= 0:
             _exit_error(
                 f"Command '{cmd_name}' has invalid timeout: {timeout!r}. "
                 f"Must be a positive number."
@@ -312,9 +313,9 @@ def _build_run_config(
     # Validate numeric options
     if max_iterations is not None and max_iterations < 1:
         _exit_error(f"'-n' must be a positive integer, got {max_iterations}.")
-    if delay < 0:
+    if not math.isfinite(delay) or delay < 0:
         _exit_error(f"'--delay' must be non-negative, got {delay}.")
-    if timeout is not None and timeout <= 0:
+    if timeout is not None and (not math.isfinite(timeout) or timeout <= 0):
         _exit_error(f"'--timeout' must be a positive number, got {timeout}.")
 
     return RunConfig(
