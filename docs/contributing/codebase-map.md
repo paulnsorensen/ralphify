@@ -1,5 +1,6 @@
 ---
 description: Architecture overview and module map for contributors and AI coding agents working on ralphify.
+keywords: ralphify architecture, codebase map, module overview, engine, CLI, resolver, agent subprocess
 ---
 
 # Codebase Map
