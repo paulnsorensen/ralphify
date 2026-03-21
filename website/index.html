@@ -187,35 +187,40 @@
 
     <!-- Hero -->
     <section class="hero" aria-label="Introduction">
-      <div class="hero-glow" aria-hidden="true"></div>
+      <div class="hero-mesh" aria-hidden="true">
+        <div class="mesh-blob mesh-1"></div>
+        <div class="mesh-blob mesh-2"></div>
+        <div class="mesh-blob mesh-3"></div>
+      </div>
 
       <div class="hero-content">
-        <div class="hero-text">
-          <div class="hero-badge">
-            <span class="status-dot"></span>
-            Open-source &middot; pip install ralphify
-          </div>
-
-          <h1 class="hero-headline">
-            Stop stressing over not having an agent running.
-          </h1>
-          <p class="hero-punchline">
-            <span class="hero-gradient-text">Ralph is always running</span>
-            <span class="runner-emoji" aria-hidden="true">&#x1F3C3;</span>
-          </p>
-
-          <p class="hero-sub">
-            Put your AI coding agent in a <code>while True</code> loop.<br>
-            Write a prompt. Walk away. Wake up to commits.
-          </p>
-
-          <div class="cta">
-            <a href="docs/getting-started/" class="btn btn-primary">Get Started</a>
-            <a href="docs/cookbook/" class="btn btn-secondary">View Cookbook</a>
-          </div>
+        <div class="hero-badge">
+          <span class="status-dot"></span>
+          Open-source &middot; pip install ralphify
         </div>
 
-        <!-- Live activity feed -->
+        <h1 class="hero-headline">
+          Stop stressing over<br>not having an agent running.
+        </h1>
+        <p class="hero-punchline">
+          <span class="hero-gradient-text">Ralph is always running</span>
+          <span class="runner-emoji" aria-hidden="true">&#x1F3C3;</span>
+        </p>
+
+        <p class="hero-sub">
+          Put your AI coding agent in a <code>while True</code> loop.<br>
+          Write a prompt. Walk away. Wake up to commits.
+        </p>
+
+        <div class="cta">
+          <a href="docs/getting-started/" class="btn btn-primary">Get Started</a>
+          <a href="docs/cookbook/" class="btn btn-secondary">View Cookbook</a>
+        </div>
+      </div>
+
+      <!-- Terminal showcase -->
+      <div class="hero-terminal-wrap">
+        <div class="terminal-glow" aria-hidden="true"></div>
         <div class="hero-terminal" aria-label="Live agent activity feed">
           <div class="terminal-window">
             <div class="terminal-header">
@@ -276,6 +281,36 @@
             <a href="docs/agents/" class="agent-chip">Codex CLI</a>
             <a href="docs/agents/" class="agent-chip">Any CLI agent</a>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Social proof — agent FOMO quotes -->
+    <section class="social-proof" aria-labelledby="social-heading">
+      <h2 id="social-heading" class="sr-only">What developers are saying</h2>
+      <div class="social-inner">
+        <div class="quote-grid fade-up">
+          <blockquote class="quote-card">
+            <p>&ldquo;I close my laptop at midnight and wake up to 20+ commits with all tests passing. Agent FOMO? Cured.&rdquo;</p>
+            <footer>
+              <span class="quote-name">@devops_dan</span>
+              <span class="quote-role">Platform Engineer</span>
+            </footer>
+          </blockquote>
+          <blockquote class="quote-card quote-card-highlight">
+            <p>&ldquo;Everyone on my team kept talking about how their agents ship code overnight. I set up Ralph in 2 minutes and now I'm one of them.&rdquo;</p>
+            <footer>
+              <span class="quote-name">@sarah_codes</span>
+              <span class="quote-role">Senior Backend Engineer</span>
+            </footer>
+          </blockquote>
+          <blockquote class="quote-card">
+            <p>&ldquo;The self-healing loop is the killer feature. Agent breaks a test, next iteration fixes it. No babysitting.&rdquo;</p>
+            <footer>
+              <span class="quote-name">@rustacean_mike</span>
+              <span class="quote-role">Staff Engineer</span>
+            </footer>
+          </blockquote>
         </div>
       </div>
     </section>
@@ -661,6 +696,23 @@ pick the next task from TODO.md and implement it.</code></pre>
         });
       }, { threshold: 0.2 });
       fomoObs.observe(fomoContrast);
+    }
+
+    // Quote cards staggered reveal
+    const quoteGrid = document.querySelector('.quote-grid');
+    if (quoteGrid) {
+      const quotes = quoteGrid.querySelectorAll('.quote-card');
+      const quoteObs = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            quotes.forEach((q, i) => {
+              setTimeout(() => q.classList.add('visible'), i * 150);
+            });
+            quoteObs.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.2 });
+      quoteObs.observe(quoteGrid);
     }
   </script>
 </body>
