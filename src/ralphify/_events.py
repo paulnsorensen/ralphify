@@ -10,7 +10,7 @@ import queue
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Protocol, TypedDict, runtime_checkable
+from typing import Any, NotRequired, Protocol, TypedDict, runtime_checkable
 
 
 class EventType(Enum):
@@ -116,13 +116,10 @@ class AgentActivityData(TypedDict):
     iteration: int
 
 
-class _LogMessageRequired(TypedDict):
+class LogMessageData(TypedDict):
     message: str
     level: str
-
-
-class LogMessageData(_LogMessageRequired, total=False):
-    traceback: str
+    traceback: NotRequired[str]
 
 
 @dataclass
