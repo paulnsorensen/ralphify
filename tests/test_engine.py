@@ -132,6 +132,19 @@ class TestRunLoop:
         assert log_files[1].name.startswith("002_")
 
 
+class TestRunLoopDefaults:
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    def test_runs_without_emitter(self, mock_run, tmp_path):
+        """run_loop works when called without an explicit emitter (uses NullEmitter)."""
+        config = make_config(tmp_path, max_iterations=1)
+        state = make_state()
+
+        run_loop(config, state)
+
+        assert state.completed == 1
+        assert state.status == RunStatus.COMPLETED
+
+
 class TestRunLoopEvents:
     @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_events_emitted_in_order(self, mock_run, tmp_path):
@@ -417,6 +430,21 @@ class TestAgentCommandParsing:
         events = drain_events(q)
         log_events = [e for e in events if e.type == EventType.LOG_MESSAGE]
         assert any("Invalid agent command syntax" in e.data["message"] for e in log_events)
+
+    @patch(MOCK_SUBPROCESS)
+    def test_agent_not_found_raises_file_not_found_error(self, mock_run, tmp_path):
+        """FileNotFoundError from the agent subprocess is re-raised with a helpful message."""
+        mock_run.side_effect = FileNotFoundError("No such file or directory: 'nonexistent'")
+        config = make_config(tmp_path, max_iterations=1, agent="nonexistent")
+        state = make_state()
+        q = QueueEmitter()
+
+        run_loop(config, state, q)
+
+        assert state.status == RunStatus.FAILED
+        events = drain_events(q)
+        log_events = [e for e in events if e.type == EventType.LOG_MESSAGE]
+        assert any("Agent command not found" in e.data["message"] for e in log_events)
 
 
 class TestRunLoopCrashHandling:
