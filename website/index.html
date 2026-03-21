@@ -157,21 +157,21 @@
         "@type": "HowToStep",
         "position": 2,
         "name": "Create a ralph",
-        "text": "Run ralph new in your project directory to create a RALPH.md prompt file.",
+        "text": "Run ralph init my-ralph in your project directory to scaffold a RALPH.md prompt file.",
         "itemListElement": {
           "@type": "HowToDirection",
-          "text": "Run: ralph new"
+          "text": "Run: ralph init my-ralph"
         }
       },
       {
         "@type": "HowToStep",
         "position": 3,
         "name": "Start the autonomous AI coding loop",
-        "text": "Run ralph run to start the loop. The agent reads your prompt, implements changes, validates with checks, and repeats — fixing its own mistakes each iteration.",
+        "text": "Run ralph run my-ralph to start the loop. The agent reads your prompt, implements changes, validates with checks, and repeats — fixing its own mistakes each iteration.",
         "url": "https://ralphify.co/docs/getting-started/",
         "itemListElement": {
           "@type": "HowToDirection",
-          "text": "Run: ralph run"
+          "text": "Run: ralph run my-ralph"
         }
       }
     ]
@@ -524,8 +524,8 @@ pick the next task from TODO.md and implement it.</code></pre>
             <span class="install-num">2</span>
             <span class="install-label">Create a ralph</span>
             <div class="install-cmd">
-              <code>ralph new</code>
-              <button class="copy-btn" aria-label="Copy new command" onclick="copyCommand(this, 'ralph new')">Copy</button>
+              <code>ralph init my-ralph</code>
+              <button class="copy-btn" aria-label="Copy init command" onclick="copyCommand(this, 'ralph init my-ralph')">Copy</button>
             </div>
           </div>
           <div class="install-connector" aria-hidden="true"></div>
@@ -533,8 +533,8 @@ pick the next task from TODO.md and implement it.</code></pre>
             <span class="install-num">3</span>
             <span class="install-label">Run it</span>
             <div class="install-cmd">
-              <code>ralph run</code>
-              <button class="copy-btn" aria-label="Copy run command" onclick="copyCommand(this, 'ralph run')">Copy</button>
+              <code>ralph run my-ralph</code>
+              <button class="copy-btn" aria-label="Copy run command" onclick="copyCommand(this, 'ralph run my-ralph')">Copy</button>
             </div>
           </div>
         </div>
@@ -592,8 +592,8 @@ pick the next task from TODO.md and implement it.</code></pre>
           <span class="hero-runner" aria-hidden="true">&#x1F3C3;</span>
         </h2>
         <div class="install-cmd cta-cmd">
-          <code>uv tool install ralphify && ralph new && ralph run</code>
-          <button class="copy-btn" aria-label="Copy full command" onclick="copyCommand(this, 'uv tool install ralphify && ralph new && ralph run')">Copy</button>
+          <code>uv tool install ralphify && ralph init my-ralph && ralph run my-ralph</code>
+          <button class="copy-btn" aria-label="Copy full command" onclick="copyCommand(this, 'uv tool install ralphify && ralph init my-ralph && ralph run my-ralph')">Copy</button>
         </div>
         <div class="cta-buttons">
           <a href="docs/getting-started/" class="btn btn-primary">Read the guide</a>
