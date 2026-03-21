@@ -39,6 +39,10 @@ _VERBOSE_FLAG = "--verbose"
 _RESULT_EVENT_TYPE = "result"
 _RESULT_FIELD = "result"
 
+# Log file naming — timestamp format and iteration zero-padding width.
+_LOG_TIMESTAMP_FORMAT = "%Y%m%d-%H%M%S"
+_LOG_ITERATION_PAD_WIDTH = 3
+
 
 @dataclass
 class AgentResult:
@@ -77,8 +81,8 @@ def _write_log(
     stderr: str | bytes | None,
 ) -> Path:
     """Write iteration output to a timestamped log file and return the path."""
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-    log_file = log_path_dir / f"{iteration:03d}_{timestamp}.log"
+    timestamp = datetime.now(timezone.utc).strftime(_LOG_TIMESTAMP_FORMAT)
+    log_file = log_path_dir / f"{iteration:0{_LOG_ITERATION_PAD_WIDTH}d}_{timestamp}.log"
     log_file.write_text(collect_output(stdout, stderr), encoding="utf-8")
     return log_file
 
