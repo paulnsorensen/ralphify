@@ -33,7 +33,7 @@ The fastest way to scaffold a ralph is `ralph init`:
 ralph init my-ralph
 ```
 
-This creates `my-ralph/RALPH.md` with a ready-to-customize template including an example command, arg, and prompt. Edit it and skip to [Step 4](#step-4-do-a-test-run).
+This creates `my-ralph/RALPH.md` with a ready-to-customize template including an example command, arg, and prompt. Edit it and skip to [Step 3](#step-3-do-a-test-run).
 
 Alternatively, use `ralph new` for AI-guided setup, or create the file manually as shown below.
 
@@ -64,7 +64,7 @@ implement it fully, then mark it done.
 !!! info "What does `--dangerously-skip-permissions` do?"
     Claude Code normally asks for your approval before running shell commands, editing files, or making git commits. The `--dangerously-skip-permissions` flag disables these interactive prompts so the agent can work autonomously without waiting for input. The `-p` flag enables non-interactive ("print") mode, which reads the prompt from stdin instead of opening a chat session.
 
-## Step 4: Do a test run
+## Step 3: Do a test run
 
 Verify the basic loop works before adding commands:
 
@@ -88,7 +88,7 @@ cat ralph_logs/001_*.log
 
 If the agent produced useful work, you're ready to add commands.
 
-## Step 5: Add a test command
+## Step 4: Add a test command
 
 Commands run each iteration and their output is available in the prompt via placeholders. Add a test command to your `RALPH.md` frontmatter:
 
@@ -117,7 +117,7 @@ implement it fully, then mark it done.
 
 The `tests` command runs `uv run pytest -x` each iteration. Its output is available via `{{ commands.tests }}` — but you don't have to use the placeholder if you just want the command to run.
 
-## Step 6: Add the command output to the prompt
+## Step 5: Add the command output to the prompt
 
 Place the `{{ commands.tests }}` placeholder where you want the test output to appear:
 
@@ -153,7 +153,7 @@ If tests are failing, fix them before starting new work.
 
 Now each iteration, the agent sees the current test output. If tests fail, the agent fixes them — that's the self-healing loop.
 
-## Step 7: Add more commands
+## Step 6: Add more commands
 
 Add a lint command and a git log for context:
 
@@ -199,7 +199,7 @@ If tests or lint are failing, fix them before starting new work.
 - Mark the completed task in TODO.md
 ```
 
-## Step 8: Run the loop
+## Step 7: Run the loop
 
 Start with a few iterations to verify everything works:
 
@@ -223,9 +223,6 @@ Watch the output. Each iteration runs the commands, assembles the prompt with th
 If the agent breaks a test, the next iteration sees the failure output via `{{ commands.tests }}` and fixes it automatically.
 
 Once you're confident the loop works, drop the `-n 3` to let it run indefinitely. Press `Ctrl+C` to stop.
-
-!!! tip "Use `ralph new` for AI-guided setup"
-    Instead of creating ralph directories manually, you can run `ralph new my-task` to launch an AI-guided session that creates a complete ralph via conversation with your agent.
 
 ## Next steps
 
