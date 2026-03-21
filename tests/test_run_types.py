@@ -7,9 +7,6 @@ import pytest
 
 from ralphify._run_types import (
     DEFAULT_COMMAND_TIMEOUT,
-    REASON_COMPLETED,
-    REASON_ERROR,
-    REASON_USER_REQUESTED,
     RUN_ID_LENGTH,
     Command,
     RunConfig,
@@ -167,9 +164,9 @@ class TestRunStatus:
     @pytest.mark.parametrize(
         "status,expected_reason",
         [
-            (RunStatus.COMPLETED, REASON_COMPLETED),
-            (RunStatus.FAILED, REASON_ERROR),
-            (RunStatus.STOPPED, REASON_USER_REQUESTED),
+            (RunStatus.COMPLETED, "completed"),
+            (RunStatus.FAILED, "error"),
+            (RunStatus.STOPPED, "user_requested"),
         ],
     )
     def test_reason_for_terminal_statuses(self, status, expected_reason):
