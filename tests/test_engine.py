@@ -10,7 +10,14 @@ from helpers import MOCK_RUN_COMMAND, MOCK_SUBPROCESS, drain_events, fail_result
 from ralphify._events import EventType, NullEmitter, QueueEmitter
 from ralphify._run_types import REASON_ERROR, REASON_USER_REQUESTED, Command, RunStatus
 from ralphify._runner import RunResult
-from ralphify.engine import _BoundEmitter, _delay_if_needed, run_loop
+from ralphify.engine import (
+    _BoundEmitter,
+    _assemble_prompt,
+    _delay_if_needed,
+    _handle_control_signals,
+    _run_commands,
+    run_loop,
+)
 
 
 class TestBoundEmitter:
@@ -539,3 +546,196 @@ class TestDelayIfNeeded:
         elapsed = time.monotonic() - start
 
         assert elapsed >= 0.1
+
+
+class TestHandleControlSignals:
+    """Unit tests for _handle_control_signals — stop and pause logic."""
+
+    def test_returns_true_when_no_signals(self):
+        state = make_state()
+        q = QueueEmitter()
+        emit = _BoundEmitter(q, state.run_id)
+
+        result = _handle_control_signals(state, emit)
+
+        assert result is True
+        assert state.status == RunStatus.PENDING
+
+    def test_returns_false_when_stop_requested(self):
+        state = make_state()
+        state.request_stop()
+        q = QueueEmitter()
+        emit = _BoundEmitter(q, state.run_id)
+
+        result = _handle_control_signals(state, emit)
+
+        assert result is False
+        assert state.status == RunStatus.STOPPED
+
+    def test_paused_then_resumed_returns_true(self):
+        state = make_state()
+        state.request_pause()
+        q = QueueEmitter()
+        emit = _BoundEmitter(q, state.run_id)
+
+        def resume_soon():
+            time.sleep(0.05)
+            state.request_resume()
+
+        threading.Thread(target=resume_soon, daemon=True).start()
+
+        result = _handle_control_signals(state, emit)
+
+        assert result is True
+        events = drain_events(q)
+        types = [e.type for e in events]
+        assert EventType.RUN_PAUSED in types
+        assert EventType.RUN_RESUMED in types
+
+    def test_paused_then_stop_returns_false(self):
+        state = make_state()
+        state.request_pause()
+        q = QueueEmitter()
+        emit = _BoundEmitter(q, state.run_id)
+
+        def stop_soon():
+            time.sleep(0.05)
+            state.request_stop()
+
+        threading.Thread(target=stop_soon, daemon=True).start()
+
+        result = _handle_control_signals(state, emit)
+
+        assert result is False
+        assert state.status == RunStatus.STOPPED
+        events = drain_events(q)
+        types = [e.type for e in events]
+        assert EventType.RUN_PAUSED in types
+        assert EventType.RUN_RESUMED not in types
+
+
+class TestRunCommands:
+    """Unit tests for _run_commands — command execution and cwd resolution."""
+
+    @patch(MOCK_RUN_COMMAND)
+    def test_returns_name_to_output_mapping(self, mock_run_cmd, tmp_path):
+        mock_run_cmd.return_value = RunResult(success=True, returncode=0, output="test output")
+        commands = [Command(name="tests", run="pytest")]
+
+        result = _run_commands(commands, ralph_dir=tmp_path / "ralph", project_root=tmp_path)
+
+        assert result == {"tests": "test output"}
+
+    @patch(MOCK_RUN_COMMAND)
+    def test_multiple_commands(self, mock_run_cmd, tmp_path):
+        call_count = 0
+
+        def per_command(**kwargs):
+            nonlocal call_count
+            call_count += 1
+            return RunResult(success=True, returncode=0, output=f"out-{call_count}")
+
+        mock_run_cmd.side_effect = per_command
+        commands = [
+            Command(name="a", run="cmd-a"),
+            Command(name="b", run="cmd-b"),
+        ]
+
+        result = _run_commands(commands, ralph_dir=tmp_path / "ralph", project_root=tmp_path)
+
+        assert len(result) == 2
+        assert result["a"] == "out-1"
+        assert result["b"] == "out-2"
+
+    @patch(MOCK_RUN_COMMAND)
+    def test_dotslash_uses_ralph_dir(self, mock_run_cmd, tmp_path):
+        mock_run_cmd.return_value = RunResult(success=True, returncode=0, output="ok")
+        ralph_dir = tmp_path / "my-ralph"
+        commands = [Command(name="local", run="./check.sh")]
+
+        _run_commands(commands, ralph_dir=ralph_dir, project_root=tmp_path)
+
+        assert mock_run_cmd.call_args.kwargs["cwd"] == ralph_dir
+
+    @patch(MOCK_RUN_COMMAND)
+    def test_regular_command_uses_project_root(self, mock_run_cmd, tmp_path):
+        mock_run_cmd.return_value = RunResult(success=True, returncode=0, output="ok")
+        ralph_dir = tmp_path / "my-ralph"
+        commands = [Command(name="tests", run="pytest")]
+
+        _run_commands(commands, ralph_dir=ralph_dir, project_root=tmp_path)
+
+        assert mock_run_cmd.call_args.kwargs["cwd"] == tmp_path
+
+    @patch(MOCK_RUN_COMMAND)
+    def test_timeout_passed_to_run_command(self, mock_run_cmd, tmp_path):
+        mock_run_cmd.return_value = RunResult(success=True, returncode=0, output="ok")
+        commands = [Command(name="slow", run="sleep 1", timeout=300)]
+
+        _run_commands(commands, ralph_dir=tmp_path, project_root=tmp_path)
+
+        assert mock_run_cmd.call_args.kwargs["timeout"] == 300
+
+    def test_empty_commands_returns_empty_dict(self, tmp_path):
+        result = _run_commands([], ralph_dir=tmp_path, project_root=tmp_path)
+
+        assert result == {}
+
+
+class TestAssemblePrompt:
+    """Unit tests for _assemble_prompt — reading and resolving the prompt template."""
+
+    def test_reads_prompt_from_ralph_file(self, tmp_path):
+        ralph_dir = tmp_path / "my-ralph"
+        ralph_dir.mkdir()
+        (ralph_dir / "RALPH.md").write_text("simple prompt")
+        config = make_config(tmp_path, max_iterations=1)
+
+        result = _assemble_prompt(config, {})
+
+        assert result == "simple prompt"
+
+    def test_resolves_command_placeholders(self, tmp_path):
+        ralph_dir = tmp_path / "my-ralph"
+        ralph_dir.mkdir()
+        (ralph_dir / "RALPH.md").write_text(
+            "---\nagent: echo\ncommands:\n  - name: tests\n    run: pytest\n---\n"
+            "Results: {{ commands.tests }}"
+        )
+        config = make_config(tmp_path, max_iterations=1)
+
+        result = _assemble_prompt(config, {"tests": "all passed"})
+
+        assert result == "Results: all passed"
+
+    def test_resolves_args_placeholders(self, tmp_path):
+        ralph_dir = tmp_path / "my-ralph"
+        ralph_dir.mkdir()
+        (ralph_dir / "RALPH.md").write_text(
+            "---\nagent: echo\nargs:\n  - dir\n---\nSearch {{ args.dir }}"
+        )
+        config = make_config(tmp_path, max_iterations=1, args={"dir": "./src"})
+
+        result = _assemble_prompt(config, {})
+
+        assert result == "Search ./src"
+
+    def test_clears_unresolved_placeholders(self, tmp_path):
+        ralph_dir = tmp_path / "my-ralph"
+        ralph_dir.mkdir()
+        (ralph_dir / "RALPH.md").write_text("Before {{ args.missing }} after")
+        config = make_config(tmp_path, max_iterations=1, args={})
+
+        result = _assemble_prompt(config, {})
+
+        assert result == "Before  after"
+
+    def test_strips_html_comments(self, tmp_path):
+        ralph_dir = tmp_path / "my-ralph"
+        ralph_dir.mkdir()
+        (ralph_dir / "RALPH.md").write_text("Before <!-- hidden --> after")
+        config = make_config(tmp_path, max_iterations=1)
+
+        result = _assemble_prompt(config, {})
+
+        assert result == "Before  after"
