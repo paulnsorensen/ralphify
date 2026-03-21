@@ -26,18 +26,6 @@ MOCK_RUNNER_SUBPROCESS = "ralphify._runner.subprocess.run"
 # ── Shared helpers ─────────────────────────────────────────────────────
 
 
-def make_ralph_dir(tmp_path, ralph_md_content="test prompt", frontmatter=None):
-    """Create a ralph directory with RALPH.md and return the directory path."""
-    ralph_dir = tmp_path / "my-ralph"
-    ralph_dir.mkdir(exist_ok=True)
-    if frontmatter:
-        content = f"---\n{frontmatter}\n---\n\n{ralph_md_content}"
-    else:
-        content = ralph_md_content
-    (ralph_dir / "RALPH.md").write_text(content)
-    return ralph_dir
-
-
 def make_config(tmp_path, **overrides):
     """Create a RunConfig pointing at a temp ralph directory."""
     ralph_dir = tmp_path / "my-ralph"
