@@ -216,6 +216,7 @@ def _run_iteration(
     agent_succeeded = _run_agent_phase(prompt, config, state, emit)
 
     if not agent_succeeded and config.stop_on_error:
+        state.status = RunStatus.FAILED
         emit(EventType.LOG_MESSAGE, LogMessageData(message="Stopping due to --stop-on-error.", level=LOG_ERROR))
         return False
 

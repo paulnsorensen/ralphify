@@ -62,6 +62,20 @@ class TestRunLoop:
         assert mock_run.call_count == 1
         assert state.failed == 1
 
+    @patch(MOCK_SUBPROCESS, side_effect=fail_result)
+    def test_stop_on_error_sets_failed_status(self, mock_run, tmp_path):
+        """When stop_on_error triggers, status should be FAILED, not COMPLETED."""
+        config = make_config(tmp_path, max_iterations=5, stop_on_error=True)
+        state = make_state()
+        q = QueueEmitter()
+
+        run_loop(config, state, q)
+
+        assert state.status == RunStatus.FAILED
+        events = drain_events(q)
+        stop_event = [e for e in events if e.type == EventType.RUN_STOPPED][0]
+        assert stop_event.data["reason"] == "error"
+
     @patch(MOCK_SUBPROCESS)
     def test_timeout_counted(self, mock_run, tmp_path):
         mock_run.side_effect = subprocess.TimeoutExpired(cmd="echo", timeout=5)
