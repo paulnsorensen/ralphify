@@ -178,7 +178,10 @@ def _build_run_config(
         _exit_error("Missing 'agent' field in RALPH.md frontmatter.")
 
     # Validate agent command exists
-    agent_binary = shlex.split(agent)[0]
+    try:
+        agent_binary = shlex.split(agent)[0]
+    except ValueError as exc:
+        _exit_error(f"Malformed 'agent' field in RALPH.md frontmatter: {exc}")
     if not shutil.which(agent_binary):
         _exit_error(f"Agent command '{agent_binary}' not found on PATH.")
 

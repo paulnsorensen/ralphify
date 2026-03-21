@@ -27,6 +27,9 @@ from typing import IO
 
 from ralphify._output import collect_output
 
+# Agent binary name that supports --output-format stream-json.
+_CLAUDE_BINARY = "claude"
+
 
 @dataclass
 class AgentResult:
@@ -76,7 +79,7 @@ def _supports_stream_json(cmd: list[str]) -> bool:
     if not cmd:
         return False
     binary = Path(cmd[0]).name
-    return binary == "claude"
+    return binary == _CLAUDE_BINARY
 
 
 def _read_agent_stream(

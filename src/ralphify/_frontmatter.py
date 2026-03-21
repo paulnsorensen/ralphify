@@ -16,6 +16,9 @@ import yaml
 # Single source of truth for the ralph marker filename.
 RALPH_MARKER = "RALPH.md"
 
+# YAML frontmatter delimiter line.
+_FRONTMATTER_DELIMITER = "---"
+
 # Pre-compiled pattern to strip HTML comments from body text.
 _HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 
@@ -28,11 +31,11 @@ def _extract_frontmatter_block(text: str) -> tuple[str, str]:
     frontmatter block is found.
     """
     lines = text.split("\n")
-    if not lines or lines[0].strip() != "---":
+    if not lines or lines[0].strip() != _FRONTMATTER_DELIMITER:
         return "", text
 
     for i, line in enumerate(lines[1:], start=1):
-        if line.strip() == "---":
+        if line.strip() == _FRONTMATTER_DELIMITER:
             fm_raw = "\n".join(lines[1:i])
             body = "\n".join(lines[i + 1 :]).strip()
             return fm_raw, body
@@ -72,10 +75,10 @@ def serialize_frontmatter(frontmatter: dict, body: str) -> str:
     """
     parts: list[str] = []
     if frontmatter:
-        parts.append("---")
+        parts.append(_FRONTMATTER_DELIMITER)
         fm_text = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False).strip()
         parts.append(fm_text)
-        parts.append("---")
+        parts.append(_FRONTMATTER_DELIMITER)
         parts.append("")
     parts.append(body)
     return "\n".join(parts)
