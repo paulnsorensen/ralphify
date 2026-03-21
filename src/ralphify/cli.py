@@ -221,7 +221,7 @@ def _parse_commands(raw_commands: list[dict[str, Any]]) -> list[Command]:
             _exit_error(f"Duplicate command name '{cmd_name}'.")
         seen_names.add(cmd_name)
         timeout = cmd_def.get("timeout", DEFAULT_COMMAND_TIMEOUT)
-        if not isinstance(timeout, (int, float)) or timeout <= 0:
+        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0:
             _exit_error(
                 f"Command '{cmd_name}' has invalid timeout: {timeout!r}. "
                 f"Must be a positive number."

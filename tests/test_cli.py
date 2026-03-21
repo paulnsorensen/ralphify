@@ -574,6 +574,15 @@ class TestParseCommands:
         with pytest.raises(typer.Exit):
             _parse_commands([{"name": "test", "run": "echo hi", "timeout": 0}])
 
+    def test_boolean_timeout_errors(self):
+        """timeout: true in YAML is parsed as Python True (== 1); must be rejected."""
+        with pytest.raises(typer.Exit):
+            _parse_commands([{"name": "test", "run": "echo hi", "timeout": True}])
+
+    def test_boolean_false_timeout_errors(self):
+        with pytest.raises(typer.Exit):
+            _parse_commands([{"name": "test", "run": "echo hi", "timeout": False}])
+
 
 @patch(MOCK_WHICH, return_value="/usr/bin/claude")
 class TestCreditFrontmatter:
