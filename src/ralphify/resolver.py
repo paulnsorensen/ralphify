@@ -13,21 +13,15 @@ import re
 _COMMANDS_PATTERN = re.compile(r"\{\{\s*commands\.([a-zA-Z0-9_-]+)\s*\}\}")
 _ARGS_PATTERN = re.compile(r"\{\{\s*args\.([a-zA-Z0-9_-]+)\s*\}\}")
 
-_PATTERNS: dict[str, re.Pattern[str]] = {
-    "commands": _COMMANDS_PATTERN,
-    "args": _ARGS_PATTERN,
-}
 
-
-def _resolve_kind(prompt: str, available: dict[str, str], kind: str) -> str:
-    """Resolve placeholders of a given *kind*, clearing them when *available* is empty.
+def _resolve_kind(prompt: str, available: dict[str, str], pattern: re.Pattern[str]) -> str:
+    """Resolve placeholders matching *pattern*, clearing them when *available* is empty.
 
     - ``{{ kind.name }}`` → replaced with the matching content
     - Unknown names → replaced with empty string
     - Unreferenced items are silently excluded
     - When *available* is empty, all placeholders of this kind are cleared
     """
-    pattern = _PATTERNS[kind]
 
     if not available:
         return pattern.sub("", prompt)
@@ -46,7 +40,7 @@ def resolve_commands(prompt: str, command_outputs: dict[str, str]) -> str:
     ``{{ commands.* }}`` placeholders so they don't leak into the
     assembled prompt.
     """
-    return _resolve_kind(prompt, command_outputs, "commands")
+    return _resolve_kind(prompt, command_outputs, _COMMANDS_PATTERN)
 
 
 def resolve_args(prompt: str, user_args: dict[str, str]) -> str:
@@ -55,4 +49,4 @@ def resolve_args(prompt: str, user_args: dict[str, str]) -> str:
     When *user_args* is empty, clears any remaining ``{{ args.* }}``
     placeholders so they don't leak into the assembled prompt.
     """
-    return _resolve_kind(prompt, user_args, "args")
+    return _resolve_kind(prompt, user_args, _ARGS_PATTERN)

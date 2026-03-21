@@ -65,11 +65,11 @@ class ConsoleEmitter:
             handler(event.data)
 
     def _on_run_started(self, data: dict) -> None:
-        timeout = data.get("timeout")
-        if timeout is not None and timeout > 0:
+        timeout = data.get("timeout") or 0
+        if timeout > 0:
             self._console.print(f"[dim]Timeout: {format_duration(timeout)} per iteration[/dim]")
-        command_count = data.get("commands")
-        if command_count is not None and command_count > 0:
+        command_count = data.get("commands", 0)
+        if command_count > 0:
             self._console.print(f"[dim]Commands: {command_count} configured[/dim]")
 
     def _start_live(self) -> None:
