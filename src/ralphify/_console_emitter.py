@@ -47,7 +47,6 @@ class ConsoleEmitter:
 
     def __init__(self, console: Console) -> None:
         self._console = console
-        self._rprint = console.print
         self._live: Live | None = None
         self._handlers: dict[EventType, Callable[[dict], None]] = {
             EventType.RUN_STARTED: self._on_run_started,
@@ -68,10 +67,10 @@ class ConsoleEmitter:
     def _on_run_started(self, data: dict) -> None:
         timeout = data.get("timeout")
         if timeout is not None and timeout > 0:
-            self._rprint(f"[dim]Timeout: {format_duration(timeout)} per iteration[/dim]")
+            self._console.print(f"[dim]Timeout: {format_duration(timeout)} per iteration[/dim]")
         command_count = data.get("commands")
         if command_count is not None and command_count > 0:
-            self._rprint(f"[dim]Commands: {command_count} configured[/dim]")
+            self._console.print(f"[dim]Commands: {command_count} configured[/dim]")
 
     def _start_live(self) -> None:
         spinner = _IterationSpinner()
@@ -90,7 +89,7 @@ class ConsoleEmitter:
 
     def _on_iteration_started(self, data: dict) -> None:
         iteration = data.get("iteration", "?")
-        self._rprint(f"\n[bold blue]── Iteration {iteration} ──[/bold blue]")
+        self._console.print(f"\n[bold blue]── Iteration {iteration} ──[/bold blue]")
         self._start_live()
 
     def _on_iteration_ended(self, data: dict, color: str, icon: str) -> None:
@@ -101,25 +100,25 @@ class ConsoleEmitter:
         if data.get("log_file"):
             status_msg += f" {_ICON_ARROW}\n{data['log_file']}"
         status_msg += f"[/{color}]"
-        self._rprint(status_msg)
+        self._console.print(status_msg)
         if data.get("result_text"):
-            self._rprint(f"  [dim]{data['result_text']}[/dim]")
+            self._console.print(f"  [dim]{data['result_text']}[/dim]")
 
     def _on_commands_completed(self, data: dict) -> None:
         count = data.get("count", 0)
         if count:
-            self._rprint(f"  [bold]Commands:[/bold] {count} ran")
+            self._console.print(f"  [bold]Commands:[/bold] {count} ran")
 
     def _on_log_message(self, data: dict) -> None:
         msg = data.get("message", "")
         level = data.get("level", "info")
         if level == "error":
-            self._rprint(f"[red]{msg}[/red]")
+            self._console.print(f"[red]{msg}[/red]")
             tb = data.get("traceback")
             if tb:
-                self._rprint(f"[dim]{tb}[/dim]")
+                self._console.print(f"[dim]{tb}[/dim]")
         else:
-            self._rprint(f"[dim]{msg}[/dim]")
+            self._console.print(f"[dim]{msg}[/dim]")
 
     def _on_run_stopped(self, data: dict) -> None:
         self._stop_live()
@@ -140,4 +139,4 @@ class ConsoleEmitter:
         if timed_out_count:
             parts.append(f"{timed_out_count} timed out")
         detail = ", ".join(parts)
-        self._rprint(f"\n[green]Done: {total} iteration(s) {_ICON_DASH} {detail}[/green]")
+        self._console.print(f"\n[green]Done: {total} iteration(s) {_ICON_DASH} {detail}[/green]")

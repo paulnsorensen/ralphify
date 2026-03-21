@@ -56,10 +56,10 @@ class RunStatus(Enum):
 
         Raises :class:`ValueError` for non-terminal statuses.
         """
-        try:
-            return _STATUS_REASONS[self]
-        except KeyError:
-            raise ValueError(f"{self.name} is not a terminal status") from None
+        reason = _STATUS_REASONS.get(self)
+        if reason is None:
+            raise ValueError(f"{self.name} is not a terminal status")
+        return reason
 
 
 # Maps terminal run statuses to the reason string emitted in RUN_STOPPED events.
