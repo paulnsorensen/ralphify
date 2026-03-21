@@ -20,7 +20,15 @@ from ralphify._agent import execute_agent
 from ralphify._events import Event, EventEmitter, EventType, NullEmitter
 from ralphify._frontmatter import parse_frontmatter
 from ralphify._output import format_duration
-from ralphify._run_types import Command, RunConfig, RunState, RunStatus
+from ralphify._run_types import (
+    REASON_COMPLETED,
+    REASON_ERROR,
+    REASON_USER_REQUESTED,
+    Command,
+    RunConfig,
+    RunState,
+    RunStatus,
+)
 from ralphify._runner import run_command
 from ralphify.resolver import resolve_args, resolve_commands
 
@@ -29,9 +37,9 @@ _PAUSE_POLL_INTERVAL = 0.25  # seconds between pause/resume checks
 
 # Maps terminal run status to the reason string emitted in RUN_STOPPED events.
 _STATUS_REASONS: dict[RunStatus, str] = {
-    RunStatus.COMPLETED: "completed",
-    RunStatus.FAILED: "error",
-    RunStatus.STOPPED: "user_requested",
+    RunStatus.COMPLETED: REASON_COMPLETED,
+    RunStatus.FAILED: REASON_ERROR,
+    RunStatus.STOPPED: REASON_USER_REQUESTED,
 }
 
 

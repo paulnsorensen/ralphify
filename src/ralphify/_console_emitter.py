@@ -17,6 +17,7 @@ from rich.text import Text
 
 from ralphify._events import Event, EventType
 from ralphify._output import format_duration
+from ralphify._run_types import REASON_COMPLETED
 
 _ICON_SUCCESS = "✓"
 _ICON_FAILURE = "✗"
@@ -125,7 +126,7 @@ class ConsoleEmitter:
 
     def _on_run_stopped(self, data: dict) -> None:
         self._stop_live()
-        if data.get("reason") != "completed":
+        if data.get("reason") != REASON_COMPLETED:
             return
 
         total = data.get("total", 0)

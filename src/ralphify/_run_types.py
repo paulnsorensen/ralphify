@@ -21,6 +21,11 @@ DEFAULT_COMMAND_TIMEOUT: int = 60
 RUN_ID_LENGTH: int = 12
 """Number of hex characters used for generated run IDs."""
 
+# Reason strings emitted in RUN_STOPPED event data.
+REASON_COMPLETED: str = "completed"
+REASON_ERROR: str = "error"
+REASON_USER_REQUESTED: str = "user_requested"
+
 
 def generate_run_id() -> str:
     """Generate a short hex run ID from a random UUID."""

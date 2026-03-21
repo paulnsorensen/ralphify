@@ -5,6 +5,7 @@ from rich.console import Console
 
 from ralphify._console_emitter import ConsoleEmitter
 from ralphify._events import Event, EventType
+from ralphify._run_types import REASON_COMPLETED, REASON_USER_REQUESTED
 
 
 def _make_event(event_type, **data):
@@ -132,7 +133,7 @@ class TestRunStopped:
         emitter, console = _capture_emitter()
         emitter.emit(_make_event(
             EventType.RUN_STOPPED,
-            reason="completed", total=5, completed=4, failed=1, timed_out=0,
+            reason=REASON_COMPLETED, total=5, completed=4, failed=1, timed_out=0,
         ))
         output = console.export_text()
         assert "5 iteration(s)" in output
@@ -143,7 +144,7 @@ class TestRunStopped:
         emitter, console = _capture_emitter()
         emitter.emit(_make_event(
             EventType.RUN_STOPPED,
-            reason="completed", total=3, completed=2, failed=0, timed_out=1,
+            reason=REASON_COMPLETED, total=3, completed=2, failed=0, timed_out=1,
         ))
         output = console.export_text()
         assert "1 timed out" in output
@@ -152,7 +153,7 @@ class TestRunStopped:
         emitter, console = _capture_emitter()
         emitter.emit(_make_event(
             EventType.RUN_STOPPED,
-            reason="user_requested", total=2, completed=1, failed=0, timed_out=0,
+            reason=REASON_USER_REQUESTED, total=2, completed=1, failed=0, timed_out=0,
         ))
         output = console.export_text()
         # Non-completed runs don't print the summary line

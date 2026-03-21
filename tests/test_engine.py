@@ -8,7 +8,7 @@ from unittest.mock import patch
 from helpers import MOCK_SUBPROCESS, drain_events, fail_result, make_config, make_state, ok_result
 
 from ralphify._events import EventType, NullEmitter, QueueEmitter
-from ralphify._run_types import Command, RunStatus
+from ralphify._run_types import REASON_ERROR, REASON_USER_REQUESTED, Command, RunStatus
 from ralphify._runner import RunResult
 from ralphify.engine import _BoundEmitter, _delay_if_needed, run_loop
 
@@ -180,7 +180,7 @@ class TestRunStateControls:
         assert state.status == RunStatus.STOPPED
         events = drain_events(q)
         stop_event = [e for e in events if e.type == EventType.RUN_STOPPED][0]
-        assert stop_event.data["reason"] == "user_requested"
+        assert stop_event.data["reason"] == REASON_USER_REQUESTED
 
     @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_pause_and_resume(self, mock_run, tmp_path):
@@ -420,7 +420,7 @@ class TestRunLoopCrashHandling:
         assert "traceback" in log_event.data
 
         stop_event = next(e for e in events if e.type == EventType.RUN_STOPPED)
-        assert stop_event.data["reason"] == "error"
+        assert stop_event.data["reason"] == REASON_ERROR
 
     @patch(MOCK_SUBPROCESS)
     def test_unexpected_exception_only_runs_one_iteration(self, mock_run, tmp_path):
