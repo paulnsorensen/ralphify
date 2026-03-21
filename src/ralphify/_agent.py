@@ -133,7 +133,7 @@ def _read_agent_stream(
             parsed = json.loads(stripped)
         except json.JSONDecodeError:
             continue
-        if parsed.get("type") == _RESULT_EVENT_TYPE and _RESULT_FIELD in parsed:
+        if parsed.get("type") == _RESULT_EVENT_TYPE and isinstance(parsed.get(_RESULT_FIELD), str):
             result_text = parsed[_RESULT_FIELD]
         if on_activity is not None:
             on_activity(parsed)

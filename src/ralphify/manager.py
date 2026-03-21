@@ -94,8 +94,11 @@ class RunManager:
 
         Raises ``KeyError`` if the run ID is not registered.
         """
-        managed = self._get_run(run_id)
         with self._lock:
+            try:
+                managed = self._runs[run_id]
+            except KeyError:
+                raise KeyError(f"No run with ID '{run_id}'") from None
             emitter = managed.build_emitter()
             thread = threading.Thread(
                 target=run_loop,

@@ -120,6 +120,12 @@ class TestReadAgentStream:
 
         assert result.result_text is None
 
+    def test_non_string_result_field_ignored(self):
+        stream = io.StringIO('{"type": "result", "result": 42}\n')
+        result = _read_agent_stream(stream, deadline=None, on_activity=None)
+
+        assert result.result_text is None
+
     def test_last_result_wins(self):
         stream = io.StringIO(
             '{"type": "result", "result": "first"}\n'
