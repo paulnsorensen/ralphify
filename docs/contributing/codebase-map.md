@@ -28,7 +28,7 @@ src/ralphify/           # All source code
 ├── _skills.py          # Skill installation and agent detection for `ralph new`
 ├── _console_emitter.py # Rich console renderer for run-loop events (ConsoleEmitter)
 ├── _events.py          # Event types and emitter protocol (NullEmitter, QueueEmitter, FanoutEmitter)
-├── _output.py          # Combine/truncate stdout+stderr
+├── _output.py          # Combine stdout+stderr, format durations
 └── skills/             # Bundled skill definitions (installed into agent skill dirs)
     └── new-ralph/      # AI-guided ralph creation skill for `ralph new`
 

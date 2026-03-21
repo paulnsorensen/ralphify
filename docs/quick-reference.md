@@ -108,9 +108,8 @@ Each iteration:
 5. Wait for agent to exit
 6. Repeat
 
-## Output limits
+## Live editing
 
-- Command output is truncated to **5,000 characters**
 - Everything is re-read from disk every iteration — edit files while the loop runs
 
 ## Common patterns

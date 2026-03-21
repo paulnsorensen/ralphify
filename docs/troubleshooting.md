@@ -1,5 +1,5 @@
 ---
-description: Fix common ralphify issues — setup errors, agent hangs, command failures, output truncation, and permission problems.
+description: Fix common ralphify issues — setup errors, agent hangs, command failures, and permission problems.
 ---
 
 # Troubleshooting
@@ -147,17 +147,6 @@ If a `{{ commands.my-command }}` placeholder produces nothing in the prompt:
 3. Must be `commands` (plural) — `{{ command.name }}` won't resolve
 
 ## Output issues
-
-### Output is truncated
-
-Ralphify truncates command output to **5,000 characters** each. This prevents extremely long output from consuming the agent's context window. You'll see `... (truncated)` at the end of truncated output.
-
-This is expected behavior. If you need the full output, check the log files:
-
-```bash
-ralph run my-ralph --log-dir ralph_logs
-cat ralph_logs/001_*.log
-```
 
 ### No output visible during iteration
 

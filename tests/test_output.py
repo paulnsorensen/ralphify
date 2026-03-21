@@ -1,3 +1,5 @@
+"""Tests for ralphify._output — combine subprocess output and format durations."""
+
 from ralphify._output import collect_output, format_duration
 
 

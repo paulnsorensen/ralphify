@@ -28,7 +28,7 @@ Key modules:
 - `_runner.py` — Generic command execution with timeout
 - `_events.py` — Event types and emitter protocol (NullEmitter, QueueEmitter, FanoutEmitter)
 - `_console_emitter.py` — Rich terminal rendering of events
-- `_output.py` — Combine/truncate stdout+stderr
+- `_output.py` — Combine stdout+stderr, format durations
 - `_skills.py` — Skill installation, agent detection, and command building for `ralph new`
 - `skills/new-ralph/SKILL.md` — AI-guided ralph creation skill (bundled, installed into agent skill dir)
 
@@ -64,6 +64,5 @@ A **ralph** is a directory containing a `RALPH.md` file. That's it. No project-l
 - Frontmatter parsing uses PyYAML (`yaml.safe_load`). The `commands` field is a list of dicts, `args` is a list of strings.
 - Commands use `_runner.py:run_command()` with `shlex.split()` — no shell features (pipes, redirections, `&&`). Scripts are the escape hatch.
 - Commands starting with `./` run relative to the ralph directory. Other commands run from the project root.
-- Output is truncated to 5000 chars in `_output.py`. This is intentional.
 - The `agent` field in frontmatter is split with `shlex.split()` to build the command list.
 - Placeholder resolution uses `resolver.py` — `{{ commands.<name> }}` and `{{ args.<name> }}` are the two supported kinds.

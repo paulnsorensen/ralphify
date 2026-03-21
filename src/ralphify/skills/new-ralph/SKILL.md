@@ -105,10 +105,6 @@ Ralphs can accept CLI arguments, making them reusable:
 - **Positional args**: `ralph run my-ralph ./src "perf"` — requires `args: [dir, focus]` in frontmatter
 - Missing args resolve to empty string
 
-### Output truncation
-
-All command output is truncated to 5000 characters.
-
 ## Your workflow
 
 1. **Understand the task.** Get a plain-English description. Ask short clarifying questions if needed — no more than 2-3.

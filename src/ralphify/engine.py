@@ -115,8 +115,7 @@ def _assemble_prompt(
     raw = config.ralph_file.read_text()
     _, prompt = parse_frontmatter(raw)
     prompt = resolve_args(prompt, config.args)
-    if command_outputs:
-        prompt = resolve_commands(prompt, command_outputs)
+    prompt = resolve_commands(prompt, command_outputs)
     return prompt
 
 
