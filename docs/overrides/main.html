@@ -32,4 +32,36 @@
   <meta name="twitter:title" content="{{ page_title }}">
   <meta name="twitter:description" content="{{ page_desc }}">
   <meta name="twitter:image" content="{{ og_image }}">
+
+  <!-- BreadcrumbList structured data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Ralphify",
+        "item": "{{ config.site_url }}"
+      }{% if page and page.parent %},
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "{{ page.parent.title }}",
+        "item": "{{ config.site_url }}{{ page.parent.url }}"
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": "{{ page.title }}"
+      }{% elif page and page.title and page.title != "Home" %},
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "{{ page.title }}"
+      }{% endif %}
+    ]
+  }
+  </script>
 {% endblock %}
