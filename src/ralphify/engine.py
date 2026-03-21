@@ -14,10 +14,22 @@ import time
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
-
 from ralphify._agent import execute_agent
-from ralphify._events import Event, EventEmitter, EventType, NullEmitter
+from ralphify._events import (
+    AgentActivityData,
+    CommandsCompletedData,
+    CommandsStartedData,
+    Event,
+    EventEmitter,
+    EventType,
+    IterationEndedData,
+    IterationStartedData,
+    LogMessageData,
+    NullEmitter,
+    PromptAssembledData,
+    RunStartedData,
+    RunStoppedData,
+)
 from ralphify._frontmatter import parse_frontmatter
 from ralphify._output import format_duration
 from ralphify._run_types import (
@@ -34,6 +46,19 @@ _PAUSE_POLL_INTERVAL = 0.25  # seconds between pause/resume checks
 _RELATIVE_CMD_PREFIX = "./"  # commands starting with this run from the ralph directory
 
 
+EventData = (
+    RunStartedData
+    | RunStoppedData
+    | IterationStartedData
+    | IterationEndedData
+    | CommandsStartedData
+    | CommandsCompletedData
+    | PromptAssembledData
+    | AgentActivityData
+    | LogMessageData
+)
+
+
 class _BoundEmitter:
     """Wraps an EventEmitter with a fixed run_id for concise emission."""
 
@@ -42,10 +67,10 @@ class _BoundEmitter:
         self._run_id = run_id
 
     def __call__(
-        self, event_type: EventType, data: dict[str, Any] | None = None,
+        self, event_type: EventType, data: EventData | None = None,
     ) -> None:
         self._emitter.emit(Event(
-            type=event_type, run_id=self._run_id, data=data if data is not None else {},
+            type=event_type, run_id=self._run_id, data=dict(data) if data is not None else {},
         ))
 
 
@@ -141,7 +166,7 @@ def _run_agent_phase(
     try:
         agent = execute_agent(
             cmd, prompt, config.timeout, log_path_dir, state.iteration,
-            on_activity=lambda data: emit(EventType.AGENT_ACTIVITY, {"raw": data, "iteration": state.iteration}),
+            on_activity=lambda data: emit(EventType.AGENT_ACTIVITY, AgentActivityData(raw=data, iteration=state.iteration)),
         )
     except FileNotFoundError as exc:
         raise FileNotFoundError(
@@ -164,15 +189,15 @@ def _run_agent_phase(
         event_type = EventType.ITERATION_FAILED
         state_detail = f"failed with exit code {agent.returncode} ({duration})"
 
-    emit(event_type, {
-        "iteration": state.iteration,
-        "returncode": agent.returncode,
-        "duration": agent.elapsed,
-        "duration_formatted": duration,
-        "detail": state_detail,
-        "log_file": str(agent.log_file) if agent.log_file else None,
-        "result_text": agent.result_text,
-    })
+    emit(event_type, IterationEndedData(
+        iteration=state.iteration,
+        returncode=agent.returncode,
+        duration=agent.elapsed,
+        duration_formatted=duration,
+        detail=state_detail,
+        log_file=str(agent.log_file) if agent.log_file else None,
+        result_text=agent.result_text,
+    ))
     return agent.success
 
 
@@ -189,29 +214,29 @@ def _run_iteration(
     """
     iteration = state.iteration
 
-    emit(EventType.ITERATION_STARTED, {"iteration": iteration})
+    emit(EventType.ITERATION_STARTED, IterationStartedData(iteration=iteration))
 
     # Run commands and collect outputs for placeholder resolution
     command_outputs: dict[str, str] = {}
     if config.commands:
-        emit(EventType.COMMANDS_STARTED, {"iteration": iteration, "count": len(config.commands)})
+        emit(EventType.COMMANDS_STARTED, CommandsStartedData(iteration=iteration, count=len(config.commands)))
         command_outputs = _run_commands(
             config.commands, config.ralph_dir, config.project_root, config.args,
         )
-        emit(EventType.COMMANDS_COMPLETED, {
-            "iteration": iteration,
-            "count": len(command_outputs),
-        })
+        emit(EventType.COMMANDS_COMPLETED, CommandsCompletedData(
+            iteration=iteration,
+            count=len(command_outputs),
+        ))
 
     # Assemble prompt
     prompt = _assemble_prompt(config, command_outputs)
-    emit(EventType.PROMPT_ASSEMBLED, {"iteration": iteration, "prompt_length": len(prompt)})
+    emit(EventType.PROMPT_ASSEMBLED, PromptAssembledData(iteration=iteration, prompt_length=len(prompt)))
 
     # Run agent
     agent_succeeded = _run_agent_phase(prompt, config, state, log_path_dir, emit)
 
     if not agent_succeeded and config.stop_on_error:
-        emit(EventType.LOG_MESSAGE, {"message": "Stopping due to --stop-on-error.", "level": "error"})
+        emit(EventType.LOG_MESSAGE, LogMessageData(message="Stopping due to --stop-on-error.", level="error"))
         return False
 
     return True
@@ -222,7 +247,7 @@ def _delay_if_needed(config: RunConfig, state: RunState, emit: _BoundEmitter) ->
     if config.delay > 0 and (
         config.max_iterations is None or state.iteration < config.max_iterations
     ):
-        emit(EventType.LOG_MESSAGE, {"message": f"Waiting {config.delay}s...", "level": "info"})
+        emit(EventType.LOG_MESSAGE, LogMessageData(message=f"Waiting {config.delay}s...", level="info"))
         time.sleep(config.delay)
 
 
@@ -247,12 +272,12 @@ def run_loop(
         log_path_dir = Path(config.log_dir)
         log_path_dir.mkdir(parents=True, exist_ok=True)
 
-    emit(EventType.RUN_STARTED, {
-        "commands": len(config.commands),
-        "max_iterations": config.max_iterations,
-        "timeout": config.timeout,
-        "delay": config.delay,
-    })
+    emit(EventType.RUN_STARTED, RunStartedData(
+        commands=len(config.commands),
+        max_iterations=config.max_iterations,
+        timeout=config.timeout,
+        delay=config.delay,
+    ))
 
     try:
         while True:
@@ -274,20 +299,20 @@ def run_loop(
     except Exception as exc:
         state.status = RunStatus.FAILED
         tb = traceback.format_exc()
-        emit(EventType.LOG_MESSAGE, {
-            "message": f"Run crashed: {exc}",
-            "level": "error",
-            "traceback": tb,
-        })
+        emit(EventType.LOG_MESSAGE, LogMessageData(
+            message=f"Run crashed: {exc}",
+            level="error",
+            traceback=tb,
+        ))
 
     if state.status == RunStatus.RUNNING:
         state.status = RunStatus.COMPLETED
 
     reason = state.status.reason
-    emit(EventType.RUN_STOPPED, {
-        "reason": reason,
-        "total": state.total,
-        "completed": state.completed,
-        "failed": state.failed,
-        "timed_out": state.timed_out,
-    })
+    emit(EventType.RUN_STOPPED, RunStoppedData(
+        reason=reason,
+        total=state.total,
+        completed=state.completed,
+        failed=state.failed,
+        timed_out=state.timed_out,
+    ))

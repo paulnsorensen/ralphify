@@ -10,7 +10,7 @@ import queue
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Protocol, TypedDict, runtime_checkable
 
 
 class EventType(Enum):
@@ -62,6 +62,67 @@ class EventType(Enum):
 
     # ── Other ───────────────────────────────────────────────────
     LOG_MESSAGE = "log_message"
+
+
+# ── Typed event data payloads ─────────────────────────────────────────
+
+
+class RunStartedData(TypedDict):
+    commands: int
+    max_iterations: int | None
+    timeout: int
+    delay: int
+
+
+class RunStoppedData(TypedDict):
+    reason: str
+    total: int
+    completed: int
+    failed: int
+    timed_out: int
+
+
+class IterationStartedData(TypedDict):
+    iteration: int
+
+
+class IterationEndedData(TypedDict):
+    iteration: int
+    returncode: int | None
+    duration: float
+    duration_formatted: str
+    detail: str
+    log_file: str | None
+    result_text: str | None
+
+
+class CommandsStartedData(TypedDict):
+    iteration: int
+    count: int
+
+
+class CommandsCompletedData(TypedDict):
+    iteration: int
+    count: int
+
+
+class PromptAssembledData(TypedDict):
+    iteration: int
+    prompt_length: int
+
+
+class AgentActivityData(TypedDict):
+    raw: dict[str, Any]
+    iteration: int
+
+
+class _LogMessageRequired(TypedDict):
+    message: str
+    level: str
+
+
+class LogMessageData(_LogMessageRequired, total=False):
+    traceback: str
 
 
 @dataclass
