@@ -63,7 +63,13 @@ commands:
 
 # Prompt
 
+## Recent commits
+
 {{ commands.git-log }}
+
+## Test results
+
+{{ commands.tests }}
 
 You are an autonomous coding agent running in a loop. Each iteration
 starts with a fresh context. Your progress lives in the code and git.
@@ -71,11 +77,12 @@ starts with a fresh context. Your progress lives in the code and git.
 Read TODO.md for the current task list. Pick the top uncompleted task,
 implement it fully, then mark it done.
 
+If tests are failing, fix them before starting new work.
+
 ## Rules
 
 - One task per iteration
 - No placeholder code — full, working implementations only
-- Run tests before committing
 - Commit with a descriptive message like `feat: add X` or `fix: resolve Y`
 - Mark the completed task in TODO.md
 ```
