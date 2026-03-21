@@ -190,7 +190,6 @@
       <div class="hero-bg" aria-hidden="true">
         <div class="hero-orb hero-orb-1"></div>
         <div class="hero-orb hero-orb-2"></div>
-        <div class="hero-orb hero-orb-3"></div>
         <div class="hero-grid-overlay"></div>
       </div>
 
@@ -218,17 +217,32 @@
           <a href="docs/cookbook/" class="btn btn-secondary">View Cookbook</a>
         </div>
 
-        <div class="hero-agents-center">
-          <span class="agent-strip-label">Works with</span>
-          <div class="agent-strip-list">
-            <a href="docs/agents/" class="agent-chip">Claude Code</a>
-            <a href="docs/agents/" class="agent-chip">Aider</a>
-            <a href="docs/agents/" class="agent-chip">Codex CLI</a>
-            <a href="docs/agents/" class="agent-chip">Any CLI agent</a>
+        <!-- Live status indicator -->
+        <div class="hero-live-status" aria-hidden="true">
+          <div class="live-status-inner">
+            <span class="status-dot"></span>
+            <span class="live-status-text">Iteration <span class="live-counter">48</span></span>
+            <span class="live-status-sep">&middot;</span>
+            <span class="live-status-detail">23 commits</span>
+            <span class="live-status-sep">&middot;</span>
+            <span class="live-status-detail">4h 12m running</span>
           </div>
         </div>
       </div>
     </section>
+
+    <!-- Agent strip -->
+    <div class="agent-strip">
+      <div class="agent-strip-inner">
+        <span class="agent-strip-label">Works with</span>
+        <div class="agent-strip-list">
+          <a href="docs/agents/" class="agent-chip">Claude Code</a>
+          <a href="docs/agents/" class="agent-chip">Aider</a>
+          <a href="docs/agents/" class="agent-chip">Codex CLI</a>
+          <a href="docs/agents/" class="agent-chip">Any CLI agent</a>
+        </div>
+      </div>
+    </div>
 
     <!-- Live terminal demo -->
     <section class="demo" aria-label="Terminal demo">
@@ -263,26 +277,6 @@
       </div>
     </section>
 
-    <!-- Activity ticker -->
-    <div class="ticker" aria-hidden="true">
-      <div class="ticker-track">
-        <span class="ticker-item"><span class="ticker-dot"></span>Iteration 14 completed &mdash; 3 files changed</span>
-        <span class="ticker-item"><span class="ticker-dot"></span>Tests passing: 47/47</span>
-        <span class="ticker-item"><span class="ticker-dot"></span>Iteration 15 started</span>
-        <span class="ticker-item"><span class="ticker-dot"></span>Agent fixing lint warning</span>
-        <span class="ticker-item"><span class="ticker-dot"></span>Iteration 15 completed &mdash; 1 file changed</span>
-        <span class="ticker-item"><span class="ticker-dot"></span>Iteration 16 started</span>
-        <span class="ticker-item"><span class="ticker-dot"></span>Picking next task from TODO.md</span>
-        <span class="ticker-item"><span class="ticker-dot"></span>Iteration 14 completed &mdash; 3 files changed</span>
-        <span class="ticker-item"><span class="ticker-dot"></span>Tests passing: 47/47</span>
-        <span class="ticker-item"><span class="ticker-dot"></span>Iteration 15 started</span>
-        <span class="ticker-item"><span class="ticker-dot"></span>Agent fixing lint warning</span>
-        <span class="ticker-item"><span class="ticker-dot"></span>Iteration 15 completed &mdash; 1 file changed</span>
-        <span class="ticker-item"><span class="ticker-dot"></span>Iteration 16 started</span>
-        <span class="ticker-item"><span class="ticker-dot"></span>Picking next task from TODO.md</span>
-      </div>
-    </div>
-
     <!-- The FOMO — Storytelling arc -->
     <section class="fomo" aria-labelledby="fomo-heading">
       <div class="fomo-inner">
@@ -290,7 +284,7 @@
         <h2 id="fomo-heading" class="section-heading fade-up">Everyone has an agent running.<br>Except you.</h2>
 
         <div class="fomo-grid fade-up">
-          <!-- The scene -->
+          <!-- The scene: Slack mockup -->
           <div class="fomo-card fomo-card-slack">
             <div class="slack-channel"># eng-general</div>
             <div class="slack-msg">
@@ -354,8 +348,8 @@
           <p class="section-subtitle fade-up">No config files. No project scaffolding. No dashboard.<br>One file is the whole thing.</p>
           <ul class="ralph-features fade-up">
             <li><strong>agent</strong> &mdash; which CLI agent to run</li>
-            <li><strong>commands</strong> &mdash; shell commands whose output fills placeholders</li>
-            <li><strong>The prompt body</strong> &mdash; what the agent sees every iteration</li>
+            <li><strong>commands</strong> &mdash; checks that validate each iteration</li>
+            <li><strong>The prompt body</strong> &mdash; what the agent sees every loop</li>
           </ul>
         </div>
         <div class="ralph-file-demo fade-up">
@@ -504,6 +498,10 @@ pick the next task from TODO.md and implement it.</code></pre>
 
     <!-- Bottom CTA -->
     <section class="cta-bottom" aria-labelledby="cta-bottom-heading">
+      <div class="cta-bottom-bg" aria-hidden="true">
+        <div class="cta-orb cta-orb-1"></div>
+        <div class="cta-orb cta-orb-2"></div>
+      </div>
       <div class="cta-bottom-inner">
         <div class="cta-bottom-status">
           <span class="status-dot status-dot-lg"></span>
@@ -558,19 +556,19 @@ pick the next task from TODO.md and implement it.</code></pre>
 
     document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
 
-    // Iteration counter animation in hero
-    const counterEl = document.querySelector('.hero-counter-number');
+    // Live iteration counter animation
+    const counterEl = document.querySelector('.live-counter');
     if (counterEl) {
       let count = 0;
       const target = 48;
-      const duration = 2000;
+      const duration = 2200;
       const step = duration / target;
       const tick = () => {
         count++;
         counterEl.textContent = count;
         if (count < target) setTimeout(tick, step);
       };
-      setTimeout(tick, 800);
+      setTimeout(tick, 600);
     }
   </script>
 </body>
