@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from helpers import MOCK_POPEN, MOCK_SUBPROCESS
+from helpers import MOCK_POPEN, MOCK_SUBPROCESS, fail_result, ok_result
 
 from ralphify._agent import (
     AgentResult,
@@ -133,9 +133,7 @@ class TestReadAgentStream:
 class TestExecuteAgentBlocking:
     @patch(MOCK_SUBPROCESS)
     def test_success(self, mock_run):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="", stderr=""
-        )
+        mock_run.return_value = ok_result()
         result = execute_agent(["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1)
 
         assert result.returncode == 0
@@ -145,9 +143,7 @@ class TestExecuteAgentBlocking:
 
     @patch(MOCK_SUBPROCESS)
     def test_failure(self, mock_run):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[], returncode=1, stdout="", stderr=""
-        )
+        mock_run.return_value = fail_result()
         result = execute_agent(["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1)
 
         assert result.returncode == 1
@@ -163,9 +159,7 @@ class TestExecuteAgentBlocking:
 
     @patch(MOCK_SUBPROCESS)
     def test_writes_log_on_success(self, mock_run, tmp_path):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="agent output\n", stderr=""
-        )
+        mock_run.return_value = ok_result(stdout="agent output\n")
         result = execute_agent(
             ["echo"], "prompt", timeout=None, log_path_dir=tmp_path, iteration=3,
         )
@@ -190,9 +184,7 @@ class TestExecuteAgentBlocking:
 
     @patch(MOCK_SUBPROCESS)
     def test_no_log_when_dir_not_set(self, mock_run):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="", stderr=""
-        )
+        mock_run.return_value = ok_result()
         result = execute_agent(["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1)
 
         assert result.log_file is None

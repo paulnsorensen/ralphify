@@ -80,11 +80,9 @@ class TestRunLoop:
 
         assert mock_run.call_args.kwargs["input"] == "my prompt text"
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS)
     def test_log_dir_creates_files(self, mock_run, tmp_path):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="output\n", stderr=""
-        )
+        mock_run.return_value = ok_result(stdout="output\n")
         log_dir = tmp_path / "logs"
         config = make_config(tmp_path, max_iterations=2, log_dir=str(log_dir))
         state = make_state()

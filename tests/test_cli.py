@@ -174,11 +174,7 @@ class TestRun:
     def test_mixed_success_and_failure(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = _make_ralph(tmp_path)
-        mock_run.side_effect = [
-            subprocess.CompletedProcess(args=[], returncode=0),
-            subprocess.CompletedProcess(args=[], returncode=1),
-            subprocess.CompletedProcess(args=[], returncode=0),
-        ]
+        mock_run.side_effect = [ok_result(), fail_result(), ok_result()]
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "3"])
         assert result.exit_code == 0
         assert "2 succeeded" in result.output
@@ -220,9 +216,7 @@ class TestRunLogging:
         monkeypatch.chdir(tmp_path)
         ralph_dir = _make_ralph(tmp_path)
         log_dir = tmp_path / "logs"
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="agent output\n", stderr=""
-        )
+        mock_run.return_value = ok_result(stdout="agent output\n")
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "2", "--log-dir", str(log_dir)])
         assert result.exit_code == 0
         log_files = sorted(log_dir.iterdir())
@@ -235,9 +229,7 @@ class TestRunLogging:
         monkeypatch.chdir(tmp_path)
         ralph_dir = _make_ralph(tmp_path)
         log_dir = tmp_path / "logs"
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="hello from agent\n", stderr="warning\n"
-        )
+        mock_run.return_value = ok_result(stdout="hello from agent\n", stderr="warning\n")
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1", "--log-dir", str(log_dir)])
         assert result.exit_code == 0
         log_files = list(log_dir.iterdir())

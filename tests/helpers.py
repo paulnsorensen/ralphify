@@ -59,14 +59,22 @@ def make_state() -> RunState:
     return RunState(run_id="test-run-001")
 
 
-def ok_result(*args, **kwargs) -> subprocess.CompletedProcess:
-    """Subprocess side_effect that returns exit code 0."""
-    return subprocess.CompletedProcess(args=args, returncode=0)
+def ok_result(*args, stdout="", stderr="", **kwargs) -> subprocess.CompletedProcess:
+    """Subprocess side_effect that returns exit code 0.
+
+    Works both as a ``side_effect`` callable (receives mock call args) and
+    as a direct factory: ``ok_result(stdout="out\\n")``.
+    """
+    return subprocess.CompletedProcess(args=args, returncode=0, stdout=stdout, stderr=stderr)
 
 
-def fail_result(*args, **kwargs) -> subprocess.CompletedProcess:
-    """Subprocess side_effect that returns exit code 1."""
-    return subprocess.CompletedProcess(args=args, returncode=1)
+def fail_result(*args, stdout="", stderr="", **kwargs) -> subprocess.CompletedProcess:
+    """Subprocess side_effect that returns exit code 1.
+
+    Works both as a ``side_effect`` callable (receives mock call args) and
+    as a direct factory: ``fail_result(stderr="err\\n")``.
+    """
+    return subprocess.CompletedProcess(args=args, returncode=1, stdout=stdout, stderr=stderr)
 
 
 def drain_events(emitter: QueueEmitter) -> list[Event]:

@@ -5,16 +5,14 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from helpers import MOCK_RUNNER_SUBPROCESS
+from helpers import MOCK_RUNNER_SUBPROCESS, fail_result, ok_result
 from ralphify._runner import TIMEOUT_EXIT_CODE, run_command
 
 
 class TestRunCommand:
     @patch(MOCK_RUNNER_SUBPROCESS)
     def test_success_with_command(self, mock_run):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="ok\n", stderr=""
-        )
+        mock_run.return_value = ok_result(stdout="ok\n")
         result = run_command(script=None, command="echo hello", cwd=Path("/project"), timeout=60)
 
         assert result.success is True
@@ -26,9 +24,7 @@ class TestRunCommand:
 
     @patch(MOCK_RUNNER_SUBPROCESS)
     def test_failure_with_command(self, mock_run):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[], returncode=1, stdout="", stderr="error\n"
-        )
+        mock_run.return_value = fail_result(stderr="error\n")
         result = run_command(script=None, command="ruff check", cwd=Path("/project"), timeout=60)
 
         assert result.success is False
@@ -37,9 +33,7 @@ class TestRunCommand:
 
     @patch(MOCK_RUNNER_SUBPROCESS)
     def test_uses_script_when_set(self, mock_run):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="", stderr=""
-        )
+        mock_run.return_value = ok_result()
         script = Path("/checks/run.sh")
         run_command(script=script, command="echo fallback", cwd=Path("/project"), timeout=60)
 
@@ -47,27 +41,21 @@ class TestRunCommand:
 
     @patch(MOCK_RUNNER_SUBPROCESS)
     def test_shlex_splits_command(self, mock_run):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="", stderr=""
-        )
+        mock_run.return_value = ok_result()
         run_command(script=None, command="ruff check --fix .", cwd=Path("/project"), timeout=60)
 
         assert mock_run.call_args.args[0] == ["ruff", "check", "--fix", "."]
 
     @patch(MOCK_RUNNER_SUBPROCESS)
     def test_passes_cwd(self, mock_run):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="", stderr=""
-        )
+        mock_run.return_value = ok_result()
         run_command(script=None, command="echo", cwd=Path("/my/project"), timeout=60)
 
         assert mock_run.call_args.kwargs["cwd"] == Path("/my/project")
 
     @patch(MOCK_RUNNER_SUBPROCESS)
     def test_passes_timeout(self, mock_run):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="", stderr=""
-        )
+        mock_run.return_value = ok_result()
         run_command(script=None, command="echo", cwd=Path("/project"), timeout=120)
 
         assert mock_run.call_args.kwargs["timeout"] == 120
@@ -83,9 +71,7 @@ class TestRunCommand:
 
     @patch(MOCK_RUNNER_SUBPROCESS)
     def test_combines_stdout_and_stderr(self, mock_run):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="out\n", stderr="err\n"
-        )
+        mock_run.return_value = ok_result(stdout="out\n", stderr="err\n")
         result = run_command(script=None, command="echo", cwd=Path("/project"), timeout=60)
 
         assert "out" in result.output
@@ -93,9 +79,7 @@ class TestRunCommand:
 
     @patch(MOCK_RUNNER_SUBPROCESS)
     def test_env_merged_with_parent(self, mock_run):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="", stderr=""
-        )
+        mock_run.return_value = ok_result()
         run_command(script=None, command="echo", cwd=Path("/project"), timeout=60, env={"RALPH_NAME": "docs"})
 
         passed_env = mock_run.call_args.kwargs["env"]
@@ -105,9 +89,7 @@ class TestRunCommand:
 
     @patch(MOCK_RUNNER_SUBPROCESS)
     def test_env_none_inherits_parent(self, mock_run):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="", stderr=""
-        )
+        mock_run.return_value = ok_result()
         run_command(script=None, command="echo", cwd=Path("/project"), timeout=60, env=None)
 
         # env=None means subprocess.run inherits parent env
