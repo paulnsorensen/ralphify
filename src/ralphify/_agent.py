@@ -31,8 +31,12 @@ from ralphify._output import collect_output
 _CLAUDE_BINARY = "claude"
 
 # CLI flags appended when streaming mode is used.
+_OUTPUT_FORMAT_FLAG = "--output-format"
 _STREAM_FORMAT = "stream-json"
 _VERBOSE_FLAG = "--verbose"
+
+# JSON stream event type and field for result extraction.
+_RESULT_TYPE = "result"
 
 
 @dataclass
@@ -124,8 +128,8 @@ def _read_agent_stream(
             parsed = json.loads(stripped)
         except json.JSONDecodeError:
             continue
-        if parsed.get("type") == "result" and "result" in parsed:
-            result_text = parsed["result"]
+        if parsed.get("type") == _RESULT_TYPE and _RESULT_TYPE in parsed:
+            result_text = parsed[_RESULT_TYPE]
         if on_activity is not None:
             on_activity(parsed)
 
@@ -147,7 +151,7 @@ def _run_agent_streaming(
     this function owns the subprocess lifecycle (spawn, stdin delivery,
     timeout kill, and cleanup via ``try/finally``).
     """
-    stream_cmd = cmd + ["--output-format", _STREAM_FORMAT, _VERBOSE_FLAG]
+    stream_cmd = cmd + [_OUTPUT_FORMAT_FLAG, _STREAM_FORMAT, _VERBOSE_FLAG]
     start = time.monotonic()
     deadline = (start + timeout) if timeout is not None else None
 
