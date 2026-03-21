@@ -130,6 +130,7 @@ my-ralph/
 | `agent` | Yes | The agent command to run |
 | `commands` | No | List of commands (name + run) whose output fills `{{ commands.<name> }}` placeholders |
 | `args` | No | Declared argument names for `{{ args.<name> }}` placeholders |
+| `credit` | No | Append co-author trailer instruction to prompt (default: `true`) |
 
 **Commands** run before each iteration. Their output replaces `{{ commands.<name> }}` placeholders in the prompt. Use them for test results, git history, lint output — anything that changes between iterations.
 
