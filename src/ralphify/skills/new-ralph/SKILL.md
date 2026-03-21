@@ -96,6 +96,7 @@ A command is a name and something to run. The framework executes it, captures st
 - **Other commands run from the project root.** `run: uv run pytest` runs in the working directory where `ralph run` was invoked.
 - **Output is always captured** regardless of exit code.
 - **No shell features by default.** Commands are parsed with `shlex.split()`. For pipes, redirects, `&&` — use a script.
+- **`{{ args.<name> }}` placeholders work in `run` strings.** Example: `run: gh issue view {{ args.issue }}` resolves before execution.
 
 ### User arguments
 

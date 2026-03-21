@@ -667,7 +667,7 @@ class TestRunCommands:
         mock_run_cmd.return_value = RunResult(success=True, returncode=0, output="test output")
         commands = [Command(name="tests", run="pytest")]
 
-        result = _run_commands(commands, ralph_dir=tmp_path / "ralph", project_root=tmp_path)
+        result = _run_commands(commands, ralph_dir=tmp_path / "ralph", project_root=tmp_path, user_args={})
 
         assert result == {"tests": "test output"}
 
@@ -686,7 +686,7 @@ class TestRunCommands:
             Command(name="b", run="cmd-b"),
         ]
 
-        result = _run_commands(commands, ralph_dir=tmp_path / "ralph", project_root=tmp_path)
+        result = _run_commands(commands, ralph_dir=tmp_path / "ralph", project_root=tmp_path, user_args={})
 
         assert len(result) == 2
         assert result["a"] == "out-1"
@@ -698,7 +698,7 @@ class TestRunCommands:
         ralph_dir = tmp_path / "my-ralph"
         commands = [Command(name="local", run="./check.sh")]
 
-        _run_commands(commands, ralph_dir=ralph_dir, project_root=tmp_path)
+        _run_commands(commands, ralph_dir=ralph_dir, project_root=tmp_path, user_args={})
 
         assert mock_run_cmd.call_args.kwargs["cwd"] == ralph_dir
 
@@ -708,7 +708,7 @@ class TestRunCommands:
         ralph_dir = tmp_path / "my-ralph"
         commands = [Command(name="tests", run="pytest")]
 
-        _run_commands(commands, ralph_dir=ralph_dir, project_root=tmp_path)
+        _run_commands(commands, ralph_dir=ralph_dir, project_root=tmp_path, user_args={})
 
         assert mock_run_cmd.call_args.kwargs["cwd"] == tmp_path
 
@@ -717,14 +717,34 @@ class TestRunCommands:
         mock_run_cmd.return_value = RunResult(success=True, returncode=0, output="ok")
         commands = [Command(name="slow", run="sleep 1", timeout=300)]
 
-        _run_commands(commands, ralph_dir=tmp_path, project_root=tmp_path)
+        _run_commands(commands, ralph_dir=tmp_path, project_root=tmp_path, user_args={})
 
         assert mock_run_cmd.call_args.kwargs["timeout"] == 300
 
     def test_empty_commands_returns_empty_dict(self, tmp_path):
-        result = _run_commands([], ralph_dir=tmp_path, project_root=tmp_path)
+        result = _run_commands([], ralph_dir=tmp_path, project_root=tmp_path, user_args={})
 
         assert result == {}
+
+    @patch(MOCK_RUN_COMMAND)
+    def test_resolves_args_in_command_run_string(self, mock_run_cmd, tmp_path):
+        mock_run_cmd.return_value = RunResult(success=True, returncode=0, output="issue content")
+        commands = [Command(name="issue", run="gh issue view {{ args.issue }} --json title")]
+
+        _run_commands(commands, ralph_dir=tmp_path, project_root=tmp_path, user_args={"issue": "42"})
+
+        assert mock_run_cmd.call_args.kwargs["command"] == "gh issue view 42 --json title"
+
+    @patch(MOCK_RUN_COMMAND)
+    def test_dotslash_detection_after_args_resolution(self, mock_run_cmd, tmp_path):
+        mock_run_cmd.return_value = RunResult(success=True, returncode=0, output="ok")
+        ralph_dir = tmp_path / "my-ralph"
+        commands = [Command(name="check", run="./{{ args.script }}")]
+
+        _run_commands(commands, ralph_dir=ralph_dir, project_root=tmp_path, user_args={"script": "check.sh"})
+
+        assert mock_run_cmd.call_args.kwargs["cwd"] == ralph_dir
+        assert mock_run_cmd.call_args.kwargs["command"] == "./check.sh"
 
 
 class TestAssemblePrompt:

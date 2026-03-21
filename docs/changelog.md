@@ -7,6 +7,14 @@ keywords: ralphify changelog, release history, new features, version updates, br
 
 All notable changes to ralphify are documented here.
 
+## 0.2.1 — 2026-03-21
+
+### Fixed
+
+- **`{{ args.* }}` placeholders now resolved in command `run` strings** — previously, arg placeholders were only resolved in the prompt body. Commands like `run: gh issue view {{ args.issue }}` would fail because `shlex.split` tokenized the raw placeholder into multiple arguments. Args are now resolved before command execution.
+
+---
+
 ## 0.2.0 — 2026-03-21
 
 The v2 rewrite. Ralphify is now simpler: a ralph is a directory with a `RALPH.md` file. No more `ralph.toml`, no more `.ralphify/` directory, no more `ralph init`. Everything lives in one file.

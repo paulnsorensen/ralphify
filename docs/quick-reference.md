@@ -72,7 +72,7 @@ Your instructions here. Use {{ args.dir }} for user arguments.
 | Field | Type | Description |
 |---|---|---|
 | `name` | string | Identifier for `{{ commands.<name> }}` |
-| `run` | string | Shell command to execute |
+| `run` | string | Shell command to execute (supports `{{ args.<name> }}` placeholders) |
 
 ## Placeholders
 

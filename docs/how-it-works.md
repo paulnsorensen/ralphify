@@ -37,7 +37,7 @@ Command output is captured **regardless of exit code** — a command like `pytes
 
 ### 3. Resolve placeholders
 
-Each `{{ commands.<name> }}` placeholder in the prompt body is replaced with the corresponding command's output. Placeholders for `{{ args.<name> }}` are replaced with user argument values from the CLI.
+Each `{{ commands.<name> }}` placeholder in the prompt body is replaced with the corresponding command's output. Placeholders for `{{ args.<name> }}` are replaced with user argument values from the CLI — both in the prompt body and in command `run` strings.
 
 Unmatched placeholders resolve to an empty string — you won't see raw `{{ }}` text in the assembled prompt.
 

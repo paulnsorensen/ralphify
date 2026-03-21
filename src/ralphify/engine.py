@@ -77,6 +77,7 @@ def _run_commands(
     commands: list[Command],
     ralph_dir: Path,
     project_root: Path,
+    user_args: dict[str, str],
 ) -> dict[str, str]:
     """Execute all commands and return a dict of name→output.
 
@@ -85,7 +86,7 @@ def _run_commands(
     """
     results: dict[str, str] = {}
     for cmd in commands:
-        run_str = cmd.run
+        run_str = resolve_args(cmd.run, user_args)
         # Determine working directory: if the command starts with ./ it's
         # relative to the ralph directory, otherwise use project root.
         if run_str.startswith(_RELATIVE_CMD_PREFIX):
@@ -195,7 +196,7 @@ def _run_iteration(
     if config.commands:
         emit(EventType.COMMANDS_STARTED, {"iteration": iteration, "count": len(config.commands)})
         command_outputs = _run_commands(
-            config.commands, config.ralph_dir, config.project_root,
+            config.commands, config.ralph_dir, config.project_root, config.args,
         )
         emit(EventType.COMMANDS_COMPLETED, {
             "iteration": iteration,
