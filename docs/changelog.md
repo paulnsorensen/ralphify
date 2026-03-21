@@ -7,7 +7,7 @@ keywords: ralphify changelog, release history, new features, version updates, br
 
 All notable changes to ralphify are documented here.
 
-## 0.2.0 — 2026-03-20
+## 0.2.0 — 2026-03-21
 
 The v2 rewrite. Ralphify is now simpler: a ralph is a directory with a `RALPH.md` file. No more `ralph.toml`, no more `.ralphify/` directory, no more `ralph init`. Everything lives in one file.
 
@@ -25,6 +25,20 @@ The v2 rewrite. Ralphify is now simpler: a ralph is a directory with a `RALPH.md
 
 - **`commands` frontmatter field** — define commands that run each iteration directly in RALPH.md. Each command has a `name` and `run` field.
 - **Single-file configuration** — the `agent` field, commands, args, and prompt all live in one RALPH.md file.
+
+### Fixed
+
+- **Guard against double-starting a run** — `RunManager` now prevents the same run from being started twice.
+- **Eliminate TOCTOU race in RunManager** — `start_run` is now atomic to prevent race conditions in concurrent runs.
+- **UTF-8 encoding for all subprocess calls** — prevents encoding errors on systems with non-UTF-8 defaults.
+- **Stricter input validation** — reject whitespace-only agent fields, command names, command `run` values, and command strings. Validate negative delay, non-positive `max_iterations`, and timeout values. Validate `commands` field type and reject duplicate command names. Validate command `timeout` field in frontmatter.
+- **Clear command placeholders when no commands exist** — matches the existing behavior for args placeholders.
+- **Error handling for `os.execvp` in `ralph new`** — graceful error instead of unhandled exception when the agent binary is not found.
+
+### Improved
+
+- **Extensive test coverage** — added unit tests for `_agent.py`, `_events.py`, `ConsoleEmitter`, engine internals, streaming agent execution, command cwd logic, and frontmatter edge cases.
+- **Code quality** — extracted magic strings into named constants, consolidated duplicate test helpers, replaced lambda closures with `functools.partial`, and compiled module-level regexes in the resolver.
 
 ### How to upgrade from 0.1.x
 
