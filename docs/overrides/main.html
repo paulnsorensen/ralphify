@@ -19,6 +19,11 @@
 
   {% set og_image = config.site_url ~ "assets/cli-banner.png" %}
 
+  <!-- Preconnect to external origins -->
+  <link rel="preconnect" href="https://github.com" crossorigin>
+  <link rel="dns-prefetch" href="https://github.com">
+  <link rel="dns-prefetch" href="https://pypi.org">
+
   <!-- Keywords -->
   {% if page and page.meta and page.meta.keywords %}
   <meta name="keywords" content="{{ page.meta.keywords }}">
@@ -115,6 +120,33 @@
       "url": "https://github.com/computerlovetech"
     },
     "codeRepository": "https://github.com/computerlovetech/ralphify"
+  }
+  </script>
+  {% endif %}
+
+  <!-- TechArticle structured data for docs pages -->
+  {% if page and page.title and page.title != "Home" %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "{{ page.title }}",
+    "description": "{{ page_desc }}",
+    "url": "{{ page_url }}",
+    "author": {
+      "@type": "Organization",
+      "name": "Computerlove Technologies",
+      "url": "https://github.com/computerlovetech"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Computerlove Technologies"
+    },
+    "about": {
+      "@type": "SoftwareApplication",
+      "name": "Ralphify"
+    }{% if page.meta and page.meta.keywords %},
+    "keywords": "{{ page.meta.keywords }}"{% endif %}
   }
   </script>
   {% endif %}
