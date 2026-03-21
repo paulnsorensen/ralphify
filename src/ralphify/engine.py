@@ -129,7 +129,13 @@ def _run_agent_phase(
 
     Returns ``True`` when the agent exited successfully (code 0, no timeout).
     """
-    cmd = shlex.split(config.agent)
+    try:
+        cmd = shlex.split(config.agent)
+    except ValueError as exc:
+        raise ValueError(
+            f"Invalid agent command syntax: {config.agent!r}. "
+            f"Check the 'agent' field in your RALPH.md frontmatter."
+        ) from exc
 
     try:
         agent = execute_agent(

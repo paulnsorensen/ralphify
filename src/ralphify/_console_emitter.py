@@ -97,12 +97,14 @@ class ConsoleEmitter:
         iteration = data.get("iteration", "?")
         detail = data.get("detail", "")
         status_msg = f"[{color}]{icon} Iteration {iteration} {detail}"
-        if data.get("log_file"):
-            status_msg += f" {_ICON_ARROW}\n{data['log_file']}"
+        log_file = data.get("log_file")
+        if log_file:
+            status_msg += f" {_ICON_ARROW}\n{log_file}"
         status_msg += f"[/{color}]"
         self._console.print(status_msg)
-        if data.get("result_text"):
-            self._console.print(f"  [dim]{data['result_text']}[/dim]")
+        result_text = data.get("result_text")
+        if result_text:
+            self._console.print(f"  [dim]{result_text}[/dim]")
 
     def _on_commands_completed(self, data: dict) -> None:
         count = data.get("count", 0)

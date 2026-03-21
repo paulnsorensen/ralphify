@@ -402,6 +402,23 @@ class TestCommandExecution:
         assert passed_timeout == 300
 
 
+class TestAgentCommandParsing:
+    """Tests for malformed agent command handling in the engine."""
+
+    def test_malformed_agent_command_raises_value_error(self, tmp_path):
+        """shlex.split on an agent with unmatched quotes produces a clear error."""
+        config = make_config(tmp_path, max_iterations=1, agent="echo 'unterminated")
+        state = make_state()
+        q = QueueEmitter()
+
+        run_loop(config, state, q)
+
+        assert state.status == RunStatus.FAILED
+        events = drain_events(q)
+        log_events = [e for e in events if e.type == EventType.LOG_MESSAGE]
+        assert any("Invalid agent command syntax" in e.data["message"] for e in log_events)
+
+
 class TestRunLoopCrashHandling:
     """Tests for the broad exception handler in run_loop (engine.py lines 269-276)."""
 
