@@ -245,22 +245,81 @@
         </div>
       </div>
 
-      <div class="hero-terminal-wrapper">
-        <div class="hero-terminal">
-          <div class="terminal-window">
-            <div class="terminal-header">
-              <span class="terminal-dot red"></span>
-              <span class="terminal-dot yellow"></span>
-              <span class="terminal-dot green"></span>
-              <span class="terminal-title">ralph run</span>
+      <!-- Live status dashboard -->
+      <div class="hero-status-dashboard">
+        <div class="status-panel">
+          <div class="status-panel-header">
+            <span class="status-dot"></span>
+            <span class="status-panel-title">ralph is running</span>
+          </div>
+          <div class="status-panel-grid">
+            <div class="status-metric">
+              <span class="status-metric-label">Iteration</span>
+              <span class="status-metric-value" id="iter-counter">14</span>
             </div>
-            <div class="terminal-body" id="hero-term">
-              <!-- Lines are injected by the typing animation script -->
+            <div class="status-metric">
+              <span class="status-metric-label">Tests passing</span>
+              <span class="status-metric-value status-metric-green">127/127</span>
+            </div>
+            <div class="status-metric">
+              <span class="status-metric-label">Last commit</span>
+              <span class="status-metric-value status-metric-mono">feat: add webhook handler</span>
+            </div>
+            <div class="status-metric">
+              <span class="status-metric-label">Status</span>
+              <span class="status-metric-value status-metric-active">
+                <span class="status-dot status-dot-xs"></span>
+                Running agent...
+              </span>
             </div>
           </div>
         </div>
       </div>
+
       <div class="hero-horizon" aria-hidden="true"></div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- THE PROBLEM — your agent stopped              -->
+    <!-- ============================================ -->
+    <section class="problem" aria-labelledby="problem-heading">
+      <div class="problem-inner">
+        <p class="section-eyebrow fade-up">The problem</p>
+        <h2 id="problem-heading" class="section-heading fade-up">
+          You close your laptop.<br>
+          <span class="text-muted-heading">Your agent stops.</span>
+        </h2>
+        <p class="section-subtitle fade-up">You start an agent. It works great. Then you go to lunch, close your laptop, or context fills up. The agent stops. You come back, re-read the thread, restart it. Again. And again.</p>
+
+        <div class="problem-cycle fade-up">
+          <div class="cycle-step">
+            <div class="cycle-icon">&#x25B6;</div>
+            <span>Start agent</span>
+          </div>
+          <div class="cycle-arrow" aria-hidden="true">
+            <svg viewBox="0 0 40 12" fill="none"><path d="M0 6h32m0 0l-6-5m6 5l-6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="cycle-step">
+            <div class="cycle-icon">&#x1F4BB;</div>
+            <span>It works</span>
+          </div>
+          <div class="cycle-arrow" aria-hidden="true">
+            <svg viewBox="0 0 40 12" fill="none"><path d="M0 6h32m0 0l-6-5m6 5l-6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="cycle-step cycle-step-bad">
+            <div class="cycle-icon">&#x1F6D1;</div>
+            <span>Context fills up</span>
+          </div>
+          <div class="cycle-arrow" aria-hidden="true">
+            <svg viewBox="0 0 40 12" fill="none"><path d="M0 6h32m0 0l-6-5m6 5l-6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="cycle-step cycle-step-bad">
+            <div class="cycle-icon">&#x1F504;</div>
+            <span>Restart manually</span>
+          </div>
+        </div>
+        <p class="problem-tagline fade-up">What if it just&hellip; <em>kept going?</em></p>
+      </div>
     </section>
 
     <!-- ============================================ -->
@@ -272,7 +331,7 @@
         <h2 id="fomo-heading" class="section-heading fade-up">
           &ldquo;What did your agent<br>ship this weekend?&rdquo;
         </h2>
-        <p class="section-subtitle fade-up">Everyone in standup is talking about what their AI coding agent pushed overnight. You open your laptop. Same backlog. Zero progress. Agent FOMO is real.</p>
+        <p class="section-subtitle fade-up">Everyone in standup is talking about what their AI coding agent pushed overnight. You open your laptop. Same backlog. Zero progress. <strong>Agent FOMO is real.</strong></p>
 
         <div class="fomo-contrast fade-up">
           <div class="fomo-card fomo-without">
@@ -348,6 +407,22 @@
           </div>
           <div class="loop-return" aria-hidden="true">
             <span class="loop-return-arrow">&#x21A9; back to step 1</span>
+          </div>
+        </div>
+
+        <div class="hero-terminal-wrapper fade-up">
+          <div class="hero-terminal">
+            <div class="terminal-window">
+              <div class="terminal-header">
+                <span class="terminal-dot red"></span>
+                <span class="terminal-dot yellow"></span>
+                <span class="terminal-dot green"></span>
+                <span class="terminal-title">ralph run</span>
+              </div>
+              <div class="terminal-body" id="hero-term">
+                <!-- Lines are injected by the typing animation script -->
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -642,7 +717,37 @@ pick the next task from TODO.md and implement it.</code></pre>
       });
     }
 
-    // Hero terminal — typing animation that loops
+    // Status dashboard entrance animation
+    const dashboard = document.querySelector('.hero-status-dashboard');
+    if (dashboard) {
+      dashboard.style.opacity = '0';
+      dashboard.style.transform = 'translateY(30px) scale(0.97)';
+      setTimeout(() => {
+        dashboard.style.transition = 'opacity 1s cubic-bezier(0.16, 1, 0.3, 1), transform 1s cubic-bezier(0.16, 1, 0.3, 1)';
+        dashboard.style.opacity = '1';
+        dashboard.style.transform = 'translateY(0) scale(1)';
+      }, 1200);
+    }
+
+    // Iteration counter — counts up slowly to feel alive
+    const iterCounter = document.getElementById('iter-counter');
+    if (iterCounter) {
+      let count = 14;
+      setInterval(() => {
+        count++;
+        iterCounter.textContent = count;
+        iterCounter.style.transition = 'none';
+        iterCounter.style.transform = 'scale(1.15)';
+        iterCounter.style.color = '#34D399';
+        setTimeout(() => {
+          iterCounter.style.transition = 'transform 0.4s ease, color 0.6s ease';
+          iterCounter.style.transform = 'scale(1)';
+          iterCounter.style.color = '';
+        }, 50);
+      }, 8000);
+    }
+
+    // Terminal typing animation
     const terminalData = [
       { type: 'header', text: '--- iteration 1 ---' },
       { type: 'check', text: '  running checks...' },
@@ -709,15 +814,12 @@ pick the next task from TODO.md and implement it.</code></pre>
         line.style.transform = 'translateY(4px)';
         heroTerm.appendChild(line);
 
-        // Scroll to bottom
         heroTerm.scrollTop = heroTerm.scrollHeight;
 
-        // Trim old lines if too many
         while (heroTerm.children.length > MAX_LINES) {
           heroTerm.removeChild(heroTerm.firstChild);
         }
 
-        // Animate in
         requestAnimationFrame(() => {
           line.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
           line.style.opacity = '1';
@@ -726,21 +828,20 @@ pick the next task from TODO.md and implement it.</code></pre>
 
         lineIndex++;
 
-        // Schedule next line
         let delay = 120;
         if (data.type === 'header') delay = 400;
         else if (data.type === 'check' || data.type === 'agent') delay = 800;
         else if (data.type === 'success' || data.type === 'fail') delay = 300;
         else if (data.type === 'commit') delay = 500;
-        else if (data.type === 'cursor') delay = 0; // stop
+        else if (data.type === 'cursor') delay = 0;
 
         if (lineIndex < terminalData.length) {
           setTimeout(addNextLine, delay);
         }
       }
 
-      // Start typing after page loads
-      setTimeout(addNextLine, 1400);
+      // Start typing after a delay
+      setTimeout(addNextLine, 2000);
     }
 
     // FOMO cards staggered reveal
@@ -787,6 +888,32 @@ pick the next task from TODO.md and implement it.</code></pre>
         });
       }, { threshold: 0.2 });
       quoteObs.observe(quoteGrid);
+    }
+
+    // Problem cycle entrance animation
+    const problemCycle = document.querySelector('.problem-cycle');
+    if (problemCycle) {
+      const steps = problemCycle.querySelectorAll('.cycle-step');
+      const arrows = problemCycle.querySelectorAll('.cycle-arrow');
+      const cycleObs = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            steps.forEach((step, i) => {
+              setTimeout(() => {
+                step.style.opacity = '1';
+                step.style.transform = 'translateY(0)';
+              }, i * 200);
+            });
+            arrows.forEach((arrow, i) => {
+              setTimeout(() => {
+                arrow.style.opacity = '1';
+              }, i * 200 + 100);
+            });
+            cycleObs.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.3 });
+      cycleObs.observe(problemCycle);
     }
   </script>
 </body>
