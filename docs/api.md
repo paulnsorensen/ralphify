@@ -217,7 +217,7 @@ Use `event.to_dict()` to serialize to a JSON-compatible dict.
 | Event | Data fields |
 |---|---|
 | `ITERATION_STARTED` | `iteration` |
-| `ITERATION_COMPLETED` | `iteration`, `returncode`, `duration`, `duration_formatted`, `log_file`, `result_text` |
+| `ITERATION_COMPLETED` | `iteration`, `returncode`, `duration`, `duration_formatted`, `detail`, `log_file`, `result_text` |
 | `ITERATION_FAILED` | same as `ITERATION_COMPLETED` |
 | `ITERATION_TIMED_OUT` | same as `ITERATION_COMPLETED` (`returncode` is `None`) |
 
@@ -226,8 +226,7 @@ Use `event.to_dict()` to serialize to a JSON-compatible dict.
 | Event | Data fields |
 |---|---|
 | `COMMANDS_STARTED` | `iteration`, `count` |
-| `COMMAND_COMPLETED` | `iteration`, `name`, `exit_code`, `duration` |
-| `COMMANDS_COMPLETED` | `iteration`, `results` (list of per-command dicts) |
+| `COMMANDS_COMPLETED` | `iteration`, `count` |
 
 #### Prompt assembly
 
