@@ -18,7 +18,7 @@ The core loop is simple. The complexity lives in **prompt assembly** — running
 ```
 src/ralphify/           # All source code
 ├── __init__.py         # Version detection + app entry point
-├── cli.py              # CLI commands (run, new) — delegates to engine for the loop
+├── cli.py              # CLI commands (run, new, init) — delegates to engine for the loop
 ├── engine.py           # Core run loop orchestration with structured event emission
 ├── manager.py          # Multi-run orchestration (concurrent runs via threads)
 ├── resolver.py         # Template placeholder resolution ({{ commands.* }}, {{ args.* }})

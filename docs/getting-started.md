@@ -25,17 +25,21 @@ Verify it's working:
 ralph --version
 ```
 
-## Step 2: Create a ralph directory
+## Step 2: Create a ralph
 
-A ralph is a directory with a `RALPH.md` file. Create one in your project:
+The fastest way to scaffold a ralph is `ralph init`:
 
 ```bash
-mkdir my-ralph
+ralph init my-ralph
 ```
 
-## Step 3: Write the RALPH.md
+This creates `my-ralph/RALPH.md` with a ready-to-customize template including an example command, arg, and prompt. Edit it and skip to [Step 4](#step-4-do-a-test-run).
 
-Create `my-ralph/RALPH.md` with the agent field — this is the only required frontmatter:
+Alternatively, use `ralph new` for AI-guided setup, or create the file manually as shown below.
+
+### Manual setup
+
+Create a ralph directory and `RALPH.md` with the agent field — this is the only required frontmatter:
 
 ```markdown
 ---

@@ -337,6 +337,54 @@ class TestNew:
         assert "No agent found" in result.output
 
 
+class TestInit:
+    def test_creates_ralph_with_name(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        result = runner.invoke(app, ["init", "my-task"])
+        assert result.exit_code == 0
+        ralph_file = tmp_path / "my-task" / "RALPH.md"
+        assert ralph_file.exists()
+        assert "Created" in result.output
+
+    def test_creates_ralph_in_cwd(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        result = runner.invoke(app, ["init"])
+        assert result.exit_code == 0
+        assert (tmp_path / "RALPH.md").exists()
+
+    def test_errors_if_exists(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "RALPH.md").write_text("existing")
+        result = runner.invoke(app, ["init"])
+        assert result.exit_code == 1
+        assert "already exists" in result.output
+
+    def test_creates_directory_if_missing(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        result = runner.invoke(app, ["init", "new-dir"])
+        assert result.exit_code == 0
+        assert (tmp_path / "new-dir" / "RALPH.md").exists()
+
+    def test_uses_existing_directory(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "existing-dir").mkdir()
+        result = runner.invoke(app, ["init", "existing-dir"])
+        assert result.exit_code == 0
+        assert (tmp_path / "existing-dir" / "RALPH.md").exists()
+
+    def test_template_has_valid_frontmatter(self, tmp_path, monkeypatch):
+        from ralphify._frontmatter import parse_frontmatter
+        monkeypatch.chdir(tmp_path)
+        runner.invoke(app, ["init", "my-task"])
+        content = (tmp_path / "my-task" / "RALPH.md").read_text()
+        fm, body = parse_frontmatter(content)
+        assert "agent" in fm
+        assert isinstance(fm["commands"], list)
+        assert isinstance(fm["args"], list)
+        assert "{{ commands.git-log }}" in body
+        assert "{{ args.focus }}" in body
+
+
 class TestParseUserArgs:
     def test_named_flag(self):
         result = _parse_user_args(["--dir", "./src"], None)

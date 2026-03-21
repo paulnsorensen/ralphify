@@ -47,6 +47,36 @@ BANNER = [
 
 TAGLINE = "Stop stressing over not having an agent running. Ralph is always running"
 
+_INIT_TEMPLATE = """\
+---
+agent: claude -p --dangerously-skip-permissions
+commands:
+  - name: git-log
+    run: git log --oneline -5
+args:
+  - focus
+---
+
+You are an autonomous coding agent running in a loop. Each iteration
+starts with a fresh context. Your progress lives in the code and git.
+
+## Recent changes
+
+{{ commands.git-log }}
+
+## Focus
+
+{{ args.focus }}
+
+## Task
+
+<!-- Replace this section with your task description -->
+
+- Implement one thing per iteration
+- Run tests and fix failures before committing
+- Commit with a descriptive message and push
+"""
+
 
 def _print_banner() -> None:
     width = shutil.get_terminal_size().columns
@@ -107,6 +137,27 @@ def new(
         os.execvp(cmd[0], cmd)
     except FileNotFoundError:
         _exit_error(f"Agent command '{cmd[0]}' not found on PATH.")
+
+
+@app.command()
+def init(
+    name: str | None = typer.Argument(None, help="Directory name. If omitted, creates RALPH.md in the current directory."),
+) -> None:
+    """Scaffold a new ralph with a ready-to-customize template."""
+    if name:
+        target_dir = Path.cwd() / name
+        target_dir.mkdir(exist_ok=True)
+    else:
+        target_dir = Path.cwd()
+
+    ralph_file = target_dir / RALPH_MARKER
+    if ralph_file.exists():
+        _exit_error(f"{RALPH_MARKER} already exists at '{ralph_file}'.")
+
+    ralph_file.write_text(_INIT_TEMPLATE, encoding="utf-8")
+    rel = ralph_file.relative_to(Path.cwd())
+    _console.print(f"[green]Created[/green] {rel}")
+    _console.print(f"[dim]Edit the file, then run:[/dim] ralph run {name or '.'}")
 
 
 def _parse_user_args(

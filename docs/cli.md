@@ -87,6 +87,25 @@ Missing args resolve to an empty string.
 
 ---
 
+## `ralph init`
+
+Scaffold a new ralph with a ready-to-customize template. No AI agent required.
+
+```bash
+ralph init my-task      # Creates my-task/RALPH.md with a generic template
+ralph init              # Creates RALPH.md in the current directory
+```
+
+| Argument | Default | Description |
+|---|---|---|
+| `[NAME]` | none | Directory name. If omitted, creates RALPH.md in the current directory |
+
+The generated template includes an example command (`git-log`), an example arg (`focus`), and a prompt body with placeholders for both. Edit it, then run `ralph run`.
+
+Errors if `RALPH.md` already exists at the target location.
+
+---
+
 ## `ralph new`
 
 Create a new ralph with AI-guided setup. Launches an interactive session where the agent guides you through creating a complete ralph via conversation.

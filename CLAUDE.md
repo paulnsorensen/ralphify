@@ -18,7 +18,7 @@ uv run mkdocs serve        # Preview docs at http://127.0.0.1:8000
 All source code is in `src/ralphify/`. The main file is `cli.py` — it contains the CLI commands and delegates to the engine for the core loop.
 
 Key modules:
-- `cli.py` — CLI commands (`run`, `new`); delegates to `_console_emitter.py` for terminal event rendering
+- `cli.py` — CLI commands (`run`, `new`, `init`); delegates to `_console_emitter.py` for terminal event rendering
 - `engine.py` — Core run loop orchestration with structured event emission
 - `manager.py` — Multi-run orchestration (concurrent runs via threads)
 - `_frontmatter.py` — YAML frontmatter parsing (uses PyYAML) and the `RALPH_MARKER` constant
@@ -66,3 +66,5 @@ A **ralph** is a directory containing a `RALPH.md` file. That's it. No project-l
 - Commands starting with `./` run relative to the ralph directory. Other commands run from the project root.
 - The `agent` field in frontmatter is split with `shlex.split()` to build the command list.
 - Placeholder resolution uses `resolver.py` — `{{ commands.<name> }}` and `{{ args.<name> }}` are the two supported kinds.
+
+The project has a website called ralphify.co and the docs live a ralphify.co/docs/
