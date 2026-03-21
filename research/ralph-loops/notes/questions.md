@@ -7,11 +7,14 @@
 - [ ] How does cross-company model diversity (Opus architect, Sonnet dev, Codex reviewer) compare to same-family self-review in measurable quality?
 - [ ] What's the optimal balance between plan-mode time and execution time? Boris Cherny iterates on plans extensively — is there a sweet spot?
 - [ ] How will agent skills interoperability evolve — will SKILL.md become a true standard or fragment?
-- [ ] What tooling exists for A/B testing ralph loop configurations? (Different prompts, different context strategies, same task set)
+- [x] What tooling exists for A/B testing ralph loop configurations? — EDD methodology with Braintrust, Promptfoo, LangSmith, Langfuse, Skill Eval. Golden datasets + pass@k/pass^k metrics. Arize's prompt learning optimizes system prompts via automated meta-prompting. See Ch06.
 - [x] How do practitioners test their harness/loop configurations themselves (not the agent output, but the harness)? — Block's TestProvider (record/playback pattern), LangChain's composable middleware with per-layer testing, Datadog's 5-layer verification pyramid. Key rule: live LLM tests never run in CI. See chapter 11.
 - [ ] What's the optimal ratio of spec-writing time to execution time in the spec+ralph integrated workflow?
 - [ ] How do teams handle the asymmetric trust problem (one failure erases weeks of accumulated confidence)?
 - [ ] What does a "rippable" harness look like in practice — which middleware layers get removed first as models improve?
+- [ ] What pass@k / pass^k thresholds do teams target before promoting an agent configuration to production?
+- [ ] How effective is the "meta-ralph" pattern — a ralph that optimizes other ralphs via eval feedback? Arize showed +5-10% on SWE-bench, but has anyone applied this to ralph loops specifically?
+- [ ] Does "always-in-prompt" vs "invoked-on-demand" skill placement have a measurable impact at scale? Vercel's small sample (33 vs 29) is suggestive but inconclusive.
 
 ## Answered
 - [x] What are the most effective patterns for keeping agents on track during long-running loops? — Fresh context resets + file-based state + verification gates. See chapters 01-02.

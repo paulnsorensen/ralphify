@@ -60,7 +60,8 @@
 - What's the optimal ratio of spec-writing time to execution time in spec+ralph integrated workflows?
 - How do teams handle the asymmetric trust problem (one failure erases weeks of accumulated confidence)?
 - What does a "rippable" harness look like in practice — which middleware layers get removed first as models improve?
-- How will agent skills interoperability evolve — will SKILL.md become a true standard?
+- What pass@k / pass^k thresholds do teams target before promoting a ralph configuration to production?
+- How effective is the "meta-ralph" pattern — a ralph that optimizes other ralphs via eval feedback?
 
 ## Key Sources
 
@@ -88,3 +89,6 @@
 - [Guided Autonomy: Progressive Trust](https://www.llmwatch.com/p/guided-autonomy-progressive-trust) — Pascal Biese / LLM Watch
 - [Harness-First Agents](https://www.datadoghq.com/blog/ai/harness-first-agents/) — Datadog
 - [LLM Evaluators](https://eugeneyan.com/writing/llm-evaluators/) — Eugene Yan
+- [Eval-Driven Development](https://evaldriven.org/) — Grey Newell (10-principle manifesto)
+- [Optimizing CLAUDE.md with Prompt Learning](https://arize.com/blog/claude-md-best-practices-learned-from-optimizing-claude-code-with-prompt-learning/) — Arize AI (+5-10% from system prompt optimization alone)
+- [Skill Eval](https://blog.mgechev.com/2026/02/26/skill-eval/) — Minko Gechev (unit-testing AI agent skills)

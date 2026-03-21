@@ -105,6 +105,17 @@
 - https://github.com/merllinsbeard/speckit-ralph — merllinsbeard — Execution engine for Spec Kit workflows with ralph loop — **medium**
 - https://cloudsecurityalliance.org/blog/2026/02/02/the-agentic-trust-framework-zero-trust-governance-for-ai-agents — CSA — Agentic Trust Framework: 4 maturity levels with 5 promotion gates — **medium**
 
+- https://evaldriven.org/ — Grey Newell — 10-principle EDD manifesto: "evaluation is the product," evals in CI on every change — **high**
+- https://www.braintrust.dev/articles/eval-driven-development — Braintrust — Three-phase EDD methodology: define evals as specs, optimize against evals, refine from production traces — **high**
+- https://vercel.com/blog/eval-driven-development-build-better-ai-faster — Malte Ubl, Alice Moore, Ido Pesok / Vercel — Vercel iterates on v0 prompts "almost daily" using Braintrust. All PRs impacting output include eval results — **high**
+- https://fireworks.ai/blog/eval-driven-development-with-claude-code — Fireworks AI — Concrete EDD workflow: 4→32 test cases, 0.6 threshold, MCP server integration — **high**
+- https://arize.com/blog/claude-md-best-practices-learned-from-optimizing-claude-code-with-prompt-learning/ — Priyan Jindal / Arize AI — RL-inspired prompt learning optimized CLAUDE.md for +5.19% cross-repo, +10.87% single-repo on SWE-bench. Pure system prompt optimization — **high**
+- https://blog.mgechev.com/2026/02/26/skill-eval/ — Minko Gechev — TypeScript framework for unit-testing agent skills: Docker containers, deterministic+LLM graders, pass@k vs pass^k metrics — **high**
+- https://langwatch.ai/scenario/best-practices/the-vibe-eval-loop/ — @_rchaves_ — Merges "vibe checking" with systematic evals: explore→write scenario test→confirm fail→fix→verify pass — **high**
+- https://news.ycombinator.com/item?id=47319587 — HN — "How are people doing AI evals these days?" — highly heterogeneous, no gold standard, tools: Langfuse/Braintrust/Promptfoo/DeepEval — **high**
+- https://news.ycombinator.com/item?id=47145438 — HN — "Your lack of Evals is the problem" — ad-hoc iteration on AGENTS.md, tools: Tessl.io, ai-evals.io — **medium**
+- https://news.ycombinator.com/item?id=46809708 — HN — AGENTS.md outperforms skills in Vercel evals (always-in-prompt vs invoked-on-demand), sample size concerns — **medium**
+
 ## Lower Relevance
 
 - https://www.permit.io/blog/human-in-the-loop-for-ai-agents-best-practices-frameworks-use-cases-and-demo — Permit.io — Human-in-the-loop patterns for AI agents — **low**

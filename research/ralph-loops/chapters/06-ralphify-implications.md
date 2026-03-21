@@ -158,11 +158,58 @@ Distilled from all chapters — the practical "how-to" for writing effective ral
 
 10. **Use the throw-away first draft pattern for complex tasks.** Let the agent build on a throwaway branch to reveal its misunderstandings, then write better specs for the real implementation.
 
+## Trust & Autonomy Configuration
+
+The trust research (Ch11) suggests ralphify should support an explicit autonomy level in RALPH.md:
+
+```yaml
+autonomy: guided    # observe | guided | bounded | autonomous
+max_iterations: 10
+```
+
+This maps to the 4-level trust ladder (Biese). New users start at `guided` (agent pauses for confirmation); experienced users upgrade to `autonomous`. The `max_iterations` field acts as a circuit breaker regardless of level. Anthropic's data shows trust naturally escalates over ~750 sessions — ralphify can accelerate this by making the trust ladder explicit and observable.
+
+## Harness Testing Support
+
+Block's agent testing pyramid suggests ralphify needs a `--dry-run` or `--test` mode that:
+1. Validates RALPH.md frontmatter and command syntax
+2. Runs commands to verify they produce expected output shapes
+3. Optionally records a full iteration to JSON for playback testing (Block's record/playback pattern)
+
+This addresses a real gap: practitioners have no way to test their loop configurations without burning tokens.
+
+## Eval-Driven Ralph Development
+
+The emerging eval-driven development (EDD) pattern is directly applicable to ralph loop optimization:
+
+1. **Golden datasets from failures.** Collect real loop failures into reproducible test cases (20-50 to start). Turn each into a scenario with expected outcome.
+2. **Graders per ralph.** Combine deterministic checks (did the file change correctly? did tests pass?) with LLM rubric graders (was the approach reasonable?). Ralphify's `verify` field naturally maps to graders.
+3. **Evals in CI.** Every change to RALPH.md triggers the eval suite. Track pass@k (capability) and pass^k (reliability) — the two metrics the field has converged on.
+4. **Meta-ralph: a ralph that optimizes ralphs.** Arize improved Claude Code's SWE-bench scores by 5-10% by optimizing only the system prompt via automated meta-prompting from eval feedback. A ralph that reads eval results and rewrites RALPH.md is a viable, high-value pattern.
+
+Key tooling: Braintrust, Promptfoo, LangSmith, Langfuse, Skill Eval (Gechev). All support the observe→evaluate→improve→redeploy flywheel.
+
+## Middleware-Inspired Hooks
+
+LangChain's composable middleware suggests ralphify could support pre/post hooks per iteration:
+
+```yaml
+hooks:
+  pre_iteration:
+    - run: git stash  # save state
+  post_iteration:
+    - run: uv run pytest  # verify
+    - run: uv run ruff check  # lint
+```
+
+This generalizes the verification field and enables the full middleware pattern without framework complexity. Design principle from LangChain: **build your harness to be rippable** — remove "smart" logic when the model gets smart enough not to need it.
+
 ## Competitive Positioning
 
 Ralphify sits at a validated sweet spot: simpler than full orchestration frameworks (LangGraph, CrewAI) but more structured than raw bash loops. The Karpathy autoresearch moment — 630 lines running 700 experiments — proves that "simple harness, powerful results" wins.
 
 The key differentiators to develop:
 1. **Verification as a first-class citizen.** Every major system has converged on this. Making it native to RALPH.md frontmatter would be the single highest-impact framework improvement, and no other tool in ralphify's weight class offers it.
-2. **Cost-aware loops.** `max_iterations`, iteration metrics, and prompt caching guidance would address the #1 operational pain point practitioners report.
-3. **Skills ecosystem integration.** With 500+ skills in a compatible format, ralphify can offer a rich library of pre-built ralphs out of the box.
+2. **Eval-driven loop development.** No tool in ralphify's weight class supports the EDD flywheel. A `ralph eval` command that runs a ralph against a golden dataset and reports pass@k/pass^k would be a unique capability.
+3. **Cost-aware loops.** `max_iterations`, iteration metrics, and prompt caching guidance would address the #1 operational pain point practitioners report.
+4. **Skills ecosystem integration.** With 500+ skills in a compatible format, ralphify can offer a rich library of pre-built ralphs out of the box.

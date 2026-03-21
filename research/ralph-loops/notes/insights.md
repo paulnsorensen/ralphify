@@ -80,6 +80,15 @@
 - **The Agentic Software Development Lifecycle (ASDLC) has been formalized.** ASDLC.io defines ralph loop as a pattern within a structured lifecycle. The industry is moving from "vibe coding" to spec-driven ralph execution.
 - **LangChain's composable middleware formalizes the harness as stackable layers.** Each middleware adds capability without modifying core agent logic. LoopDetectionMiddleware tracks per-file edit counts and injects course-correction prompts.
 
+## Eval-Driven Loop Development (NEW — Iteration 8)
+- **Eval-driven development (EDD) is the emerging methodology for iterating on agent configurations.** Grey Newell's manifesto: "evaluation is the product." Define correctness before writing a prompt, run evals in CI on every change, version them like code.
+- **Vercel iterates on v0 prompts "almost daily" with automated eval suites.** All PRs impacting agent output include eval results. Braintrust for scoring, three grading types (code/human/LLM).
+- **Arize improved SWE-bench scores +5-10% by optimizing only the system prompt.** No model or tool changes — pure CLAUDE.md optimization via RL-inspired meta-prompting from eval feedback. This validates the "meta-ralph" pattern.
+- **pass@k (capability) and pass^k (reliability) are the converged metrics.** pass@k = at least one success in k attempts. pass^k = all k succeed. Teams track both because a config that works 80% of the time is very different from one that works 100%.
+- **The practitioner eval flywheel: observe → collect failures → write graders → run in CI → expand from production traces.** Start with 20-50 golden test cases. Eval saturation (diminishing returns from more cases) is a real and measurable endpoint.
+- **"There is no gold standard for evals yet."** HN consensus: practices range from zero evals to sophisticated CI/CD integration. The field is heterogeneous and immature. Tools: Braintrust, Promptfoo, LangSmith, Langfuse, Skill Eval.
+- **AGENTS.md content always-in-prompt outperforms skills invoked-on-demand.** Vercel found 33/33 vs 29/33 success rates. But HN skeptics note the sample sizes are too small to be conclusive. The debate between "always present" and "invoked when needed" is unresolved.
+
 ## Ralphify-Specific
 - **Ralphify's command system naturally supports the "commands as verifiers" pattern.** Running tests/metrics as commands and injecting results into the prompt is exactly what Spotify and Karpathy do — ralphify just needs to formalize verification as a first-class concept.
 - **Agent skills as portable packages is a validated trend.** Ralphify's skill system aligns with the industry direction of installable, reusable instruction sets.

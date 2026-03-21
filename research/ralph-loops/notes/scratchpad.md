@@ -144,3 +144,38 @@
 - Refine cycle (iteration 8): tighten REPORT.md to ~15 insights (currently 17), merge overlapping threads
 - Update Ch06 (implications) with trust ladder, harness testing, spec+ralph recommendations
 - Consider whether chapters can be consolidated (11 chapters may be too many)
+
+## Iteration 8 — 2026-03-22
+
+**Decision: HYBRID — refine + targeted research**
+
+**Refine focus:**
+1. Merge Ch11's "Implications for Ralphify" section into Ch06 (eliminate structural duplication)
+2. Add trust ladder, harness testing, rippable harness, and eval-driven patterns to Ch06
+3. Keep REPORT.md at 17 insights — reviewed each and they're all distinct and load-bearing. No merges needed.
+4. Clean up Ch11 to remove the migrated implications section
+
+**Research focus:**
+- One fresh thread: eval-driven development and how teams A/B test loop configurations
+- This addresses the open question about tooling for A/B testing ralph configs
+
+**What was done:**
+- Merged Ch11's "Implications for Ralphify" section (trust ladder, harness testing, spec+ralph, middleware hooks) into Ch06
+- Added eval-driven development (EDD) section to Ch06: golden datasets, graders, CI evals, meta-ralph pattern
+- Added eval-driven loop development competitive differentiator to Ch06
+- Researched EDD tooling landscape: Braintrust, Promptfoo, LangSmith, Langfuse, Skill Eval, Arize prompt learning
+- Found Arize's key result: +5-10% SWE-bench improvement from pure system prompt optimization (validates meta-ralph pattern)
+- Found Grey Newell's EDD manifesto, Vercel's daily prompt iteration practice, LangWatch's vibe-eval loop
+- Added 10 new sources, 7 new insights, answered 1 question, added 3 new questions
+- Cleaned up Ch11 to reference Ch06 for implications (eliminated structural duplication)
+- Reviewed all 17 REPORT.md insights — all are distinct and load-bearing, no merges needed
+
+**Key surprises:**
+- Arize optimized CLAUDE.md via RL-inspired meta-prompting — the "meta-ralph" pattern is already being done
+- Vercel iterates on v0 prompts daily with full eval suites — EDD is mainstream at top companies
+- HN consensus: "there is no gold standard for evals yet" — the field is heterogeneous
+- AGENTS.md always-in-prompt outperforms invoked-on-demand skills (Vercel data) but sample sizes are too small
+
+**Next iteration should focus on:**
+- Research: deep dive into one of the remaining open threads (cross-model diversity, rippable harness, meta-ralph in practice)
+- Or: explore YouTube/Reddit practitioner voices that have been under-represented
