@@ -14,7 +14,7 @@ Use these rules when generating any visual artifact (HTML pages, CSS, slides, gr
 - **CLI command**: `ralph` (always lowercase, monospace)
 - **Tagline**: "Put your AI coding agent in a `while True` loop and let it ship."
 - **Positioning**: Minimal CLI harness for autonomous AI coding loops. Inspired by the Ralph Wiggum technique.
-- **Logo icon**: Infinity symbol (∞) — represents the infinite loop concept
+- **Logo icon**: Runner emoji (🏃) — represents Ralph running in a loop
 - **Copyright**: Computerlove Technologies
 
 ## Colors
@@ -112,5 +112,5 @@ When building a landing page for Ralphify, follow this hierarchy:
 ## Asset references
 
 - **CLI banner**: `docs/assets/cli-banner.png` — the purple-gradient ASCII art banner used in docs and README
-- **Logo icon**: Material Design Icons `infinity` symbol (for use in nav/favicons)
+- **Logo icon**: Material Design Icons `run` icon (for use in nav/favicons)
 - **Social**: GitHub repo + PyPI badges

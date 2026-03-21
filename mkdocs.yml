@@ -43,7 +43,7 @@ theme:
     - toc.follow
   favicon: assets/favicon.svg
   icon:
-    logo: material/infinity
+    logo: material/run
     repo: fontawesome/brands/github
 
 markdown_extensions:
