@@ -199,7 +199,7 @@
   <main id="main-content">
 
     <!-- ============================================ -->
-    <!-- HERO — cinematic, massive typography          -->
+    <!-- HERO                                          -->
     <!-- ============================================ -->
     <section class="hero" aria-label="Introduction">
       <div class="hero-bg" aria-hidden="true">
@@ -214,14 +214,17 @@
       <div class="hero-center">
         <div class="hero-badge">
           <span class="status-dot"></span>
-          Open-source CLI tool &middot; pip install ralphify
+          Open-source CLI tool
         </div>
 
         <h1 class="hero-headline">
           <span class="hero-line-prelude">Stop stressing over not having an agent running.</span>
           <span class="hero-line-punchline">
             <span class="hero-gradient-text">Ralph is always running</span>
-            <span class="runner-emoji" aria-hidden="true">&#x1F3C3;</span>
+            <span class="runner-wrap" aria-hidden="true">
+              <span class="runner-track"></span>
+              <span class="runner-emoji">&#x1F3C3;</span>
+            </span>
           </span>
         </h1>
 
@@ -261,27 +264,27 @@
     </section>
 
     <!-- ============================================ -->
-    <!-- FOMO — the standup moment                     -->
+    <!-- THE 9AM STANDUP — agent FOMO narrative        -->
     <!-- ============================================ -->
     <section class="fomo" aria-labelledby="fomo-heading">
       <div class="fomo-inner">
-        <p class="section-eyebrow fade-up">The feeling you know too well</p>
+        <p class="section-eyebrow fade-up">Monday, 9:02 AM</p>
         <h2 id="fomo-heading" class="section-heading fade-up">
-          Everyone shipped<br>while they slept.
+          &ldquo;What did your agent<br>ship this weekend?&rdquo;
         </h2>
-        <p class="section-subtitle fade-up">It's 9 AM. Your teammate mentions the 14 commits their agent pushed overnight. You open your laptop. Same codebase. Same backlog. Zero progress.</p>
+        <p class="section-subtitle fade-up">Everyone in standup is talking about what their AI coding agent pushed overnight. You open your laptop. Same backlog. Zero progress. Agent FOMO is real.</p>
 
         <div class="fomo-contrast fade-up">
           <div class="fomo-card fomo-without">
             <div class="fomo-card-label">
               <span class="status-dot status-dot-dead"></span>
-              Without Ralph
+              You, without Ralph
             </div>
             <div class="fomo-card-body">
-              <div class="fomo-line"><span class="fomo-time">11:47 PM</span> Closed laptop</div>
-              <div class="fomo-line fomo-dim"><span class="fomo-time">11:48 PM</span> &hellip;</div>
-              <div class="fomo-line fomo-dim"><span class="fomo-time">7:00 AM</span> &hellip;</div>
-              <div class="fomo-line"><span class="fomo-time">9:00 AM</span> Opened laptop</div>
+              <div class="fomo-line"><span class="fomo-time">Fri 6 PM</span> Closed laptop for the weekend</div>
+              <div class="fomo-line fomo-dim"><span class="fomo-time">Sat</span> &hellip;</div>
+              <div class="fomo-line fomo-dim"><span class="fomo-time">Sun</span> &hellip;</div>
+              <div class="fomo-line"><span class="fomo-time">Mon 9 AM</span> Opened laptop</div>
               <div class="fomo-line fomo-nothing"><span class="fomo-time"></span> 0 commits. 0 PRs. Same backlog.</div>
             </div>
           </div>
@@ -295,16 +298,56 @@
           <div class="fomo-card fomo-with">
             <div class="fomo-card-label">
               <span class="status-dot"></span>
-              With Ralph
+              You, with Ralph
             </div>
             <div class="fomo-card-body">
-              <div class="fomo-line"><span class="fomo-time">11:47 PM</span> Closed laptop</div>
-              <div class="fomo-line"><span class="fomo-time">12:31 AM</span> <span class="success">&#x2713;</span> feat: add rate limiting</div>
-              <div class="fomo-line"><span class="fomo-time">2:18 AM</span> <span class="success">&#x2713;</span> fix: session store race</div>
-              <div class="fomo-line"><span class="fomo-time">4:03 AM</span> <span class="success">&#x2713;</span> feat: add pagination</div>
-              <div class="fomo-line"><span class="fomo-time">5:44 AM</span> <span class="success">&#x2713;</span> refactor: extract auth</div>
-              <div class="fomo-line"><span class="fomo-time">9:00 AM</span> <span class="fomo-highlight">23 commits &middot; 3 PRs ready</span></div>
+              <div class="fomo-line"><span class="fomo-time">Fri 6 PM</span> <code>ralph run</code> &rarr; closed laptop</div>
+              <div class="fomo-line"><span class="fomo-time">Fri 11 PM</span> <span class="success">&#x2713;</span> feat: add rate limiting middleware</div>
+              <div class="fomo-line"><span class="fomo-time">Sat 3 AM</span> <span class="success">&#x2713;</span> fix: session store race condition</div>
+              <div class="fomo-line"><span class="fomo-time">Sat 8 PM</span> <span class="success">&#x2713;</span> feat: add webhook handler</div>
+              <div class="fomo-line"><span class="fomo-time">Sun 4 AM</span> <span class="success">&#x2713;</span> refactor: extract auth module</div>
+              <div class="fomo-line"><span class="fomo-time">Mon 9 AM</span> <span class="fomo-highlight">37 commits &middot; 4 PRs ready for review</span></div>
             </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- HOW IT WORKS — the loop                      -->
+    <!-- ============================================ -->
+    <section class="how-it-works" aria-labelledby="how-heading">
+      <div class="how-inner">
+        <p class="section-eyebrow fade-up">Three steps. Every iteration.</p>
+        <h2 id="how-heading" class="section-heading fade-up">The loop</h2>
+        <p class="section-subtitle fade-up">Assemble a prompt with live data. Pipe it to your agent. Repeat with fresh context. That's it.</p>
+
+        <div class="loop-visual fade-up">
+          <div class="loop-steps">
+            <div class="loop-step">
+              <div class="loop-step-number">1</div>
+              <h3>Assemble</h3>
+              <p>Run commands, gather live data, inject results into your prompt template.</p>
+            </div>
+            <div class="loop-connector-h" aria-hidden="true">
+              <svg viewBox="0 0 40 12" fill="none"><path d="M0 6h32m0 0l-6-5m6 5l-6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="loop-step">
+              <div class="loop-step-number">2</div>
+              <h3>Execute</h3>
+              <p>The assembled prompt pipes to your agent. It reads code, works, commits, exits.</p>
+            </div>
+            <div class="loop-connector-h" aria-hidden="true">
+              <svg viewBox="0 0 40 12" fill="none"><path d="M0 6h32m0 0l-6-5m6 5l-6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="loop-step">
+              <div class="loop-step-number">3</div>
+              <h3>Repeat</h3>
+              <p>Back to step 1. Fresh context window, latest code. No drift, no decay.</p>
+            </div>
+          </div>
+          <div class="loop-return" aria-hidden="true">
+            <span class="loop-return-arrow">&#x21A9; back to step 1</span>
           </div>
         </div>
       </div>
@@ -318,7 +361,7 @@
         <div class="ralph-file-text">
           <p class="section-eyebrow fade-up">One file. That's it.</p>
           <h2 id="ralph-file-heading" class="section-heading fade-up">A ralph is just<br>a Markdown file</h2>
-          <p class="section-subtitle fade-up">No config. No scaffolding. No dashboard.<br>Create a <code>RALPH.md</code> and you have an autonomous agent loop.</p>
+          <p class="section-subtitle fade-up">No config files. No scaffolding. No dashboard.<br>Create a <code>RALPH.md</code> and you have an autonomous agent loop.</p>
           <ul class="ralph-features fade-up">
             <li><strong>agent</strong> &mdash; which CLI agent to run</li>
             <li><strong>commands</strong> &mdash; checks that validate each iteration</li>
@@ -353,49 +396,13 @@ pick the next task from TODO.md and implement it.</code></pre>
     </section>
 
     <!-- ============================================ -->
-    <!-- THE LOOP — how it works                       -->
-    <!-- ============================================ -->
-    <section class="how-it-works" aria-labelledby="how-heading">
-      <div class="how-inner">
-        <p class="section-eyebrow fade-up">How it works</p>
-        <h2 id="how-heading" class="section-heading fade-up">The loop</h2>
-        <p class="section-subtitle fade-up">Three steps, every iteration. Fresh context, no drift.</p>
-
-        <div class="loop-visual fade-up">
-          <div class="loop-steps">
-            <div class="loop-step">
-              <div class="loop-step-number">1</div>
-              <h3>Assemble</h3>
-              <p>Reads your <code>RALPH.md</code>, runs commands to gather live data, injects results into the prompt.</p>
-            </div>
-            <div class="loop-connector-h" aria-hidden="true"></div>
-            <div class="loop-step">
-              <div class="loop-step-number">2</div>
-              <h3>Execute</h3>
-              <p>The assembled prompt pipes to your agent. It reads code, does one unit of work, commits, exits.</p>
-            </div>
-            <div class="loop-connector-h" aria-hidden="true"></div>
-            <div class="loop-step">
-              <div class="loop-step-number">3</div>
-              <h3>Repeat</h3>
-              <p>Back to step 1. Fresh context window, latest code. Edit the prompt while it runs.</p>
-            </div>
-          </div>
-          <div class="loop-return" aria-hidden="true">
-            <span class="loop-return-arrow">&#x21A9; back to step 1</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============================================ -->
     <!-- WHY LOOPS — single runs decay                 -->
     <!-- ============================================ -->
     <section class="why" aria-labelledby="why-heading">
       <div class="why-inner">
         <p class="section-eyebrow fade-up">Why loops beat single runs</p>
         <h2 id="why-heading" class="section-heading fade-up">Single runs decay.<br>Loops compound.</h2>
-        <p class="section-subtitle fade-up">A single agent conversation fills up, slows down, and loses the plot. Ralph doesn't.</p>
+        <p class="section-subtitle fade-up">A single agent conversation fills up, slows down, and loses the plot. Loops don't.</p>
         <div class="why-grid fade-up">
           <div class="why-card">
             <div class="why-icon">&gt;_</div>
@@ -426,9 +433,9 @@ pick the next task from TODO.md and implement it.</code></pre>
     <!-- ============================================ -->
     <section class="agents" aria-labelledby="agents-heading">
       <div class="agents-inner">
-        <p class="section-eyebrow fade-up">Works with everything</p>
+        <p class="section-eyebrow fade-up">Agent-agnostic by design</p>
         <h2 id="agents-heading" class="section-heading fade-up">Any agent that reads stdin.</h2>
-        <p class="section-subtitle fade-up">Ralphify is agent-agnostic. Pipe to whatever you want.</p>
+        <p class="section-subtitle fade-up">Ralphify is a harness, not an agent. Pipe to whatever you want.</p>
         <div class="agent-grid fade-up">
           <a href="docs/agents/" class="agent-card">
             <div class="agent-card-icon">&#x2728;</div>
@@ -463,7 +470,7 @@ pick the next task from TODO.md and implement it.</code></pre>
         <h2 id="social-heading" class="section-heading fade-up">Agent FOMO, cured.</h2>
         <div class="quote-grid fade-up">
           <blockquote class="quote-card">
-            <p>&ldquo;My teammate asked what I shipped overnight. I said &lsquo;let me check.&rsquo; 23 commits. All tests passing. I didn't write any of them.&rdquo;</p>
+            <p>&ldquo;Set up Ralph on Friday evening. Monday standup: &lsquo;What did you ship?&rsquo; I checked git log. 23 commits, all tests green. I didn't write any of them.&rdquo;</p>
             <footer>
               <span class="quote-name">@devops_dan</span>
               <span class="quote-role">Platform Engineer</span>
@@ -477,7 +484,7 @@ pick the next task from TODO.md and implement it.</code></pre>
             </footer>
           </blockquote>
           <blockquote class="quote-card">
-            <p>&ldquo;The self-healing loop is the killer feature. Agent breaks a test, next iteration fixes it. Zero babysitting.&rdquo;</p>
+            <p>&ldquo;The self-healing loop is the killer feature. Agent breaks a test, next iteration fixes it. I stopped babysitting my AI.&rdquo;</p>
             <footer>
               <span class="quote-name">@rustacean_mike</span>
               <span class="quote-role">Staff Engineer</span>
@@ -491,7 +498,7 @@ pick the next task from TODO.md and implement it.</code></pre>
     <!-- INSTALL — get Ralph running                   -->
     <!-- ============================================ -->
     <section class="install" aria-labelledby="install-heading">
-      <p class="section-eyebrow fade-up">Ready in 2 minutes</p>
+      <p class="section-eyebrow fade-up">Two minutes. Seriously.</p>
       <h2 id="install-heading" class="section-heading fade-up">Get Ralph running</h2>
       <p class="section-subtitle fade-up">Three commands. Zero config. Your agent starts shipping.</p>
       <div class="install-steps fade-up">
@@ -570,7 +577,9 @@ pick the next task from TODO.md and implement it.</code></pre>
         <h2 id="cta-bottom-heading">
           Stop stressing.<br>
           <span class="hero-gradient-text">Start shipping.</span>
-          <span class="runner-emoji runner-emoji-sm" aria-hidden="true">&#x1F3C3;</span>
+          <span class="runner-wrap runner-wrap-sm" aria-hidden="true">
+            <span class="runner-emoji runner-emoji-sm">&#x1F3C3;</span>
+          </span>
         </h2>
         <div class="install-command cta-command">
           <code>uv tool install ralphify && ralph new && ralph run</code>
