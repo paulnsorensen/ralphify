@@ -207,7 +207,7 @@
       <div class="hero-content">
         <div class="hero-badge">
           <span class="status-dot"></span>
-          Open-source &middot; pip install ralphify
+          Open-source &middot; pip install ralphify &middot; iteration <span id="iter-count">1,247</span>
         </div>
 
         <h1 class="hero-headline">
@@ -715,6 +715,16 @@ pick the next task from TODO.md and implement it.</code></pre>
         });
       }, { threshold: 0.2 });
       fomoObs.observe(fomoContrast);
+    }
+
+    // Live iteration counter
+    const iterEl = document.getElementById('iter-count');
+    if (iterEl) {
+      let count = 1247;
+      setInterval(() => {
+        count++;
+        iterEl.textContent = count.toLocaleString();
+      }, 8000);
     }
 
     // Copy to clipboard
