@@ -90,6 +90,8 @@ The body is the prompt. It supports two placeholder types:
 - `{{ commands.<name> }}` — replaced with command output each iteration
 - `{{ args.<name> }}` — replaced with CLI arguments
 
+HTML comments (`<!-- ... -->`) are automatically stripped before the prompt is assembled. They never reach the agent. Use them for notes about why rules exist or TODOs for prompt maintenance.
+
 ### Commands
 
 A command is a name and something to run. The framework executes it, captures stdout/stderr, and makes the output available via `{{ commands.<name> }}`.
