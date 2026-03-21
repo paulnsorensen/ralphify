@@ -100,6 +100,8 @@ class RunManager:
         """
         with self._lock:
             managed = self._lookup(run_id)
+            if managed.thread is not None:
+                raise RuntimeError(f"Run '{run_id}' has already been started")
             emitter = managed.build_emitter()
             thread = threading.Thread(
                 target=run_loop,

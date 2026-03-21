@@ -87,6 +87,22 @@ class TestRunManagerStartRun:
         assert EventType.RUN_STOPPED in types
 
 
+class TestRunManagerStartRunGuards:
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    def test_start_run_raises_on_double_start(self, mock_run, tmp_path):
+        manager = RunManager()
+        config = make_config(tmp_path, max_iterations=1)
+        managed = manager.create_run(config)
+        run_id = managed.state.run_id
+
+        manager.start_run(run_id)
+        with pytest.raises(RuntimeError, match="already been started"):
+            manager.start_run(run_id)
+
+        assert managed.thread is not None
+        managed.thread.join(timeout=5)
+
+
 class TestRunManagerInvalidRunId:
     def test_start_run_raises_key_error_for_unknown_id(self):
         manager = RunManager()
