@@ -33,7 +33,7 @@ The fastest way to scaffold a ralph is `ralph init`:
 ralph init my-ralph
 ```
 
-This creates `my-ralph/RALPH.md` with a ready-to-customize template including an example command, arg, and prompt. Edit it and skip to [Step 3](#step-3-do-a-test-run).
+This creates `my-ralph/RALPH.md` with a ready-to-customize template including an example command, arg, and prompt. Edit the task section, then skip to [Step 3](#step-3-do-a-test-run) to verify it works.
 
 Alternatively, use `ralph new` for AI-guided setup, or create the file manually as shown below.
 
@@ -66,7 +66,7 @@ implement it fully, then mark it done.
 
 ## Step 3: Do a test run
 
-Verify the basic loop works before adding commands:
+Run a single iteration to verify your setup works:
 
 ```bash
 ralph run my-ralph -n 1 --log-dir ralph_logs
@@ -86,7 +86,7 @@ cat ralph_logs/001_*.log
     echo "ralph_logs/" >> .gitignore
     ```
 
-If the agent produced useful work, you're ready to add commands.
+If the agent produced useful work, you're ready to add test feedback.
 
 ## Step 4: Add a test command
 
