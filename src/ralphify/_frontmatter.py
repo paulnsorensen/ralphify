@@ -34,6 +34,10 @@ CMD_FIELD_TIMEOUT = "timeout"
 # YAML frontmatter delimiter line.
 _FRONTMATTER_DELIMITER = "---"
 
+# Valid characters for command and arg names — letters, digits, hyphens,
+# underscores.  Used by cli.py (validation) and resolver.py (placeholders).
+CMD_NAME_RE = re.compile(r"[a-zA-Z0-9_-]+")
+
 # Pre-compiled pattern to strip HTML comments from body text.
 _HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 

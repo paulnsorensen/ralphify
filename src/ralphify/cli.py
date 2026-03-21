@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import math
 import os
-import re
 import shlex
 import shutil
 import sys
@@ -25,6 +24,7 @@ from ralphify._frontmatter import (
     CMD_FIELD_NAME,
     CMD_FIELD_RUN,
     CMD_FIELD_TIMEOUT,
+    CMD_NAME_RE,
     FIELD_AGENT,
     FIELD_ARGS,
     FIELD_COMMANDS,
@@ -222,7 +222,7 @@ def _parse_commands(raw_commands: list[dict[str, Any]]) -> list[Command]:
                 _exit_error(f"Command '{key}' must be a non-empty string.")
         cmd_name = cmd_def[CMD_FIELD_NAME]
         cmd_run = cmd_def[CMD_FIELD_RUN]
-        if not re.fullmatch(r"[a-zA-Z0-9_-]+", cmd_name):
+        if not CMD_NAME_RE.fullmatch(cmd_name):
             _exit_error(
                 f"Command name '{cmd_name}' contains invalid characters. "
                 f"Names may only contain letters, digits, hyphens, and underscores."
