@@ -194,11 +194,11 @@ ralph run docs --log-dir ralph_logs
 
 ---
 
-## Bug fixing loop
+## Bug hunter
 
-A targeted loop for fixing bugs from a list.
+A loop that discovers bugs and fixes them. The agent reads the codebase, finds a real bug (edge case, off-by-one, missing validation), writes a failing test to prove it, then fixes it.
 
-**`bugfix/RALPH.md`**
+**`bug-hunter/RALPH.md`**
 
 ```markdown
 ---
@@ -208,35 +208,53 @@ commands:
     run: uv run pytest -x
   - name: git-log
     run: git log --oneline -10
+args:
+  - focus
 ---
 
-# Prompt
+# Bug Hunter
 
-## Recent commits
-
-{{ commands.git-log }}
+You are an autonomous bug-hunting agent running in a loop. Each
+iteration starts with a fresh context. Your progress lives in the
+code and git.
 
 ## Test results
 
 {{ commands.tests }}
 
-You are an autonomous bug-fixing agent running in a loop. Each
-iteration starts with a fresh context.
+## Recent commits
 
-Read BUGS.md for the bug list. Pick the top unfixed bug, fix it,
-write a regression test, then mark it fixed.
+{{ commands.git-log }}
+
+If tests are failing, fix them before hunting for new bugs.
+
+## Task
+
+Find and fix a real bug in this codebase.
+{{ args.focus }}
+
+Each iteration:
+
+1. **Read code** — pick a module and read it carefully. Look for
+   edge cases, off-by-one errors, missing validation, incorrect
+   error handling, race conditions, or logic errors.
+2. **Write a failing test** — prove the bug exists with a test that
+   fails on the current code.
+3. **Fix the bug** — make the test pass with a minimal fix.
+4. **Verify** — all existing tests must still pass.
 
 ## Rules
 
 - One bug per iteration
-- Always write a regression test that proves the fix
+- The bug must be real — do not invent hypothetical issues
+- Always write a regression test before fixing
 - Do not change unrelated code
 - Commit with `fix: resolve <description>`
-- Mark the fixed bug in BUGS.md
 ```
 
 ```bash
-ralph run bugfix -n 10 --log-dir ralph_logs
+ralph run bug-hunter -n 10 --log-dir ralph_logs
+ralph run bug-hunter -n 5 -- --focus "focus on input validation"
 ```
 
 ---
@@ -329,7 +347,7 @@ The helper scripts (`show-focus.sh`, `show-questions.sh`, etc.) read from the wo
 ralph run research -- --workspace ai-safety --focus "current approaches to AI alignment"
 ```
 
-This recipe shows several advanced patterns: commands that call scripts relative to the ralph directory (`./show-focus.sh`), a command with a `timeout`, a command that itself calls an AI agent (`review.sh` pipes to `claude -p`), and `args` used in both the prompt body and as environment variables in scripts (`RALPH_ARG_WORKSPACE`).
+This recipe shows several advanced patterns: commands that call scripts relative to the ralph directory (`./show-focus.sh`), a command with a `timeout`, a command that itself calls an AI agent (`review.sh` pipes to `claude -p`), and `args` used in the prompt body via `{{ args.workspace }}` placeholders.
 
 ---
 
@@ -346,7 +364,7 @@ commands:
   - name: tests
     run: uv run pytest -x
   - name: remaining
-    run: ./count-remaining.sh
+    run: ./count-remaining.sh {{ args.old_pattern }}
   - name: git-log
     run: git log --oneline -10
 args:
@@ -387,11 +405,12 @@ If tests are failing, fix them before migrating more files.
   MIGRATION_NOTES.md and skip it
 ```
 
-The `count-remaining.sh` script uses the `RALPH_ARG_OLD_PATTERN` environment variable (automatically set from `args`) to find files that still need migration:
+The `count-remaining.sh` script receives the pattern as an argument (resolved from `{{ args.old_pattern }}` in the `run` field) to find files that still need migration:
 
 ```bash
 #!/bin/bash
-files=$(grep -rl "$RALPH_ARG_OLD_PATTERN" src/ 2>/dev/null)
+pattern="$1"
+files=$(grep -rl "$pattern" src/ 2>/dev/null)
 count=$(echo "$files" | grep -c . 2>/dev/null || echo 0)
 echo "$count files remaining"
 echo "$files" | head -20
