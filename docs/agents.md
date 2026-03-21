@@ -1,5 +1,6 @@
 ---
 description: Configure ralphify with Claude Code, Aider, Codex CLI, or any custom agent. Includes setup guides, agent comparison table, and wrapper script examples.
+keywords: Claude Code agent, Aider agent, Codex CLI, AI coding agents, agent configuration, ralphify agents, custom agent wrapper
 ---
 
 # Using with Different Agents

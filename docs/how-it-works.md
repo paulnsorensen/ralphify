@@ -1,5 +1,6 @@
 ---
 description: Understand what happens inside each iteration of a ralph loop — command execution, prompt assembly, agent piping, and the self-healing feedback cycle.
+keywords: ralph loop, iteration lifecycle, self-healing loop, agent feedback cycle, prompt assembly, autonomous coding architecture
 ---
 
 # How it works

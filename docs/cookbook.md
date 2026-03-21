@@ -1,5 +1,6 @@
 ---
 description: Copy-pasteable ralphify setups for Python, TypeScript, and Rust autonomous coding loops.
+keywords: ralphify cookbook, autonomous coding recipes, Python AI agent, TypeScript AI agent, Rust AI agent, RALPH.md examples
 ---
 
 # Cookbook

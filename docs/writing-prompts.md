@@ -1,5 +1,6 @@
 ---
 description: How to write effective RALPH.md prompts for autonomous coding loops — structure, patterns, anti-patterns, and real examples.
+keywords: RALPH.md prompt, writing AI agent prompts, autonomous loop prompts, prompt patterns, agent instructions, coding prompt guide
 ---
 
 # Writing Prompts

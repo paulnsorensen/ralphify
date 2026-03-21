@@ -19,6 +19,11 @@
 
   {% set og_image = config.site_url ~ "assets/cli-banner.png" %}
 
+  <!-- Keywords -->
+  {% if page and page.meta and page.meta.keywords %}
+  <meta name="keywords" content="{{ page.meta.keywords }}">
+  {% endif %}
+
   <!-- Open Graph -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="{{ page_title }}">

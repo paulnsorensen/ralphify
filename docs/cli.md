@@ -1,5 +1,6 @@
 ---
 description: Full CLI reference for ralphify — ralph run, ralph new, all options, user arguments, and RALPH.md frontmatter format.
+keywords: ralph CLI, ralph run, ralph new, CLI reference, RALPH.md format, frontmatter options, agent arguments
 ---
 
 # CLI Reference

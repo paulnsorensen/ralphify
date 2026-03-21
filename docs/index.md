@@ -1,5 +1,6 @@
 ---
 description: Ralphify is a minimal CLI harness for autonomous AI coding loops. Run commands, assemble a prompt, pipe it to an AI agent, and repeat.
+keywords: ralphify, AI coding agent, autonomous coding loop, CLI agent harness, while true loop, agent FOMO, agentic engineering
 hide:
   - toc
 ---

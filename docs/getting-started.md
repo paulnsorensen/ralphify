@@ -1,5 +1,6 @@
 ---
 description: Install ralphify, create your first ralph with commands and placeholders, and run a productive autonomous AI coding loop in 10 minutes.
+keywords: install ralphify, getting started, ralph new, ralph run, autonomous coding setup, AI agent quickstart
 ---
 
 # Getting Started
