@@ -36,18 +36,16 @@ class RunResult:
 
 def run_command(
     *,
-    script: Path | None = None,
-    command: str | None = None,
+    command: str,
     cwd: Path,
     timeout: float,
     env: dict[str, str] | None = None,
 ) -> RunResult:
-    """Run a script or shell command and return the result.
+    """Run a shell command and return the result.
 
-    If *script* is set it takes precedence; otherwise *command* is
-    split with :func:`shlex.split` and executed directly (no shell).
-    Pipes, redirections, and ``&&`` chaining are not supported in
-    commands — use a ``run.*`` script for complex logic.
+    The *command* string is split with :func:`shlex.split` and executed
+    directly (no shell).  Pipes, redirections, and ``&&`` chaining are
+    not supported — use a script for complex logic.
 
     When *env* is set, the given variables are merged on top of the
     current process environment so scripts keep ``PATH`` etc.  When
@@ -55,14 +53,9 @@ def run_command(
 
     On timeout, returns ``returncode=TIMEOUT_EXIT_CODE`` and ``timed_out=True``.
     """
-    if script:
-        cmd = [str(script)]
-    elif command:
-        cmd = shlex.split(command)
-        if not cmd:
-            raise ValueError(f"Command string produced no tokens after parsing: {command!r}")
-    else:
-        raise ValueError("Either 'script' or 'command' must be provided")
+    cmd = shlex.split(command)
+    if not cmd:
+        raise ValueError(f"Command string produced no tokens after parsing: {command!r}")
 
     merged_env = {**os.environ, **env} if env else None
 

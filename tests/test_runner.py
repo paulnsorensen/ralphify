@@ -32,14 +32,6 @@ class TestRunCommand:
         assert "error" in result.output
 
     @patch(MOCK_RUNNER_SUBPROCESS)
-    def test_uses_script_when_set(self, mock_run):
-        mock_run.return_value = ok_result()
-        script = Path("/checks/run.sh")
-        run_command(script=script, command="echo fallback", cwd=Path("/project"), timeout=60)
-
-        assert mock_run.call_args.args[0] == [str(script)]
-
-    @patch(MOCK_RUNNER_SUBPROCESS)
     def test_shlex_splits_command(self, mock_run):
         mock_run.return_value = ok_result()
         run_command(command="ruff check --fix .", cwd=Path("/project"), timeout=60)
@@ -94,10 +86,6 @@ class TestRunCommand:
 
         # env=None means subprocess.run inherits parent env
         assert mock_run.call_args.kwargs["env"] is None
-
-    def test_raises_when_no_script_or_command(self):
-        with pytest.raises(ValueError, match="Either 'script' or 'command' must be provided"):
-            run_command(cwd=Path("/project"), timeout=60)
 
     def test_raises_when_command_is_whitespace_only(self):
         with pytest.raises(ValueError, match="no tokens after parsing"):
