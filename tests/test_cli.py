@@ -76,51 +76,27 @@ class TestRun:
         assert result.exit_code == 1
         assert "not found on PATH" in result.output
 
-    def test_errors_with_empty_command_name(self, mock_which, tmp_path, monkeypatch):
+    @pytest.mark.parametrize("frontmatter, expected_error", [
+        ("commands:\n  - name: \"\"\n    run: echo hi", "name"),
+        ("commands:\n  - name: status\n    run: \"\"", "run"),
+        ("commands: not-a-list", "must be a list"),
+        (
+            "commands:\n  - name: status\n    run: git status\n"
+            "  - name: status\n    run: echo hi",
+            "duplicate",
+        ),
+    ], ids=["empty-name", "empty-run", "not-a-list", "duplicate-names"])
+    def test_errors_with_invalid_commands(self, mock_which, tmp_path, monkeypatch,
+                                          frontmatter, expected_error):
         monkeypatch.chdir(tmp_path)
         ralph_dir = tmp_path / "my-ralph"
         ralph_dir.mkdir()
         (ralph_dir / "RALPH.md").write_text(
-            "---\nagent: claude -p\ncommands:\n  - name: \"\"\n    run: echo hi\n---\ngo"
+            f"---\nagent: claude -p\n{frontmatter}\n---\ngo"
         )
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
         assert result.exit_code == 1
-        assert "name" in result.output.lower()
-
-    def test_errors_with_empty_command_run(self, mock_which, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        ralph_dir = tmp_path / "my-ralph"
-        ralph_dir.mkdir()
-        (ralph_dir / "RALPH.md").write_text(
-            "---\nagent: claude -p\ncommands:\n  - name: status\n    run: \"\"\n---\ngo"
-        )
-        result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
-        assert result.exit_code == 1
-        assert "run" in result.output.lower()
-
-    def test_errors_with_commands_not_a_list(self, mock_which, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        ralph_dir = tmp_path / "my-ralph"
-        ralph_dir.mkdir()
-        (ralph_dir / "RALPH.md").write_text(
-            "---\nagent: claude -p\ncommands: not-a-list\n---\ngo"
-        )
-        result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
-        assert result.exit_code == 1
-        assert "must be a list" in result.output.lower()
-
-    def test_errors_with_duplicate_command_names(self, mock_which, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        ralph_dir = tmp_path / "my-ralph"
-        ralph_dir.mkdir()
-        (ralph_dir / "RALPH.md").write_text(
-            "---\nagent: claude -p\ncommands:\n"
-            "  - name: status\n    run: git status\n"
-            "  - name: status\n    run: echo hi\n---\ngo"
-        )
-        result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
-        assert result.exit_code == 1
-        assert "duplicate" in result.output.lower()
+        assert expected_error in result.output.lower()
 
     @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_runs_when_valid(self, mock_run, mock_which, tmp_path, monkeypatch):
