@@ -14,6 +14,11 @@
 8. **AGENTS.md / CLAUDE.md files are the new infrastructure.** Specification documents that anchor agent execution across sessions are now considered essential project infrastructure.
 9. **Git is the universal state backend.** Every serious system uses git commits as checkpoints, enabling revert-on-failure and progress tracking across iterations.
 10. **Cost awareness is critical.** Multi-agent systems consume 4-15x more tokens; practitioners need iteration limits, spend caps, and cost monitoring.
+11. **Context window poisoning is the #1 failure mode.** Once a mistake enters context, agents compound rather than self-correct. Fresh resets are the only reliable fix.
+12. **The 70-80% problem is real and universal.** AI agents hit the same ceiling as every previous "replace programming" technology. The last 20% costs 80% of the tokens.
+13. **Specification files have an instruction ceiling (~150-200).** More rules = worse instruction-following across the board. Keep CLAUDE.md under 300 lines; use it as a router, not a monolith.
+14. **Unbounded agent autonomy produces $47K incidents.** Hard budget ceilings, rate limiters, loop detectors, and human pagers are non-negotiable.
+15. **Output redirection prevents context flooding.** Redirect verbose output to logs, grep for metrics — the single most impactful technique for agent loop reliability.
 
 ## Chapters
 
@@ -25,13 +30,16 @@
 | 4 | [Production Systems at Scale](chapters/04-production-scale.md) | Meta's REA, Spotify's Honk, Codex long-horizon — enterprise patterns |
 | 5 | [Multi-Agent Orchestration](chapters/05-multi-agent.md) | Fleet management, parallel worktrees, coordinator patterns |
 | 6 | [Implications for Ralphify](chapters/06-ralphify-implications.md) | Cookbook ideas, framework directions, and competitive positioning |
+| 7 | [Anti-Patterns & Failure Modes](chapters/07-anti-patterns.md) | The ten recurring failure modes and practitioner-validated remedies |
+| 8 | [Specification Files](chapters/08-specification-files.md) | CLAUDE.md, AGENTS.md patterns from 2,500+ repos and real-world configs |
 
 ## Open Questions
 
-- How do practitioners handle non-deterministic verification (e.g., subjective quality)?
+- How do practitioners handle non-deterministic verification (subjective quality)?
 - What's the optimal iteration length for different task types?
-- How should agents handle cascading failures across multi-file changes?
-- What memory/learning mechanisms persist across loop sessions beyond AGENTS.md?
+- How does the double-loop model (vibing then polishing) translate to ralph loops?
+- What trust thresholds trigger the transition from agent-assisted to agent-autonomous?
+- What statistical methods beyond MAD are used for confidence scoring in optimization loops?
 
 ## Key Sources
 
@@ -43,3 +51,9 @@
 - [Top AI Coding Trends for 2026](https://beyond.addy.ie/2026-trends/) — Addy Osmani
 - [The Autonomous Agents Loop](https://daviddaniel.tech/research/articles/autonomous-agents-loop/) — David Daniel Research
 - [Coding Agent Loop Spec (Attractor)](https://github.com/strongdm/attractor/blob/main/coding-agent-loop-spec.md) — StrongDM
+- [Skill Issue: Harness Engineering](https://www.humanlayer.dev/blog/skill-issue-harness-engineering-for-coding-agents) — HumanLayer
+- [The 80% Problem in Agentic Coding](https://addyo.substack.com/p/the-80-problem-in-agentic-coding) — Addy Osmani
+- [Agentic Engineering Anti-Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/anti-patterns/) — Simon Willison
+- [Lessons from 2,500+ AGENTS.md Files](https://github.blog/ai-and-ml/github-copilot/how-to-write-a-great-agents-md-lessons-from-over-2500-repositories/) — GitHub Blog
+- [Writing a Good CLAUDE.md](https://www.humanlayer.dev/blog/writing-a-good-claude-md) — HumanLayer
+- [Harness Engineering](https://martinfowler.com/articles/exploring-gen-ai/harness-engineering.html) — Martin Fowler / Thoughtworks
