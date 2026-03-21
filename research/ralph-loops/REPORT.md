@@ -34,6 +34,12 @@
 
 15. **Multi-agent orchestration works for independent tasks, fails for coordination.** Parallel agents on separate branches/files succeed; shared-state coordination is fragile and 4-15x more expensive. Filesystem coordination beats message-passing.
 
+16. **The ralph loop ecosystem is large but operationally immature.** 30+ implementations, 500+ skills, 12K+ stars on skill directories — but cost blowups, missing observability, and undetected doom loops remain the norm. Adoption outpaces operational maturity.
+
+17. **Make cost observable to the agent itself.** MCP servers (Agent Budget Guard) let agents track their own spending and make cost-aware decisions. Combined with per-task token budgets and prompt caching (~90% input cost reduction), practitioners achieve 60-80% cost cuts.
+
+18. **Measure iterations in actions, not time.** Successful agents complete tasks in 3-7 meaningful actions. Beyond 15 actions, success probability drops sharply. Action count is a better circuit breaker signal than wall clock time.
+
 ## Chapters
 
 | # | Chapter | Summary |
@@ -47,14 +53,16 @@
 | 7 | [Anti-Patterns & Failure Modes](chapters/07-anti-patterns.md) | The ten recurring failure modes and practitioner-validated remedies |
 | 8 | [Specification Files](chapters/08-specification-files.md) | CLAUDE.md, AGENTS.md patterns from 2,500+ repos and real-world configs |
 | 9 | [Prompt Assembly & Context Engineering](chapters/09-prompt-assembly.md) | Three-phase architecture, context management, double-loop model, steering injection |
+| 10 | [Operational Reality](chapters/10-operational-reality.md) | Ecosystem landscape, cost control, circuit breakers, daily practitioner workflows |
 
 ## Open Questions
 
 - How do practitioners handle non-deterministic verification (subjective quality)?
-- What's the optimal iteration length for different task types?
 - What trust thresholds trigger the transition from agent-assisted to agent-autonomous?
-- How does the agent skill packaging ecosystem evolve — will there be a registry/marketplace?
 - What's the real-world false negative rate for LLM-as-judge beyond Spotify's 25%?
+- How do cross-company model diversity reviewers compare to same-family self-review?
+- What's the optimal balance between plan-mode time and execution time?
+- How will agent skills interoperability evolve — will SKILL.md become a true standard?
 
 ## Key Sources
 
@@ -71,3 +79,8 @@
 - [The Double-Loop Model](https://testdouble.com/insights/youre-holding-it-wrong-the-double-loop-model-for-agentic-coding) — Test Double
 - [Advanced Context Engineering](https://github.com/humanlayer/advanced-context-engineering-for-coding-agents/blob/main/ace-fca.md) — HumanLayer
 - [Relocating Rigor](https://aicoding.leaflet.pub/3mbrvhyye4k2e) — Chad Fowler
+- [ralph-claude-code](https://github.com/frankbria/ralph-claude-code) — frankbria (8K+ stars, circuit breakers, exit detection)
+- [awesome-agent-skills](https://github.com/VoltAgent/awesome-agent-skills) — VoltAgent (12K+ stars, 500+ skills)
+- [Boris Cherny's Workflow](https://www.infoq.com/news/2026/01/claude-code-creator-workflow/) — InfoQ
+- [Agent Budget Guard MCP](https://earezki.com/ai-news/2026-03-02-i-built-an-mcp-server-so-my-ai-agent-can-track-its-own-spending/) — earezki
+- [BMAD + Ralph Framework](https://www.vibesparking.com/en/blog/ai/2026-02-14-bmad-ralph-execution-loop-claude-code/) — Vibe Sparking AI

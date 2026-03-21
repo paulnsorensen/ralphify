@@ -74,6 +74,20 @@
 - https://agenticoding.ai/docs/methodology/lesson-3-high-level-methodology — agenticoding.ai — Research/Plan/Execute/Validate methodology with exploration vs. exact planning modes — **medium**
 - https://www.youtube.com/watch?v=8rABwKRsec4 — Sean Grove (via Horthy) — "Specs are the new code" talk; committing prompts not just generated output — **medium**
 
+- https://github.com/frankbria/ralph-claude-code — frankbria — 8,065-star ralph loop with intelligent exit detection, circuit breakers, rate limiting, 566 tests — **high**
+- https://github.com/snwfdhmp/awesome-ralph — snwfdhmp — 806-star curated directory of 30+ ralph loop implementations, tutorials, podcasts — **high**
+- https://github.com/VoltAgent/awesome-agent-skills — VoltAgent — 12,238-star collection of 500+ agent skills, cross-platform SKILL.md format — **high**
+- https://www.infoq.com/news/2026/01/claude-code-creator-workflow/ — InfoQ — Boris Cherny runs 5+ parallel Claudes, plan-first, CLAUDE.md as living documentation — **high**
+- https://earezki.com/ai-news/2026-03-02-i-built-an-mcp-server-so-my-ai-agent-can-track-its-own-spending/ — earezki — Agent Budget Guard MCP server: agents self-track spending, runtime circuit breaker — **high**
+- https://github.com/auraguardhq/aura-guard — auraguardhq — Deterministic middleware for agent tool calls: ALLOW/CACHE/BLOCK/REWRITE/ESCALATE/FINALIZE, no LLM — **high**
+- https://www.vibesparking.com/en/blog/ai/2026-02-14-bmad-ralph-execution-loop-claude-code/ — Vibe Sparking AI — BMAD+Ralph: structured planning phases + autonomous execution loop — **high**
+- https://github.com/pentoai/ml-ralph — pentoai — Autonomous ML experiment loop agent, reached top-30 Kaggle Higgs Boson — **high**
+- https://rocketedge.com/2026/03/15/your-ai-agent-bill-is-30x-higher-than-it-needs-to-be-the-6-tier-fix/ — RocketEdge — Six-tier cost control: per-request, per-task, per-day caps, alerts, routing, caching — **high**
+- https://adamtuttle.codes/blog/2026/my-ralph-workflow-for-claude-code/ — Adam Tuttle — RALPH workflow: plan/ralph/ralph-install scripts, runs while AFK, progress.md log — **high**
+- https://mariogiancini.com/ralph-loop-plugin-pattern-for-multiple-projects — Mario Giancini — Project-specific ralph configs for monorepos, per-project verification commands — **high**
+- https://agent-wars.com/news/2026-03-16-how-one-developer-uses-multi-agent-llm-workflows-architect-developer-reviewers — Agent Wars — Stavros Korokithakis: multi-model diversity (Opus architect, Sonnet dev, Codex+Gemini reviewers) — **high**
+- https://blog.lpains.net/posts/2026-01-31-real-world-example-ralph/ — LPains — Real-world production feature built with Ralph Wiggum Loop using GitHub Copilot CLI — **high**
+
 ## Lower Relevance
 
 - https://www.permit.io/blog/human-in-the-loop-for-ai-agents-best-practices-frameworks-use-cases-and-demo — Permit.io — Human-in-the-loop patterns for AI agents — **low**

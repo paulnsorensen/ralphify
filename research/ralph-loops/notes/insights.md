@@ -46,6 +46,19 @@
 - **The worker/reviewer separation with file-based handoff is a proven pattern.** Different model instances for execution vs. review, communicating through files, outperforms single-model self-review.
 - **Statistical confidence scoring separates signal from noise.** Using MAD (Median Absolute Deviation) to determine if metric improvements exceed the noise floor adds rigor to keep/discard decisions.
 
+## Operational Reality (NEW — Iteration 5)
+- **The ralph loop ecosystem has 30+ implementations but no dominant standard for loop configuration.** awesome-ralph (806 stars), ralph-claude-code (8,065 stars), ralph-addons, Ralphy, BMAD+Ralph — all with different config formats. Ralphify's RALPH.md is one contender.
+- **500+ agent skills exist in SKILL.md format, working across 18+ agents.** VoltAgent's directory has 12,238 stars. A skills marketplace (SkillsMP.com) has launched. The universal skill format has converged.
+- **Top practitioners run 5-15 concurrent agent sessions and abandon 10-20%.** Boris Cherny (Claude Code creator) runs 5 local + 5-10 web sessions. Partial completion is treated as normal, not failure.
+- **Cross-company model diversity combats self-agreement bias.** Stavros uses Claude Opus as architect, Sonnet as developer, Codex+Gemini as reviewers. Same-family models tend to agree with each other's errors.
+- **Agents can self-monitor costs via MCP.** Agent Budget Guard lets the agent see its own spending and make cost-aware decisions. A 30-min heartbeat costs $4.20/day without task work.
+- **Prompt caching reduces input costs ~90% for agent loops.** Particularly impactful for ralph loops where the system prompt is stable across iterations.
+- **Deterministic circuit breakers (no LLM) are the validated approach.** Aura Guard returns ALLOW/CACHE/BLOCK/REWRITE/ESCALATE/FINALIZE using only counters + signatures + similarity checks. Adding LLM judgment to the guard defeats the purpose.
+- **The "throw-away first draft" pattern accelerates specification writing.** Let the agent build the feature on a throwaway branch to evaluate its understanding, then use insights to write better specs for the real implementation.
+- **Measure iterations in actions (3-7 optimal), not wall time.** Beyond 15 meaningful actions, success probability drops sharply. Action count is a better circuit breaker signal than elapsed time.
+- **BMAD+Ralph combines structured planning with autonomous execution.** Phases 1-3 (plan) produce specs; Phase 4 (ralph) picks stories one by one and implements with TDD. The split mirrors the three-phase architecture.
+- **Project-specific ralph configs are the monorepo solution.** Each project gets its own verification commands, context files, and completion criteria — not a single global config (Mario Giancini's plugin pattern).
+
 ## Ralphify-Specific
 - **Ralphify's command system naturally supports the "commands as verifiers" pattern.** Running tests/metrics as commands and injecting results into the prompt is exactly what Spotify and Karpathy do — ralphify just needs to formalize verification as a first-class concept.
 - **Agent skills as portable packages is a validated trend.** Ralphify's skill system aligns with the industry direction of installable, reusable instruction sets.

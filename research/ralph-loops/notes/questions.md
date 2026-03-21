@@ -2,13 +2,13 @@
 
 ## Open
 - [ ] How do practitioners handle non-deterministic verification (e.g., subjective quality in writing/design tasks)?
-- [ ] What's the optimal iteration length for different task types (coding vs. research vs. optimization)?
 - [ ] What patterns exist for gradually increasing agent autonomy as trust builds?
-- [ ] How does the "agent skill" packaging ecosystem evolve — will there be a registry/marketplace?
 - [ ] What's the real-world false negative rate for LLM-as-judge verification beyond Spotify's 25%?
-- [ ] What's the optimal CLAUDE.md/RALPH.md length for different project types? (HumanLayer says <300 lines, but is this validated beyond their experience?)
-- [ ] What statistical methods beyond MAD are practitioners using for confidence scoring in optimization loops?
-- [ ] What emerging tools/frameworks are challenging the "simple harness" philosophy? Are orchestration frameworks finding their niche?
+- [ ] How does cross-company model diversity (Opus architect, Sonnet dev, Codex reviewer) compare to same-family self-review in measurable quality?
+- [ ] What's the optimal balance between plan-mode time and execution time? Boris Cherny iterates on plans extensively — is there a sweet spot?
+- [ ] How will agent skills interoperability evolve — will SKILL.md become a true standard or fragment?
+- [ ] What tooling exists for A/B testing ralph loop configurations? (Different prompts, different context strategies, same task set)
+- [ ] How do practitioners test their harness/loop configurations themselves (not the agent output, but the harness)?
 
 ## Answered
 - [x] What are the most effective patterns for keeping agents on track during long-running loops? — Fresh context resets + file-based state + verification gates. See chapters 01-02.
@@ -23,3 +23,7 @@
 - [x] What real-world CLAUDE.md/AGENTS.md examples exist? — Freek Van der Herten (<15 lines), GitHub's 2,500+ analysis (six core areas), morphllm templates (domain-specific). See chapter 08.
 - [x] How does the double-loop model map to agent workflows? — Loop 1 (exploration/vibing) then Loop 2 (refinement/review). Two ralph configurations per project: loose exploration ralph, strict refinement ralph. See chapter 09.
 - [x] How do teams handle multi-agent coordination? — Parallel independence works; shared-state coordination is fragile. Filesystem coordination beats message-passing. See chapter 05.
+- [x] What's the optimal iteration length for different task types? — Measure in actions not time: 3-7 meaningful actions is optimal. Beyond 15 actions, success probability drops. See chapter 10.
+- [x] How does the "agent skill" packaging ecosystem evolve? — 500+ skills in SKILL.md format, cross-platform (18+ agents), marketplace launched (SkillsMP.com). See chapter 10.
+- [x] What emerging tools/frameworks are challenging the "simple harness" philosophy? — BMAD+Ralph adds structured planning; ralph-claude-code adds circuit breakers; Aura Guard adds deterministic safety middleware. But "simple harness" still wins for most use cases. See chapter 10.
+- [x] What's the optimal CLAUDE.md/RALPH.md length? — Validated at <300 lines broadly. Boris Cherny uses CLAUDE.md as living documentation (adding mistakes). Mario Giancini uses per-project configs for monorepos. See chapter 10.

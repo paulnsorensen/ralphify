@@ -73,3 +73,32 @@
 - REPORT.md insights #13-#20 were added incrementally and have some overlap with #1-#12
 - Ch06 hasn't been updated since iteration 1 but 3 chapters of new research have been added since
 - Some insights are restatements (e.g., #1 and #11 both say fresh context beats accumulated context)
+
+## Iteration 5 — 2026-03-22
+
+**Decision: RESEARCH** (iteration 5, back to research after refine cycle)
+
+**Focus area:** Agent reliability engineering in practice — observability, cost control, debugging agent loops, the emerging infrastructure layer. Also: what concrete ralphs/loops are practitioners actually building and sharing in early 2026? The research is architecturally strong but thin on operational reality.
+
+**What was done:**
+- Surveyed the ralph loop ecosystem: 30+ implementations, 500+ skills, 12K+ star skill directories
+- Verified key sources: awesome-ralph (806 stars), ralph-claude-code (8,065 stars), VoltAgent/awesome-agent-skills (12,238 stars)
+- Found daily workflow patterns from Boris Cherny, Stavros Korokithakis, Adam Tuttle, Alexander Gekov, Sankalp
+- Researched cost control: Agent Budget Guard MCP server, RocketEdge 6-tier fix, prompt caching for loops
+- Researched reliability: Aura Guard (deterministic circuit breaker), loop detection taxonomy, ratchet pattern
+- Found novel use cases: ML experimentation (top-30 Kaggle), security scanning (5 scanners), infra migration, production features
+- Created chapter 10 (Operational Reality), updated REPORT.md, sources (13 new), insights (11 new), answered 4 questions
+
+**Key surprises:**
+- ralph-claude-code has 8,065 stars — more than most frameworks. The ecosystem is larger than expected.
+- Boris Cherny (Claude Code creator) abandons 10-20% of sessions — partial completion is explicitly treated as normal
+- Agent Budget Guard: a 30-minute heartbeat costs $4.20/day without doing any work. Cost awareness is critical.
+- Aura Guard uses NO LLM calls in its circuit breaker — pure counters + signatures + similarity. Deterministic safety.
+- Stavros's cross-company model diversity approach (Opus architect, Sonnet dev, Codex+Gemini reviewers) is uniquely practical
+- BMAD+Ralph = structured planning (phases 1-3) + autonomous execution (phase 4). The planning/execution split is becoming formalized.
+- The "throw-away first draft" pattern: build on throwaway branch to learn, then write better specs. Counterintuitive but validated.
+
+**Next iteration should focus on:**
+- Refine/tighten (iteration 6 = refine cycle): REPORT.md now has 18 insights — compress back to ~15
+- Update Ch06 (Ralphify implications) with new ecosystem findings and cost/reliability recommendations
+- Consider merging some overlap between Ch04 (production scale) and new Ch10 (operational reality)
