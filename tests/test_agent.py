@@ -223,6 +223,26 @@ class TestAgentResult:
         assert result.success is False
 
 
+class TestExecuteAgentDispatch:
+    """Tests for execute_agent routing to streaming vs blocking mode."""
+
+    @patch(MOCK_POPEN)
+    def test_dispatches_to_streaming_for_claude(self, mock_popen, monkeypatch):
+        """execute_agent uses the streaming path when the agent supports it."""
+        monkeypatch.setattr("ralphify._agent._supports_stream_json", lambda cmd: True)
+        mock_popen.return_value = make_mock_popen(
+            stdout_lines='{"type": "result", "result": "done"}\n',
+            returncode=0,
+        )
+        result = execute_agent(
+            ["claude", "-p"], "prompt", timeout=None, log_path_dir=None, iteration=1,
+        )
+
+        assert result.returncode == 0
+        assert result.result_text == "done"
+        mock_popen.assert_called_once()
+
+
 class TestExecuteAgentStreaming:
     """Tests for the streaming execution path (_run_agent_streaming)."""
 

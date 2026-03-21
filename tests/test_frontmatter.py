@@ -102,6 +102,12 @@ class TestParseFrontmatter:
         assert fm == {}
         assert body == "Body"
 
+    def test_yaml_comment_only_frontmatter_returns_empty_dict(self):
+        text = "---\n# just a YAML comment\n---\nBody"
+        fm, body = parse_frontmatter(text)
+        assert fm == {}
+        assert body == "Body"
+
     def test_non_dict_frontmatter_raises_value_error(self):
         text = "---\n- item1\n- item2\n---\nBody"
         with pytest.raises(ValueError, match="must be a YAML mapping"):

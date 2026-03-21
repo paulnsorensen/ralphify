@@ -3,7 +3,7 @@
 import pytest
 from rich.console import Console
 
-from ralphify._console_emitter import ConsoleEmitter
+from ralphify._console_emitter import ConsoleEmitter, _IterationSpinner
 from ralphify._events import Event, EventType
 
 
@@ -240,6 +240,14 @@ class TestMissingEventData:
 
 
 class TestIterationSpinner:
+    def test_renders_elapsed_time(self):
+        spinner = _IterationSpinner()
+        console = Console(record=True, width=80)
+        console.print(spinner)
+        output = console.export_text()
+        # Should contain a duration string (e.g. "0.0s")
+        assert "s" in output
+
     def test_stop_live_is_idempotent(self):
         emitter, _ = _capture_emitter()
         # Calling _stop_live when no Live is active should not raise
