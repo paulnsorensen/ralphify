@@ -83,6 +83,19 @@ class TestIterationLifecycle:
         output = console.export_text()
         assert "All tests passed" in output
 
+    def test_result_text_with_brackets_not_corrupted(self):
+        """Agent result text containing bracket patterns must not be
+        swallowed by Rich markup interpretation."""
+        emitter, console = _capture_emitter()
+        emitter.emit(_make_event(
+            EventType.ITERATION_COMPLETED,
+            iteration=1, detail="completed (1s)", log_file=None,
+            result_text="Fixed [all] tests in [module.py]",
+        ))
+        output = console.export_text()
+        assert "[all]" in output
+        assert "[module.py]" in output
+
 
 class TestCommandsCompleted:
     def test_shows_command_count(self):
