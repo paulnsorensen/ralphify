@@ -15,21 +15,13 @@ from pathlib import Path
 
 from ralphify._output import SUBPROCESS_TEXT_KWARGS, collect_output
 
-TIMEOUT_EXIT_CODE: int = -1
-"""Sentinel exit code returned when a command times out.
-
-Subprocess exit codes are non-negative, so ``-1`` is unambiguous.
-Callers should prefer checking ``RunResult.timed_out`` over comparing
-the exit code directly.
-"""
-
 
 @dataclass
 class RunResult:
     """Result of running a command or script."""
 
     success: bool
-    returncode: int
+    returncode: int | None
     output: str
     timed_out: bool = False
 
@@ -51,7 +43,7 @@ def run_command(
     current process environment so scripts keep ``PATH`` etc.  When
     ``None`` (default), ``subprocess.run`` inherits the parent env.
 
-    On timeout, returns ``returncode=TIMEOUT_EXIT_CODE`` and ``timed_out=True``.
+    On timeout, returns ``returncode=None`` and ``timed_out=True``.
     """
     cmd = shlex.split(command)
     if not cmd:
@@ -76,7 +68,7 @@ def run_command(
     except subprocess.TimeoutExpired as e:
         return RunResult(
             success=False,
-            returncode=TIMEOUT_EXIT_CODE,
+            returncode=None,
             output=collect_output(e.stdout, e.stderr),
             timed_out=True,
         )
