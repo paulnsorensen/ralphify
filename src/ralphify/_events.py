@@ -10,7 +10,11 @@ import queue
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, NotRequired, Protocol, TypedDict, runtime_checkable
+from typing import Any, Literal, NotRequired, Protocol, TypedDict, runtime_checkable
+
+
+LogLevel = Literal["info", "error"]
+"""Valid log levels for :class:`LogMessageData` events."""
 
 
 class EventType(Enum):
@@ -118,7 +122,7 @@ class AgentActivityData(TypedDict):
 
 class LogMessageData(TypedDict):
     message: str
-    level: str
+    level: LogLevel
     traceback: NotRequired[str]
 
 
