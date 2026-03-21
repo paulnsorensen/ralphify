@@ -339,7 +339,7 @@ def run(
     ctx: typer.Context,
     path: str = typer.Argument(..., help="Path to the ralph directory (containing RALPH.md)."),
     n: int | None = typer.Option(None, "-n", help="Max number of iterations. Infinite if not set."),
-    stop_on_error: bool = typer.Option(False, "--stop-on-error", "-s", help="Stop if the agent exits with non-zero."),
+    stop_on_error: bool = typer.Option(False, "--stop-on-error", "-s", help="Stop if the agent exits non-zero or times out."),
     delay: float = typer.Option(0, "--delay", "-d", help="Seconds to wait between iterations."),
     log_dir: str | None = typer.Option(None, "--log-dir", "-l", help="Save iteration output to log files in this directory."),
     timeout: float | None = typer.Option(None, "--timeout", "-t", help="Max seconds per iteration. Kill agent if exceeded."),

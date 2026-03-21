@@ -13,7 +13,7 @@ Everything you need at a glance. Bookmark this page.
 ralph run my-ralph                 # Run loop forever (Ctrl+C to stop)
 ralph run my-ralph -n 5            # Run 5 iterations
 ralph run my-ralph -n 1 --log-dir logs  # Single iteration with output capture
-ralph run my-ralph --stop-on-error # Stop if agent exits non-zero
+ralph run my-ralph --stop-on-error # Stop if agent exits non-zero or times out
 ralph run my-ralph --delay 10      # Wait 10s between iterations
 ralph run my-ralph --timeout 300   # Kill agent after 5 min per iteration
 ralph run my-ralph --dir ./src     # Pass user args to the ralph
