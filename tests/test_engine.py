@@ -286,3 +286,65 @@ class TestCommandExecution:
         call_input = mock_agent.call_args.kwargs["input"]
         assert "test output" in call_input
         assert "{{ commands.tests }}" not in call_input
+
+
+class TestRunLoopCrashHandling:
+    """Tests for the broad exception handler in run_loop (engine.py lines 269-276)."""
+
+    @patch(MOCK_SUBPROCESS)
+    def test_unexpected_exception_sets_failed_status(self, mock_run, tmp_path):
+        mock_run.side_effect = RuntimeError("disk full")
+        config = make_config(tmp_path, max_iterations=5)
+        state = make_state()
+
+        run_loop(config, state, NullEmitter())
+
+        assert state.status == RunStatus.FAILED
+
+    @patch(MOCK_SUBPROCESS)
+    def test_unexpected_exception_emits_log_and_stop_events(self, mock_run, tmp_path):
+        mock_run.side_effect = RuntimeError("disk full")
+        config = make_config(tmp_path, max_iterations=5)
+        state = make_state()
+        q = QueueEmitter()
+
+        run_loop(config, state, q)
+
+        events = drain_events(q)
+        types = [e.type for e in events]
+        assert EventType.LOG_MESSAGE in types
+        assert EventType.RUN_STOPPED in types
+
+        log_event = next(e for e in events if e.type == EventType.LOG_MESSAGE)
+        assert log_event.data["level"] == "error"
+        assert "disk full" in log_event.data["message"]
+        assert "traceback" in log_event.data
+
+        stop_event = next(e for e in events if e.type == EventType.RUN_STOPPED)
+        assert stop_event.data["reason"] == "error"
+
+    @patch(MOCK_SUBPROCESS)
+    def test_unexpected_exception_only_runs_one_iteration(self, mock_run, tmp_path):
+        mock_run.side_effect = RuntimeError("boom")
+        config = make_config(tmp_path, max_iterations=10)
+        state = make_state()
+
+        run_loop(config, state, NullEmitter())
+
+        assert mock_run.call_count == 1
+        assert state.iteration == 1
+
+    @patch("ralphify.engine.parse_frontmatter")
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    def test_crash_in_prompt_assembly_handled(self, mock_run, mock_parse, tmp_path):
+        mock_parse.side_effect = ValueError("corrupt YAML")
+        config = make_config(tmp_path, max_iterations=1)
+        state = make_state()
+        q = QueueEmitter()
+
+        run_loop(config, state, q)
+
+        assert state.status == RunStatus.FAILED
+        events = drain_events(q)
+        log_events = [e for e in events if e.type == EventType.LOG_MESSAGE]
+        assert any("corrupt YAML" in e.data["message"] for e in log_events)
