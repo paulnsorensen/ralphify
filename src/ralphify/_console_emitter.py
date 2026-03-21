@@ -9,6 +9,7 @@ from __future__ import annotations
 import time
 from collections.abc import Callable
 from functools import partial
+from typing import Any
 
 from rich.console import Console, ConsoleOptions, RenderResult
 from rich.live import Live
@@ -48,7 +49,7 @@ class ConsoleEmitter:
     def __init__(self, console: Console) -> None:
         self._console = console
         self._live: Live | None = None
-        self._handlers: dict[EventType, Callable[[dict], None]] = {
+        self._handlers: dict[EventType, Callable[[dict[str, Any]], None]] = {
             EventType.RUN_STARTED: self._on_run_started,
             EventType.ITERATION_STARTED: self._on_iteration_started,
             EventType.ITERATION_COMPLETED: partial(self._on_iteration_ended, color="green", icon=_ICON_SUCCESS),
@@ -64,7 +65,7 @@ class ConsoleEmitter:
         if handler is not None:
             handler(event.data)
 
-    def _on_run_started(self, data: dict) -> None:
+    def _on_run_started(self, data: dict[str, Any]) -> None:
         timeout = data.get("timeout") or 0
         if timeout > 0:
             self._console.print(f"[dim]Timeout: {format_duration(timeout)} per iteration[/dim]")
@@ -87,12 +88,12 @@ class ConsoleEmitter:
             self._live.stop()
             self._live = None
 
-    def _on_iteration_started(self, data: dict) -> None:
+    def _on_iteration_started(self, data: dict[str, Any]) -> None:
         iteration = data.get("iteration", "?")
         self._console.print(f"\n[bold blue]── Iteration {iteration} ──[/bold blue]")
         self._start_live()
 
-    def _on_iteration_ended(self, data: dict, color: str, icon: str) -> None:
+    def _on_iteration_ended(self, data: dict[str, Any], color: str, icon: str) -> None:
         self._stop_live()
         iteration = data.get("iteration", "?")
         detail = data.get("detail", "")
@@ -106,12 +107,12 @@ class ConsoleEmitter:
         if result_text:
             self._console.print(f"  [dim]{result_text}[/dim]")
 
-    def _on_commands_completed(self, data: dict) -> None:
+    def _on_commands_completed(self, data: dict[str, Any]) -> None:
         count = data.get("count", 0)
         if count:
             self._console.print(f"  [bold]Commands:[/bold] {count} ran")
 
-    def _on_log_message(self, data: dict) -> None:
+    def _on_log_message(self, data: dict[str, Any]) -> None:
         msg = data.get("message", "")
         level = data.get("level", "info")
         if level == "error":
@@ -122,7 +123,7 @@ class ConsoleEmitter:
         else:
             self._console.print(f"[dim]{msg}[/dim]")
 
-    def _on_run_stopped(self, data: dict) -> None:
+    def _on_run_stopped(self, data: dict[str, Any]) -> None:
         self._stop_live()
         if data.get("reason") != RunStatus.COMPLETED.reason:
             return

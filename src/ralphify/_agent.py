@@ -23,7 +23,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import IO
+from typing import IO, Any
 
 from ralphify._output import collect_output
 
@@ -99,7 +99,7 @@ def _supports_stream_json(cmd: list[str]) -> bool:
 def _read_agent_stream(
     stdout: IO[str],
     deadline: float | None,
-    on_activity: Callable[[dict], None] | None,
+    on_activity: Callable[[dict[str, Any]], None] | None,
 ) -> _StreamResult:
     """Read the agent's JSON stream line-by-line until EOF or timeout.
 
@@ -143,7 +143,7 @@ def _run_agent_streaming(
     timeout: float | None,
     log_path_dir: Path | None,
     iteration: int,
-    on_activity: Callable[[dict], None] | None = None,
+    on_activity: Callable[[dict[str, Any]], None] | None = None,
 ) -> AgentResult:
     """Run the agent subprocess with line-by-line streaming of JSON output.
 
@@ -255,7 +255,7 @@ def execute_agent(
     timeout: float | None,
     log_path_dir: Path | None,
     iteration: int,
-    on_activity: Callable[[dict], None] | None = None,
+    on_activity: Callable[[dict[str, Any]], None] | None = None,
 ) -> AgentResult:
     """Run the agent subprocess, auto-selecting streaming or blocking mode.
 
