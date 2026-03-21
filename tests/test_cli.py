@@ -8,18 +8,11 @@ import pytest
 import typer
 from typer.testing import CliRunner
 
+from conftest import ok_result, fail_result
 from ralphify import __version__
 from ralphify.cli import app, _parse_user_args
 
 runner = CliRunner()
-
-
-def _ok(*args, **kwargs):
-    return subprocess.CompletedProcess(args=args, returncode=0)
-
-
-def _fail(*args, **kwargs):
-    return subprocess.CompletedProcess(args=args, returncode=1)
 
 
 def _make_ralph(tmp_path, prompt="go", agent="claude -p --dangerously-skip-permissions",
@@ -86,7 +79,7 @@ class TestRun:
         assert result.exit_code == 1
         assert "not found on PATH" in result.output
 
-    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
+    @patch("ralphify._agent.subprocess.run", side_effect=ok_result)
     @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
     def test_runs_when_valid(self, mock_which, mock_run, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -95,7 +88,7 @@ class TestRun:
         assert result.exit_code == 0
         assert mock_run.call_count == 1
 
-    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
+    @patch("ralphify._agent.subprocess.run", side_effect=ok_result)
     @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
     def test_runs_n_iterations(self, mock_which, mock_run, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -132,7 +125,7 @@ class TestRun:
         assert mock_run.call_args_list[0].kwargs["input"] == "v1"
         assert mock_run.call_args_list[1].kwargs["input"] == "v2"
 
-    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
+    @patch("ralphify._agent.subprocess.run", side_effect=ok_result)
     @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
     def test_shows_success_per_iteration(self, mock_which, mock_run, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -143,7 +136,7 @@ class TestRun:
         assert "Iteration 2 completed" in result.output
         assert "2 succeeded" in result.output
 
-    @patch("ralphify._agent.subprocess.run", side_effect=_fail)
+    @patch("ralphify._agent.subprocess.run", side_effect=fail_result)
     @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
     def test_continues_on_error_by_default(self, mock_which, mock_run, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -153,7 +146,7 @@ class TestRun:
         assert mock_run.call_count == 3
         assert "3 failed" in result.output
 
-    @patch("ralphify._agent.subprocess.run", side_effect=_fail)
+    @patch("ralphify._agent.subprocess.run", side_effect=fail_result)
     @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
     def test_stop_on_error(self, mock_which, mock_run, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -180,7 +173,7 @@ class TestRun:
         assert "1 failed" in result.output
 
     @patch("ralphify.engine.time.sleep")
-    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
+    @patch("ralphify._agent.subprocess.run", side_effect=ok_result)
     @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
     def test_delay_between_iterations(self, mock_which, mock_run, mock_sleep, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -192,7 +185,7 @@ class TestRun:
             assert call.args[0] == 5
 
     @patch("ralphify.engine.time.sleep")
-    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
+    @patch("ralphify._agent.subprocess.run", side_effect=ok_result)
     @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
     def test_no_delay_with_single_iteration(self, mock_which, mock_run, mock_sleep, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -201,7 +194,7 @@ class TestRun:
         assert result.exit_code == 0
         mock_sleep.assert_not_called()
 
-    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
+    @patch("ralphify._agent.subprocess.run", side_effect=ok_result)
     @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
     def test_accepts_ralph_md_file_path(self, mock_which, mock_run, tmp_path, monkeypatch):
         """Can pass path to RALPH.md file directly."""
@@ -243,7 +236,7 @@ class TestRunLogging:
         assert "hello from agent" in content
         assert "warning" in content
 
-    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
+    @patch("ralphify._agent.subprocess.run", side_effect=ok_result)
     def test_no_log_files_without_flag(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = _make_ralph(tmp_path)
@@ -254,7 +247,7 @@ class TestRunLogging:
 
 @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
 class TestRunTimeout:
-    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
+    @patch("ralphify._agent.subprocess.run", side_effect=ok_result)
     def test_timeout_passed_to_subprocess(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = _make_ralph(tmp_path)
@@ -262,7 +255,7 @@ class TestRunTimeout:
         assert result.exit_code == 0
         assert mock_run.call_args.kwargs["timeout"] == 30
 
-    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
+    @patch("ralphify._agent.subprocess.run", side_effect=ok_result)
     def test_no_timeout_by_default(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = _make_ralph(tmp_path)
@@ -281,7 +274,7 @@ class TestRunTimeout:
         assert "1 failed" in result.output
         assert "1 timed out" in result.output
 
-    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
+    @patch("ralphify._agent.subprocess.run", side_effect=ok_result)
     def test_timeout_shows_in_header(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = _make_ralph(tmp_path)
@@ -354,7 +347,7 @@ class TestParseUserArgs:
 
 @patch("ralphify.cli.shutil.which", return_value="/usr/bin/claude")
 class TestRunWithUserArgs:
-    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
+    @patch("ralphify._agent.subprocess.run", side_effect=ok_result)
     def test_named_args_resolved_in_prompt(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = _make_ralph(tmp_path, prompt="Research {{ args.dir }}")
@@ -362,7 +355,7 @@ class TestRunWithUserArgs:
         assert result.exit_code == 0
         assert mock_run.call_args.kwargs["input"] == "Research ./my-project"
 
-    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
+    @patch("ralphify._agent.subprocess.run", side_effect=ok_result)
     def test_positional_args_with_declared_names(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = _make_ralph(
@@ -374,7 +367,7 @@ class TestRunWithUserArgs:
         assert result.exit_code == 0
         assert mock_run.call_args.kwargs["input"] == "Research ./my-project with focus on performance"
 
-    @patch("ralphify._agent.subprocess.run", side_effect=_ok)
+    @patch("ralphify._agent.subprocess.run", side_effect=ok_result)
     def test_unused_arg_placeholders_cleared(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = _make_ralph(tmp_path, prompt="Before {{ args.opt }} after")
