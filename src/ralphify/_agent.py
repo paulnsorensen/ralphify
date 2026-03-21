@@ -147,7 +147,7 @@ def _run_agent_streaming(
     this function owns the subprocess lifecycle (spawn, stdin delivery,
     timeout kill, and cleanup via ``try/finally``).
     """
-    stream_cmd = cmd + ["--output-format", _OUTPUT_FORMAT_FLAG, "--verbose"]
+    stream_cmd = cmd + ["--output-format", _OUTPUT_FORMAT_FLAG, f"--{_VERBOSE_FLAG}"]
     start = time.monotonic()
     deadline = (start + timeout) if timeout is not None else None
 
