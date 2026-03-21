@@ -162,7 +162,7 @@ Each command has these fields:
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `name` | string | (required) | Identifier used in `{{ commands.<name> }}` placeholders |
-| `run` | string | (required) | Shell command to execute each iteration |
+| `run` | string | (required) | Shell command to execute each iteration. Commands starting with `./` run from the ralph directory; others run from the project root. |
 | `timeout` | number | `60` | Max seconds before the command is killed |
 
 Commands run in order. Output (stdout + stderr) is captured regardless of exit code. Commands are parsed with `shlex.split()` — no shell features (pipes, redirections, `&&`). For shell features, point the `run` field at a script.
