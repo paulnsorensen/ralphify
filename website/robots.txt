@@ -2,3 +2,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://computerlovetech.github.io/ralphify/sitemap.xml
+Sitemap: https://computerlovetech.github.io/ralphify/docs/sitemap.xml
