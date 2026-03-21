@@ -25,6 +25,8 @@ from ralphify._runner import run_command
 from ralphify.resolver import resolve_args, resolve_commands
 
 
+_PAUSE_POLL_INTERVAL = 0.25  # seconds between pause/resume checks
+
 # Maps terminal run status to the reason string emitted in RUN_STOPPED events.
 _STATUS_REASONS: dict[RunStatus, str] = {
     RunStatus.COMPLETED: "completed",
@@ -51,7 +53,7 @@ class _BoundEmitter:
 def _wait_for_resume(state: RunState, emit: _BoundEmitter) -> bool:
     """Block until the run is resumed or a stop is requested."""
     emit(EventType.RUN_PAUSED)
-    while not state.wait_for_unpause(timeout=0.25):
+    while not state.wait_for_unpause(timeout=_PAUSE_POLL_INTERVAL):
         if state.stop_requested:
             break
     if state.stop_requested:
@@ -136,11 +138,11 @@ def _run_agent_phase(
             cmd, prompt, config.timeout, log_path_dir, state.iteration,
             on_activity=lambda data: emit(EventType.AGENT_ACTIVITY, {"raw": data, "iteration": state.iteration}),
         )
-    except FileNotFoundError:
+    except FileNotFoundError as exc:
         raise FileNotFoundError(
             f"Agent command not found: {config.agent!r}. "
             f"Check the 'agent' field in your RALPH.md frontmatter."
-        )
+        ) from exc
 
     duration = format_duration(agent.elapsed)
 
