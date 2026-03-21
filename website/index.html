@@ -188,45 +188,45 @@
 
   <main id="main-content">
 
-    <!-- Hero — split layout -->
+    <!-- Hero — centered, dramatic -->
     <section class="hero" aria-label="Introduction">
       <div class="hero-glow" aria-hidden="true"></div>
 
-      <div class="hero-split">
-        <div class="hero-text">
-          <div class="hero-badge">
-            <span class="status-dot"></span>
-            Open-source &middot; pip install ralphify
-          </div>
-
-          <h1 class="hero-headline">
-            Stop stressing over not having an agent running.
-          </h1>
-          <p class="hero-punchline">
-            <span class="hero-gradient-text">Ralph is always running</span>
-            <span class="runner-emoji" aria-hidden="true">&#x1F3C3;</span>
-          </p>
-
-          <p class="hero-sub">
-            Put your AI coding agent in a <code>while True</code> loop.<br>
-            Write a prompt. Walk away. Wake up to commits.
-          </p>
-
-          <div class="cta">
-            <a href="docs/getting-started/" class="btn btn-primary">Get Started</a>
-            <a href="docs/cookbook/" class="btn btn-secondary">View Cookbook</a>
-          </div>
+      <div class="hero-center">
+        <div class="hero-badge">
+          <span class="status-dot"></span>
+          Open-source &middot; pip install ralphify
         </div>
 
-        <div class="hero-terminal">
-          <div class="terminal-window terminal-hero">
-            <div class="terminal-header">
-              <span class="terminal-dot red"></span>
-              <span class="terminal-dot yellow"></span>
-              <span class="terminal-dot green"></span>
-              <span class="terminal-title">ralph &mdash; autonomous loop</span>
-            </div>
-            <pre class="terminal-body"><code><span class="prompt">$</span> ralph run
+        <h1 class="hero-headline">
+          Stop stressing over<br>not having an agent running.
+        </h1>
+        <p class="hero-punchline">
+          <span class="hero-gradient-text">Ralph is always running</span>
+          <span class="runner-emoji" aria-hidden="true">&#x1F3C3;</span>
+        </p>
+
+        <p class="hero-sub">
+          Put your AI coding agent in a <code>while True</code> loop.<br>
+          Write a prompt. Walk away. Wake up to commits.
+        </p>
+
+        <div class="cta cta-center">
+          <a href="docs/getting-started/" class="btn btn-primary">Get Started</a>
+          <a href="docs/cookbook/" class="btn btn-secondary">View Cookbook</a>
+        </div>
+      </div>
+
+      <!-- Terminal demo below hero text -->
+      <div class="hero-terminal-wrap">
+        <div class="terminal-window terminal-hero">
+          <div class="terminal-header">
+            <span class="terminal-dot red"></span>
+            <span class="terminal-dot yellow"></span>
+            <span class="terminal-dot green"></span>
+            <span class="terminal-title">ralph &mdash; autonomous loop</span>
+          </div>
+          <pre class="terminal-body"><code><span class="prompt">$</span> ralph run
 <span class="dim">&#9484;&#9472; Iteration 46 &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;</span>
 <span class="success">&#x2713;</span> Iteration 46 completed <span class="dim">(38.2s)</span>
   Commands: 2 passed
@@ -245,7 +245,6 @@
     <span class="success">&#x2713;</span> lint
     <span class="success">&#x2713;</span> tests <span class="dim">(48/48)</span>
 <span class="cursor-blink">&#9608;</span></code></pre>
-          </div>
         </div>
       </div>
 
@@ -263,12 +262,58 @@
       </div>
     </section>
 
+    <!-- The FOMO — contrast section -->
+    <section class="fomo" aria-labelledby="fomo-heading">
+      <div class="fomo-inner">
+        <p class="section-eyebrow fade-up">The reality</p>
+        <h2 id="fomo-heading" class="section-heading fade-up">
+          Your coworkers' agents are<br>shipping code right now.
+        </h2>
+        <p class="section-subtitle fade-up">
+          They close their laptops and wake up to PRs.<br>
+          You close your laptop and wake up to&hellip; nothing.
+        </p>
+
+        <div class="fomo-contrast fade-up">
+          <div class="fomo-card fomo-without">
+            <div class="fomo-card-label">
+              <span class="status-dot status-dot-dead"></span>
+              You without Ralph
+            </div>
+            <div class="fomo-card-body">
+              <div class="fomo-line"><span class="fomo-time">11:47 PM</span> Closed laptop</div>
+              <div class="fomo-line"><span class="fomo-time">11:48 PM</span> &hellip;</div>
+              <div class="fomo-line"><span class="fomo-time">7:00 AM</span> &hellip;</div>
+              <div class="fomo-line"><span class="fomo-time">7:01 AM</span> Opened laptop</div>
+              <div class="fomo-line fomo-dim"><span class="fomo-time"></span> 0 commits. 0 PRs. Same backlog.</div>
+            </div>
+          </div>
+
+          <div class="fomo-vs" aria-hidden="true">vs</div>
+
+          <div class="fomo-card fomo-with">
+            <div class="fomo-card-label">
+              <span class="status-dot"></span>
+              You with Ralph
+            </div>
+            <div class="fomo-card-body">
+              <div class="fomo-line"><span class="fomo-time">11:47 PM</span> Closed laptop</div>
+              <div class="fomo-line"><span class="fomo-time">12:31 AM</span> <span class="success">&#x2713;</span> feat: add rate limiting</div>
+              <div class="fomo-line"><span class="fomo-time">2:18 AM</span> <span class="success">&#x2713;</span> fix: session store race condition</div>
+              <div class="fomo-line"><span class="fomo-time">4:03 AM</span> <span class="success">&#x2713;</span> feat: add pagination</div>
+              <div class="fomo-line"><span class="fomo-time">5:44 AM</span> <span class="success">&#x2713;</span> refactor: extract auth middleware</div>
+              <div class="fomo-line"><span class="fomo-time">7:00 AM</span> <span class="fomo-highlight">23 commits &middot; 3 PRs ready</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- While you slept — git log timeline -->
     <section class="overnight" aria-labelledby="overnight-heading">
       <div class="overnight-inner">
         <p class="section-eyebrow overnight-eyebrow fade-up">While you slept</p>
         <h2 id="overnight-heading" class="section-heading fade-up">You closed your laptop.<br><span class="hero-gradient-text">Ralph kept shipping.</span></h2>
-        <p class="section-subtitle fade-up">Your teammates wake up to PRs. You wake up to nothing.<br>Unless you have Ralph.</p>
 
         <div class="git-timeline fade-up">
           <div class="git-line" aria-hidden="true"></div>
@@ -596,6 +641,23 @@ pick the next task from TODO.md and implement it.</code></pre>
         });
       }, { threshold: 0.2 });
       gitObs.observe(gitTimeline);
+    }
+
+    // FOMO cards staggered reveal
+    const fomoContrast = document.querySelector('.fomo-contrast');
+    if (fomoContrast) {
+      const cards = fomoContrast.querySelectorAll('.fomo-card');
+      const fomoObs = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            cards.forEach((card, i) => {
+              setTimeout(() => card.classList.add('visible'), i * 250);
+            });
+            fomoObs.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.2 });
+      fomoObs.observe(fomoContrast);
     }
   </script>
 </body>
