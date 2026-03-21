@@ -93,12 +93,14 @@ A command that runs each iteration.
 from ralphify import Command
 
 cmd = Command(name="tests", run="uv run pytest -x")
+cmd_slow = Command(name="integration", run="uv run pytest tests/integration", timeout=300)
 ```
 
-| Field | Type | Description |
-|---|---|---|
-| `name` | `str` | Identifier used in `{{ commands.<name> }}` placeholders |
-| `run` | `str` | Shell command to execute |
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `name` | `str` | (required) | Identifier used in `{{ commands.<name> }}` placeholders |
+| `run` | `str` | (required) | Shell command to execute |
+| `timeout` | `float` | `60` | Max seconds before the command is killed |
 
 ---
 
