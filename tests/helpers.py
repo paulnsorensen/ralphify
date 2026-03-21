@@ -7,6 +7,7 @@ Fixtures stay in conftest.py — pytest discovers them automatically.
 import subprocess
 from pathlib import Path
 
+from ralphify._events import Event, QueueEmitter
 from ralphify._run_types import RunConfig, RunState
 
 
@@ -25,7 +26,7 @@ MOCK_WHICH = "ralphify.cli.shutil.which"
 # ── Factory helpers ───────────────────────────────────────────────────
 
 
-def make_config(tmp_path, **overrides):
+def make_config(tmp_path: Path, **overrides) -> RunConfig:
     """Create a RunConfig pointing at a temp ralph directory."""
     ralph_dir = tmp_path / "my-ralph"
     ralph_dir.mkdir(exist_ok=True)
@@ -44,22 +45,22 @@ def make_config(tmp_path, **overrides):
     return RunConfig(**defaults)
 
 
-def make_state():
+def make_state() -> RunState:
     """Create a RunState with a fixed test run ID."""
     return RunState(run_id="test-run-001")
 
 
-def ok_result(*args, **kwargs):
+def ok_result(*args, **kwargs) -> subprocess.CompletedProcess:
     """Subprocess side_effect that returns exit code 0."""
     return subprocess.CompletedProcess(args=args, returncode=0)
 
 
-def fail_result(*args, **kwargs):
+def fail_result(*args, **kwargs) -> subprocess.CompletedProcess:
     """Subprocess side_effect that returns exit code 1."""
     return subprocess.CompletedProcess(args=args, returncode=1)
 
 
-def drain_events(emitter):
+def drain_events(emitter: QueueEmitter) -> list[Event]:
     """Drain all events from a QueueEmitter and return them as a list."""
     events = []
     while not emitter.queue.empty():

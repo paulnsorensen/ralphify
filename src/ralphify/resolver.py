@@ -12,7 +12,7 @@ import re
 from functools import lru_cache
 
 
-@lru_cache(maxsize=None)
+@lru_cache(maxsize=2)
 def _get_pattern(kind: str) -> re.Pattern[str]:
     """Return a compiled regex for the given placeholder kind, caching the result."""
     return re.compile(

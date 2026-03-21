@@ -118,15 +118,15 @@ def _parse_user_args(
     """
     result: dict[str, str] = {}
     positional_index = 0
-    i = 0
-    while i < len(raw_args):
-        token = raw_args[i]
+    it = iter(raw_args)
+    for token in it:
         if token.startswith("--"):
             name = token[2:]
-            if i + 1 >= len(raw_args):
+            try:
+                value = next(it)
+            except StopIteration:
                 raise typer.BadParameter(f"Flag '--{name}' requires a value.")
-            result[name] = raw_args[i + 1]
-            i += 2
+            result[name] = value
         else:
             if not declared_names:
                 raise typer.BadParameter(
@@ -140,7 +140,6 @@ def _parse_user_args(
                 )
             result[declared_names[positional_index]] = token
             positional_index += 1
-            i += 1
     return result
 
 
