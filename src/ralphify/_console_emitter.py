@@ -18,11 +18,11 @@ from rich.text import Text
 from ralphify._events import Event, EventType
 from ralphify._output import format_duration
 
-_ICON_SUCCESS = "\u2713"  # ✓
-_ICON_FAILURE = "\u2717"  # ✗
-_ICON_TIMEOUT = "\u23f1"  # ⏱
-_ICON_ARROW = "\u2192"    # →
-_ICON_DASH = "\u2014"     # —
+_ICON_SUCCESS = "✓"
+_ICON_FAILURE = "✗"
+_ICON_TIMEOUT = "⏱"
+_ICON_ARROW = "→"
+_ICON_DASH = "—"
 
 _LIVE_REFRESH_RATE = 4  # Hz — how often the spinner redraws
 

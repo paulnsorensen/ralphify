@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from helpers import MOCK_SUBPROCESS, drain_events, make_config, ok_result
 
-from ralphify._events import Event, EventType, FanoutEmitter, QueueEmitter
+from ralphify._events import EventType, QueueEmitter
 from ralphify._run_types import RUN_ID_LENGTH, RunStatus
 from ralphify.manager import ManagedRun, RunManager
 
@@ -175,20 +175,7 @@ class TestRunManagerListAndGet:
         assert manager.get_run("nonexistent") is None
 
 
-class TestFanoutEmitter:
-    def test_fanout_emits_to_all(self):
-        q1 = QueueEmitter()
-        q2 = QueueEmitter()
-        fanout = FanoutEmitter([q1, q2])
-
-        event = Event(type=EventType.LOG_MESSAGE, run_id="test", data={"msg": "hi"})
-        fanout.emit(event)
-
-        assert not q1.queue.empty()
-        assert not q2.queue.empty()
-        assert q1.queue.get() is event
-        assert q2.queue.get() is event
-
+class TestRunManagerExtraListeners:
     @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_extra_listeners_receive_events(self, mock_run, tmp_path):
         manager = RunManager()
