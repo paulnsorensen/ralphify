@@ -20,7 +20,7 @@ from ralphify._agent import execute_agent
 from ralphify._events import Event, EventEmitter, EventType, NullEmitter
 from ralphify._frontmatter import parse_frontmatter
 from ralphify._output import format_duration
-from ralphify._run_types import Command, DEFAULT_COMMAND_TIMEOUT, RunConfig, RunState, RunStatus
+from ralphify._run_types import Command, RunConfig, RunState, RunStatus
 from ralphify._runner import run_command
 from ralphify.resolver import resolve_args, resolve_commands
 
@@ -76,7 +76,6 @@ def _run_commands(
     commands: list[Command],
     ralph_dir: Path,
     project_root: Path,
-    timeout: int | float = DEFAULT_COMMAND_TIMEOUT,
 ) -> dict[str, str]:
     """Execute all commands and return a dict of name→output.
 
@@ -96,7 +95,7 @@ def _run_commands(
             script=None,
             command=run_str,
             cwd=cwd,
-            timeout=cmd.timeout if cmd.timeout is not None else timeout,
+            timeout=cmd.timeout,
         )
         results[cmd.name] = result.output
     return results

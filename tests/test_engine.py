@@ -9,7 +9,7 @@ from helpers import MOCK_SUBPROCESS, drain_events, fail_result, make_config, mak
 
 from ralphify._events import EventType, NullEmitter, QueueEmitter
 from ralphify._run_types import RunStatus
-from ralphify.engine import run_loop
+from ralphify.engine import _BoundEmitter, _delay_if_needed, run_loop
 
 
 class TestRunLoop:
@@ -348,3 +348,63 @@ class TestRunLoopCrashHandling:
         events = drain_events(q)
         log_events = [e for e in events if e.type == EventType.LOG_MESSAGE]
         assert any("corrupt YAML" in e.data["message"] for e in log_events)
+
+
+class TestDelayIfNeeded:
+    def test_no_delay_when_zero(self, tmp_path):
+        config = make_config(tmp_path, delay=0, max_iterations=5)
+        state = make_state()
+        state.iteration = 1
+        q = QueueEmitter()
+        emit = _BoundEmitter(q, state.run_id)
+
+        start = time.monotonic()
+        _delay_if_needed(config, state, emit)
+        elapsed = time.monotonic() - start
+
+        assert elapsed < 0.1
+        assert drain_events(q) == []
+
+    def test_delay_sleeps_between_iterations(self, tmp_path):
+        config = make_config(tmp_path, delay=0.15, max_iterations=5)
+        state = make_state()
+        state.iteration = 1
+        q = QueueEmitter()
+        emit = _BoundEmitter(q, state.run_id)
+
+        start = time.monotonic()
+        _delay_if_needed(config, state, emit)
+        elapsed = time.monotonic() - start
+
+        assert elapsed >= 0.1
+        events = drain_events(q)
+        assert len(events) == 1
+        assert events[0].type == EventType.LOG_MESSAGE
+        assert "Waiting" in events[0].data["message"]
+
+    def test_no_delay_on_last_iteration(self, tmp_path):
+        config = make_config(tmp_path, delay=0.5, max_iterations=3)
+        state = make_state()
+        state.iteration = 3  # last iteration
+        q = QueueEmitter()
+        emit = _BoundEmitter(q, state.run_id)
+
+        start = time.monotonic()
+        _delay_if_needed(config, state, emit)
+        elapsed = time.monotonic() - start
+
+        assert elapsed < 0.1
+        assert drain_events(q) == []
+
+    def test_delay_with_unlimited_iterations(self, tmp_path):
+        config = make_config(tmp_path, delay=0.15, max_iterations=None)
+        state = make_state()
+        state.iteration = 100
+        q = QueueEmitter()
+        emit = _BoundEmitter(q, state.run_id)
+
+        start = time.monotonic()
+        _delay_if_needed(config, state, emit)
+        elapsed = time.monotonic() - start
+
+        assert elapsed >= 0.1
