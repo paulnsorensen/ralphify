@@ -4,6 +4,8 @@ import threading
 import time
 from unittest.mock import patch
 
+import pytest
+
 from helpers import MOCK_SUBPROCESS, drain_events, make_config, ok_result
 
 from ralphify._events import EventType, FanoutEmitter, QueueEmitter
@@ -83,6 +85,28 @@ class TestRunManagerStartRun:
         types = [e.type for e in events]
         assert EventType.RUN_STARTED in types
         assert EventType.RUN_STOPPED in types
+
+
+class TestRunManagerInvalidRunId:
+    def test_start_run_raises_key_error_for_unknown_id(self):
+        manager = RunManager()
+        with pytest.raises(KeyError, match="No run with ID 'nonexistent'"):
+            manager.start_run("nonexistent")
+
+    def test_stop_run_raises_key_error_for_unknown_id(self):
+        manager = RunManager()
+        with pytest.raises(KeyError, match="No run with ID 'nonexistent'"):
+            manager.stop_run("nonexistent")
+
+    def test_pause_run_raises_key_error_for_unknown_id(self):
+        manager = RunManager()
+        with pytest.raises(KeyError, match="No run with ID 'nonexistent'"):
+            manager.pause_run("nonexistent")
+
+    def test_resume_run_raises_key_error_for_unknown_id(self):
+        manager = RunManager()
+        with pytest.raises(KeyError, match="No run with ID 'nonexistent'"):
+            manager.resume_run("nonexistent")
 
 
 class TestRunManagerStopRun:

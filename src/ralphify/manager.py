@@ -63,7 +63,10 @@ class RunManager:
     def _get_run(self, run_id: str) -> ManagedRun:
         """Look up a run by ID under the lock. Raises ``KeyError`` if missing."""
         with self._lock:
-            return self._runs[run_id]
+            try:
+                return self._runs[run_id]
+            except KeyError:
+                raise KeyError(f"No run with ID '{run_id}'") from None
 
     def create_run(self, config: RunConfig) -> ManagedRun:
         """Create a new run from *config* and register it.
@@ -88,9 +91,11 @@ class RunManager:
 
         The entire operation runs under the registry lock so that
         concurrent calls cannot race on the same run.
+
+        Raises ``KeyError`` if the run ID is not registered.
         """
+        managed = self._get_run(run_id)
         with self._lock:
-            managed = self._runs[run_id]
             emitter = managed.build_emitter()
             thread = threading.Thread(
                 target=run_loop,
