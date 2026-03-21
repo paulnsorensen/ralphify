@@ -31,6 +31,7 @@ from ralphify.resolver import resolve_args, resolve_commands
 
 
 _PAUSE_POLL_INTERVAL = 0.25  # seconds between pause/resume checks
+_RELATIVE_CMD_PREFIX = "./"  # commands starting with this run from the ralph directory
 
 
 class _BoundEmitter:
@@ -87,7 +88,7 @@ def _run_commands(
         run_str = cmd.run
         # Determine working directory: if the command starts with ./ it's
         # relative to the ralph directory, otherwise use project root.
-        if run_str.startswith("./"):
+        if run_str.startswith(_RELATIVE_CMD_PREFIX):
             cwd = ralph_dir
         else:
             cwd = project_root
