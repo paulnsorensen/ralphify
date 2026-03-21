@@ -115,10 +115,6 @@ Add it in `cli.py`. The CLI uses Typer. Update `docs/cli.md` to document the new
 
 Events are defined in `_events.py:EventType`. The `ConsoleEmitter` in `_console_emitter.py` renders them to the terminal. Adding a new event type requires handling it in `ConsoleEmitter` and any other active emitters.
 
-### Output truncation
-
-`_output.py:truncate_output()` caps output at 5000 chars. This affects command output injected into prompts. If agents complain about missing error details, this is why.
-
 ### Command parsing
 
 Commands in RALPH.md frontmatter are parsed with `shlex.split()` — no shell features. For shell features, users point the `run` field at a script.

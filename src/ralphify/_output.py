@@ -1,13 +1,6 @@
-"""Combine, truncate, and format subprocess output.
-
-Output from commands is capped at :data:`MAX_OUTPUT_LEN` characters
-(5 000) to avoid blowing up the agent's context window.
-"""
+"""Combine and format subprocess output."""
 
 from __future__ import annotations
-
-MAX_OUTPUT_LEN = 5000
-_TRUNCATION_INDICATOR = "\n... (truncated)"
 
 
 def collect_output(
@@ -24,16 +17,6 @@ def collect_output(
         if stream:
             parts.append(stream if isinstance(stream, str) else stream.decode("utf-8", errors="replace"))
     return "".join(parts)
-
-
-def truncate_output(text: str, max_len: int = MAX_OUTPUT_LEN) -> str:
-    """Truncate *text* so the total result is at most *max_len* characters.
-
-    When truncated, a short indicator is appended within the budget.
-    """
-    if len(text) > max_len:
-        return text[: max_len - len(_TRUNCATION_INDICATOR)] + _TRUNCATION_INDICATOR
-    return text
 
 
 def format_duration(seconds: float) -> str:
