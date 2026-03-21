@@ -201,37 +201,36 @@
       <div class="hero-bg" aria-hidden="true">
         <div class="hero-gradient-orb hero-orb-1"></div>
         <div class="hero-gradient-orb hero-orb-2"></div>
+        <div class="hero-grid"></div>
       </div>
 
       <div class="hero-inner">
-        <div class="hero-content">
-          <div class="hero-badge">
-            <span class="status-dot"></span>
-            Open-source &middot; pip install ralphify
-          </div>
+        <div class="hero-badge">
+          <span class="status-dot"></span>
+          Open-source &middot; pip install ralphify
+        </div>
 
-          <h1 class="hero-headline">
-            Stop stressing over not having an agent running.
-          </h1>
-          <p class="hero-tagline">
-            <span class="hero-gradient-text">Ralph is always running</span>
-            <span class="runner-emoji" aria-hidden="true">&#x1F3C3;</span>
-          </p>
+        <h1 class="hero-headline">
+          Stop stressing over<br>not having an agent running.
+        </h1>
+        <p class="hero-tagline">
+          <span class="hero-gradient-text">Ralph is always running</span>
+          <span class="runner-emoji" aria-hidden="true">&#x1F3C3;</span>
+        </p>
 
-          <p class="hero-sub">
-            Put your AI coding agent in a <code>while True</code> loop.<br>
-            Write a prompt. Walk away. Wake up to commits.
-          </p>
+        <p class="hero-sub">
+          Put your AI coding agent in a <code>while True</code> loop.<br>
+          Write a prompt. Walk away. Wake up to commits.
+        </p>
 
-          <div class="cta">
-            <a href="docs/getting-started/" class="btn btn-primary">Get Started</a>
-            <a href="docs/cookbook/" class="btn btn-secondary">View Cookbook</a>
-          </div>
+        <div class="cta">
+          <a href="docs/getting-started/" class="btn btn-primary">Get Started</a>
+          <a href="docs/cookbook/" class="btn btn-secondary">View Cookbook</a>
+        </div>
 
-          <div class="hero-install">
-            <code>uv tool install ralphify</code>
-            <button class="copy-btn" aria-label="Copy install command" onclick="copyCommand(this, 'uv tool install ralphify')">Copy</button>
-          </div>
+        <div class="hero-install">
+          <code>uv tool install ralphify</code>
+          <button class="copy-btn" aria-label="Copy install command" onclick="copyCommand(this, 'uv tool install ralphify')">Copy</button>
         </div>
 
         <div class="hero-terminal">
@@ -274,10 +273,12 @@
           <span class="ticker-item"><span class="ticker-dot"></span> @dan's agent just fixed a race condition</span>
           <span class="ticker-item"><span class="ticker-dot"></span> @alex woke up to 3 PRs ready for review</span>
           <span class="ticker-item"><span class="ticker-dot"></span> @kai's backlog is empty since Tuesday</span>
+          <span class="ticker-item"><span class="ticker-dot"></span> @priya's agent refactored the auth module at 3 AM</span>
           <span class="ticker-item"><span class="ticker-dot"></span> @maya shipped 14 commits overnight</span>
           <span class="ticker-item"><span class="ticker-dot"></span> @dan's agent just fixed a race condition</span>
           <span class="ticker-item"><span class="ticker-dot"></span> @alex woke up to 3 PRs ready for review</span>
           <span class="ticker-item"><span class="ticker-dot"></span> @kai's backlog is empty since Tuesday</span>
+          <span class="ticker-item"><span class="ticker-dot"></span> @priya's agent refactored the auth module at 3 AM</span>
         </div>
       </div>
     </section>
@@ -289,7 +290,7 @@
         <h2 id="fomo-heading" class="section-heading fade-up">
           &ldquo;What did your agent<br>ship overnight?&rdquo;
         </h2>
-        <p class="section-subtitle fade-up">You know that feeling. Everyone in standup shipped while they slept. You didn't. Not anymore.</p>
+        <p class="section-subtitle fade-up">Everyone in standup shipped while they slept. You didn't.<br>Not anymore.</p>
 
         <div class="fomo-contrast fade-up">
           <div class="fomo-card fomo-without">
@@ -620,7 +621,7 @@ pick the next task from TODO.md and implement it.</code></pre>
           line.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
           line.style.opacity = '1';
           line.style.transform = 'translateY(0)';
-        }, 800 + i * 180);
+        }, 1200 + i * 200);
       });
     }
 
