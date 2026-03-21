@@ -211,11 +211,6 @@
         <div class="hero-noise"></div>
       </div>
 
-      <!-- Runner that loops across the hero -->
-      <div class="hero-runner-track" aria-hidden="true">
-        <span class="hero-runner">&#x1F3C3;</span>
-      </div>
-
       <div class="hero-center">
         <div class="hero-badge">
           <span class="status-dot"></span>
@@ -225,7 +220,11 @@
         <h1 class="hero-headline">
           <span class="hero-line-prelude">Stop stressing over not having an agent running.</span>
           <span class="hero-line-punchline">
-            <span class="hero-gradient-text">Ralph is always running</span>
+            <span class="hero-gradient-text">Ralph is always</span>
+            <span class="hero-running-word">
+              <span class="hero-gradient-text">running</span>
+              <span class="hero-runner-inline" aria-hidden="true">&#x1F3C3;</span>
+            </span>
           </span>
         </h1>
 
@@ -243,6 +242,17 @@
             <code>uv tool install ralphify</code>
             <button class="copy-btn" aria-label="Copy install command" onclick="copyCommand(this, 'uv tool install ralphify')">Copy</button>
           </div>
+        </div>
+      </div>
+
+      <!-- Live commit ticker -->
+      <div class="hero-ticker" aria-hidden="true">
+        <div class="ticker-track" id="ticker-track">
+          <div class="ticker-item"><span class="ticker-dot"></span><span class="ticker-text"><span class="ticker-success">&#x2713;</span> feat: add rate limiting middleware</span><span class="ticker-time">2m ago</span></div>
+          <div class="ticker-item"><span class="ticker-dot"></span><span class="ticker-text"><span class="ticker-success">&#x2713;</span> fix: session store race condition</span><span class="ticker-time">8m ago</span></div>
+          <div class="ticker-item"><span class="ticker-dot"></span><span class="ticker-text"><span class="ticker-success">&#x2713;</span> feat: add webhook handler</span><span class="ticker-time">15m ago</span></div>
+          <div class="ticker-item"><span class="ticker-dot"></span><span class="ticker-text"><span class="ticker-success">&#x2713;</span> refactor: extract auth module</span><span class="ticker-time">23m ago</span></div>
+          <div class="ticker-item"><span class="ticker-dot"></span><span class="ticker-text"><span class="ticker-success">&#x2713;</span> feat: add email verification flow</span><span class="ticker-time">31m ago</span></div>
         </div>
       </div>
 
@@ -275,11 +285,6 @@
               </span>
             </div>
           </div>
-          <div class="status-panel-log" id="status-log">
-            <div class="log-line log-line-visible"><span class="log-time">2m ago</span> <span class="log-success">&#x2713;</span> committed: feat: add webhook handler</div>
-            <div class="log-line log-line-visible"><span class="log-time">8m ago</span> <span class="log-success">&#x2713;</span> committed: fix: session store race condition</div>
-            <div class="log-line log-line-visible"><span class="log-time">15m ago</span> <span class="log-success">&#x2713;</span> committed: feat: add rate limiting middleware</div>
-          </div>
         </div>
       </div>
 
@@ -287,50 +292,7 @@
     </section>
 
     <!-- ============================================ -->
-    <!-- THE PROBLEM — your agent stopped              -->
-    <!-- ============================================ -->
-    <section class="problem" aria-labelledby="problem-heading">
-      <div class="problem-inner">
-        <p class="section-eyebrow fade-up">The problem</p>
-        <h2 id="problem-heading" class="section-heading fade-up">
-          You close your laptop.<br>
-          <span class="text-muted-heading">Your agent stops.</span>
-        </h2>
-        <p class="section-subtitle fade-up">You start an agent. It works great. Then you go to lunch, close your laptop, or the context fills up. The agent stops. You come back, re-read the thread, restart it. Again. And again.</p>
-
-        <div class="problem-cycle fade-up">
-          <div class="cycle-step">
-            <div class="cycle-icon">&#x25B6;</div>
-            <span>Start agent</span>
-          </div>
-          <div class="cycle-arrow" aria-hidden="true">
-            <svg viewBox="0 0 40 12" fill="none"><path d="M0 6h32m0 0l-6-5m6 5l-6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <div class="cycle-step">
-            <div class="cycle-icon">&#x1F4BB;</div>
-            <span>It works</span>
-          </div>
-          <div class="cycle-arrow" aria-hidden="true">
-            <svg viewBox="0 0 40 12" fill="none"><path d="M0 6h32m0 0l-6-5m6 5l-6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <div class="cycle-step cycle-step-bad">
-            <div class="cycle-icon">&#x1F6D1;</div>
-            <span>Context fills up</span>
-          </div>
-          <div class="cycle-arrow" aria-hidden="true">
-            <svg viewBox="0 0 40 12" fill="none"><path d="M0 6h32m0 0l-6-5m6 5l-6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <div class="cycle-step cycle-step-bad">
-            <div class="cycle-icon">&#x1F504;</div>
-            <span>Restart manually</span>
-          </div>
-        </div>
-        <p class="problem-tagline fade-up">What if it just&hellip; <em>kept going?</em></p>
-      </div>
-    </section>
-
-    <!-- ============================================ -->
-    <!-- THE 9AM STANDUP — agent FOMO narrative        -->
+    <!-- AGENT FOMO — the emotional hook               -->
     <!-- ============================================ -->
     <section class="fomo" aria-labelledby="fomo-heading">
       <div class="fomo-inner">
@@ -338,7 +300,7 @@
         <h2 id="fomo-heading" class="section-heading fade-up">
           &ldquo;What did your agent<br>ship this weekend?&rdquo;
         </h2>
-        <p class="section-subtitle fade-up">Everyone in standup is talking about what their AI coding agent pushed overnight. You open your laptop. Same backlog. Zero progress. <strong>Agent FOMO is real.</strong></p>
+        <p class="section-subtitle fade-up">Everyone in standup has commits from overnight. You open your laptop. Same backlog. Zero progress. <strong>Agent FOMO is real.</strong></p>
 
         <div class="fomo-contrast fade-up">
           <div class="fomo-card fomo-without">
@@ -722,6 +684,18 @@ pick the next task from TODO.md and implement it.</code></pre>
       });
     }
 
+    // Ticker entrance
+    const ticker = document.querySelector('.hero-ticker');
+    if (ticker) {
+      ticker.style.opacity = '0';
+      ticker.style.transform = 'translateY(20px)';
+      setTimeout(() => {
+        ticker.style.transition = 'opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)';
+        ticker.style.opacity = '1';
+        ticker.style.transform = 'translateY(0)';
+      }, 1000);
+    }
+
     // Status dashboard entrance animation
     const dashboard = document.querySelector('.hero-status-dashboard');
     if (dashboard) {
@@ -731,7 +705,7 @@ pick the next task from TODO.md and implement it.</code></pre>
         dashboard.style.transition = 'opacity 1s cubic-bezier(0.16, 1, 0.3, 1), transform 1s cubic-bezier(0.16, 1, 0.3, 1)';
         dashboard.style.opacity = '1';
         dashboard.style.transform = 'translateY(0) scale(1)';
-      }, 1200);
+      }, 1400);
     }
 
     // Iteration counter — counts up slowly to feel alive
@@ -766,6 +740,40 @@ pick the next task from TODO.md and implement it.</code></pre>
           }, 50);
         }
       }, 8000);
+    }
+
+    // Ticker — add new commit messages periodically
+    const tickerTrack = document.getElementById('ticker-track');
+    if (tickerTrack) {
+      const tickerMessages = [
+        'feat: add pagination to API responses',
+        'fix: resolve cache invalidation bug',
+        'feat: implement retry logic for webhooks',
+        'refactor: simplify database query builder',
+        'feat: add health check endpoint',
+        'fix: correct timezone handling in scheduler',
+        'feat: add CSV export for reports',
+        'refactor: extract validation middleware',
+      ];
+      let tickerIdx = 0;
+      setInterval(() => {
+        const msg = tickerMessages[tickerIdx % tickerMessages.length];
+        const item = document.createElement('div');
+        item.className = 'ticker-item ticker-item-new';
+        item.innerHTML = '<span class="ticker-dot"></span><span class="ticker-text"><span class="ticker-success">\u2713</span> ' + msg + '</span><span class="ticker-time">just now</span>';
+        tickerTrack.insertBefore(item, tickerTrack.firstChild);
+        requestAnimationFrame(() => {
+          item.classList.add('ticker-item-visible');
+        });
+        // Remove last item if too many
+        if (tickerTrack.children.length > 6) {
+          const last = tickerTrack.lastElementChild;
+          last.style.opacity = '0';
+          last.style.transform = 'translateX(20px)';
+          setTimeout(() => last.remove(), 300);
+        }
+        tickerIdx++;
+      }, 12000);
     }
 
     // Terminal typing animation
@@ -909,32 +917,6 @@ pick the next task from TODO.md and implement it.</code></pre>
         });
       }, { threshold: 0.2 });
       quoteObs.observe(quoteGrid);
-    }
-
-    // Problem cycle entrance animation
-    const problemCycle = document.querySelector('.problem-cycle');
-    if (problemCycle) {
-      const steps = problemCycle.querySelectorAll('.cycle-step');
-      const arrows = problemCycle.querySelectorAll('.cycle-arrow');
-      const cycleObs = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            steps.forEach((step, i) => {
-              setTimeout(() => {
-                step.style.opacity = '1';
-                step.style.transform = 'translateY(0)';
-              }, i * 200);
-            });
-            arrows.forEach((arrow, i) => {
-              setTimeout(() => {
-                arrow.style.opacity = '1';
-              }, i * 200 + 100);
-            });
-            cycleObs.unobserve(entry.target);
-          }
-        });
-      }, { threshold: 0.3 });
-      cycleObs.observe(problemCycle);
     }
   </script>
 </body>

@@ -355,50 +355,6 @@ nav {
   100% { transform: translate(25px, -30px) scale(1.06); }
 }
 
-/* --- Runner that loops across the hero --- */
-.hero-runner-track {
-  position: absolute;
-  top: 42%;
-  left: 0;
-  right: 0;
-  height: 60px;
-  z-index: 1;
-  pointer-events: none;
-  overflow: hidden;
-  opacity: 0.12;
-}
-
-.hero-runner {
-  font-size: 2.8rem;
-  display: inline-block;
-  position: absolute;
-  animation: runner-across 12s linear infinite;
-}
-
-@keyframes runner-across {
-  0% { left: -5%; transform: translateY(0); }
-  5% { transform: translateY(-8px); }
-  10% { transform: translateY(0); }
-  15% { transform: translateY(-6px); }
-  20% { transform: translateY(0); }
-  25% { transform: translateY(-8px); }
-  30% { transform: translateY(0); }
-  35% { transform: translateY(-6px); }
-  40% { transform: translateY(0); }
-  45% { transform: translateY(-8px); }
-  50% { transform: translateY(0); }
-  55% { transform: translateY(-6px); }
-  60% { transform: translateY(0); }
-  65% { transform: translateY(-8px); }
-  70% { transform: translateY(0); }
-  75% { transform: translateY(-6px); }
-  80% { transform: translateY(0); }
-  85% { transform: translateY(-8px); }
-  90% { transform: translateY(0); }
-  95% { transform: translateY(-6px); }
-  100% { left: 105%; transform: translateY(0); }
-}
-
 /* Centered hero layout */
 .hero-center {
   position: relative;
@@ -484,6 +440,28 @@ nav {
   letter-spacing: -0.055em;
 }
 
+.hero-running-word {
+  display: inline;
+  position: relative;
+  white-space: nowrap;
+}
+
+.hero-runner-inline {
+  display: inline-block;
+  font-size: 0.6em;
+  vertical-align: middle;
+  margin-left: 0.15em;
+  animation: runner-jog 0.5s ease-in-out infinite;
+  filter: drop-shadow(0 0 20px rgba(232, 123, 74, 0.4));
+}
+
+@keyframes runner-jog {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  25% { transform: translateY(-6px) translateX(2px); }
+  50% { transform: translateY(0) translateX(4px); }
+  75% { transform: translateY(-4px) translateX(2px); }
+}
+
 .hero-gradient-text {
   display: inline;
   font-size: inherit;
@@ -535,6 +513,77 @@ nav {
   font-family: var(--mono);
   font-size: 0.8rem;
   color: var(--text-muted);
+}
+
+/* -- Commit Ticker -------------------------------------------- */
+
+.hero-ticker {
+  position: relative;
+  z-index: 2;
+  max-width: 580px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 2rem 2rem;
+}
+
+.ticker-track {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ticker-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  background: rgba(52, 211, 153, 0.03);
+  border: 1px solid rgba(52, 211, 153, 0.06);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.ticker-item-new {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.ticker-item-new.ticker-item-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.ticker-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #34D399;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.ticker-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ticker-success {
+  color: #34D399;
+  font-weight: 700;
+  margin-right: 0.3rem;
+}
+
+.ticker-time {
+  color: var(--text-muted);
+  opacity: 0.35;
+  flex-shrink: 0;
+  font-size: 0.65rem;
 }
 
 /* -- Status Dashboard ----------------------------------------- */
@@ -643,13 +692,6 @@ nav {
   color: #34D399;
 }
 
-.status-metric-mono {
-  font-family: var(--mono);
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--purple-light);
-}
-
 .status-metric-active {
   display: inline-flex;
   align-items: center;
@@ -658,43 +700,6 @@ nav {
   font-size: 0.82rem;
   font-weight: 600;
   color: #34D399;
-}
-
-/* Status panel log — activity feed */
-.status-panel-log {
-  border-top: 1px solid rgba(139, 108, 240, 0.04);
-  padding: 0.75rem 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  background: rgba(0, 0, 0, 0.15);
-}
-
-.log-line {
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  opacity: 0;
-  transform: translateY(4px);
-  transition: opacity 0.4s ease, transform 0.4s ease;
-}
-
-.log-line-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.log-time {
-  color: var(--text-muted);
-  opacity: 0.4;
-  margin-right: 0.6rem;
-  display: inline-block;
-  min-width: 52px;
-}
-
-.log-success {
-  color: #34D399;
-  font-weight: 700;
 }
 
 /* Hero horizon line */
@@ -904,125 +909,11 @@ nav {
   );
 }
 
-/* -- Problem section ------------------------------------------ */
-
-.problem {
-  padding: 8rem 2rem;
-  background: var(--bg-surface);
-  border-top: none;
-  position: relative;
-}
-
-.problem::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(139, 108, 240, 0.3) 30%,
-    rgba(232, 123, 74, 0.2) 50%,
-    rgba(139, 108, 240, 0.3) 70%,
-    transparent 100%
-  );
-}
-
-.problem-inner {
-  max-width: var(--max-width);
-  margin: 0 auto;
-  position: relative;
-}
-
-.problem-cycle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-top: 3.5rem;
-  flex-wrap: wrap;
-}
-
-.cycle-step {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 1.5rem 1.75rem;
-  border-radius: 16px;
-  background: var(--bg);
-  border: 1px solid var(--border-subtle);
-  opacity: 0;
-  transform: translateY(12px);
-  transition: opacity 0.5s ease, transform 0.5s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-  min-width: 130px;
-}
-
-.cycle-step:hover {
-  border-color: var(--border-medium);
-  box-shadow: 0 4px 20px rgba(139, 108, 240, 0.06);
-}
-
-.cycle-step-bad {
-  border-color: rgba(248, 113, 113, 0.08);
-}
-
-.cycle-step-bad:hover {
-  border-color: rgba(248, 113, 113, 0.18);
-  box-shadow: 0 4px 20px rgba(248, 113, 113, 0.04);
-}
-
-.cycle-icon {
-  font-size: 1.5rem;
-}
-
-.cycle-step span {
-  font-family: var(--mono);
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-.cycle-step-bad span {
-  color: rgba(248, 113, 113, 0.7);
-}
-
-.cycle-arrow {
-  color: rgba(139, 108, 240, 0.2);
-  flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.4s ease;
-}
-
-.cycle-arrow svg {
-  width: 32px;
-  height: 12px;
-}
-
-.problem-tagline {
-  text-align: center;
-  margin-top: 3.5rem;
-  font-size: clamp(1.3rem, 2.5vw, 1.8rem);
-  font-weight: 700;
-  color: var(--text-muted);
-}
-
-.problem-tagline em {
-  font-style: italic;
-  color: var(--purple-light);
-  background: linear-gradient(135deg, var(--purple), var(--orange-light));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
 /* -- FOMO section --------------------------------------------- */
 
 .fomo {
   padding: 8rem 2rem;
-  background: var(--bg);
+  background: var(--bg-surface);
   border-top: none;
   position: relative;
 }
@@ -1037,9 +928,9 @@ nav {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(139, 108, 240, 0.15) 30%,
-    rgba(139, 108, 240, 0.25) 50%,
-    rgba(139, 108, 240, 0.15) 70%,
+    rgba(139, 108, 240, 0.3) 30%,
+    rgba(232, 123, 74, 0.2) 50%,
+    rgba(139, 108, 240, 0.3) 70%,
     transparent 100%
   );
 }
@@ -1189,7 +1080,7 @@ nav {
 
 .how-it-works {
   padding: 8rem 2rem;
-  background: var(--bg-surface);
+  background: var(--bg);
   border-top: none;
   position: relative;
   overflow: hidden;
@@ -1245,7 +1136,7 @@ nav {
   text-align: center;
   padding: 2.25rem 1.75rem;
   border-radius: 20px;
-  background: var(--bg);
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -1365,7 +1256,7 @@ nav {
 
 .ralph-file {
   padding: 8rem 2rem;
-  background: var(--bg);
+  background: var(--bg-surface);
   border-top: none;
   position: relative;
 }
@@ -1457,7 +1348,7 @@ nav {
 
 .why {
   padding: 8rem 2rem;
-  background: var(--bg-surface);
+  background: var(--bg);
   border-top: none;
   position: relative;
   overflow: hidden;
@@ -1505,7 +1396,7 @@ nav {
 }
 
 .why-card {
-  background: var(--bg);
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: 20px;
   padding: 2.25rem;
@@ -1551,7 +1442,7 @@ nav {
 
 .agents {
   padding: 6rem 2rem;
-  background: var(--bg);
+  background: var(--bg-surface);
   border-top: none;
   position: relative;
 }
@@ -1586,7 +1477,7 @@ nav {
   padding: 2rem 1rem 1.75rem;
   border-radius: 16px;
   border: 1px solid var(--border-subtle);
-  background: var(--bg-surface);
+  background: var(--bg);
   text-decoration: none;
   transition: all 0.2s ease;
 }
@@ -1632,7 +1523,7 @@ nav {
 
 .social-proof {
   padding: 6rem 2rem;
-  background: var(--bg-surface);
+  background: var(--bg);
   border-top: none;
   position: relative;
 }
@@ -1660,7 +1551,7 @@ nav {
 }
 
 .quote-card {
-  background: var(--bg);
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: 20px;
   padding: 2.25rem;
@@ -1723,7 +1614,7 @@ nav {
 
 .install {
   padding: 8rem 2rem;
-  background: var(--bg);
+  background: var(--bg-surface);
   border-top: none;
   position: relative;
 }
@@ -1783,7 +1674,7 @@ nav {
   display: inline-flex;
   align-items: center;
   gap: 1rem;
-  background: var(--bg-surface);
+  background: var(--bg);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
   padding: 0.75rem 1.25rem;
@@ -1840,7 +1731,7 @@ nav {
 
 .faq {
   padding: 7rem 2rem;
-  background: var(--bg-surface);
+  background: var(--bg);
   border-top: none;
   position: relative;
 }
@@ -1917,7 +1808,7 @@ nav {
 
 .cta-bottom {
   padding: 9rem 2rem;
-  background: var(--bg);
+  background: var(--bg-surface);
   text-align: center;
   position: relative;
   overflow: hidden;
@@ -2027,7 +1918,7 @@ nav {
 footer {
   padding: 3rem 2rem;
   border-top: none;
-  background: var(--bg-surface);
+  background: var(--bg);
   position: relative;
 }
 
@@ -2133,21 +2024,8 @@ footer::before {
     padding: 0 1.5rem 4rem;
   }
 
-  .hero-runner-track {
-    display: none;
-  }
-
-  .problem-cycle {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .cycle-arrow {
-    transform: rotate(90deg);
-  }
-
-  .cycle-arrow svg {
-    width: 24px;
+  .hero-ticker {
+    padding: 0 1.5rem 1.5rem;
   }
 
   .fomo-contrast {
@@ -2266,20 +2144,20 @@ footer::before {
     padding: 0 1rem 3rem;
   }
 
+  .hero-ticker {
+    padding: 0 1rem 1rem;
+  }
+
+  .ticker-item {
+    font-size: 0.65rem;
+  }
+
   .status-panel-grid {
     grid-template-columns: 1fr;
   }
 
   .status-metric {
     border-right: none !important;
-  }
-
-  .status-panel-log {
-    padding: 0.6rem 1rem;
-  }
-
-  .log-line {
-    font-size: 0.65rem;
   }
 
   .problem,
@@ -2310,6 +2188,10 @@ footer::before {
 
   .agent-grid {
     grid-template-columns: 1fr;
+  }
+
+  .hero-runner-inline {
+    font-size: 0.5em;
   }
 }
 
