@@ -1,10 +1,10 @@
 # Autonomous Agent Loops & Harness Engineering: State of the Art (March 2026)
 
-> The field has converged on a core architecture: iterative loops with fresh context per iteration, state persisted in files and git, and verification gates between cycles. The "ralph loop" pattern — named after the bash-loop technique popularized in mid-2025 — is now mainstream, with Karpathy's autoresearch, Meta's REA, Spotify's Honk, and OpenAI's Codex all implementing variants. The key differentiator between amateur and expert harness engineering is the quality of the verification layer and the state management strategy.
+> The field has converged on a core architecture: iterative loops with fresh context per iteration, state persisted in files and git, and verification gates between cycles. The "ralph loop" pattern — named after the bash-loop technique popularized in mid-2025 — is now mainstream, with Karpathy's autoresearch, Meta's REA, Spotify's Honk, and OpenAI's Codex all implementing variants. The ecosystem is large (30+ implementations, 500+ skills, 12K+ stars on skill directories) but operationally immature — cost blowups, undetected doom loops, and missing observability remain common. The key differentiator between amateur and expert harness engineering is the quality of the verification layer and the state management strategy.
 
 ## Key Insights
 
-1. **Fresh context beats accumulated context.** Every major system resets context each iteration. State lives in files, not chat memory. Larger context windows make poisoning *worse*, not better — they lure users into regimes where models lose track.
+1. **Fresh context per iteration, kept at 40-60% utilization.** Every major system resets context each cycle. State lives in files, not chat memory. Above 60% utilization, quality degrades measurably — intentional compaction (write progress to file, restart) is the fix. Larger windows make poisoning *worse*, not better.
 
 2. **The verification layer is the whole game.** Spotify's LLM-judge vetoes 25% of sessions; Karpathy's scalar metric auto-reverts bad experiments. Without strong verification, agents drift. The best systems layer deterministic checks (tests, lint) with LLM evaluation.
 
@@ -18,27 +18,21 @@
 
 7. **Three-phase prompt architecture (research→plan→implement) is the validated workflow.** Each phase gets a fresh context window loading only the previous phase's artifact. Independently converged on by HumanLayer, Anthropic, and Test Double.
 
-8. **Context utilization should stay at 40-60%.** Above this threshold, quality degrades measurably. Intentional compaction (writing progress to file, restarting session) is the fix.
+8. **"On the loop" beats "in the loop."** Fix the harness, not the output. Every prompt improvement benefits all future iterations — creating a flywheel.
 
-9. **"On the loop" beats "in the loop."** Fix the harness, not the output. Every prompt improvement benefits all future iterations — creating a flywheel.
+9. **Specification files have an instruction ceiling (~150-200).** More rules = worse instruction-following across the board. Keep CLAUDE.md under 300 lines; use it as a router, not a monolith. Never auto-generate.
 
-10. **Specification files have an instruction ceiling (~150-200).** More rules = worse instruction-following across the board. Keep CLAUDE.md under 300 lines; use it as a router, not a monolith. Never auto-generate.
+10. **Cost control requires agent self-awareness and hard limits.** Unbounded autonomy produces $47K incidents. MCP servers (Agent Budget Guard) let agents track their own spending. Combined with per-task budgets, prompt caching (~90% input cost reduction), and tiered model routing, practitioners achieve 60-80% cost cuts. Hard ceilings, rate limiters, and loop detectors are non-negotiable.
 
-11. **Unbounded agent autonomy produces $47K incidents.** Hard budget ceilings, rate limiters, loop detectors, and human pagers are non-negotiable.
+11. **The 70-80% problem is real and universal.** AI agents hit the same ceiling as every previous "replace programming" technology. The last 20% costs 80% of the tokens. Loops must be designed for the hard 20%, not the easy 80%.
 
-12. **The 70-80% problem is real and universal.** AI agents hit the same ceiling as every previous "replace programming" technology. The last 20% costs 80% of the tokens. Loops must be designed for the hard 20%, not the easy 80%.
+12. **Git is the universal state backend.** Commits as checkpoints, revert-on-failure, diffs as progress documentation. The four recurring state files: specification (frozen), progress log (append-only), task list (shrinking), knowledge base (growing).
 
-13. **Git is the universal state backend.** Commits as checkpoints, revert-on-failure, diffs as progress documentation. The four recurring state files: specification (frozen), progress log (append-only), task list (shrinking), knowledge base (growing).
+13. **Hibernate-and-wake > polling for long operations.** Meta's REA shuts down between async jobs rather than maintaining sessions. Ralphify's loop-with-commands already enables this pattern.
 
-14. **Hibernate-and-wake > polling for long operations.** Meta's REA shuts down between async jobs rather than maintaining sessions. Ralphify's loop-with-commands already enables this pattern.
+14. **Multi-agent orchestration works for independent tasks, fails for coordination.** Parallel agents on separate branches/files succeed; shared-state coordination is fragile and 4-15x more expensive. Filesystem coordination beats message-passing.
 
-15. **Multi-agent orchestration works for independent tasks, fails for coordination.** Parallel agents on separate branches/files succeed; shared-state coordination is fragile and 4-15x more expensive. Filesystem coordination beats message-passing.
-
-16. **The ralph loop ecosystem is large but operationally immature.** 30+ implementations, 500+ skills, 12K+ stars on skill directories — but cost blowups, missing observability, and undetected doom loops remain the norm. Adoption outpaces operational maturity.
-
-17. **Make cost observable to the agent itself.** MCP servers (Agent Budget Guard) let agents track their own spending and make cost-aware decisions. Combined with per-task token budgets and prompt caching (~90% input cost reduction), practitioners achieve 60-80% cost cuts.
-
-18. **Measure iterations in actions, not time.** Successful agents complete tasks in 3-7 meaningful actions. Beyond 15 actions, success probability drops sharply. Action count is a better circuit breaker signal than wall clock time.
+15. **Measure iterations in actions, not time.** Successful agents complete tasks in 3-7 meaningful actions. Beyond 15 actions, success probability drops sharply. Action count is a better circuit breaker signal than wall clock time.
 
 ## Chapters
 

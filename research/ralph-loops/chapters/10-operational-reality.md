@@ -182,16 +182,4 @@ No rigorous benchmarks exist, but practitioner consensus:
 
 **Key finding**: Measure iterations in *actions* not time. The most successful agents complete tasks in 3-7 meaningful actions (file reads, edits, command runs). Beyond 15 actions, success probability drops sharply.
 
-## Implications for Ralphify
-
-1. **Cost awareness**: Ralphify should surface iteration count and (where possible) token usage in CLI output. The Agent Budget Guard MCP server pattern shows agents can self-monitor costs.
-
-2. **Circuit breakers**: A `max_iterations` field in RALPH.md frontmatter is the minimal viable safety net. Combined with `verify` commands, this prevents unbounded loops.
-
-3. **The ratchet pattern**: If ralphify adds verification gates, "revert on verify failure" is the natural next step. This is the single most requested feature across the ecosystem.
-
-4. **Plugin pattern for monorepos**: Mario Giancini's approach — project-specific ralph configurations in a monorepo — maps directly to ralphify's existing directory-based ralph model. Each ralph already is project-specific.
-
-5. **Skills interoperability**: With 500+ skills in SKILL.md format working across 18+ agents, ralphify's skill system could tap into this ecosystem. The format is already compatible.
-
-6. **Context rotation guidance**: Document the 60% threshold and token traffic light pattern in the cookbook. This is the most actionable advice for new ralph authors.
+See [Chapter 6: Implications for Ralphify](06-ralphify-implications.md) for how these operational findings inform framework development.

@@ -98,7 +98,16 @@
 - BMAD+Ralph = structured planning (phases 1-3) + autonomous execution (phase 4). The planning/execution split is becoming formalized.
 - The "throw-away first draft" pattern: build on throwaway branch to learn, then write better specs. Counterintuitive but validated.
 
-**Next iteration should focus on:**
-- Refine/tighten (iteration 6 = refine cycle): REPORT.md now has 18 insights — compress back to ~15
-- Update Ch06 (Ralphify implications) with new ecosystem findings and cost/reliability recommendations
-- Consider merging some overlap between Ch04 (production scale) and new Ch10 (operational reality)
+## Iteration 6 — 2026-03-22
+
+**Decision: REFINE** (6th iteration, refinement cycle)
+
+**Focus area:** Three refinement goals:
+1. REPORT.md insights: 18 → 15, merge overlapping pairs (#1+#8, #11+#17), fold #16 into intro
+2. Consolidate Ch10's "Implications for Ralphify" section into Ch06
+3. Update Ch06 with operational findings: cost awareness, circuit breakers, ratchet pattern, skills interop, context rotation
+
+**Specific merges:**
+- Insight #1 (fresh context) + #8 (40-60% utilization) → combined context management insight
+- Insight #11 ($47K unbounded autonomy) + #17 (make cost observable) → combined cost control insight
+- Insight #16 (ecosystem immature) → fold into intro paragraph, not a numbered insight
