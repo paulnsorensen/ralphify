@@ -534,28 +534,28 @@ pick the next task from TODO.md and implement it.</code></pre>
     <!-- FAQ -->
     <section class="faq" aria-labelledby="faq-heading">
       <h2 id="faq-heading" class="section-heading fade-up">FAQ</h2>
-      <dl class="faq-list fade-up">
-        <div class="faq-item">
-          <dt>What AI coding agents work with Ralphify?</dt>
-          <dd>Any agent that accepts prompts via stdin or CLI arguments &mdash; Claude Code, Aider, Codex CLI, and others. Ralphify is agent-agnostic by design. See <a href="docs/agents/">supported agents</a>.</dd>
-        </div>
-        <div class="faq-item">
-          <dt>What is a ralph loop?</dt>
-          <dd>An autonomous AI coding cycle: assemble a prompt, pipe it to an agent, let the agent work, repeat. Each iteration starts fresh &mdash; no stale context, no accumulated conversation history.</dd>
-        </div>
-        <div class="faq-item">
-          <dt>How is this different from running my agent once?</dt>
-          <dd>A single agent run fills up its context window, slows down, and loses focus. Ralphify resets every iteration &mdash; fresh codebase, fresh data, fresh prompt. You steer, the loop executes.</dd>
-        </div>
-        <div class="faq-item">
-          <dt>Does Ralphify need a web UI?</dt>
-          <dd>No. It's a pure CLI tool. Runs in your terminal, works over SSH, no browser needed.</dd>
-        </div>
-        <div class="faq-item">
-          <dt>What's &ldquo;agent FOMO&rdquo;?</dt>
-          <dd>That nagging feeling that everyone else has an AI coding agent shipping code right now&thinsp;&mdash;&thinsp;and you don't. Ralph fixes this. Set it up once, and your agent runs autonomously while you're away.</dd>
-        </div>
-      </dl>
+      <div class="faq-list fade-up">
+        <details class="faq-item">
+          <summary>What AI coding agents work with Ralphify?</summary>
+          <p>Any agent that accepts prompts via stdin or CLI arguments &mdash; Claude Code, Aider, Codex CLI, and others. Ralphify is agent-agnostic by design. See <a href="docs/agents/">supported agents</a>.</p>
+        </details>
+        <details class="faq-item">
+          <summary>What is a ralph loop?</summary>
+          <p>An autonomous AI coding cycle: assemble a prompt, pipe it to an agent, let the agent work, repeat. Each iteration starts fresh &mdash; no stale context, no accumulated conversation history.</p>
+        </details>
+        <details class="faq-item">
+          <summary>How is this different from running my agent once?</summary>
+          <p>A single agent run fills up its context window, slows down, and loses focus. Ralphify resets every iteration &mdash; fresh codebase, fresh data, fresh prompt. You steer, the loop executes.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Does Ralphify need a web UI?</summary>
+          <p>No. It's a pure CLI tool. Runs in your terminal, works over SSH, no browser needed.</p>
+        </details>
+        <details class="faq-item">
+          <summary>What's &ldquo;agent FOMO&rdquo;?</summary>
+          <p>That nagging feeling that everyone else has an AI coding agent shipping code right now&thinsp;&mdash;&thinsp;and you don't. Ralph fixes this. Set it up once, and your agent runs autonomously while you're away.</p>
+        </details>
+      </div>
     </section>
 
     <!-- Bottom CTA -->

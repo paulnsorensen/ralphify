@@ -1353,23 +1353,55 @@ nav {
 
 .faq-item {
   border-bottom: 1px solid var(--border-subtle);
-  padding: 1.5rem 0;
 }
 
 .faq-item:first-child {
   border-top: 1px solid var(--border-subtle);
 }
 
-.faq-item dt {
+.faq-item summary {
   font-weight: 700;
   font-size: 1.05rem;
   color: #fff;
-  margin-bottom: 0.75rem;
+  padding: 1.5rem 2rem 1.5rem 0;
+  cursor: pointer;
+  list-style: none;
+  position: relative;
+  transition: color 0.15s ease;
 }
 
-.faq-item dd {
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-item summary::after {
+  content: "+";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--mono);
+  font-size: 1.2rem;
+  font-weight: 400;
+  color: var(--purple-light);
+  opacity: 0.5;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.faq-item[open] summary::after {
+  content: "\2212";
+  opacity: 0.8;
+}
+
+.faq-item summary:hover {
+  color: var(--purple-light);
+}
+
+.faq-item p {
   color: var(--text-muted);
   line-height: 1.7;
+  padding: 0 0 1.5rem;
+  margin: 0;
 }
 
 /* -- Bottom CTA ----------------------------------------------- */
