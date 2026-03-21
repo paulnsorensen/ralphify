@@ -66,7 +66,7 @@ ralph run my-ralph
 
 ### Placeholder resolution
 
-The resolver (`resolver.py:resolve_placeholders()`) handles:
+The resolver (`resolver.py`) handles:
 
 - `{{ commands.tests }}` — replaced with the test command's output
 - `{{ args.dir }}` — replaced with the user argument value

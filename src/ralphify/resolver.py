@@ -20,38 +20,24 @@ def _get_pattern(kind: str) -> re.Pattern[str]:
     )
 
 
-def resolve_placeholders(
-    prompt: str,
-    available: dict[str, str],
-    kind: str,
-) -> str:
-    """Replace named template placeholders in a prompt string.
-
-    *kind* is the placeholder category (e.g. "commands", "args").
+def _resolve_kind(prompt: str, available: dict[str, str], kind: str) -> str:
+    """Resolve placeholders of a given *kind*, clearing them when *available* is empty.
 
     - ``{{ kind.name }}`` → replaced with the matching content
     - Unknown names → replaced with empty string
     - Unreferenced items are silently excluded
+    - When *available* is empty, all placeholders of this kind are cleared
     """
-    if not available:
-        return prompt
+    pattern = _get_pattern(kind)
 
-    named_pattern = _get_pattern(kind)
+    if not available:
+        return pattern.sub("", prompt)
 
     def _replace_named(match: re.Match) -> str:
         name = match.group(1)
-        if name in available:
-            return available[name]
-        return ""
+        return available.get(name, "")
 
-    return named_pattern.sub(_replace_named, prompt)
-
-
-def _resolve_kind(prompt: str, available: dict[str, str], kind: str) -> str:
-    """Resolve placeholders of a given *kind*, clearing them when *available* is empty."""
-    if not available:
-        return _get_pattern(kind).sub("", prompt)
-    return resolve_placeholders(prompt, available, kind)
+    return pattern.sub(_replace_named, prompt)
 
 
 def resolve_commands(prompt: str, command_outputs: dict[str, str]) -> str:
