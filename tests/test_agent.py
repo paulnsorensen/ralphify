@@ -3,14 +3,15 @@
 import io
 import subprocess
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
-from helpers import MOCK_SUBPROCESS
+from helpers import MOCK_POPEN, MOCK_SUBPROCESS
 
 from ralphify._agent import (
     AgentResult,
     _read_agent_stream,
+    _run_agent_streaming,
     _supports_stream_json,
     _write_log,
     execute_agent,
@@ -228,3 +229,143 @@ class TestAgentResult:
     def test_not_success_when_timed_out(self):
         result = AgentResult(returncode=None, elapsed=5.0, log_file=None, timed_out=True)
         assert result.success is False
+
+
+def _make_mock_popen(stdout_lines="", stderr_text="", returncode=0):
+    """Create a MagicMock that mimics subprocess.Popen for the streaming path."""
+    proc = MagicMock()
+    proc.stdin = MagicMock()
+    proc.stdout = io.StringIO(stdout_lines)
+    proc.stderr = io.StringIO(stderr_text)
+    proc.returncode = returncode
+    proc.wait.return_value = returncode
+    proc.poll.return_value = returncode  # not None → process finished
+    return proc
+
+
+class TestExecuteAgentStreaming:
+    """Tests for the streaming execution path (_run_agent_streaming)."""
+
+    @patch(MOCK_POPEN)
+    def test_success(self, mock_popen):
+        mock_popen.return_value = _make_mock_popen(
+            stdout_lines='{"type": "status", "msg": "working"}\n',
+            returncode=0,
+        )
+        result = _run_agent_streaming(
+            ["claude", "-p"], "prompt", timeout=None, log_path_dir=None, iteration=1,
+        )
+
+        assert result.returncode == 0
+        assert result.timed_out is False
+        assert result.elapsed >= 0
+
+    @patch(MOCK_POPEN)
+    def test_failure(self, mock_popen):
+        mock_popen.return_value = _make_mock_popen(returncode=1)
+        result = _run_agent_streaming(
+            ["claude", "-p"], "prompt", timeout=None, log_path_dir=None, iteration=1,
+        )
+
+        assert result.returncode == 1
+        assert result.timed_out is False
+        assert result.success is False
+
+    @patch(MOCK_POPEN)
+    def test_captures_result_text(self, mock_popen):
+        mock_popen.return_value = _make_mock_popen(
+            stdout_lines='{"type": "result", "result": "All tests passed"}\n',
+            returncode=0,
+        )
+        result = _run_agent_streaming(
+            ["claude", "-p"], "prompt", timeout=None, log_path_dir=None, iteration=1,
+        )
+
+        assert result.result_text == "All tests passed"
+
+    @patch(MOCK_POPEN)
+    def test_sends_prompt_to_stdin(self, mock_popen):
+        proc = _make_mock_popen(returncode=0)
+        mock_popen.return_value = proc
+        _run_agent_streaming(
+            ["claude", "-p"], "my prompt text", timeout=None, log_path_dir=None, iteration=1,
+        )
+
+        proc.stdin.write.assert_called_once_with("my prompt text")
+        proc.stdin.close.assert_called_once()
+
+    @patch(MOCK_POPEN)
+    def test_adds_stream_json_flags(self, mock_popen):
+        mock_popen.return_value = _make_mock_popen(returncode=0)
+        _run_agent_streaming(
+            ["claude", "-p"], "prompt", timeout=None, log_path_dir=None, iteration=1,
+        )
+
+        call_args = mock_popen.call_args
+        cmd = call_args[0][0]
+        assert "--output-format" in cmd
+        assert "stream-json" in cmd
+        assert "--verbose" in cmd
+
+    @patch(MOCK_POPEN)
+    def test_writes_log_on_success(self, mock_popen, tmp_path):
+        mock_popen.return_value = _make_mock_popen(
+            stdout_lines="agent output\n",
+            stderr_text="some stderr\n",
+            returncode=0,
+        )
+        result = _run_agent_streaming(
+            ["claude", "-p"], "prompt", timeout=None, log_path_dir=tmp_path, iteration=3,
+        )
+
+        assert result.log_file is not None
+        assert result.log_file.exists()
+        assert result.log_file.name.startswith("003_")
+        content = result.log_file.read_text()
+        assert "agent output" in content
+        assert "some stderr" in content
+
+    @patch(MOCK_POPEN)
+    def test_no_log_when_dir_not_set(self, mock_popen):
+        mock_popen.return_value = _make_mock_popen(returncode=0)
+        result = _run_agent_streaming(
+            ["claude", "-p"], "prompt", timeout=None, log_path_dir=None, iteration=1,
+        )
+
+        assert result.log_file is None
+
+    @patch(MOCK_POPEN)
+    def test_on_activity_callback_invoked(self, mock_popen):
+        mock_popen.return_value = _make_mock_popen(
+            stdout_lines='{"type": "status", "msg": "working"}\n{"type": "progress"}\n',
+            returncode=0,
+        )
+        activities = []
+        _run_agent_streaming(
+            ["claude", "-p"], "prompt", timeout=None, log_path_dir=None, iteration=1,
+            on_activity=activities.append,
+        )
+
+        assert len(activities) == 2
+        assert activities[0]["type"] == "status"
+        assert activities[1]["type"] == "progress"
+
+    @patch("ralphify._agent.time.monotonic")
+    @patch(MOCK_POPEN)
+    def test_timeout_kills_process(self, mock_popen, mock_time):
+        # Simulate: start=0, deadline check after reading first line = 100 (past deadline)
+        mock_time.side_effect = [0.0, 100.0, 100.0]
+        proc = _make_mock_popen(
+            stdout_lines="line1\nline2\n",
+            returncode=0,
+        )
+        proc.poll.return_value = None  # process still running when timeout fires
+        mock_popen.return_value = proc
+
+        result = _run_agent_streaming(
+            ["claude", "-p"], "prompt", timeout=5, log_path_dir=None, iteration=1,
+        )
+
+        assert result.timed_out is True
+        assert result.returncode is None
+        proc.kill.assert_called()
