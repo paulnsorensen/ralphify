@@ -140,7 +140,7 @@ class TestRun:
         assert result.exit_code == 0
         assert mock_run.call_count == 3
         for call in mock_run.call_args_list:
-            assert call.kwargs["input"] == "test prompt"
+            assert call.kwargs["input"].startswith("test prompt")
 
     @patch(MOCK_SUBPROCESS)
     def test_reads_prompt_each_iteration(self, mock_run, mock_which, tmp_path, monkeypatch):
@@ -164,8 +164,8 @@ class TestRun:
 
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "2"])
         assert result.exit_code == 0
-        assert mock_run.call_args_list[0].kwargs["input"] == "v1"
-        assert mock_run.call_args_list[1].kwargs["input"] == "v2"
+        assert mock_run.call_args_list[0].kwargs["input"].startswith("v1")
+        assert mock_run.call_args_list[1].kwargs["input"].startswith("v2")
 
     @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_shows_success_per_iteration(self, mock_run, mock_which, tmp_path, monkeypatch):
@@ -427,7 +427,7 @@ class TestRunWithUserArgs:
         ralph_dir = make_ralph(tmp_path, prompt="Research {{ args.dir }}")
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1", "--dir", "./my-project"])
         assert result.exit_code == 0
-        assert mock_run.call_args.kwargs["input"] == "Research ./my-project"
+        assert mock_run.call_args.kwargs["input"].startswith("Research ./my-project")
 
     @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_positional_args_with_declared_names(self, mock_run, mock_which, tmp_path, monkeypatch):
@@ -439,7 +439,7 @@ class TestRunWithUserArgs:
         )
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1", "./my-project", "performance"])
         assert result.exit_code == 0
-        assert mock_run.call_args.kwargs["input"] == "Research ./my-project with focus on performance"
+        assert mock_run.call_args.kwargs["input"].startswith("Research ./my-project with focus on performance")
 
     @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_unused_arg_placeholders_cleared(self, mock_run, mock_which, tmp_path, monkeypatch):
@@ -447,7 +447,7 @@ class TestRunWithUserArgs:
         ralph_dir = make_ralph(tmp_path, prompt="Before {{ args.opt }} after")
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
         assert result.exit_code == 0
-        assert mock_run.call_args.kwargs["input"] == "Before  after"
+        assert mock_run.call_args.kwargs["input"].startswith("Before  after")
 
 
 class TestParseCommands:
@@ -530,3 +530,38 @@ class TestParseCommands:
     def test_zero_timeout_errors(self):
         with pytest.raises(typer.Exit):
             _parse_commands([{"name": "test", "run": "echo hi", "timeout": 0}])
+
+
+@patch(MOCK_WHICH, return_value="/usr/bin/claude")
+class TestCreditFrontmatter:
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    def test_credit_true_by_default(self, mock_run, mock_which, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        ralph_dir = make_ralph(tmp_path, prompt="go")
+        result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
+        assert result.exit_code == 0
+        assert "Co-authored-by: Ralphify" in mock_run.call_args.kwargs["input"]
+
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    def test_credit_false_omits_trailer(self, mock_run, mock_which, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        ralph_dir = tmp_path / "my-ralph"
+        ralph_dir.mkdir(exist_ok=True)
+        (ralph_dir / "RALPH.md").write_text(
+            "---\nagent: claude -p --dangerously-skip-permissions\ncredit: false\n---\ngo"
+        )
+        result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
+        assert result.exit_code == 0
+        assert "Co-authored-by" not in mock_run.call_args.kwargs["input"]
+
+    def test_credit_invalid_value_errors(self, mock_which, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        ralph_dir = tmp_path / "my-ralph"
+        ralph_dir.mkdir(exist_ok=True)
+        (ralph_dir / "RALPH.md").write_text(
+            "---\nagent: claude -p --dangerously-skip-permissions\ncredit: maybe\n---\ngo"
+        )
+        result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
+        assert result.exit_code == 1
+        assert "credit" in result.output.lower()
+        assert "true or false" in result.output.lower()

@@ -82,6 +82,7 @@ If any tests are failing above, fix them before continuing.
 | `commands[].run` | Yes | Command to execute. Paths starting with `./` are relative to the ralph directory. |
 | `commands[].timeout` | No | Max seconds before the command is killed (default: 60) |
 | `args` | No | Declared argument names for positional CLI args |
+| `credit` | No | Append co-author trailer instruction (default: `true`). Set to `false` to disable. |
 
 #### Body
 

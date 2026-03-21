@@ -109,7 +109,7 @@ class TestRunLoop:
 
     @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_prompt_read_from_ralph_file(self, mock_run, tmp_path):
-        config = make_config(tmp_path, "my prompt text", max_iterations=1)
+        config = make_config(tmp_path, "my prompt text", max_iterations=1, credit=False)
         state = make_state()
 
         run_loop(config, state, NullEmitter())
@@ -288,6 +288,7 @@ class TestRalphArgs:
             "---\nargs:\n  - dir\n  - focus\n---\nResearch {{ args.dir }} focus: {{ args.focus }}",
             max_iterations=1,
             args={"dir": "./src", "focus": "perf"},
+            credit=False,
         )
         state = make_state()
         run_loop(config, state, NullEmitter())
@@ -297,7 +298,7 @@ class TestRalphArgs:
 
     @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_empty_args_clears_placeholders(self, mock_run, tmp_path):
-        config = make_config(tmp_path, "Before {{ args.opt }} after", max_iterations=1, args={})
+        config = make_config(tmp_path, "Before {{ args.opt }} after", max_iterations=1, args={}, credit=False)
         state = make_state()
         run_loop(config, state, NullEmitter())
 
@@ -750,7 +751,7 @@ class TestAssemblePrompt:
     """Unit tests for _assemble_prompt — reading and resolving the prompt template."""
 
     def test_reads_prompt_from_ralph_file(self, tmp_path):
-        config = make_config(tmp_path, "simple prompt", max_iterations=1)
+        config = make_config(tmp_path, "simple prompt", max_iterations=1, credit=False)
 
         result = _assemble_prompt(config, {})
 
@@ -762,6 +763,7 @@ class TestAssemblePrompt:
             "---\nagent: echo\ncommands:\n  - name: tests\n    run: pytest\n---\n"
             "Results: {{ commands.tests }}",
             max_iterations=1,
+            credit=False,
         )
 
         result = _assemble_prompt(config, {"tests": "all passed"})
@@ -774,6 +776,7 @@ class TestAssemblePrompt:
             "---\nagent: echo\nargs:\n  - dir\n---\nSearch {{ args.dir }}",
             max_iterations=1,
             args={"dir": "./src"},
+            credit=False,
         )
 
         result = _assemble_prompt(config, {})
@@ -781,15 +784,50 @@ class TestAssemblePrompt:
         assert result == "Search ./src"
 
     def test_clears_unresolved_placeholders(self, tmp_path):
-        config = make_config(tmp_path, "Before {{ args.missing }} after", max_iterations=1, args={})
+        config = make_config(tmp_path, "Before {{ args.missing }} after", max_iterations=1, args={}, credit=False)
 
         result = _assemble_prompt(config, {})
 
         assert result == "Before  after"
 
     def test_strips_html_comments(self, tmp_path):
-        config = make_config(tmp_path, "Before <!-- hidden --> after", max_iterations=1)
+        config = make_config(tmp_path, "Before <!-- hidden --> after", max_iterations=1, credit=False)
 
         result = _assemble_prompt(config, {})
 
         assert result == "Before  after"
+
+    def test_credit_instruction_appended_by_default(self, tmp_path):
+        config = make_config(tmp_path, "simple prompt", max_iterations=1)
+
+        result = _assemble_prompt(config, {})
+
+        assert result.startswith("simple prompt")
+        assert "Co-authored-by: Ralphify <noreply@ralphify.co>" in result
+
+    def test_credit_false_omits_instruction(self, tmp_path):
+        config = make_config(tmp_path, "simple prompt", max_iterations=1, credit=False)
+
+        result = _assemble_prompt(config, {})
+
+        assert result == "simple prompt"
+
+
+class TestCreditInLoop:
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    def test_credit_instruction_in_agent_input(self, mock_run, tmp_path):
+        config = make_config(tmp_path, "do work", max_iterations=1)
+        state = make_state()
+        run_loop(config, state, NullEmitter())
+
+        call_input = mock_run.call_args.kwargs["input"]
+        assert "Co-authored-by: Ralphify <noreply@ralphify.co>" in call_input
+
+    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    def test_credit_false_no_trailer_in_agent_input(self, mock_run, tmp_path):
+        config = make_config(tmp_path, "do work", max_iterations=1, credit=False)
+        state = make_state()
+        run_loop(config, state, NullEmitter())
+
+        call_input = mock_run.call_args.kwargs["input"]
+        assert "Co-authored-by" not in call_input

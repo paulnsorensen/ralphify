@@ -46,6 +46,7 @@ from ralphify.resolver import resolve_args, resolve_commands
 
 _PAUSE_POLL_INTERVAL = 0.25  # seconds between pause/resume checks
 _RELATIVE_CMD_PREFIX = "./"  # commands starting with this run from the ralph directory
+_AGENT_FIELD_HINT = "Check the 'agent' field in your RALPH.md frontmatter."
 
 _CREDIT_INSTRUCTION = (
     "\n\n---\n\n"
@@ -157,8 +158,7 @@ def _run_agent_phase(
         cmd = shlex.split(config.agent)
     except ValueError as exc:
         raise ValueError(
-            f"Invalid agent command syntax: {config.agent!r}. "
-            f"Check the 'agent' field in your RALPH.md frontmatter."
+            f"Invalid agent command syntax: {config.agent!r}. {_AGENT_FIELD_HINT}"
         ) from exc
 
     try:
@@ -168,8 +168,7 @@ def _run_agent_phase(
         )
     except FileNotFoundError as exc:
         raise FileNotFoundError(
-            f"Agent command not found: {config.agent!r}. "
-            f"Check the 'agent' field in your RALPH.md frontmatter."
+            f"Agent command not found: {config.agent!r}. {_AGENT_FIELD_HINT}"
         ) from exc
 
     duration = format_duration(agent.elapsed)

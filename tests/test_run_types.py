@@ -62,6 +62,7 @@ class TestRunConfig:
         assert config.timeout is None
         assert config.stop_on_error is False
         assert config.log_dir is None
+        assert config.credit is True
 
 
 class TestRunState:

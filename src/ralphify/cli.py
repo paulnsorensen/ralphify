@@ -280,6 +280,11 @@ def _build_run_config(
     if extra_args:
         ralph_args = _parse_user_args(extra_args, declared_names)
 
+    # Parse credit field (default: True)
+    credit = fm.get("credit", True)
+    if not isinstance(credit, bool):
+        _exit_error(f"'credit' must be true or false, got {credit!r}.")
+
     # Validate numeric options
     if max_iterations is not None and max_iterations < 1:
         _exit_error(f"'-n' must be a positive integer, got {max_iterations}.")
@@ -300,6 +305,7 @@ def _build_run_config(
         stop_on_error=stop_on_error,
         log_dir=log_dir,
         project_root=Path.cwd(),
+        credit=credit,
     )
 
 

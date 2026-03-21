@@ -116,6 +116,10 @@ Add it in `cli.py`. The CLI uses Typer. Update `docs/cli.md` to document the new
 
 Events are defined in `_events.py:EventType`. The `ConsoleEmitter` in `_console_emitter.py` renders them to the terminal. Adding a new event type requires handling it in `ConsoleEmitter` and any other active emitters.
 
+### Credit trailer
+
+When `credit` is `true` (the default), `engine.py:_assemble_prompt()` appends `_CREDIT_INSTRUCTION` to the prompt — a short instruction telling the agent to include a `Co-authored-by: Ralphify` trailer in git commits. Users can opt out with `credit: false` in frontmatter.
+
 ### Command parsing
 
 Commands in RALPH.md frontmatter are parsed with `shlex.split()` — no shell features. For shell features, users point the `run` field at a script.

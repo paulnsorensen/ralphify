@@ -94,6 +94,7 @@ class RunConfig:
     stop_on_error: bool = False
     log_dir: str | None = None
     project_root: Path = field(default=Path("."))
+    credit: bool = True
 
 
 @dataclass
