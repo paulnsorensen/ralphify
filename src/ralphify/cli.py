@@ -19,7 +19,14 @@ from rich.console import Console
 
 from ralphify import __version__
 from ralphify._console_emitter import ConsoleEmitter
-from ralphify._frontmatter import RALPH_MARKER, parse_frontmatter
+from ralphify._frontmatter import (
+    FIELD_AGENT,
+    FIELD_ARGS,
+    FIELD_COMMANDS,
+    FIELD_CREDIT,
+    RALPH_MARKER,
+    parse_frontmatter,
+)
 from ralphify._run_types import Command, DEFAULT_COMMAND_TIMEOUT, RunConfig, RunState, generate_run_id
 from ralphify.engine import run_loop
 
@@ -256,36 +263,36 @@ def _build_run_config(
     fm, _ = parse_frontmatter(ralph_text)
 
     # Validate required agent field
-    agent = fm.get("agent")
+    agent = fm.get(FIELD_AGENT)
     if not isinstance(agent, str) or not agent.strip():
-        _exit_error("Missing or empty 'agent' field in RALPH.md frontmatter.")
+        _exit_error(f"Missing or empty '{FIELD_AGENT}' field in RALPH.md frontmatter.")
 
     # Validate agent command exists
     try:
         agent_binary = shlex.split(agent)[0]
     except ValueError as exc:
-        _exit_error(f"Malformed 'agent' field in RALPH.md frontmatter: {exc}")
+        _exit_error(f"Malformed '{FIELD_AGENT}' field in RALPH.md frontmatter: {exc}")
     if not shutil.which(agent_binary):
         _exit_error(f"Agent command '{agent_binary}' not found on PATH.")
 
     # Parse commands from frontmatter
-    raw_commands = fm.get("commands", [])
+    raw_commands = fm.get(FIELD_COMMANDS, [])
     if not isinstance(raw_commands, list):
-        _exit_error("'commands' must be a list of {name, run} mappings.")
+        _exit_error(f"'{FIELD_COMMANDS}' must be a list of {{name, run}} mappings.")
     commands = _parse_commands(raw_commands)
 
     # Parse user args
-    declared_names = fm.get("args")
+    declared_names = fm.get(FIELD_ARGS)
     if declared_names is not None and not isinstance(declared_names, list):
-        _exit_error("'args' must be a list of strings.")
+        _exit_error(f"'{FIELD_ARGS}' must be a list of strings.")
     ralph_args: dict[str, str] = {}
     if extra_args:
         ralph_args = _parse_user_args(extra_args, declared_names)
 
     # Parse credit field (default: True)
-    credit = fm.get("credit", True)
+    credit = fm.get(FIELD_CREDIT, True)
     if not isinstance(credit, bool):
-        _exit_error(f"'credit' must be true or false, got {credit!r}.")
+        _exit_error(f"'{FIELD_CREDIT}' must be true or false, got {credit!r}.")
 
     # Validate numeric options
     if max_iterations is not None and max_iterations < 1:

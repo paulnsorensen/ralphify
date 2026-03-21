@@ -19,6 +19,13 @@ import yaml
 # Single source of truth for the ralph marker filename.
 RALPH_MARKER = "RALPH.md"
 
+# Frontmatter field names — used in parsing (cli.py) and placeholder
+# resolution (resolver.py).  Centralised here so renames stay in sync.
+FIELD_AGENT = "agent"
+FIELD_COMMANDS = "commands"
+FIELD_ARGS = "args"
+FIELD_CREDIT = "credit"
+
 # YAML frontmatter delimiter line.
 _FRONTMATTER_DELIMITER = "---"
 

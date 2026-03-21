@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import re
 
+from ralphify._frontmatter import FIELD_ARGS, FIELD_COMMANDS
+
 # Shared pattern for Mustache-style placeholders: {{ kind.name }}
 # The *kind* varies (commands, args) but the structure is identical.
 _NAME_CHARS = r"[a-zA-Z0-9_-]+"
@@ -22,8 +24,8 @@ def _placeholder_pattern(kind: str) -> re.Pattern[str]:
     return re.compile(rf"\{{\{{\s*{kind}\.({_NAME_CHARS})\s*\}}\}}")
 
 
-_COMMANDS_PATTERN = _placeholder_pattern("commands")
-_ARGS_PATTERN = _placeholder_pattern("args")
+_COMMANDS_PATTERN = _placeholder_pattern(FIELD_COMMANDS)
+_ARGS_PATTERN = _placeholder_pattern(FIELD_ARGS)
 
 
 def _resolve_kind(prompt: str, available: dict[str, str], pattern: re.Pattern[str]) -> str:
