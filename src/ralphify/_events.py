@@ -126,6 +126,20 @@ class LogMessageData(TypedDict):
     traceback: NotRequired[str]
 
 
+EventData = (
+    RunStartedData
+    | RunStoppedData
+    | IterationStartedData
+    | IterationEndedData
+    | CommandsStartedData
+    | CommandsCompletedData
+    | PromptAssembledData
+    | AgentActivityData
+    | LogMessageData
+)
+"""Union of all typed event data payloads."""
+
+
 @dataclass
 class Event:
     """A structured event emitted by the run loop."""

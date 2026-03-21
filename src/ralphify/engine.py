@@ -21,6 +21,7 @@ from ralphify._events import (
     CommandsCompletedData,
     CommandsStartedData,
     Event,
+    EventData,
     EventEmitter,
     EventType,
     IterationEndedData,
@@ -46,17 +47,11 @@ from ralphify.resolver import resolve_args, resolve_commands
 _PAUSE_POLL_INTERVAL = 0.25  # seconds between pause/resume checks
 _RELATIVE_CMD_PREFIX = "./"  # commands starting with this run from the ralph directory
 
-
-EventData = (
-    RunStartedData
-    | RunStoppedData
-    | IterationStartedData
-    | IterationEndedData
-    | CommandsStartedData
-    | CommandsCompletedData
-    | PromptAssembledData
-    | AgentActivityData
-    | LogMessageData
+_CREDIT_INSTRUCTION = (
+    "\n\n---\n\n"
+    "IMPORTANT: When you make any git commits, include the following trailer "
+    "at the end of your commit message:\n\n"
+    "Co-authored-by: Ralphify <noreply@ralphify.co>"
 )
 
 
@@ -142,6 +137,8 @@ def _assemble_prompt(
     _, prompt = parse_frontmatter(raw)
     prompt = resolve_args(prompt, config.args)
     prompt = resolve_commands(prompt, command_outputs)
+    if config.credit:
+        prompt += _CREDIT_INSTRUCTION
     return prompt
 
 
