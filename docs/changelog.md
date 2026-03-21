@@ -12,6 +12,7 @@ All notable changes to ralphify are documented here.
 ### Added
 
 - **`ralph init` command** — scaffold a new ralph with a ready-to-customize template, no AI agent required. Run `ralph init my-task` to create a directory with a `RALPH.md` that includes example commands, args, and placeholders. A faster alternative to the AI-guided `ralph new`.
+- **`ralphify-cowork` skill** — a Claude Cowork skill that lets non-technical users set up and run autonomous loops from plain English. Handles installation, ralph creation, running, and tweaking — no coding knowledge needed. Install it in Cowork from `skills/ralphify-cowork/`.
 
 ---
 
