@@ -144,6 +144,28 @@ def _parse_user_args(
     return result
 
 
+def _parse_commands(raw_commands: list) -> list[Command]:
+    """Validate and parse raw command dicts from frontmatter into Command objects."""
+    commands: list[Command] = []
+    seen_names: set[str] = set()
+    for cmd_def in raw_commands:
+        if not isinstance(cmd_def, dict) or "name" not in cmd_def or "run" not in cmd_def:
+            _exit_error("Each command must have 'name' and 'run' fields.")
+        for field in ("name", "run"):
+            if not cmd_def[field] or not isinstance(cmd_def[field], str):
+                _exit_error(f"Command '{field}' must be a non-empty string.")
+        cmd_name = cmd_def["name"]
+        if cmd_name in seen_names:
+            _exit_error(f"Duplicate command name '{cmd_name}'.")
+        seen_names.add(cmd_name)
+        commands.append(Command(
+            name=cmd_def["name"],
+            run=cmd_def["run"],
+            timeout=cmd_def.get("timeout", DEFAULT_COMMAND_TIMEOUT),
+        ))
+    return commands
+
+
 def _build_run_config(
     ralph_path: str,
     max_iterations: int | None,
@@ -189,23 +211,7 @@ def _build_run_config(
     raw_commands = fm.get("commands", [])
     if raw_commands and not isinstance(raw_commands, list):
         _exit_error("'commands' must be a list of {name, run} mappings.")
-    commands: list[Command] = []
-    seen_names: set[str] = set()
-    for cmd_def in raw_commands:
-        if not isinstance(cmd_def, dict) or "name" not in cmd_def or "run" not in cmd_def:
-            _exit_error("Each command must have 'name' and 'run' fields.")
-        for field in ("name", "run"):
-            if not cmd_def[field] or not isinstance(cmd_def[field], str):
-                _exit_error(f"Command '{field}' must be a non-empty string.")
-        cmd_name = cmd_def["name"]
-        if cmd_name in seen_names:
-            _exit_error(f"Duplicate command name '{cmd_name}'.")
-        seen_names.add(cmd_name)
-        commands.append(Command(
-            name=cmd_def["name"],
-            run=cmd_def["run"],
-            timeout=cmd_def.get("timeout", DEFAULT_COMMAND_TIMEOUT),
-        ))
+    commands = _parse_commands(raw_commands)
 
     # Parse user args
     declared_names = fm.get("args")

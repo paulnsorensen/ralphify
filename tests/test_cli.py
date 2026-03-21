@@ -10,7 +10,7 @@ from typer.testing import CliRunner
 
 from helpers import ok_result, fail_result
 from ralphify import __version__
-from ralphify.cli import app, _parse_user_args
+from ralphify.cli import app, _parse_commands, _parse_user_args
 
 runner = CliRunner()
 
@@ -420,3 +420,57 @@ class TestRunWithUserArgs:
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
         assert result.exit_code == 0
         assert mock_run.call_args.kwargs["input"] == "Before  after"
+
+
+class TestParseCommands:
+    def test_valid_commands(self):
+        raw = [
+            {"name": "tests", "run": "uv run pytest"},
+            {"name": "lint", "run": "ruff check"},
+        ]
+        commands = _parse_commands(raw)
+        assert len(commands) == 2
+        assert commands[0].name == "tests"
+        assert commands[0].run == "uv run pytest"
+        assert commands[1].name == "lint"
+
+    def test_empty_list(self):
+        assert _parse_commands([]) == []
+
+    def test_custom_timeout(self):
+        raw = [{"name": "slow", "run": "sleep 10", "timeout": 300}]
+        commands = _parse_commands(raw)
+        assert commands[0].timeout == 300
+
+    def test_default_timeout(self):
+        from ralphify._run_types import DEFAULT_COMMAND_TIMEOUT
+        raw = [{"name": "fast", "run": "echo hi"}]
+        commands = _parse_commands(raw)
+        assert commands[0].timeout == DEFAULT_COMMAND_TIMEOUT
+
+    def test_missing_name_errors(self):
+        with pytest.raises(typer.Exit):
+            _parse_commands([{"run": "echo hi"}])
+
+    def test_missing_run_errors(self):
+        with pytest.raises(typer.Exit):
+            _parse_commands([{"name": "test"}])
+
+    def test_empty_name_errors(self):
+        with pytest.raises(typer.Exit):
+            _parse_commands([{"name": "", "run": "echo hi"}])
+
+    def test_empty_run_errors(self):
+        with pytest.raises(typer.Exit):
+            _parse_commands([{"name": "test", "run": ""}])
+
+    def test_duplicate_names_errors(self):
+        with pytest.raises(typer.Exit):
+            _parse_commands([
+                {"name": "test", "run": "echo 1"},
+                {"name": "test", "run": "echo 2"},
+            ])
+
+    def test_non_dict_entry_errors(self):
+        with pytest.raises(typer.Exit):
+            _parse_commands(["not-a-dict"])
