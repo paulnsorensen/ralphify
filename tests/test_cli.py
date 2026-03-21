@@ -626,6 +626,19 @@ class TestParseCommands:
         with pytest.raises(typer.Exit):
             _parse_commands([{"name": "test", "run": "echo hi", "timeout": float("inf")}])
 
+    @pytest.mark.parametrize("name", [
+        "git.status",
+        "my command",
+        "test@home",
+        "name!",
+        "a/b",
+    ], ids=["dot", "space", "at-sign", "exclamation", "slash"])
+    def test_name_with_invalid_chars_errors(self, name):
+        """Command names with chars outside [a-zA-Z0-9_-] can never be
+        referenced by placeholders and must be rejected early."""
+        with pytest.raises(typer.Exit):
+            _parse_commands([{"name": name, "run": "echo hi"}])
+
 
 @patch(MOCK_WHICH, return_value="/usr/bin/claude")
 class TestCreditFrontmatter:
