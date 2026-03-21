@@ -15,7 +15,7 @@ This page shows how to configure the `agent` field in your RALPH.md for popular 
 |---|---|---|---|---|
 | [Claude Code](#claude-code) | Native (`-p`) | Yes — real-time activity tracking | Yes | No |
 | [Aider](#aider) | Via bash wrapper | No | No | Yes (`bash -c`) |
-| [Codex CLI](#codex-cli) | Via bash wrapper | No | Yes | Yes (`bash -c`) |
+| [Codex CLI](#codex-cli) | Native (`exec`) | No | Yes | No |
 | [Custom](#custom-wrapper-script) | You implement it | No | No | Yes (script) |
 
 If you're not sure which to pick: **start with Claude Code.** It has the deepest integration, the best autonomous coding capabilities, and is the default.
@@ -99,17 +99,19 @@ agent: bash -c 'aider --yes-always --no-auto-commits --model claude-sonnet-4-6 -
 
 ## Codex CLI
 
-[OpenAI Codex CLI](https://github.com/openai/codex) can be configured to run non-interactively.
+[OpenAI Codex CLI](https://github.com/openai/codex) supports non-interactive use natively via its `exec` subcommand.
 
 ```markdown
 ---
-agent: bash -c 'codex --approval-mode full-auto "$(cat -)"'
+agent: codex exec --sandbox danger-full-access -
 ---
 ```
 
 | Flag | Purpose |
 |---|---|
-| `--approval-mode full-auto` | Skip all approval prompts for autonomous operation |
+| `exec` | Non-interactive mode — designed for piped/scripted use |
+| `--sandbox danger-full-access` | Full filesystem access for autonomous operation |
+| `-` | Read prompt from stdin |
 
 ## Custom wrapper script
 
