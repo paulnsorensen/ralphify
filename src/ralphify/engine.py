@@ -147,7 +147,10 @@ def _run_agent_phase(
 
     try:
         agent = execute_agent(
-            cmd, prompt, config.timeout, config.log_dir, state.iteration,
+            cmd, prompt,
+            timeout=config.timeout,
+            log_path_dir=config.log_dir,
+            iteration=state.iteration,
             on_activity=lambda data: emit(EventType.AGENT_ACTIVITY, AgentActivityData(raw=data, iteration=state.iteration)),
         )
     except FileNotFoundError as exc:

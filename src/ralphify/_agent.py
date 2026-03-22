@@ -258,6 +258,7 @@ def _run_agent_blocking(
 def execute_agent(
     cmd: list[str],
     prompt: str,
+    *,
     timeout: float | None,
     log_path_dir: Path | None,
     iteration: int,
