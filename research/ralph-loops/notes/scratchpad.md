@@ -866,3 +866,33 @@ After 25 iterations, the research is mature (25 chapters, 22 insights, 210+ sour
 - Research: explore memory architectures for ralph loops — the highest-priority open question. Can a "memory ralph" (periodic consolidation) replace vector DB infrastructure?
 - Or: explore the TDD+agent interaction — how does the authority hierarchy work when tests are agent-written?
 - Or: final polish pass — consider whether 26 chapters could be consolidated into ~20 thematic groups
+
+## Iteration 29 — 2026-03-22
+
+**Decision: RESEARCH**
+
+**Focus area:** Two high-value threads:
+1. **Memory architectures for ralph loops** — the highest-priority open question. Can a "memory ralph" replace vector DB infrastructure? How do practitioners implement cross-session learning? What frameworks have emerged in March 2026?
+2. **Latest practitioner content (March 20-22, 2026)** — HN discussions, new tools, new blog posts.
+
+**What was done:**
+- Launched 3 parallel research agents: memory architectures (excellent — 25+ sources), latest March 2026 content (no web access), self-improvement patterns (no web access, provided training data synthesis)
+- Conducted 7 direct web fetches on highest-signal sources: ngrok BMO, Factory.ai compression, Google Always On Memory Agent, 4 memory architectures comparison, Claude Code memory architecture, Claude Code Channels docs, HN March 22
+- Created chapter 27 (Practical Memory Engineering & Event-Driven Loops) covering: BMO knowing-doing gap, Claude Code two-tier memory, Factory.ai restorable compression, 7 memory frameworks, Claude Code Channels, guardrails scaling, three-layer consensus
+- Added 1 new insight to REPORT.md (#23: memory engineering + event-driven), 11 new insights to notes, 14 new sources, 1 new question, 2 questions answered
+- Updated REPORT.md open questions: marked memory architecture and guardrails scaling as answered, added event-driven loop question
+- Updated key sources with 3 new high-signal entries
+
+**Key surprises:**
+- ngrok's BMO used self-improvement tools only 2 out of 60+ sessions — the knowing-doing gap is more severe than expected. Creating OPPORTUNITIES.md made things WORSE.
+- Claude Code's memory costs only $0.05-$0.10/day — no vector DB, no embedding pipeline, just Haiku for extraction and consolidation. Budget allocation per category (25 lines arch, 25 decisions, etc.) is elegant.
+- Claude Code Channels (March 2026) enable event-driven push into running sessions — CI webhooks, chat bridges, monitoring alerts arrive IN-CONTEXT. This is a genuine architectural shift from timer-driven to event-driven loops.
+- Leading memory frameworks are moving AWAY from vector databases — Google, SimpleMem, Mastra all use SQLite/structured files + LLM consolidation.
+- Factory.ai's critical insight: "minimize tokens per task, not per request" — over-compression in iterative workflows backfires via re-fetch costs.
+- Memory decay is a feature: Claude Code's 7-day progress half-life and 30-day context half-life prevent unbounded accumulation while preserving critical knowledge.
+- HN "favorite CLAUDE.md lines" thread (March 22) reveals persona-based instruction ("Murphy" defensive engineer) and the "Table Flip Rule" (never backward-compat without approval).
+
+**Next iteration should focus on:**
+- Refine cycle (iteration 30): 23 insights, 27 chapters — trim insights back to ~22, update Ch06 with memory engineering and event-driven loop findings
+- Or: research the TDD+agent authority hierarchy — the remaining high-priority open question
+- Or: final polish pass — 27 chapters is high, consider consolidation

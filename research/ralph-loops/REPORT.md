@@ -48,6 +48,8 @@
 
 22. **The agent protocol stack has converged under shared governance — and credential security is the #1 operational gap.** MCP (agent→tool, 97M monthly SDK downloads), A2A (agent↔agent, 150+ orgs, v0.3 with gRPC), and AG-UI (agent→user, 16 event types) form a three-layer protocol stack, unified under the Linux Foundation's Agentic AI Foundation (Dec 2025) with AWS, Anthropic, Google, Microsoft, and OpenAI as platinum members. Meanwhile, GitGuardian's 2026 report shows AI-assisted commits leak secrets at **2x the baseline rate** (Claude Code at 3.2% vs 1.5%), with 29M hardcoded secrets on public GitHub and 24K secrets in MCP config files. The credential injection proxy — where the agent never holds credentials; an external proxy injects auth headers — is the emerging standard (Vercel, GitHub, NVIDIA converged independently). Keycard (March 19, 2026) adds identity-bound, task-scoped, ephemeral credential injection with full audit trails. Ralph loops are naturally suited: RALPH.md already declares dependencies (agent + commands), and could declare credential scopes for harness-managed provisioning.
 
+23. **Memory engineering has moved beyond vector databases — and structured triggers beat vigilance for cross-session learning.** The leading memory frameworks (Google Always On Memory Agent, SimpleMem, Mastra Observational Memory) use SQLite or structured files with periodic LLM consolidation, not vector databases. Claude Code's two-tier memory (CLAUDE.md auto-briefing + .memory/state.json on-demand store) achieves production-grade cross-session learning at $0.05-$0.10/day with Jaccard deduplication and confidence-weighted decay. But ngrok's BMO post-mortem reveals the knowing-doing gap: agents use self-improvement tools only 2 out of 60+ sessions despite explicit instructions, and creating an OPPORTUNITIES.md file paradoxically increased procrastination. The fix: **boundary-triggered** learning (end-of-session reflections, every-N-iteration consolidation) executes reliably while vigilance-based behaviors fail. Ralph loops' command system already implements restorable compression — `{{ commands.X }}` re-derives state each iteration rather than relying on stale summaries. Claude Code Channels (March 2026) add event-driven push into running sessions, enabling reactive ralphs that respond to CI webhooks, monitoring alerts, and chat messages — shifting loops from timer-driven batch processing toward event-driven continuous operation.
+
 ## Chapters
 
 | # | Chapter | Summary |
@@ -78,17 +80,16 @@
 | 24 | [Protocol Stack & Credential Security](chapters/24-protocol-stack-credential-security.md) | Three-protocol stack (MCP/A2A/AG-UI), AAIF governance, GitGuardian 2x leak rate, credential injection proxy (Vercel/GitHub/NVIDIA), Keycard runtime governance, MCP OAuth gap (53% static secrets), token rotation for long-running loops, zero-secret ralph architecture |
 | 25 | [Domain-Specific Loops & The Observability Gap](chapters/25-domain-specific-loops-observability.md) | Ralph loops beyond coding (security/DevOps/data/content/business), Databricks Genie Code (32→77% success), observability crisis (47.1% monitored, 88% incidents), traditional monitoring insufficient, AgenticOS concept, "any metric" positioning |
 | 26 | [Resilience Patterns, Model Routing & Durable Execution](chapters/26-resilience-patterns-durable-execution.md) | 4-layer fault tolerance (23%→2% unrecoverable), AIMD model failover, inner/outer loop separation, graceful degradation tiers, durable execution vs filesystem-as-checkpoint, production incident catalog (10 incidents, 0 postmortems), autoresearch at GPU scale, "harness > model" quantified |
+| 27 | [Practical Memory Engineering & Event-Driven Loops](chapters/27-memory-engineering-event-driven-loops.md) | BMO knowing-doing gap, Claude Code two-tier memory (CLAUDE.md + .memory/state.json), Factory.ai restorable compression, 7 memory frameworks (no vector DB trend), Claude Code Channels (event-driven push into sessions), guardrails scaling strategies, three-layer practitioner consensus |
 
 ## Open Questions
 
 - What's the optimal ratio of spec-writing time to execution time in spec+ralph integrated workflows?
-- How does guardrails.md scale — at what point do accumulated guardrails become contradictory or context-consuming?
-- Which memory architecture (observational, graph, self-editing, RAG) best fits ralph loops — and can a "memory ralph" replace vector DB infrastructure?
 - How does the authority hierarchy (specs>tests>code) interact with TDD loops where tests are written by the agent?
 - At what point does architectural drift from agent-generated code become unrepairable — is there a measurable "point of no return"?
 - How do teams decide which harness layers to rip when a new model ships — is there a systematic evaluation process?
 - What's the right model routing strategy for ralph loops — task-based, budget-based, or time-based? At what scale does router complexity pay off?
-- At what loop scale do durable execution frameworks (Temporal, Inngest) outperform filesystem-as-checkpoint?
+- How do reactive/event-driven loops (Claude Code Channels) change the design assumptions of timer-based ralph loops?
 
 ## Key Sources (Top 30 — full list in [notes/sources.md](notes/sources.md))
 
@@ -127,3 +128,6 @@
 - [The Anatomy of an Agent Harness](https://blog.langchain.com/the-anatomy-of-an-agent-harness/) — LangChain (harness > model, quantified)
 - [Ten AI Agents Destroyed Production](https://www.harperfoley.com/blog/ai-agents-destroyed-production-zero-postmortems) — Harper Foley (10 incidents, 0 postmortems)
 - [4 Fault Tolerance Patterns](https://dev.to/klement_gunndu/4-fault-tolerance-patterns-every-ai-agent-needs-in-production-jih) — klement_gunndu (23%→2% unrecoverable)
+- [BMO Self-Improving Coding Agent](https://ngrok.com/blog/bmo-self-improving-coding-agent) — ngrok (knowing-doing gap, 2/60 tool usage)
+- [Context Compression](https://factory.ai/news/compressing-context) — Factory.ai (restorable compression, two-threshold system)
+- [Claude Code Channels](https://code.claude.com/docs/en/channels) — Anthropic (event-driven push into running sessions)

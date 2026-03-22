@@ -383,3 +383,20 @@
 - https://logiciel.io/blog/incident-response-patterns-autonomous-agents-prod — Logiciel — 4 incident response patterns: human-in-the-loop, scoped autonomy, supervisor agent, shadow mode. MTTR improves 30-50%. — **medium**
 - https://earezki.com/ai-news/2026-03-07-5-ai-agent-failures-that-will-kill-your-production-deployment-and-how-i-fixed-them/ — earezki — 5 production agent failures: hallucination-by-omission, context drift, cron race conditions, prompt injection, uncontrolled costs. — **high**
 - https://arxiv.org/abs/2603.05344 — Nghi D. Q. Bui — OPENDEV: Rust-based CLI agent with lazy tool discovery, adaptive context compaction, cross-session memory, event-driven system reminders. — **medium**
+
+## Memory Engineering & Event-Driven Loops (Iteration 29)
+
+- https://ngrok.com/blog/bmo-self-improving-coding-agent — ngrok — BMO self-improving agent: 4-loop system, knowing-doing gap, OPPORTUNITIES.md paradox, 2/60 tool usage, structured triggers work — **high**
+- https://factory.ai/news/compressing-context — Factory.ai — Two-threshold compression (T_max/T_retained), restorable compression via breadcrumbs, "minimize tokens per task not request" — **high**
+- https://code.claude.com/docs/en/channels — Anthropic — Claude Code Channels: event-driven push into running sessions via MCP, Telegram/Discord plugins, webhook receivers — **high**
+- https://dev.to/suede/the-architecture-of-persistent-memory-for-claude-code-17d — suede (DEV) — Claude Code two-tier memory: CLAUDE.md auto-briefing + .memory/state.json, hooks, Jaccard dedup, confidence decay, budget system — **high**
+- https://elephaant.com/blog/google-always-on-memory-agent-vector-db-alternative-2026 — Elephaant — Google Always On Memory Agent analysis: 3 sub-agents, SQLite, drift risk, "real cost is drift not tokens" — **high**
+- https://dev.to/ai_agent_digest/your-ai-agents-memory-is-broken-here-are-4-architectures-racing-to-fix-it-55j1 — AI Agent Digest (DEV) — Comparative analysis: RAG, observational, self-editing, graph memory. Observational best for long-running agents — **high**
+- https://news.ycombinator.com/item?id=46097759 — HN — Three-layer memory consensus: semantic + task tracking + versioning. "Separating understanding from tracking reduces cognitive load." — **medium**
+- https://news.ycombinator.com/item?id=47465415 — HN (March 22, 2026) — Practitioners share CLAUDE.md patterns: Table Flip Rule, persona-based instruction, ASCII diagrams, ADHD accommodations — **medium**
+- https://news.ycombinator.com/item?id=47466679 — HN (March 22, 2026) — Von Hammerstein's classification applied to AI agents: industrious+stupid = dangerous. Verification overhead exceeds speed gains. — **medium**
+- https://arxiv.org/abs/2603.07670 — March 2026 survey — Memory for autonomous LLM agents: 5 mechanism families, shift from static recall to multi-session agentic evaluation — **medium**
+- https://arxiv.org/html/2603.04257 — Memex(RL) — Pointer-heavy index maps for long-horizon agents: separate compact summary from full-fidelity artifacts, selective retrieval — **medium**
+- https://arxiv.org/abs/2502.12110 — A-MEM — Zettelkasten-inspired agentic memory with dynamic indexing, NeurIPS 2025 — **medium**
+- https://arxiv.org/abs/2601.02553 — SimpleMem — Three-stage compression: 30x token reduction, 43.24 F1 on LoCoMo vs Mem0's 34.20 — **medium**
+- https://hackernoon.com/the-complete-guide-to-ai-agent-memory-files-claudemd-agentsmd-and-beyond — HackerNoon — Taxonomy of CLAUDE.md, AGENTS.md, and agent memory file patterns — **medium**

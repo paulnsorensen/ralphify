@@ -3,14 +3,13 @@
 ## Open
 
 ### High Priority (directly actionable for ralphify)
-- [ ] Which memory architecture (observational, graph, self-editing, RAG) best fits ralph loops — and can a "memory ralph" replace vector DB infrastructure?
 - [ ] How does the authority hierarchy (specs>tests>code) interact with TDD loops where tests are written by the agent?
 - [ ] At what point does architectural drift from agent-generated code become unrepairable — is there a measurable "point of no return"?
 - [ ] How do teams decide which harness layers to rip when a new model ships — is there a systematic evaluation process?
+- [ ] How do reactive/event-driven loops (Claude Code Channels) change the design assumptions of timer-based ralph loops?
 
 ### Medium Priority (emerging patterns worth tracking)
 - [ ] What's the optimal ratio of spec-writing time to execution time in spec+ralph integrated workflows?
-- [ ] How does guardrails.md scale — at what point do accumulated guardrails become contradictory or context-consuming?
 - [ ] What's the right model routing strategy for ralph loops — task-based (plan/implement/verify), budget-based (downgrade on threshold), or time-based (Opus daytime, Codex overnight)?
 - [ ] At what loop scale do durable execution frameworks (Temporal, Inngest) outperform filesystem-as-checkpoint?
 
@@ -51,3 +50,5 @@
 - [x] How do teams handle the agent observability gap? — Three tiers: MCP-native (Iris), enterprise (Splunk GA Q1 2026), iteration telemetry (files changed, command pass/fail, cost). Microsoft: observability = release requirement. See Ch25.
 - [x] Does the "reasoning sandwich" generalize beyond Terminal Bench? — Outperforms uniform allocation by 12.6 points. No real-world ralph loop validation yet, but the pattern is sound: heavy reasoning for planning/verification, lighter for implementation. See Ch22.
 - [x] How do cross-company model diversity reviewers compare to same-family self-review? — 68% task overlap cross-vendor vs. 84% same-vendor, capturing 15-30% more tasks (Zencoder). No controlled study on review quality specifically. See Ch8/Ch22.
+- [x] Which memory architecture (observational, graph, self-editing, RAG) best fits ralph loops — and can a "memory ralph" replace vector DB infrastructure? — Yes. Observational memory (LLM consolidation, no vector DB) maps most naturally. Google's Always On Memory Agent, SimpleMem, and Claude Code's two-tier system all prove structured storage + periodic LLM consolidation works. Leading frameworks are moving away from vector DBs. The "memory ralph" pattern — periodic consolidation of recent progress into knowledge files — is validated. See Ch27.
+- [x] How does guardrails.md scale — at what point do accumulated guardrails become contradictory or context-consuming? — Practitioner strategies: rule count caps (hard limit ~30), expiration dates, categorization with per-category limits, periodic human review, severity tiers, and cleanup agents. Claude Code's budget system (25 lines architecture, 25 decisions, etc.) is the first automated approach. See Ch27.
