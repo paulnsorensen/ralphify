@@ -20,7 +20,6 @@ def _placeholder_pattern(kind: str) -> re.Pattern[str]:
     return re.compile(rf"\{{\{{\s*{kind}\.({CMD_NAME_RE.pattern})\s*\}}\}}")
 
 
-_COMMANDS_PATTERN = _placeholder_pattern(FIELD_COMMANDS)
 _ARGS_PATTERN = _placeholder_pattern(FIELD_ARGS)
 
 
@@ -41,16 +40,6 @@ def _resolve_kind(prompt: str, available: dict[str, str], pattern: re.Pattern[st
         return available.get(name, "")
 
     return pattern.sub(_replace_named, prompt)
-
-
-def resolve_commands(prompt: str, command_outputs: dict[str, str]) -> str:
-    """Replace ``{{ commands.name }}`` placeholders with command outputs.
-
-    When *command_outputs* is empty, clears any remaining
-    ``{{ commands.* }}`` placeholders so they don't leak into the
-    assembled prompt.
-    """
-    return _resolve_kind(prompt, command_outputs, _COMMANDS_PATTERN)
 
 
 def resolve_args(prompt: str, user_args: dict[str, str]) -> str:
@@ -75,9 +64,9 @@ def resolve_all(
 ) -> str:
     """Resolve all placeholders in a single pass to prevent cross-contamination.
 
-    Unlike sequential ``resolve_args`` + ``resolve_commands``, this ensures
-    that values inserted by one kind of placeholder are not re-processed
-    as the other kind.
+    Resolves both ``{{ commands.name }}`` and ``{{ args.name }}`` in a
+    single pass so values inserted by one kind of placeholder are not
+    re-processed as the other kind.
     """
     lookups: dict[str, dict[str, str]] = {
         FIELD_COMMANDS: command_outputs,
