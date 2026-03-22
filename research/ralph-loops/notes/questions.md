@@ -1,20 +1,12 @@
 # Research Questions
 
 ## Open
-- [x] How do practitioners handle non-deterministic verification (e.g., subjective quality in writing/design tasks)? — Block's 4-layer testing pyramid: deterministic foundation + record/playback + probabilistic benchmarks + LLM-as-judge with rubrics (3 rounds, majority vote). See chapter 11.
-- [x] What patterns exist for gradually increasing agent autonomy as trust builds? — Trust Equation (Competence × Consistency × Recoverability / Consequence), 4-level trust ladder, Anthropic's empirical data (20%→40% auto-approve over 750 sessions). See chapter 11.
-- [x] What's the real-world false negative rate for LLM-as-judge verification beyond Spotify's 25%? — GPT-4 agrees with human experts 85% (MT-Bench), but faithfulness correlation only ρ=0.55. Verbosity bias >90%, position bias up to 70%. Panel-of-judges outperforms single judge. See chapter 11.
 - [ ] How does cross-company model diversity (Opus architect, Sonnet dev, Codex reviewer) compare to same-family self-review in measurable quality?
 - [ ] What's the optimal balance between plan-mode time and execution time? Boris Cherny iterates on plans extensively — is there a sweet spot?
 - [ ] How will agent skills interoperability evolve — will SKILL.md become a true standard or fragment?
-- [x] What tooling exists for A/B testing ralph loop configurations? — EDD methodology with Braintrust, Promptfoo, LangSmith, Langfuse, Skill Eval. Golden datasets + pass@k/pass^k metrics. Arize's prompt learning optimizes system prompts via automated meta-prompting. See Ch06.
-- [x] How do practitioners test their harness/loop configurations themselves (not the agent output, but the harness)? — Block's TestProvider (record/playback pattern), LangChain's composable middleware with per-layer testing, Datadog's 5-layer verification pyramid. Key rule: live LLM tests never run in CI. See chapter 11.
 - [ ] What's the optimal ratio of spec-writing time to execution time in the spec+ralph integrated workflow?
 - [ ] How do teams handle the asymmetric trust problem (one failure erases weeks of accumulated confidence)?
-- [x] What pass@k / pass^k thresholds do teams target before promoting an agent configuration to production? — pass^k is the production metric. 70% success = 97% pass@3 but 34% pass^3. Three enterprise tiers: internal (74-90%), customer-facing (limited at pass^8), autonomous (not ready). Promotion gates require pass^k stability across multiple k. Promptfoo recommends --repeat 3 minimum; high-reliability teams run k=5 or k=10. See Ch18.
-- [x] How effective is the "meta-ralph" pattern — a ralph that optimizes other ralphs via eval feedback? — Five independent implementations exist: OpenAI Self-Evolving Agents, Weco tree-search, Arize PromptLearning (+6% SWE-bench), IBM AutoPDL (up to 67.5pp gains), Evidently mistake-driven. The eval script is the only domain-specific component. See Ch18.
 - [ ] Does "always-in-prompt" vs "invoked-on-demand" skill placement have a measurable impact at scale? Vercel's small sample (33 vs 29) is suggestive but inconclusive.
-- [x] What does a "rippable" harness look like in practice? — Permanent layers (context, constraints, safety) vs temporary (reasoning optimization, loop detection, planning scaffolding). Vercel removed 80% of tools and improved. Manus refactored 5x in 6 months. See chapter 12.
 - [ ] What's the right cadence for garbage-collection/cleanup ralphs — daily, weekly, event-triggered? OpenAI did it weekly (Fridays) before automating.
 - [ ] How do teams decide which harness layers to rip when a new model ships — is there a systematic evaluation process?
 - [ ] What does Huntley's Level 9 "evolutionary software" look like at scale beyond a single developer? Is the no-branches, push-to-master model viable for teams?
@@ -26,16 +18,13 @@
 - [ ] How does Vercel's feedback injection pattern (verify → reason string → next prompt) compare to the "signs" pattern (persistent guardrails file) for guided recovery?
 - [ ] At what point does architectural drift from agent-generated code become unrepairable — is there a measurable "point of no return"?
 - [ ] What's the optimal planner-to-worker ratio in role-based multi-agent architectures? Cursor uses recursive sub-planners — at what depth do they add more noise than value?
-- [x] How do teams calibrate loop fingerprint thresholds (3 repeats? 5?) for different task types? — Production systems converge on 3 consecutive repeats for stuck detection. ralph-claude-code uses 3 loops/no changes, 5 same errors, 70% output decline. Boucle's 220-loop study validates mechanical counting over agent self-assessment. See Ch16.
 - [ ] Does continuous budget signaling (Google's BATS) measurably change agent behavior vs. hard cutoffs alone? No controlled study yet.
-- [x] What does multi-agent coordination look like at scale (1M+ lines)? — Cursor's planner-worker-judge: flat coordination fails, optimistic concurrency fails, role-based hierarchy succeeds. Workers must be fully independent. See Ch15.
 - [ ] What Code Health thresholds do teams target before deploying agents on a codebase? CodeScene says 9.5+ — is this validated by other teams?
 - [ ] Does DAG-based ralph orchestration (swarm-cli) outperform sequential phase execution for multi-phase workflows?
 - [ ] How effective are reflection prompts ("What assumption might be wrong?") as loop breakers compared to hard circuit breakers? Are they complementary or redundant?
 - [ ] What's the optimal cadence for re-evaluating automated remediation responses? Boucle found 50% are ineffective — how do teams identify and replace bad auto-fixes?
 - [ ] How well does Microsoft's AgentRx 9-category taxonomy transfer to coding agent loops specifically? It was validated on τ-bench, Flash, and Magentic-One — do coding agents show different failure distributions?
 - [ ] Can trace-driven development (LangSmith + agent MCP) work in a ralph loop context, where each iteration gets fresh context? How do you carry trace insights across iterations?
-- [x] What concrete, cookbook-ready ralph patterns are practitioners sharing? — PRD-driven (3 implementations), two-phase plan-then-build, TDD loop, guardrails accumulation, permission-gated, stale recovery. All converge on 5 shared properties. See Ch17.
 - [ ] Does the two-phase plan-then-build pattern measurably reduce "built the wrong thing" failures compared to single-phase loops?
 - [ ] What's the optimal PRD granularity — how many features, how detailed should each story be, before the PRD itself becomes a context burden?
 - [ ] How does guardrails.md scale — at what point do accumulated guardrails become contradictory or context-consuming?
@@ -43,8 +32,21 @@
 - [ ] What's the optimal eval dataset size for meta-loop prompt optimization? Arize used 150 train/150 test — is that enough for ralph loops?
 - [ ] How do teams handle the reliability math problem (99%^20 = 82%) in practice — shorter loops, better per-step accuracy, or acceptance of failure rates?
 - [ ] Does GitHub's "Continuous AI" (agentic workflows) change team dynamics vs. traditional CI/CD? Early adoption data?
+- [ ] What does long-running agent operation (30+ days) teach about state design that shorter loops miss? Meridian's 3,190 cycles are the only data point.
+- [ ] At what point does architectural drift from agent-generated code become unrepairable — is there a measurable "point of no return"?
 
 ## Answered
+- [x] How do practitioners handle non-deterministic verification (e.g., subjective quality in writing/design tasks)? — Block's 4-layer testing pyramid: deterministic foundation + record/playback + probabilistic benchmarks + LLM-as-judge with rubrics (3 rounds, majority vote). See chapter 11.
+- [x] What patterns exist for gradually increasing agent autonomy as trust builds? — Trust Equation (Competence × Consistency × Recoverability / Consequence), 4-level trust ladder, Anthropic's empirical data (20%→40% auto-approve over 750 sessions). See chapter 11.
+- [x] What's the real-world false negative rate for LLM-as-judge verification beyond Spotify's 25%? — GPT-4 agrees with human experts 85% (MT-Bench), but faithfulness correlation only ρ=0.55. Verbosity bias >90%, position bias up to 70%. Panel-of-judges outperforms single judge. See chapter 11.
+- [x] What tooling exists for A/B testing ralph loop configurations? — EDD methodology with Braintrust, Promptfoo, LangSmith, Langfuse, Skill Eval. Golden datasets + pass@k/pass^k metrics. Arize's prompt learning optimizes system prompts via automated meta-prompting. See Ch06.
+- [x] How do practitioners test their harness/loop configurations themselves (not the agent output, but the harness)? — Block's TestProvider (record/playback pattern), LangChain's composable middleware with per-layer testing, Datadog's 5-layer verification pyramid. Key rule: live LLM tests never run in CI. See chapter 11.
+- [x] What pass@k / pass^k thresholds do teams target before promoting an agent configuration to production? — pass^k is the production metric. 70% success = 97% pass@3 but 34% pass^3. Three enterprise tiers: internal (74-90%), customer-facing (limited at pass^8), autonomous (not ready). Promotion gates require pass^k stability across multiple k. Promptfoo recommends --repeat 3 minimum; high-reliability teams run k=5 or k=10. See Ch18.
+- [x] How effective is the "meta-ralph" pattern — a ralph that optimizes other ralphs via eval feedback? — Five independent implementations exist: OpenAI Self-Evolving Agents, Weco tree-search, Arize PromptLearning (+6% SWE-bench), IBM AutoPDL (up to 67.5pp gains), Evidently mistake-driven. The eval script is the only domain-specific component. See Ch18.
+- [x] What does a "rippable" harness look like in practice? — Permanent layers (context, constraints, safety) vs temporary (reasoning optimization, loop detection, planning scaffolding). Vercel removed 80% of tools and improved. Manus refactored 5x in 6 months. See chapter 12.
+- [x] How do teams calibrate loop fingerprint thresholds (3 repeats? 5?) for different task types? — Production systems converge on 3 consecutive repeats for stuck detection. ralph-claude-code uses 3 loops/no changes, 5 same errors, 70% output decline. Boucle's 220-loop study validates mechanical counting over agent self-assessment. See Ch16.
+- [x] What does multi-agent coordination look like at scale (1M+ lines)? — Cursor's planner-worker-judge: flat coordination fails, optimistic concurrency fails, role-based hierarchy succeeds. Workers must be fully independent. See Ch15.
+- [x] What concrete, cookbook-ready ralph patterns are practitioners sharing? — PRD-driven (3 implementations), two-phase plan-then-build, TDD loop, guardrails accumulation, permission-gated, stale recovery. All converge on 5 shared properties. See Ch17.
 - [x] What are the most effective patterns for keeping agents on track during long-running loops? — Fresh context resets + file-based state + verification gates. See chapters 01-02.
 - [x] How do practitioners handle context window limits? — Reset context each iteration; persist state in files and git. Universal pattern across all major systems.
 - [x] What error recovery strategies work best? — Git revert on verification failure (Karpathy), failure pattern runbooks (Meta REA), verifier re-runs (Spotify). See chapter 02.

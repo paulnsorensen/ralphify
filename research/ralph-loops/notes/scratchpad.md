@@ -450,3 +450,48 @@
 - Refine cycle (iteration 18): 25 insights, 18 chapters — trim insights to ~22-23, consider whether any chapters should merge
 - Or: explore the "continuous AI" concept more deeply — how does CI/CD change when agents are part of the pipeline?
 - Or: deep dive into AGENTS.md as cross-tool standard — implications for RALPH.md portability
+
+## Iteration 18 — 2026-03-22
+
+**Decision: HYBRID — refine (primary) + targeted research (secondary)**
+
+**Refine focus:**
+1. REPORT.md: trim 25 → ~22 insights by merging related pairs
+   - #8 (git as state backend) is a sub-point of #1 (fresh context + file-based state) — merge
+   - #10 (measure in actions not time) is a sub-point of #4 (one item per loop) — fold in
+   - #12 (test the harness not output) overlaps with #2 (verification is the game) — merge as "what to verify"
+2. Tighten REPORT.md intro paragraph — absorb folded insights
+3. Review Open Questions — remove any that have been implicitly answered by Ch16-18
+4. Final quality pass on key chapters (Ch06 implications, Ch17 cookbook, Ch18 eval/deployment)
+
+**Research focus (secondary):**
+- One fresh web search for the absolute latest (March 18-22, 2026) developments in agent loops, harness engineering, or autonomous coding — anything we haven't caught yet
+
+**What was done:**
+- Trimmed REPORT.md from 25 to 22 insights by merging 3 pairs:
+  - #8 (git as state backend) → folded into #1 (fresh context + file-based state + 4 state files)
+  - #10 (measure in actions not time) → folded into #4 (one item per loop + action count)
+  - #19 (continuous budget) → folded into #6 (cost control + BATS framework)
+- Renumbered all insights cleanly (1-22)
+- Cleaned up Open Questions: trimmed from 12 to 10, removed narrow questions (MCP count, Vercel vs guardrails, budget signaling, AgentRx transfer), added 2 substantive ones (long-running state design, reliability math)
+- Cleaned up questions.md: moved 11 answered questions from Open to Answered section
+- Found and logged 5 new sources from March 2026 web search:
+  - earezki's 35-agent swarm (March 20) — 6,500+ runs, 124 duplicate PRs, $65/day cost spikes, 5-layer memory
+  - Kief Morris / Martin Fowler — "in/on/out of the loop" human role framework
+  - OpenDev arxiv paper — first academic systematization of harness engineering, 6-phase ReAct loop
+  - Manus context engineering — KV-cache as #1 metric, 100:1 input-to-output, rebuilt 4x
+  - Addy Osmani — self-improving agents technical breakdown
+- Added 5 new insights to notes/insights.md
+- Updated REPORT.md Key Sources with 4 new entries
+
+**Key surprises:**
+- earezki scaled from 23 to 35 concurrent agents in 2 days — the swarm produced 6,500+ runs but generated 124 duplicate PRs without deterministic branch naming. The 5-layer memory (CLAUDE.md + local files + Qdrant vector DB) is the most sophisticated memory architecture found.
+- KV-cache hit rate is the single most important production metric (Manus) — 10x cost difference between cached and uncached input tokens. RALPH.md template stability enables this by design.
+- Morris's "on the loop" framework is the best articulation of what ralph authors do — they design the loop, not execute within it.
+- The OpenDev paper's 6-phase loop includes a self-critique phase BEFORE action — agents evaluate their own planned action before executing. Novel architectural insight.
+- Manus rebuilt their framework 4 times — context engineering is empirical, reinforcing the "rippable harness" principle.
+
+**Next iteration should focus on:**
+- Research: deep dive into the earezki 35-agent swarm architecture — scaling patterns, failure modes, and the 5-layer memory design
+- Or: explore the OpenDev paper's 6-phase loop in detail — what does self-critique-before-action look like in practice?
+- Or: refine cycle — tighten chapters, ensure all new findings are reflected in Ch06 implications

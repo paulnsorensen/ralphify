@@ -234,3 +234,11 @@
 - https://news.ycombinator.com/item?id=46876455 — HN — AI-generated "slop" flooding open source projects — **low**
 - https://news.ycombinator.com/item?id=47246979 — HN — Agent-generated complexity removes natural friction on code size — **low**
 - https://news.ycombinator.com/item?id=34137990 — HN — AI assistance lowers programmers' guards against buggy code — **low**
+
+## New Sources — Iteration 18
+
+- https://martinfowler.com/articles/exploring-gen-ai/humans-and-agents.html — Kief Morris / Martin Fowler — "In/on/out of the loop" framework: humans design the loop (specs, tests, feedback) rather than reviewing every output — **high**
+- https://arxiv.org/abs/2603.05344 — Nghi D. Q. Bui — OpenDev: first academic systematization of terminal-native coding agents; 6-phase ReAct loop (pre-check, thinking, self-critique, action, tool execution, post-processing) with 7 supporting subsystems — **high**
+- https://earezki.com/ai-news/2026-03-20-i-built-a-35-agent-ai-coding-swarm-that-runs-overnight/ — earezki/Mathew Dostal — 35 concurrent agents, 6,500+ runs, 124 duplicate PRs, $65/day cost spikes, 5-layer memory (CLAUDE.md + local files + Qdrant vector DB), zombie process detection — **high**
+- https://manus.im/blog/Context-Engineering-for-AI-Agents-Lessons-from-Building-Manus — Peak Ji / Manus — KV-cache hit rate as #1 production metric; 100:1 input-to-output ratio; prompt prefix stability for 10x cost reduction; rebuilt framework 4x ("Stochastic Graduate Descent") — **high**
+- https://addyosmani.com/blog/self-improving-agents/ — Addy Osmani — Detailed technical breakdown of continuous coding loops: atomic task design, validation gates, context management, scaling patterns — **medium**
