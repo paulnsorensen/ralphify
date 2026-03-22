@@ -187,6 +187,13 @@
 - https://opentelemetry.io/blog/2025/ai-agent-observability/ — OpenTelemetry (IBM/Google) — Standardized semantic conventions for AI agent observability across CrewAI, AutoGen, LangGraph — **medium**
 - https://www.gocodeo.com/post/error-recovery-and-fallback-strategies-in-ai-agent-development — GoCodeo — Progressive failure response: self-correct → fallback → graceful degradation → human escalation, error type classification — **medium**
 
+- https://adamtuttle.codes/blog/2026/my-ralph-workflow-for-claude-code/ — Adam Tuttle — PRD-driven loop with permission gating, $100/hr cost data, completion promises, progress tracking — **high**
+- https://deepwiki.com/FlorianBruniaux/claude-code-ultimate-guide/7.3-fresh-context-pattern-(ralph-loop) — Florian Bruniaux — TDD loop pattern, PostToolUse hooks, OpusPlan hybrid cost optimization, iteration limits — **high**
+- https://github.com/github/awesome-copilot/blob/main/cookbook/copilot-sdk/nodejs/ralph-loop.md — GitHub — Two-phase plan-then-build, IMPLEMENTATION_PLAN.md as coordination artifact, 60-line AGENTS.md guidance — **high**
+- https://grahammann.net/blog/how-im-vibe-coding-2026 — Graham Mann — Multi-model orchestration (Opus builder, others as reviewers), parallel conversation threads, minimal prompting — **medium**
+- https://asdlc.io/patterns/ralph-loop/ — ASDLC.io — Completion promise formalization, convergence formula P(C) = 1-(1-p)^n, anti-pattern warnings for vague prompts — **medium**
+- https://popularaitools.ai/claude-code-loops-skills-guide/ — Popular AI Tools — Claude Code /loop command (time-based), max 50 concurrent tasks, complementary to iteration-based loops — **low**
+
 ## Lower Relevance
 
 - https://www.permit.io/blog/human-in-the-loop-for-ai-agents-best-practices-frameworks-use-cases-and-demo — Permit.io — Human-in-the-loop patterns for AI agents — **low**

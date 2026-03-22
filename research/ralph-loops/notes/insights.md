@@ -162,6 +162,16 @@
 - **Emergent cross-agent recovery happens without pre-programming.** Andromeda's Feb 2026 incident: backend agent from a different model provider autonomously diagnosed and fixed frontend agent's config error. Third agent performed peer review. Multi-agent systems develop resilience if agents see each other's outputs.
 - **Explicit termination tools beat natural language completion signals.** Agents must invoke `complete_review`, `submit_plan`, etc. — not just say "I'm done." Creates auditable checkpoints where termination legitimacy can be validated.
 
+## Practitioner Cookbook Patterns (NEW — Iteration 15)
+- **Three independent PRD-driven implementations converged on the same structure.** Adam Tuttle, snarktank, and iannuttall all use JSON-based PRDs with `passes: boolean` per feature, one feature per iteration, deterministic verification before marking complete. The convergence is strong evidence this is the natural pattern for feature development loops.
+- **The two-phase plan-then-build pattern prevents "building the wrong thing."** GitHub's awesome-copilot separates gap analysis (IMPLEMENTATION_PLAN.md) from execution. The plan file is persistent shared state between iterations — all coordination through disk. This directly addresses intent-failure detection (Ch14).
+- **TDD loops require explicit "FAILING" in the prompt.** Without the word, Claude generates working implementation alongside tests, defeating TDD's purpose. The OpusPlan hybrid (Opus for test design 10-20%, Sonnet for implementation 80-90%) optimizes cost.
+- **Guardrails accumulation is the "signs" pattern made concrete.** iannuttall's `guardrails.md` captures "what NOT to do" — distinct from progress.md (what was done). Constraints survive context rotation, preventing repeated mistakes across iterations.
+- **Permission-gated loops are the safe-mode alternative to --dangerously-skip-permissions.** Adam Tuttle's `<PROMISE>NEED_PERMISSIONS</PROMISE>` signal pauses the loop for human approval of specific commands. Maps to trust Level 3 (Act with Boundaries).
+- **Stale recovery via timeout is the simplest crash recovery.** `STALE_SECONDS` auto-reopens tasks stuck in `in_progress` — no complex checkpoint system, just a timestamp comparison. Combined with git state, robust against most failures.
+- **All practitioner patterns share 5 properties but none include production safeguards.** One task per iteration, binary completion, deterministic verification, append-only progress, git as checkpoint — universal. But no revert-on-failure, no loop fingerprinting, no budget awareness. The gap is ralphify's opportunity.
+- **PRD-driven loops exhaust $100/month quotas in ~1 hour.** Each iteration loads full PRD + progress + test output. Cost optimization (prompt caching, output redirection, model tiering) is essential for sustained use.
+
 ## Ralphify-Specific
 - **Ralphify's command system naturally supports the "commands as verifiers" pattern.** Running tests/metrics as commands and injecting results into the prompt is exactly what Spotify and Karpathy do — ralphify just needs to formalize verification as a first-class concept.
 - **Agent skills as portable packages is a validated trend.** Ralphify's skill system aligns with the industry direction of installable, reusable instruction sets.

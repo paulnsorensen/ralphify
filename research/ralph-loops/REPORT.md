@@ -52,6 +52,8 @@
 
 24. **A debugging taxonomy turns loop failures into structured fixes.** Microsoft's AgentRx identifies 9 failure categories (plan adherence, hallucination, invalid invocation, misinterpretation, intent misalignment, under-specification, unsupported intent, guardrails, system failure) with +23.6% better failure localization. Each category maps to a specific harness fix — don't guess, classify.
 
+25. **Six practitioner cookbook patterns have converged independently.** PRD-driven feature loops (3 implementations), two-phase plan-then-build, TDD loops, guardrails accumulation, permission-gated loops, and stale recovery. All share five properties: one task per iteration, binary completion signal, deterministic verification, append-only progress, git as checkpoint. The gap between practitioner patterns and production-grade loops is operational safeguards (revert-on-failure, loop fingerprinting, budget awareness) — none of the shared implementations include these.
+
 ## Chapters
 
 | # | Chapter | Summary |
@@ -72,6 +74,7 @@
 | 14 | [Context Engineering & Loop Maturation](chapters/14-context-engineering-advances.md) | Context rot, compaction hierarchy, guardrails as infrastructure, two-tier loops, intent-failure detection |
 | 15 | [Production Orchestration & Budget-Aware Loops](chapters/15-production-orchestration-patterns.md) | Cursor's planner-worker-judge, loop fingerprinting, worktree isolation, observability stack, Meridian 3,190 cycles |
 | 16 | [Self-Repair, Resilience & Agent Debugging](chapters/16-self-repair-resilience-debugging.md) | Git checkpoint hierarchy, circuit breaker thresholds, 220-loop empirical data, AgentRx 9-category taxonomy, trace-driven development |
+| 17 | [Practitioner Cookbook Patterns](chapters/17-practitioner-cookbook-patterns.md) | 6 concrete loop configurations from the wild: PRD-driven, plan-then-build, TDD, guardrails accumulation, permission-gated, stale recovery |
 
 ## Open Questions
 

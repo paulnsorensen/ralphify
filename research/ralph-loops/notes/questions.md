@@ -35,6 +35,10 @@
 - [ ] What's the optimal cadence for re-evaluating automated remediation responses? Boucle found 50% are ineffective — how do teams identify and replace bad auto-fixes?
 - [ ] How well does Microsoft's AgentRx 9-category taxonomy transfer to coding agent loops specifically? It was validated on τ-bench, Flash, and Magentic-One — do coding agents show different failure distributions?
 - [ ] Can trace-driven development (LangSmith + agent MCP) work in a ralph loop context, where each iteration gets fresh context? How do you carry trace insights across iterations?
+- [x] What concrete, cookbook-ready ralph patterns are practitioners sharing? — PRD-driven (3 implementations), two-phase plan-then-build, TDD loop, guardrails accumulation, permission-gated, stale recovery. All converge on 5 shared properties. See Ch17.
+- [ ] Does the two-phase plan-then-build pattern measurably reduce "built the wrong thing" failures compared to single-phase loops?
+- [ ] What's the optimal PRD granularity — how many features, how detailed should each story be, before the PRD itself becomes a context burden?
+- [ ] How does guardrails.md scale — at what point do accumulated guardrails become contradictory or context-consuming?
 
 ## Answered
 - [x] What are the most effective patterns for keeping agents on track during long-running loops? — Fresh context resets + file-based state + verification gates. See chapters 01-02.

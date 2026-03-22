@@ -359,3 +359,32 @@
 - Refine cycle (iteration 15): 24 insights, 16 chapters — trim insights to ~22, consider whether Ch07 (anti-patterns) and Ch16 (self-repair) overlap
 - Update Ch06 (implications) with self-repair findings: checkpoint commands, signal-based health, circuit breaker config
 - Or: research the eval-driven/meta-ralph thread in more depth — the web research agents couldn't cover it
+
+## Iteration 15 — 2026-03-22
+
+**Decision: RESEARCH**
+
+**Focus area:** Two high-value threads that directly serve the mission ("cookbook examples", "methods for building high quality ralph loops"):
+1. **Practical cookbook-ready ralph patterns** — what concrete, reproducible loop configurations are practitioners sharing in March 2026? Focus on patterns that translate directly to ralphify RALPH.md files.
+2. **Eval-driven loop optimization** — how do teams systematically measure and improve their loop configurations? The meta-ralph pattern, A/B testing loop configs, measuring loop quality.
+
+**What was done:**
+- Launched 3 parallel research agents: cookbook patterns (excellent results), eval-driven (no web access), latest content (no web access)
+- Deep-read 8 new sources: Adam Tuttle (PRD loop + permission gating), iannuttall/ralph (guardrails + stale recovery), awesome-copilot (plan-then-build), Florian Bruniaux (TDD loop), snarktank/ralph (PRD + auto-archiving), ASDLC.io (completion promises), Graham Mann (multi-model orchestration), Popular AI Tools (Claude /loop)
+- Created chapter 17 (Practitioner Cookbook Patterns) with 6 concrete, copy-paste-ready patterns and ralphify RALPH.md translations
+- Added 1 new insight to REPORT.md (#25), 8 new insights to notes, 6 new sources, 3 new questions, 1 question answered
+- Identified the gap between practitioner patterns (individual use) and production loops (operational safeguards) as ralphify's opportunity
+
+**Key surprises:**
+- Three independent PRD implementations converged on identical structure — strong signal this is the natural pattern
+- Adam Tuttle exhausted $100/month in ~1 hour of looping — cost is a real blocker for sustained use
+- TDD loops REQUIRE the word "FAILING" in the prompt — without it Claude defeats the purpose by implementing alongside tests
+- Permission-gated loops (Level 3 trust) are a practical middle ground nobody in the research had documented before
+- The two-phase plan-then-build pattern directly addresses intent-failure detection — gap analysis prevents building the wrong thing
+- `guardrails.md` (what NOT to do) is fundamentally different from `progress.md` (what was done) — both are needed
+- All 6 practitioner patterns lack operational safeguards (revert, fingerprinting, budget) — the gap ralphify should fill
+
+**Next iteration should focus on:**
+- Refine cycle (iteration 16): 25 insights, 17 chapters — trim to ~22 insights, consider merging overlapping chapters
+- Update Ch06 (implications) with cookbook pattern findings: 6 new recipes, the practitioner/production gap, cost reality
+- Or: research the eval-driven thread more aggressively — the agents couldn't access web, but the topic remains under-explored
