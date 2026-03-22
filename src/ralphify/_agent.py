@@ -16,6 +16,8 @@ Two execution modes are supported:
 from __future__ import annotations
 
 import json
+import os
+import signal
 import subprocess
 import sys
 import time
@@ -42,6 +44,30 @@ _RESULT_FIELD = "result"
 # Log file naming — timestamp format and iteration zero-padding width.
 _LOG_TIMESTAMP_FORMAT = "%Y%m%d-%H%M%S"
 _LOG_ITERATION_PAD_WIDTH = 3
+
+# Subprocess kwargs that isolate agent processes in their own session/group.
+# On POSIX this uses start_new_session so the agent and all its children
+# form a separate process group that can be killed together.
+_SESSION_KWARGS: dict[str, Any] = (
+    {} if sys.platform == "win32"
+    else {"start_new_session": True}
+)
+
+
+def _kill_process_group(proc: subprocess.Popen[Any]) -> None:
+    """Kill the agent process and its entire process group.
+
+    On POSIX, sends SIGKILL to the process group (because we used
+    ``start_new_session=True``, the agent's PID *is* the group leader).
+    Falls back to ``proc.kill()`` on Windows or if ``os.killpg`` fails.
+    """
+    if sys.platform != "win32":
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+            return
+        except (OSError, ProcessLookupError):
+            pass
+    proc.kill()
 
 
 @dataclass
