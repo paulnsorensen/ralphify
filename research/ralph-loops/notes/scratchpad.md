@@ -788,7 +788,22 @@ After 25 iterations, the research is mature (25 chapters, 22 insights, 210+ sour
 - The domain-agnostic positioning is the strongest growth vector from Ch25 — not just coding loops but security/DevOps/data/content/business loops. Worth highlighting in intro.
 - The observability crisis data (47.1% monitored, 88% incidents) is a concrete "why this matters" for ralphify's built-in telemetry recommendation.
 
+**Research findings (web search):**
+- Background agents couldn't access web — did searches directly with WebSearch/WebFetch
+- Found 7 new sources, 9 new insights from practitioner case studies
+- Key new sources: Calvin's time-based model selection, LPains 60% time savings, StackToHeap SDK migration, Thoughtworks five building blocks, Hugo Nogueira infrastructure thesis
+- Calv.info is the highest-signal new source: practitioner running 3-4 overnight Codex tasks, custom skills at ~50-100 tokens (vs thousands for MCP), "bottleneck on ideas not execution"
+- LPains provides first concrete ROI data for ralph loops: 6h vs 15-20h (60% savings), 5 iterations, 100 premium requests
+- StackToHeap validates the "abstract stories fail" finding with concrete data: 6 abstract stories (failed) vs 9 concrete stories (succeeded) for SDK migration
+
+**Key surprises:**
+- Time-based model selection (Opus daytime, Codex overnight) is a novel workflow pattern — nobody else in the research had articulated this
+- Custom skills at ~50-100 tokens vs thousands for MCP calls — skills are dramatically more token-efficient, a key finding for RALPH.md design
+- 60% time savings with concrete ROI data — first quantified practitioner case study of production ralph loop savings
+- Post-loop manual work is predictable: CI/deployment, runtime behaviors, architectural decisions. The 80/20 split is consistent.
+- Pattern propagation (agent reads its own prior patterns from progress log) is a validated productivity multiplier — validates the "append-only progress" pattern
+
 **Next iteration should focus on:**
-- Research: incorporate any findings from background agents (if they return useful results)
-- Or: explore the "agent economy" — skills marketplace, pricing, commercial agent services
+- Research: the "Agent Experts" pattern (Act, Learn, Reuse) — how does persistent learning across sessions work in practice?
+- Or: explore durable execution for agent loops (Temporal, LangGraph) — how does checkpointing change the loop architecture?
 - Or: refine cycle — final pass on chapter coherence, consider consolidating some of the 25 chapters

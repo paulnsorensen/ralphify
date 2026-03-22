@@ -227,6 +227,30 @@ None of the practitioner patterns include:
 
 These gaps represent the difference between practitioner-shared patterns (which work for individuals) and production-grade loops (which need operational safeguards). Ralphify's opportunity is to bridge this gap by making these safeguards easy to add.
 
+## Validated Case Studies (Iteration 26)
+
+Two practitioner case studies provide the first concrete ROI data for ralph loop patterns:
+
+### Production Feature Build (LPains)
+
+Used go-ralph (custom Go implementation of snarktank/ralph) to build a production feature:
+- **Time**: 6 hours vs 15-20 hours manual (60% savings)
+- **Iterations**: 5 loop runs, ~100 premium API requests
+- **Critical success factor**: Spec quality. First attempt produced unusable code because spec lacked detail. "Spend most of your time on the spec and then on reviewing the generated output."
+- **Failure mode**: Without explicitly stating "new page," the agent created a popup instead — non-negotiable requirements must be verbalized
+- **Tooling**: SonarCloud caught issues the agent missed (unused imports, invalid function calls that didn't break builds)
+
+### SDK Migration (StackToHeap)
+
+Used ralph loops for a multi-platform SDK migration:
+- **Abstract stories fail**: 6 vague stories (23 min) produced code that "technically passes gates but does not actually solve the problem"
+- **Concrete stories succeed**: 9 stories mapped to actual code boundaries (81 min, 60 files changed, +3,978/-1,978 lines)
+- **Post-loop work**: 11 commits (~7 hours) for CI/deployment, runtime behaviors, architectural decisions
+- **Pattern propagation**: When the agent migrated GitLab flows, it documented the pattern. GitHub migration then followed automatically by reading the progress log.
+- **Ideal use cases**: SDK/framework migrations excel because they have clear before/after states, natural dependency ordering, mechanical pattern-following, and existing test suites.
+
+Both studies validate the 80/20 split: ralph loops handle ~80% of mechanical work, humans handle ~20% of integration/design decisions.
+
 ## Sources
 
 - [My RALPH Workflow for Claude Code](https://adamtuttle.codes/blog/2026/my-ralph-workflow-for-claude-code/) — Adam Tuttle — PRD-driven loop with permission gating, cost data, completion promises
@@ -237,3 +261,6 @@ These gaps represent the difference between practitioner-shared patterns (which 
 - [Fresh Context Pattern / TDD with Claude](https://deepwiki.com/FlorianBruniaux/claude-code-ultimate-guide/7.3-fresh-context-pattern-(ralph-loop)) — Florian Bruniaux — TDD loop, PostToolUse hooks, OpusPlan hybrid
 - [Ralph Loop Pattern](https://asdlc.io/patterns/ralph-loop/) — ASDLC.io — Completion promise formalization, convergence formula
 - [How I'm Vibe Coding in 2026](https://grahammann.net/blog/how-im-vibe-coding-2026) — Graham Mann — Multi-model orchestration, parallel conversation threads, minimal prompting
+- [Real World Example: Ralph Wiggum Loop](https://blog.lpains.net/posts/2026-01-31-real-world-example-ralph/) — LPains — 60% time savings, 5 iterations, spec quality as critical success factor
+- [Ralph Loops for SDK Migrations](https://stacktoheap.com/blog/2026/02/23/how-i-code-from-the-gym-part-4/) — StackToHeap — 9 stories, 81 min, 60 files changed, abstract vs concrete story comparison
+- [Coding Agents in Feb 2026](https://calv.info/agents-feb-2026) — Calvin — Time-based model selection, skills at ~50-100 tokens, 3-4 overnight tasks standard
