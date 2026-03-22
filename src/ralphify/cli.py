@@ -330,6 +330,23 @@ def _resolve_ralph_paths(ralph_path: str) -> tuple[Path, Path]:
     return ralph_dir, ralph_file
 
 
+def _validate_agent(raw_agent: Any) -> str:
+    """Validate the ``agent`` frontmatter field and check the binary exists.
+
+    Returns the validated agent string.  Exits with an error when the
+    value is missing, malformed, or the binary is not found on PATH.
+    """
+    if not _is_nonempty_string(raw_agent):
+        _exit_error(f"Missing or empty '{FIELD_AGENT}' field in {RALPH_MARKER} frontmatter.")
+    try:
+        agent_binary = shlex.split(raw_agent)[0]
+    except ValueError as exc:
+        _exit_error(f"Malformed '{FIELD_AGENT}' field in {RALPH_MARKER} frontmatter: {exc}")
+    if not shutil.which(agent_binary):
+        _exit_error(f"Agent command '{agent_binary}' not found on PATH.")
+    return raw_agent
+
+
 def _build_run_config(
     ralph_path: str,
     max_iterations: int | None,
@@ -345,18 +362,7 @@ def _build_run_config(
     ralph_text = ralph_file.read_text(encoding="utf-8")
     fm, _ = parse_frontmatter(ralph_text)
 
-    # Validate required agent field
-    agent = fm.get(FIELD_AGENT)
-    if not _is_nonempty_string(agent):
-        _exit_error(f"Missing or empty '{FIELD_AGENT}' field in {RALPH_MARKER} frontmatter.")
-
-    # Validate agent command exists
-    try:
-        agent_binary = shlex.split(agent)[0]
-    except ValueError as exc:
-        _exit_error(f"Malformed '{FIELD_AGENT}' field in {RALPH_MARKER} frontmatter: {exc}")
-    if not shutil.which(agent_binary):
-        _exit_error(f"Agent command '{agent_binary}' not found on PATH.")
+    agent = _validate_agent(fm.get(FIELD_AGENT))
 
     # Parse commands from frontmatter
     raw_commands = fm.get(FIELD_COMMANDS)
