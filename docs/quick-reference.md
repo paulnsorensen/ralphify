@@ -107,13 +107,24 @@ Your instructions here. Use {{ args.dir }} for user arguments.
 - `--` ends flag parsing: `ralph run my-ralph -- --verbose ./src` treats `--verbose` as a positional value
 - Missing args resolve to empty string
 
+### Context placeholders
+
+```markdown
+{{ context.name }}               # Ralph directory name (e.g. "my-ralph")
+{{ context.iteration }}          # Current iteration number (1-based)
+{{ context.max_iterations }}     # Total iterations if -n was set, empty otherwise
+```
+
+- Automatically available — no frontmatter configuration needed
+- Useful for progress tracking, naming logs, or adjusting behavior near the end of a run
+
 ## The loop
 
 Each iteration:
 
 1. Re-read `RALPH.md` from disk
 2. Run all commands in order, capture output
-3. Resolve `{{ commands.* }}` and `{{ args.* }}` placeholders
+3. Resolve `{{ commands.* }}`, `{{ args.* }}`, and `{{ context.* }}` placeholders
 4. Pipe assembled prompt to agent via stdin
 5. Wait for agent to exit
 6. Repeat

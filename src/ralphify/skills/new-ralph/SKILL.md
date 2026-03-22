@@ -86,9 +86,10 @@ If any tests are failing above, fix them before continuing.
 
 #### Body
 
-The body is the prompt. It supports two placeholder types:
+The body is the prompt. It supports three placeholder types:
 - `{{ commands.<name> }}` — replaced with command output each iteration
 - `{{ args.<name> }}` — replaced with CLI arguments
+- `{{ context.<name> }}` — replaced with runtime metadata (`name`, `iteration`, `max_iterations`)
 
 HTML comments (`<!-- ... -->`) are automatically stripped before the prompt is assembled. They never reach the agent. Use them for notes about why rules exist or TODOs for prompt maintenance.
 

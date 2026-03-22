@@ -8,6 +8,14 @@ keywords: ralphify changelog, release history, new features, version updates, br
 
 All notable changes to ralphify are documented here.
 
+## 0.2.5 — 2026-03-22
+
+### Added
+
+- **Context placeholders** — ralphs can now access runtime metadata via `{{ context.name }}` (ralph directory name), `{{ context.iteration }}` (current iteration, 1-based), and `{{ context.max_iterations }}` (total iterations if `-n` was set, empty otherwise). No frontmatter configuration needed.
+
+---
+
 ## 0.2.4 — 2026-03-22
 
 ### Fixed
