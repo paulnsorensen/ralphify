@@ -106,7 +106,7 @@ A command is a name and something to run. The framework executes it, captures st
 
 Ralphs can accept CLI arguments, making them reusable:
 
-- **Named flags**: `ralph run my-ralph --dir ./src --focus "perf"` → `{{ args.dir }}`, `{{ args.focus }}`
+- **Named flags**: `ralph run my-ralph --dir ./src --focus "perf"` or `--dir=./src` → `{{ args.dir }}`, `{{ args.focus }}`
 - **Positional args**: `ralph run my-ralph ./src "perf"` — requires `args: [dir, focus]` in frontmatter
 - Missing args resolve to empty string
 
