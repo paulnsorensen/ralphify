@@ -1,56 +1,22 @@
 # Research Questions
 
 ## Open
-- [ ] How does cross-company model diversity (Opus architect, Sonnet dev, Codex reviewer) compare to same-family self-review in measurable quality?
-- [ ] What's the optimal balance between plan-mode time and execution time? Boris Cherny iterates on plans extensively — is there a sweet spot?
-- [ ] How will agent skills interoperability evolve — will SKILL.md become a true standard or fragment?
-- [ ] What's the optimal ratio of spec-writing time to execution time in the spec+ralph integrated workflow?
-- [ ] How do teams handle the asymmetric trust problem (one failure erases weeks of accumulated confidence)? **[Partially addressed in Ch23]** — HN consensus: trust is per-cycle not cumulative; agents require full verification every time.
-- [ ] What's the optimal sandbox isolation tier for ralph loops — microVM per iteration is the strongest but is it necessary for trusted ralphs?
-- [ ] How does NVIDIA OpenShell's privacy router interact with ralph loops that need frontier model access for the agent but local models for sensitive commands?
-- [ ] Does sandbox-per-iteration (ephemeral recreation) measurably improve security outcomes vs. long-lived sandboxes with periodic resets?
-- [ ] Does "always-in-prompt" vs "invoked-on-demand" skill placement have a measurable impact at scale? Vercel's small sample (33 vs 29) is suggestive but inconclusive.
-- [ ] What's the right cadence for garbage-collection/cleanup ralphs — daily, weekly, event-triggered? OpenAI did it weekly (Fridays) before automating.
-- [ ] How do teams decide which harness layers to rip when a new model ships — is there a systematic evaluation process?
-- [ ] What does Huntley's Level 9 "evolutionary software" look like at scale beyond a single developer? Is the no-branches, push-to-master model viable for teams?
-- [ ] What's the optimal number of MCP servers per agent loop before tool selection accuracy degrades? Speakeasy handles 400 tools with Search-Describe-Execute, but what about in practice?
-- [ ] How do MCP gateway solutions (Composio, TrueFoundry) compare for multi-agent ralph loop deployments?
-- [ ] Will MCP's Tasks primitive enable a new class of async ralph loops that hibernate between MCP task completions?
-- [ ] How do teams implement the "closed knowledge loop" (observation harness analyzing JSONL logs) in practice — and does it actually improve loop performance over time?
-- [ ] What's the right threshold for "show output only on failure" — should all command output be suppressed by default, or only output above a certain size?
-- [ ] How does Vercel's feedback injection pattern (verify → reason string → next prompt) compare to the "signs" pattern (persistent guardrails file) for guided recovery?
-- [ ] At what point does architectural drift from agent-generated code become unrepairable — is there a measurable "point of no return"?
-- [ ] What's the optimal planner-to-worker ratio in role-based multi-agent architectures? Cursor uses recursive sub-planners — at what depth do they add more noise than value?
-- [ ] Does continuous budget signaling (Google's BATS) measurably change agent behavior vs. hard cutoffs alone? No controlled study yet.
-- [ ] What Code Health thresholds do teams target before deploying agents on a codebase? CodeScene says 9.5+ — is this validated by other teams?
-- [ ] Does DAG-based ralph orchestration (swarm-cli) outperform sequential phase execution for multi-phase workflows?
-- [ ] How effective are reflection prompts ("What assumption might be wrong?") as loop breakers compared to hard circuit breakers? Are they complementary or redundant?
-- [ ] What's the optimal cadence for re-evaluating automated remediation responses? Boucle found 50% are ineffective — how do teams identify and replace bad auto-fixes?
-- [ ] How well does Microsoft's AgentRx 9-category taxonomy transfer to coding agent loops specifically? It was validated on τ-bench, Flash, and Magentic-One — do coding agents show different failure distributions?
-- [ ] Can trace-driven development (LangSmith + agent MCP) work in a ralph loop context, where each iteration gets fresh context? How do you carry trace insights across iterations?
-- [ ] Does the two-phase plan-then-build pattern measurably reduce "built the wrong thing" failures compared to single-phase loops?
-- [ ] What's the optimal PRD granularity — how many features, how detailed should each story be, before the PRD itself becomes a context burden?
-- [ ] How does guardrails.md scale — at what point do accumulated guardrails become contradictory or context-consuming?
-- [ ] How do teams decide between session-scoped, CI/CD-integrated, and cloud-native deployment tiers for their agent loops?
-- [ ] What's the optimal eval dataset size for meta-loop prompt optimization? Arize used 150 train/150 test — is that enough for ralph loops?
-- [ ] How do teams handle the reliability math problem (99%^20 = 82%) in practice — shorter loops, better per-step accuracy, or acceptance of failure rates?
-- [ ] Does GitHub's "Continuous AI" (agentic workflows) change team dynamics vs. traditional CI/CD? Early adoption data?
-- [ ] At what point does architectural drift from agent-generated code become unrepairable — is there a measurable "point of no return"?
+
+### High Priority (directly actionable for ralphify)
+- [ ] How do teams handle the reliability math problem (99%^20 = 82%) — shorter loops, better per-step accuracy, or acceptance of failure rates?
 - [ ] Which memory architecture (observational, graph, self-editing, RAG) best fits ralph loops — and can a "memory ralph" replace vector DB infrastructure?
+- [ ] What's the optimal credential architecture for ralph loops — env vars (simple), vault integration (better), or injection proxy (strongest)? At what scale does proxy complexity pay off? **[Partially answered in Ch24]** — credential injection proxy is the converged answer (Vercel/GitHub/NVIDIA), but no data on the complexity threshold.
 - [ ] How does the authority hierarchy (specs>tests>code) interact with TDD loops where tests are written by the agent?
-- [ ] What's the optimal number of acceptance criteria per RALPH.md — is there a ceiling like the 150-200 instruction limit?
-- [ ] How do teams implement "spec validation" gates — human review, AI-assisted ambiguity detection, or both?
-- [ ] Does multi-agent review (5 independent reviewers) produce diminishing returns vs. 2-3 specialized reviewers?
-- [ ] How do practitioners prevent silent fallback insertion — is there a deterministic detection technique beyond code review?
-- [ ] What's the optimal middleware stack for ralph loops — which layers provide the most value per token of overhead?
-- [ ] How does Azure SRE Agent's concurrent memory staleness problem manifest in multi-ralph scenarios with shared state files?
-- [ ] Does the "reasoning sandwich" pattern (heavy reasoning for planning/verification, lighter for implementation) generalize beyond Terminal Bench?
-- [ ] How does the 100+ tools → ~5 tools trajectory (Azure SRE) interact with MCP's push for more tools? Is there an optimal tool count?
+- [ ] At what point does architectural drift from agent-generated code become unrepairable — is there a measurable "point of no return"?
+- [ ] How do teams decide which harness layers to rip when a new model ships — is there a systematic evaluation process?
+
+### Medium Priority (emerging patterns worth tracking)
 - [ ] How quickly will A2A adoption close the gap with MCP (97M downloads)? Will multi-ralph coordination benefit from A2A, or is file-based handoff sufficient?
-- [ ] What's the optimal credential architecture for ralph loops — env vars, vault integration, or injection proxy? At what scale does proxy complexity pay off?
-- [ ] How does Keycard's runtime governance interact with ralph loops in CI/CD vs. local development? Is the audit trail useful for debugging loop failures?
-- [ ] Will MCP Apps (the UI rendering extension) compete with or complement AG-UI for agent frontend experiences?
-- [ ] How will the AAIF governance affect MCP and A2A evolution speed? Will vendor-neutral governance slow iteration or increase adoption?
+- [ ] Does the "reasoning sandwich" generalize beyond Terminal Bench? **[Partially answered in Ch22]** — Outperforms uniform allocation by 12.6 points, but no real-world ralph loop validation yet.
+- [ ] How does guardrails.md scale — at what point do accumulated guardrails become contradictory or context-consuming?
+- [ ] What's the right cadence for garbage-collection/cleanup ralphs — daily, weekly, event-triggered? OpenAI did it weekly (Fridays) before automating.
+- [ ] How does cross-company model diversity (Opus architect, Sonnet dev, Codex reviewer) compare to same-family self-review in measurable quality? **[Partially answered in Ch8/Ch22]** — 68% task overlap cross-vendor vs. 84% same-vendor, but no controlled review quality study.
+- [ ] Will MCP Apps (UI rendering) compete with or complement AG-UI for agent frontend experiences?
 
 ## Answered
 - [x] How does Stripe's "Blueprints" architecture compare to RALPH.md for defining deterministic+agent hybrid workflows? — Blueprints interleave deterministic nodes (linting, testing, file ops) with agentic nodes (code generation, PR writing). RALPH.md already implements this: commands = deterministic nodes, prompt body = agentic directive. Gap: Blueprints have explicit error recovery (bounded retry → human escalation). See Ch20.

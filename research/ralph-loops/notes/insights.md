@@ -272,3 +272,9 @@
 - **Token rotation for long-running agent loops is unsolved for most runtimes.** OAuth token expiry mid-loop leaves work in broken state (Claude Code issue #12447). Credential injection proxy is the cleanest fix: rotation invisible to agent.
 - **RALPH.md is a natural credential scope declaration.** It already declares dependencies (agent + commands). Adding `credentials` or `mcp` fields would enable harness-managed credential provisioning without agent exposure.
 - **The zero-secret agent is architecturally achievable.** GitHub's agentic workflow architecture: agent in dedicated container with zero access to secrets, all auth via separate proxy/gateway containers. Applies directly to sandboxed ralph loops.
+
+## Refinement Observations (Iteration 24)
+- **"Governance-containment gap" is the emerging label for agent security challenges.** MintMCP frames this as the defining challenge of 2026 — agents have unprecedented system access but governance hasn't kept pace. Validates Ch24's credential security coverage.
+- **Domain-specific harnesses are emerging beyond coding agents.** Altimate Code (HN, March 20, 2026) is an open-source harness for data engineering — general agents can write SQL but lack understanding of what it does. The harness engineering pattern is transferable.
+- **40% of deployed AI agents have zero safety monitoring (MIT AI Agent Index).** The monitoring gap is even wider than the eval gap (52.4% with evals). Production ralph loops need built-in observability, not bolt-on dashboards.
+- **Aembit's workload identity model eliminates static secrets entirely.** Ephemeral credentials per-request via workload identity — no vault, no rotation, no static keys. The most radical credential architecture proposed for agent systems.

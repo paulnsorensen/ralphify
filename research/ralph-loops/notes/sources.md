@@ -335,3 +335,7 @@
 - https://1password.com/solutions/agentic-ai — 1Password — Agentic AI SDK for secure agent credential management, vault-backed injection, MCP integration — **medium**
 - https://www.d4b.dev/blog/2026-03-20-agentic-ui-comparing-ag-ui-mcp-ui-and-a2a-protocols — d4b — Comparison of AG-UI, MCP-UI/Apps, and A2A protocols for different use cases — **medium**
 - https://atamel.dev/posts/2026/03-17_agent_protocols_mcp_a2a_a2ui_agui/ — Mete Atamel — Developer's overview of MCP, A2A, A2UI, AG-UI protocol stack — **medium**
+- https://www.doppler.com/blog/mcp-server-credential-security-best-practices — Doppler — MCP credential security best practices: avoid hardcoding, use secret managers, rotate tokens — **medium**
+- https://composio.dev/blog/secure-ai-agent-infrastructure-guide — Composio — Complete guide to secure AI agent infrastructure: auth, secrets, sandboxing — **medium**
+- https://www.mintmcp.com/blog/ai-agent-security — MintMCP — AI agent security enterprise guide 2026: governance-containment gap as defining challenge — **medium**
+- https://news.ycombinator.com/item?id=47438930 — HN / Altimate Code — Show HN: Open-source agentic data engineering harness, domain-specific harness for SQL (March 20, 2026) — **medium**

@@ -677,3 +677,47 @@ After 3 consecutive research iterations (19-21), it's time to tighten. The repor
 - Update Ch06 (implications) with protocol stack and credential findings: MCP server declarations, credential scope declarations, A2A Agent Cards for ralphs
 - Or: research practical "zero-secret" implementations for developer workflows — how do teams actually set up credential injection proxies?
 - Or: explore the AG-UI protocol more deeply — what does it mean for ralph loop UIs and dashboards?
+
+## Iteration 24 — 2026-03-22
+
+**Decision: HYBRID — refine (primary) + targeted research (secondary)**
+
+After 23 iterations and 24 chapters, the report is comprehensive but needs tightening. This iteration focuses on:
+
+**Refine focus:**
+1. REPORT.md: trim 25 → 22 insights by merging 3 pairs:
+   - #23 (Azure SRE self-improvement) → merge into #19 (meta-loop pattern) as production example
+   - #13 (completion promise gating) → fold into #2 (verification) as a specific technique
+   - #17 (50% remediation ineffective) → merge into #16 (loop debugging) as empirical data
+2. Update Ch06 (implications) with protocol/credential findings from Ch24
+3. Add 11th competitive differentiator: zero-secret architecture
+
+**Research focus (secondary):**
+- Quick web sweep for absolute latest (March 22, 2026) developments
+
+**What was done:**
+- Trimmed REPORT.md from 25 to 22 insights by merging 3 pairs:
+  - #13 (completion promise gating) → folded into #2 (verification) as a specific technique
+  - #17 (50% remediation ineffective) → merged into #15 (loop debugging) as empirical data
+  - #23 (Azure SRE self-improvement) → merged into #17 (meta-loop pattern) as production example
+- Preserved cross-vendor model data (68% vs 84% task overlap) by adding to #8 (multi-agent orchestration)
+- Renumbered all insights cleanly (1-22)
+- Updated Ch06 (implications) with protocol/credential architecture section:
+  - Zero-secret ralph architecture (credential scope declarations in RALPH.md frontmatter)
+  - MCP server declarations for automatic tool startup
+  - A2A Agent Cards for ralph-to-ralph coordination
+  - Added 11th competitive differentiator: zero-secret architecture
+- Trimmed questions.md from 48 open questions to 12 (6 high-priority, 6 medium), organized by actionability
+- Web sweep found 4 new sources (Doppler, Composio, MintMCP, Altimate Code HN) — logged but no new chapters needed
+- All new sources reinforce existing credential security findings (Ch24) rather than introducing new patterns
+
+**Key observations:**
+- The research is mature — 22 insights, 24 chapters, 210+ sources. New searches return content already covered.
+- The three merges improved readability without losing information — completion promises fit naturally in verification, remediation data fits in debugging, Azure SRE fits in meta-loop.
+- The "governance-containment gap" framing (MintMCP) is a useful label for what Ch24 already describes.
+- Altimate Code (HN March 20) is interesting as a domain-specific harness for data engineering — validates that harness engineering is spreading beyond coding agents.
+
+**Next iteration should focus on:**
+- Research: explore domain-specific harness engineering (data engineering, infra, security) — is the ralph loop pattern transferring to non-coding domains?
+- Or: deep dive into the "40% of deployed AI agents have zero safety monitoring" (MIT AI Agent Index) — what does monitoring look like for production ralphs?
+- Or: refine cycle — final quality pass on the full report, ensure all chapters are internally consistent

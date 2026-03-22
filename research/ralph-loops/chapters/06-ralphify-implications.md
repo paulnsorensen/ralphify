@@ -450,6 +450,37 @@ Production patterns from earezki (23 concurrent cron jobs) and Geta Team (100+ a
 
 A `ralph schedule` command could generate cron entries or systemd timers for local execution, complementing `ralph ci` for remote.
 
+## Protocol & Credential Architecture
+
+Ch24 research reveals two high-impact implications for ralphify:
+
+### Zero-Secret Ralph Architecture
+
+GitGuardian's 2026 data shows AI-assisted commits leak secrets at 2x the baseline (Claude Code at 3.2% vs 1.5%). RALPH.md already declares dependencies (agent command + commands list) — extending this to declare credential scopes enables harness-managed provisioning where the agent never touches secrets directly.
+
+**Recommendation**: Add optional `credentials` field to RALPH.md frontmatter:
+
+```yaml
+credentials:
+  - name: github
+    scope: read:repo
+  - name: openai
+    scope: api
+```
+
+The harness injects credentials at execution time via environment variables, and scrubs them from agent output. This maps to the credential injection proxy pattern that Vercel, GitHub, and NVIDIA converged on independently.
+
+### MCP Server Declarations
+
+With 5,000+ MCP servers and 97M monthly SDK downloads, ralphs increasingly need external tool access. Declaring MCP dependencies in RALPH.md enables:
+- Automatic MCP server startup before loop execution
+- Context-aware tool loading (only tools needed for this ralph)
+- Token budget management (tool definitions consume up to 72% of context window)
+
+### A2A Agent Cards for Ralphs
+
+A2A's Agent Card format (JSON-LD with capabilities, auth requirements, rate limits) maps to RALPH.md metadata. A ralph could expose itself as an A2A agent, enabling multi-ralph coordination beyond file-based handoff. This is future-looking but architecturally free — RALPH.md already has the right shape.
+
 ## Competitive Positioning
 
 Ralphify sits at a validated sweet spot: simpler than full orchestration frameworks (LangGraph, CrewAI) but more structured than raw bash loops. The Karpathy autoresearch moment — 630 lines running 700 experiments — proves that "simple harness, powerful results" wins.
@@ -465,3 +496,4 @@ The key differentiators to develop:
 8. **Loop fingerprinting & circuit breakers.** Zero-cost stuck detection built into the loop — no other tool in this weight class offers deterministic doom loop prevention. Concrete thresholds (3 no-change, 5 same-error, 70% output decline) are validated by production data.
 9. **Rippable-by-design architecture.** As models improve, ralphify should get simpler. Design features to be removable (e.g., loop detection can be a plugin, not core). This positions ralphify as a framework that evolves with models rather than fighting them.
 10. **Practitioner-to-production bridge.** The 6 converged cookbook patterns are individual-use today. Ralphify can be the framework that adds operational safeguards (revert, fingerprinting, budget, circuit breakers) to make them production-ready. This is the most differentiated positioning: not a new pattern, but the production wrapper around patterns people already use.
+11. **Zero-secret architecture.** RALPH.md already declares dependencies — extending to credential scopes enables harness-managed secret injection where agents never touch credentials directly. With AI commits leaking secrets at 2x the baseline, this is both a security and a trust differentiator.
