@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from helpers import MOCK_POPEN, MOCK_SUBPROCESS, fail_result, make_mock_popen, ok_result
+from helpers import MOCK_POPEN, MOCK_SUBPROCESS, fail_proc, make_mock_popen, ok_proc
 
 from ralphify._agent import (
     AgentResult,
@@ -169,9 +169,8 @@ class TestReadAgentStream:
 
 
 class TestExecuteAgentBlocking:
-    @patch(MOCK_SUBPROCESS)
-    def test_success(self, mock_run):
-        mock_run.return_value = ok_result()
+    @patch(MOCK_POPEN, side_effect=ok_proc)
+    def test_success(self, mock_popen):
         result = execute_agent(["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1)
 
         assert result.returncode == 0
@@ -179,25 +178,30 @@ class TestExecuteAgentBlocking:
         assert result.log_file is None
         assert result.elapsed >= 0
 
-    @patch(MOCK_SUBPROCESS)
-    def test_failure(self, mock_run):
-        mock_run.return_value = fail_result()
+    @patch(MOCK_POPEN, side_effect=fail_proc)
+    def test_failure(self, mock_popen):
         result = execute_agent(["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1)
 
         assert result.returncode == 1
         assert result.timed_out is False
 
-    @patch(MOCK_SUBPROCESS)
-    def test_timeout(self, mock_run):
-        mock_run.side_effect = subprocess.TimeoutExpired(cmd="echo", timeout=5)
+    @patch(MOCK_POPEN)
+    def test_timeout(self, mock_popen):
+        proc = ok_proc()
+        proc.communicate.side_effect = [
+            subprocess.TimeoutExpired(cmd="echo", timeout=5),
+            ("", ""),
+        ]
+        proc.poll.return_value = None
+        mock_popen.return_value = proc
         result = execute_agent(["echo"], "prompt", timeout=5, log_path_dir=None, iteration=1)
 
         assert result.returncode is None
         assert result.timed_out is True
 
-    @patch(MOCK_SUBPROCESS)
-    def test_writes_log_on_success(self, mock_run, tmp_path):
-        mock_run.return_value = ok_result(stdout="agent output\n")
+    @patch(MOCK_POPEN)
+    def test_writes_log_on_success(self, mock_popen, tmp_path):
+        mock_popen.return_value = ok_proc(stdout="agent output\n")
         result = execute_agent(
             ["echo"], "prompt", timeout=None, log_path_dir=tmp_path, iteration=3,
         )
@@ -207,12 +211,15 @@ class TestExecuteAgentBlocking:
         assert result.log_file.name.startswith("003_")
         assert "agent output" in result.log_file.read_text()
 
-    @patch(MOCK_SUBPROCESS)
-    def test_writes_log_on_timeout(self, mock_run, tmp_path):
-        exc = subprocess.TimeoutExpired(cmd="echo", timeout=5)
-        exc.stdout = "partial"
-        exc.stderr = "err"
-        mock_run.side_effect = exc
+    @patch(MOCK_POPEN)
+    def test_writes_log_on_timeout(self, mock_popen, tmp_path):
+        proc = ok_proc()
+        proc.communicate.side_effect = [
+            subprocess.TimeoutExpired(cmd="echo", timeout=5),
+            ("partial", "err"),
+        ]
+        proc.poll.return_value = None
+        mock_popen.return_value = proc
         result = execute_agent(
             ["echo"], "prompt", timeout=5, log_path_dir=tmp_path, iteration=1,
         )
@@ -220,14 +227,17 @@ class TestExecuteAgentBlocking:
         assert result.log_file is not None
         assert result.log_file.exists()
 
-    @patch(MOCK_SUBPROCESS)
-    def test_timeout_echoes_captured_output(self, mock_run, tmp_path, capsys):
+    @patch(MOCK_POPEN)
+    def test_timeout_echoes_captured_output(self, mock_popen, tmp_path, capsys):
         """When logging is enabled and the agent times out, partial output
         should be echoed to the terminal — same as on normal completion."""
-        exc = subprocess.TimeoutExpired(cmd="echo", timeout=5)
-        exc.stdout = "partial stdout"
-        exc.stderr = "partial stderr"
-        mock_run.side_effect = exc
+        proc = ok_proc()
+        proc.communicate.side_effect = [
+            subprocess.TimeoutExpired(cmd="echo", timeout=5),
+            ("partial stdout", "partial stderr"),
+        ]
+        proc.poll.return_value = None
+        mock_popen.return_value = proc
         execute_agent(
             ["echo"], "prompt", timeout=5, log_path_dir=tmp_path, iteration=1,
         )
@@ -236,16 +246,15 @@ class TestExecuteAgentBlocking:
         assert "partial stdout" in captured.out
         assert "partial stderr" in captured.err
 
-    @patch(MOCK_SUBPROCESS)
-    def test_no_log_when_dir_not_set(self, mock_run):
-        mock_run.return_value = ok_result()
+    @patch(MOCK_POPEN, side_effect=ok_proc)
+    def test_no_log_when_dir_not_set(self, mock_popen):
         result = execute_agent(["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1)
 
         assert result.log_file is None
 
-    @patch(MOCK_SUBPROCESS)
-    def test_file_not_found_propagates(self, mock_run):
-        mock_run.side_effect = FileNotFoundError("not found")
+    @patch(MOCK_POPEN)
+    def test_file_not_found_propagates(self, mock_popen):
+        mock_popen.side_effect = FileNotFoundError("not found")
 
         with pytest.raises(FileNotFoundError):
             execute_agent(

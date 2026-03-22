@@ -262,6 +262,10 @@ def _run_agent_blocking(
     then echoed to stdout/stderr so the user still sees it live.  When unset,
     output streams directly to the terminal (no capture overhead).
 
+    The subprocess is started in its own process group so that on
+    ``KeyboardInterrupt`` or timeout the entire child tree can be killed
+    via :func:`_kill_process_group`.
+
     Returns ``returncode=None`` when the process times out.
     Raises ``FileNotFoundError`` if the command binary does not exist.
     """
@@ -270,20 +274,27 @@ def _run_agent_blocking(
     timed_out = False
     stdout: str | bytes | None = None
     stderr: str | bytes | None = None
+    capture = log_path_dir is not None
 
+    proc = subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE if capture else None,
+        stderr=subprocess.PIPE if capture else None,
+        **SUBPROCESS_TEXT_KWARGS,
+        **_SESSION_KWARGS,
+    )
     try:
-        result = subprocess.run(
-            cmd,
-            input=prompt,
-            **SUBPROCESS_TEXT_KWARGS,
-            timeout=timeout,
-            capture_output=log_path_dir is not None,
-        )
-        returncode = result.returncode
-        stdout, stderr = result.stdout, result.stderr
-    except subprocess.TimeoutExpired as exc:
+        stdout, stderr = proc.communicate(input=prompt, timeout=timeout)
+        returncode = proc.returncode
+    except subprocess.TimeoutExpired:
+        _kill_process_group(proc)
+        stdout, stderr = proc.communicate()
         timed_out = True
-        stdout, stderr = exc.stdout, exc.stderr
+    except KeyboardInterrupt:
+        _kill_process_group(proc)
+        proc.wait()
+        raise
 
     log_file = _write_log(log_path_dir, iteration, stdout, stderr)
     if log_path_dir:

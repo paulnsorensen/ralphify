@@ -7,7 +7,7 @@ import pytest
 import typer
 from typer.testing import CliRunner
 
-from helpers import MOCK_ENGINE_SLEEP, MOCK_SKILLS_WHICH, MOCK_SUBPROCESS, MOCK_WHICH, ok_result, fail_result, make_ralph
+from helpers import MOCK_ENGINE_SLEEP, MOCK_SKILLS_WHICH, MOCK_SUBPROCESS, MOCK_WHICH, ok_proc, fail_proc, make_ralph, timeout_proc
 from ralphify import __version__
 from ralphify._frontmatter import RALPH_MARKER
 from ralphify.cli import app, _parse_command_items, _parse_user_args
@@ -112,7 +112,7 @@ class TestRun:
 
     @pytest.mark.parametrize("yaml_value", ["commands:", "commands: null"],
                              ids=["empty-value", "explicit-null"])
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_null_commands_treated_as_empty(self, mock_run, mock_which, tmp_path, monkeypatch, yaml_value):
         """YAML `commands:` (no value) and `commands: null` should be treated as no commands."""
         monkeypatch.chdir(tmp_path)
@@ -217,7 +217,7 @@ class TestRun:
         assert result.exit_code == 1
         assert "non-negative" in result.output.lower()
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_runs_when_valid(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
@@ -225,15 +225,23 @@ class TestRun:
         assert result.exit_code == 0
         assert mock_run.call_count == 1
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS)
     def test_runs_n_iterations(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path, prompt="test prompt")
+        procs = []
+
+        def capture_proc(*args, **kwargs):
+            proc = ok_proc()
+            procs.append(proc)
+            return proc
+
+        mock_run.side_effect = capture_proc
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "3"])
         assert result.exit_code == 0
         assert mock_run.call_count == 3
-        for call in mock_run.call_args_list:
-            assert call.kwargs["input"].startswith("test prompt")
+        for proc in procs:
+            assert proc.communicate.call_args.kwargs["input"].startswith("test prompt")
 
     @patch(MOCK_SUBPROCESS)
     def test_reads_prompt_each_iteration(self, mock_run, mock_which, tmp_path, monkeypatch):
@@ -242,6 +250,7 @@ class TestRun:
         ralph_file = ralph_dir / RALPH_MARKER
 
         call_count = 0
+        procs = []
 
         def update_prompt(*args, **kwargs):
             nonlocal call_count
@@ -251,16 +260,18 @@ class TestRun:
                 ralph_file.write_text(
                     "---\nagent: claude -p --dangerously-skip-permissions\n---\nv2"
                 )
-            return ok_result(*args, **kwargs)
+            proc = ok_proc(*args, **kwargs)
+            procs.append(proc)
+            return proc
 
         mock_run.side_effect = update_prompt
 
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "2"])
         assert result.exit_code == 0
-        assert mock_run.call_args_list[0].kwargs["input"].startswith("v1")
-        assert mock_run.call_args_list[1].kwargs["input"].startswith("v2")
+        assert procs[0].communicate.call_args.kwargs["input"].startswith("v1")
+        assert procs[1].communicate.call_args.kwargs["input"].startswith("v2")
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_shows_success_per_iteration(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
@@ -270,7 +281,7 @@ class TestRun:
         assert "Iteration 2 completed" in result.output
         assert "2 succeeded" in result.output
 
-    @patch(MOCK_SUBPROCESS, side_effect=fail_result)
+    @patch(MOCK_SUBPROCESS, side_effect=fail_proc)
     def test_continues_on_error_by_default(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
@@ -279,7 +290,7 @@ class TestRun:
         assert mock_run.call_count == 3
         assert "3 failed" in result.output
 
-    @patch(MOCK_SUBPROCESS, side_effect=fail_result)
+    @patch(MOCK_SUBPROCESS, side_effect=fail_proc)
     def test_stop_on_error(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
@@ -293,14 +304,14 @@ class TestRun:
     def test_mixed_success_and_failure(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
-        mock_run.side_effect = [ok_result(), fail_result(), ok_result()]
+        mock_run.side_effect = [ok_proc(), fail_proc(), ok_proc()]
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "3"])
         assert result.exit_code == 0
         assert "2 succeeded" in result.output
         assert "1 failed" in result.output
 
     @patch(MOCK_ENGINE_SLEEP)
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_delay_between_iterations(self, mock_run, mock_sleep, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
@@ -313,7 +324,7 @@ class TestRun:
         assert abs(total_sleep - 10.0) < 0.01
 
     @patch(MOCK_ENGINE_SLEEP)
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_no_delay_with_single_iteration(self, mock_run, mock_sleep, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
@@ -321,7 +332,7 @@ class TestRun:
         assert result.exit_code == 0
         mock_sleep.assert_not_called()
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_accepts_ralph_md_file_path(self, mock_run, mock_which, tmp_path, monkeypatch):
         """Can pass path to RALPH.md file directly."""
         monkeypatch.chdir(tmp_path)
@@ -337,7 +348,7 @@ class TestRunLogging:
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
         log_dir = tmp_path / "logs"
-        mock_run.return_value = ok_result(stdout="agent output\n")
+        mock_run.return_value = ok_proc(stdout="agent output\n")
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "2", "--log-dir", str(log_dir)])
         assert result.exit_code == 0
         log_files = sorted(log_dir.iterdir())
@@ -350,7 +361,7 @@ class TestRunLogging:
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
         log_dir = tmp_path / "logs"
-        mock_run.return_value = ok_result(stdout="hello from agent\n", stderr="warning\n")
+        mock_run.return_value = ok_proc(stdout="hello from agent\n", stderr="warning\n")
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1", "--log-dir", str(log_dir)])
         assert result.exit_code == 0
         log_files = list(log_dir.iterdir())
@@ -358,7 +369,7 @@ class TestRunLogging:
         assert "hello from agent" in content
         assert "warning" in content
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_no_log_files_without_flag(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
@@ -369,33 +380,34 @@ class TestRunLogging:
 
 @patch(MOCK_WHICH, return_value="/usr/bin/claude")
 class TestRunTimeout:
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS)
     def test_timeout_passed_to_subprocess(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
+        mock_run.return_value = ok_proc()
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1", "--timeout", "30"])
         assert result.exit_code == 0
-        assert mock_run.call_args.kwargs["timeout"] == 30
+        assert mock_run.return_value.communicate.call_args.kwargs["timeout"] == 30
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS)
     def test_no_timeout_by_default(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
+        mock_run.return_value = ok_proc()
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
         assert result.exit_code == 0
-        assert mock_run.call_args.kwargs["timeout"] is None
+        assert mock_run.return_value.communicate.call_args.kwargs["timeout"] is None
 
-    @patch(MOCK_SUBPROCESS)
+    @patch(MOCK_SUBPROCESS, side_effect=timeout_proc)
     def test_timeout_counts_as_failure(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
-        mock_run.side_effect = subprocess.TimeoutExpired(cmd="claude", timeout=10)
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1", "--timeout", "10"])
         assert result.exit_code == 0
         assert "timed out" in result.output
         assert "1 timed out" in result.output
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_timeout_shows_in_header(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
@@ -597,15 +609,16 @@ class TestDuplicateArgNamesRejected:
 
 @patch(MOCK_WHICH, return_value="/usr/bin/claude")
 class TestRunWithUserArgs:
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS)
     def test_named_args_resolved_in_prompt(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path, prompt="Research {{ args.dir }}")
+        mock_run.return_value = ok_proc()
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1", "--dir", "./my-project"])
         assert result.exit_code == 0
-        assert mock_run.call_args.kwargs["input"].startswith("Research ./my-project")
+        assert mock_run.return_value.communicate.call_args.kwargs["input"].startswith("Research ./my-project")
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS)
     def test_positional_args_with_declared_names(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(
@@ -613,17 +626,19 @@ class TestRunWithUserArgs:
             prompt="Research {{ args.dir }} with focus on {{ args.focus }}",
             args=["dir", "focus"],
         )
+        mock_run.return_value = ok_proc()
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1", "./my-project", "performance"])
         assert result.exit_code == 0
-        assert mock_run.call_args.kwargs["input"].startswith("Research ./my-project with focus on performance")
+        assert mock_run.return_value.communicate.call_args.kwargs["input"].startswith("Research ./my-project with focus on performance")
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS)
     def test_unused_arg_placeholders_cleared(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path, prompt="Before {{ args.opt }} after")
+        mock_run.return_value = ok_proc()
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
         assert result.exit_code == 0
-        assert mock_run.call_args.kwargs["input"].startswith("Before  after")
+        assert mock_run.return_value.communicate.call_args.kwargs["input"].startswith("Before  after")
 
 
 class TestParseCommands:
@@ -742,15 +757,16 @@ class TestParseCommands:
 
 @patch(MOCK_WHICH, return_value="/usr/bin/claude")
 class TestCreditFrontmatter:
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS)
     def test_credit_true_by_default(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path, prompt="go")
+        mock_run.return_value = ok_proc()
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
         assert result.exit_code == 0
-        assert "Co-authored-by: Ralphify" in mock_run.call_args.kwargs["input"]
+        assert "Co-authored-by: Ralphify" in mock_run.return_value.communicate.call_args.kwargs["input"]
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS)
     def test_credit_false_omits_trailer(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = tmp_path / "my-ralph"
@@ -758,9 +774,10 @@ class TestCreditFrontmatter:
         (ralph_dir / RALPH_MARKER).write_text(
             "---\nagent: claude -p --dangerously-skip-permissions\ncredit: false\n---\ngo"
         )
+        mock_run.return_value = ok_proc()
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
         assert result.exit_code == 0
-        assert "Co-authored-by" not in mock_run.call_args.kwargs["input"]
+        assert "Co-authored-by" not in mock_run.return_value.communicate.call_args.kwargs["input"]
 
     def test_credit_invalid_value_errors(self, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)

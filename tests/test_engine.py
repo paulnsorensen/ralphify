@@ -6,7 +6,7 @@ import time
 from unittest.mock import patch
 
 import pytest
-from helpers import MOCK_RUN_COMMAND, MOCK_SUBPROCESS, drain_events, event_types, events_of_type, fail_result, make_config, make_state, ok_result, ok_run_result
+from helpers import MOCK_RUN_COMMAND, MOCK_SUBPROCESS, drain_events, event_types, events_of_type, fail_proc, make_config, make_state, ok_proc, ok_run_result, timeout_proc
 
 from ralphify._events import BoundEmitter, EventType, NullEmitter, QueueEmitter
 from ralphify._run_types import Command, RunStatus
@@ -20,7 +20,7 @@ from ralphify.engine import (
 
 
 class TestRunLoop:
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_single_iteration(self, mock_run, tmp_path):
         config = make_config(tmp_path, max_iterations=1)
         state = make_state()
@@ -33,7 +33,7 @@ class TestRunLoop:
         assert state.status == RunStatus.COMPLETED
         assert mock_run.call_count == 1
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_multiple_iterations(self, mock_run, tmp_path):
         config = make_config(tmp_path, max_iterations=3)
         state = make_state()
@@ -43,7 +43,7 @@ class TestRunLoop:
         assert state.completed == 3
         assert mock_run.call_count == 3
 
-    @patch(MOCK_SUBPROCESS, side_effect=fail_result)
+    @patch(MOCK_SUBPROCESS, side_effect=fail_proc)
     def test_failed_iterations_counted(self, mock_run, tmp_path):
         config = make_config(tmp_path, max_iterations=2)
         state = make_state()
@@ -53,7 +53,7 @@ class TestRunLoop:
         assert state.completed == 0
         assert state.failed == 2
 
-    @patch(MOCK_SUBPROCESS, side_effect=fail_result)
+    @patch(MOCK_SUBPROCESS, side_effect=fail_proc)
     def test_stop_on_error(self, mock_run, tmp_path):
         config = make_config(tmp_path, max_iterations=5, stop_on_error=True)
         state = make_state()
@@ -63,7 +63,7 @@ class TestRunLoop:
         assert mock_run.call_count == 1
         assert state.failed == 1
 
-    @patch(MOCK_SUBPROCESS, side_effect=fail_result)
+    @patch(MOCK_SUBPROCESS, side_effect=fail_proc)
     def test_stop_on_error_sets_failed_status(self, mock_run, tmp_path):
         """When stop_on_error triggers, status should be FAILED, not COMPLETED."""
         config = make_config(tmp_path, max_iterations=5, stop_on_error=True)
@@ -77,9 +77,8 @@ class TestRunLoop:
         stop_event = events_of_type(events, EventType.RUN_STOPPED)[0]
         assert stop_event.data["reason"] == "error"
 
-    @patch(MOCK_SUBPROCESS)
+    @patch(MOCK_SUBPROCESS, side_effect=timeout_proc)
     def test_timeout_counted(self, mock_run, tmp_path):
-        mock_run.side_effect = subprocess.TimeoutExpired(cmd="echo", timeout=5)
         config = make_config(tmp_path, max_iterations=1, timeout=5)
         state = make_state()
 
@@ -88,18 +87,19 @@ class TestRunLoop:
         assert state.timed_out == 1
         assert state.failed == 1
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS)
     def test_prompt_read_from_ralph_file(self, mock_run, tmp_path):
+        mock_run.return_value = ok_proc()
         config = make_config(tmp_path, "my prompt text", max_iterations=1, credit=False)
         state = make_state()
 
         run_loop(config, state, NullEmitter())
 
-        assert mock_run.call_args.kwargs["input"] == "my prompt text"
+        assert mock_run.return_value.communicate.call_args.kwargs["input"] == "my prompt text"
 
     @patch(MOCK_SUBPROCESS)
     def test_log_dir_creates_files(self, mock_run, tmp_path):
-        mock_run.return_value = ok_result(stdout="output\n")
+        mock_run.return_value = ok_proc(stdout="output\n")
         log_dir = tmp_path / "logs"
         config = make_config(tmp_path, max_iterations=2, log_dir=log_dir)
         state = make_state()
@@ -113,7 +113,7 @@ class TestRunLoop:
 
 
 class TestRunLoopDefaults:
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_runs_without_emitter(self, mock_run, tmp_path):
         """run_loop works when called without an explicit emitter (uses NullEmitter)."""
         config = make_config(tmp_path, max_iterations=1)
@@ -126,7 +126,7 @@ class TestRunLoopDefaults:
 
 
 class TestRunLoopEvents:
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_events_emitted_in_order(self, mock_run, tmp_path):
         config = make_config(tmp_path, max_iterations=1)
         state = make_state()
@@ -143,7 +143,7 @@ class TestRunLoopEvents:
         assert types.index(EventType.PROMPT_ASSEMBLED) < types.index(EventType.ITERATION_COMPLETED)
         assert types.index(EventType.ITERATION_COMPLETED) < types.index(EventType.RUN_STOPPED)
 
-    @patch(MOCK_SUBPROCESS, side_effect=fail_result)
+    @patch(MOCK_SUBPROCESS, side_effect=fail_proc)
     def test_failure_event_emitted(self, mock_run, tmp_path):
         config = make_config(tmp_path, max_iterations=1)
         state = make_state()
@@ -154,9 +154,8 @@ class TestRunLoopEvents:
         events = drain_events(q)
         assert EventType.ITERATION_FAILED in event_types(events)
 
-    @patch(MOCK_SUBPROCESS)
+    @patch(MOCK_SUBPROCESS, side_effect=timeout_proc)
     def test_timeout_event_emitted(self, mock_run, tmp_path):
-        mock_run.side_effect = subprocess.TimeoutExpired(cmd="echo", timeout=5)
         config = make_config(tmp_path, max_iterations=1, timeout=5)
         state = make_state()
         q = QueueEmitter()
@@ -166,7 +165,7 @@ class TestRunLoopEvents:
         events = drain_events(q)
         assert EventType.ITERATION_TIMED_OUT in event_types(events)
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_all_events_have_run_id(self, mock_run, tmp_path):
         config = make_config(tmp_path, max_iterations=1)
         state = make_state()
@@ -179,14 +178,14 @@ class TestRunLoopEvents:
 
 
 class TestRunStateControls:
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_stop_request(self, mock_run, tmp_path):
         config = make_config(tmp_path, max_iterations=100)
         state = make_state()
 
         def stop_after_first(*args, **kwargs):
             state.request_stop()
-            return ok_result(*args, **kwargs)
+            return ok_proc(*args, **kwargs)
 
         mock_run.side_effect = stop_after_first
 
@@ -209,7 +208,7 @@ class TestRunStateControls:
         stop_event = events_of_type(events, EventType.RUN_STOPPED)[0]
         assert stop_event.data["reason"] == "user_requested"
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_pause_and_resume(self, mock_run, tmp_path):
         config = make_config(tmp_path, max_iterations=3)
         state = make_state()
@@ -227,7 +226,7 @@ class TestRunStateControls:
                     state.request_resume()
 
                 threading.Thread(target=resume_later, daemon=True).start()
-            return ok_result(*args, **kwargs)
+            return ok_proc(*args, **kwargs)
 
         mock_run.side_effect = track_calls
 
@@ -236,7 +235,7 @@ class TestRunStateControls:
         assert state.completed == 3
         assert state.status == RunStatus.COMPLETED
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_stop_while_paused(self, mock_run, tmp_path):
         config = make_config(tmp_path, max_iterations=100)
         state = make_state()
@@ -249,7 +248,7 @@ class TestRunStateControls:
                 state.request_stop()
 
             threading.Thread(target=stop_later, daemon=True).start()
-            return ok_result(*args, **kwargs)
+            return ok_proc(*args, **kwargs)
 
         mock_run.side_effect = pause_then_stop
 
@@ -260,8 +259,9 @@ class TestRunStateControls:
 
 
 class TestRalphArgs:
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS)
     def test_args_resolved_in_prompt(self, mock_run, tmp_path):
+        mock_run.return_value = ok_proc()
         config = make_config(
             tmp_path,
             "---\nargs:\n  - dir\n  - focus\n---\nResearch {{ args.dir }} focus: {{ args.focus }}",
@@ -272,24 +272,26 @@ class TestRalphArgs:
         state = make_state()
         run_loop(config, state, NullEmitter())
 
-        call_input = mock_run.call_args.kwargs["input"]
+        call_input = mock_run.return_value.communicate.call_args.kwargs["input"]
         assert call_input == "Research ./src focus: perf"
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS)
     def test_empty_args_clears_placeholders(self, mock_run, tmp_path):
+        mock_run.return_value = ok_proc()
         config = make_config(tmp_path, "Before {{ args.opt }} after", max_iterations=1, args={}, credit=False)
         state = make_state()
         run_loop(config, state, NullEmitter())
 
-        call_input = mock_run.call_args.kwargs["input"]
+        call_input = mock_run.return_value.communicate.call_args.kwargs["input"]
         assert call_input == "Before  after"
 
 
 class TestCommandExecution:
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS)
     @patch(MOCK_RUN_COMMAND)
     def test_commands_output_injected(self, mock_run_cmd, mock_agent, tmp_path):
         mock_run_cmd.return_value = ok_run_result(output="test output\n")
+        mock_agent.return_value = ok_proc()
 
         config = make_config(
             tmp_path,
@@ -301,11 +303,11 @@ class TestCommandExecution:
         state = make_state()
         run_loop(config, state, NullEmitter())
 
-        call_input = mock_agent.call_args.kwargs["input"]
+        call_input = mock_agent.return_value.communicate.call_args.kwargs["input"]
         assert "test output" in call_input
         assert "{{ commands.tests }}" not in call_input
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     @patch(MOCK_RUN_COMMAND)
     def test_multiple_commands_all_executed(self, mock_run_cmd, mock_agent, tmp_path):
         """All commands in the list are executed and their outputs collected."""
@@ -336,7 +338,7 @@ class TestCommandExecution:
 
         assert mock_run_cmd.call_count == 2
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     @patch(MOCK_RUN_COMMAND)
     def test_dotslash_command_uses_ralph_dir_as_cwd(self, mock_run_cmd, mock_agent, tmp_path):
         """Commands starting with ./ run relative to the ralph directory."""
@@ -355,7 +357,7 @@ class TestCommandExecution:
         passed_cwd = mock_run_cmd.call_args.kwargs["cwd"]
         assert passed_cwd == config.ralph_dir
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     @patch(MOCK_RUN_COMMAND)
     def test_regular_command_uses_project_root_as_cwd(self, mock_run_cmd, mock_agent, tmp_path):
         """Commands without ./ prefix run from the project root."""
@@ -374,7 +376,7 @@ class TestCommandExecution:
         passed_cwd = mock_run_cmd.call_args.kwargs["cwd"]
         assert passed_cwd == config.project_root
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     @patch(MOCK_RUN_COMMAND)
     def test_command_timeout_passed_through(self, mock_run_cmd, mock_agent, tmp_path):
         """Command timeout from frontmatter is forwarded to run_command."""
@@ -473,7 +475,7 @@ class TestRunLoopCrashHandling:
         assert state.iteration == 1
 
     @patch("ralphify.engine.parse_frontmatter")
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_crash_in_prompt_assembly_handled(self, mock_run, mock_parse, tmp_path):
         mock_parse.side_effect = ValueError("corrupt YAML")
         config = make_config(tmp_path, max_iterations=1)
@@ -877,20 +879,22 @@ class TestAssemblePrompt:
 
 
 class TestCreditInLoop:
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS)
     def test_credit_instruction_in_agent_input(self, mock_run, tmp_path):
+        mock_run.return_value = ok_proc()
         config = make_config(tmp_path, "do work", max_iterations=1)
         state = make_state()
         run_loop(config, state, NullEmitter())
 
-        call_input = mock_run.call_args.kwargs["input"]
+        call_input = mock_run.return_value.communicate.call_args.kwargs["input"]
         assert "Co-authored-by: Ralphify <noreply@ralphify.co>" in call_input
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS)
     def test_credit_false_no_trailer_in_agent_input(self, mock_run, tmp_path):
+        mock_run.return_value = ok_proc()
         config = make_config(tmp_path, "do work", max_iterations=1, credit=False)
         state = make_state()
         run_loop(config, state, NullEmitter())
 
-        call_input = mock_run.call_args.kwargs["input"]
+        call_input = mock_run.return_value.communicate.call_args.kwargs["input"]
         assert "Co-authored-by" not in call_input
