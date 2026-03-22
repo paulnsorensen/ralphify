@@ -177,7 +177,7 @@ The loop continues until one of these happens:
 
 | Condition | What happens |
 |---|---|
-| `Ctrl+C` | Loop stops after the current iteration finishes |
+| `Ctrl+C` | Loop stops immediately — the current iteration is interrupted and the agent process receives the signal |
 | `-n` limit reached | Loop stops after completing the specified number of iterations |
 | `--stop-on-error` and agent exits non-zero or times out | Loop stops after the current iteration |
 | `--timeout` exceeded | Agent process is killed, iteration is marked as timed out, loop continues (unless `--stop-on-error`) |
