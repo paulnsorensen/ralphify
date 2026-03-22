@@ -51,6 +51,20 @@ def _exit_error(msg: str) -> NoReturn:
     raise typer.Exit(1)
 
 
+def _is_nonempty_string(value: Any) -> bool:
+    """Return True if *value* is a non-empty string (after stripping whitespace)."""
+    return isinstance(value, str) and bool(value.strip())
+
+
+def _is_valid_timeout(value: Any) -> bool:
+    """Return True if *value* is a positive finite number (not a bool)."""
+    if isinstance(value, bool):  # bool is a subclass of int — reject first
+        return False
+    if not isinstance(value, (int, float)):
+        return False
+    return math.isfinite(value) and value > 0
+
+
 def _validate_name(name: str, context: str) -> None:
     """Validate that *name* contains only characters valid for placeholders.
 
@@ -271,7 +285,7 @@ def _parse_commands(raw_commands: list[dict[str, Any]]) -> list[Command]:
         if not isinstance(cmd_def, dict) or CMD_FIELD_NAME not in cmd_def or CMD_FIELD_RUN not in cmd_def:
             _exit_error(f"Each command must have '{CMD_FIELD_NAME}' and '{CMD_FIELD_RUN}' fields.")
         for key in (CMD_FIELD_NAME, CMD_FIELD_RUN):
-            if not isinstance(cmd_def[key], str) or not cmd_def[key].strip():
+            if not _is_nonempty_string(cmd_def[key]):
                 _exit_error(f"Command '{key}' must be a non-empty string.")
         cmd_name = cmd_def[CMD_FIELD_NAME]
         cmd_run = cmd_def[CMD_FIELD_RUN]
@@ -280,7 +294,7 @@ def _parse_commands(raw_commands: list[dict[str, Any]]) -> list[Command]:
             _exit_error(f"Duplicate command name '{cmd_name}'.")
         seen_names.add(cmd_name)
         timeout = cmd_def.get(CMD_FIELD_TIMEOUT, DEFAULT_COMMAND_TIMEOUT)
-        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or timeout <= 0:
+        if not _is_valid_timeout(timeout):
             _exit_error(
                 f"Command '{cmd_name}' has invalid timeout: {timeout!r}. "
                 f"Must be a positive number."
@@ -333,7 +347,7 @@ def _build_run_config(
 
     # Validate required agent field
     agent = fm.get(FIELD_AGENT)
-    if not isinstance(agent, str) or not agent.strip():
+    if not _is_nonempty_string(agent):
         _exit_error(f"Missing or empty '{FIELD_AGENT}' field in {RALPH_MARKER} frontmatter.")
 
     # Validate agent command exists
