@@ -119,6 +119,28 @@ commands:
     run: uv run pytest -x
 ```
 
+### "Duplicate arg name" / "Duplicate command name"
+
+Arg names and command names must be unique within a single `RALPH.md`. Duplicates are rejected at startup:
+
+```yaml
+# ✗ Wrong — "tests" appears twice
+commands:
+  - name: tests
+    run: uv run pytest -x
+  - name: tests
+    run: uv run pytest tests/integration
+
+# ✓ Correct — use distinct names
+commands:
+  - name: unit-tests
+    run: uv run pytest -x
+  - name: integration-tests
+    run: uv run pytest tests/integration
+```
+
+The same applies to `args` — each name must appear only once.
+
 ### "'commands' must be a list" or "'args' must be a list of strings"
 
 YAML scalars and lists look similar. A common mistake is writing a plain string where a list is expected:
