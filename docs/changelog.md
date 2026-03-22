@@ -18,6 +18,8 @@ All notable changes to ralphify are documented here.
 - **`--` separator not ending flag parsing in user args** — `ralph run my-ralph -- --verbose ./src` now correctly treats `--verbose` as a positional value instead of parsing it as a flag.
 - **Command output garbled when stdout lacked trailing newline** — when a command's stdout didn't end with a newline and stderr was non-empty, the two streams were concatenated directly (e.g. `"test passedwarning: dep"`), producing garbled output in log files and `{{ commands.* }}` placeholder values.
 - **Indented `---` in YAML block scalars mistaken for closing frontmatter delimiter** — the frontmatter parser used `line.strip()` to detect the closing `---`, which caused indented `---` inside YAML block scalars (e.g. `notes: |` with `  ---` content) to be treated as the end of the frontmatter. Now only `---` at column 0 is recognized as the closing delimiter.
+- **Indented opening `---` delimiter accepted inconsistently** — the opening frontmatter delimiter check used `strip()` which accepted leading whitespace (e.g. `  ---`), while the closing delimiter required column 0. Both delimiters now require `---` at column 0 per the YAML frontmatter spec.
+- **Arg values with spaces breaking command execution** — when `{{ args.name }}` placeholders were substituted into command `run` strings, values containing spaces (e.g. `"hello world"`) were split into separate tokens by `shlex.split`, causing the wrong command to execute. Arg values are now shell-quoted before substitution so they are always treated as single tokens.
 
 ### Improved
 
