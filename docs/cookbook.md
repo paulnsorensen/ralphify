@@ -1,7 +1,7 @@
 ---
 title: Ralph Loop Recipes
-description: Copy-pasteable ralphify setups for autonomous coding, documentation, codebase improvement, deep research, bug fixing, and more.
-keywords: ralphify cookbook, autonomous coding recipes, RALPH.md examples, documentation loop, bug fixing loop, codebase improvement, deep research agent
+description: Copy-pasteable ralph loop setups for autonomous coding, test coverage, code migration, security scanning, deep research, documentation, bug fixing, and codebase improvement.
+keywords: ralphify cookbook, autonomous coding recipes, RALPH.md examples, documentation loop, bug fixing loop, codebase improvement, deep research agent, code migration loop, security scanning agent, test coverage automation, Python project loop
 ---
 
 # Cookbook
