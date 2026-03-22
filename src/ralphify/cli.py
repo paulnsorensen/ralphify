@@ -360,6 +360,36 @@ def _validate_agent(raw_agent: Any) -> str:
     return raw_agent
 
 
+def _validate_credit(raw_credit: Any) -> bool:
+    """Validate the ``credit`` frontmatter field and return the resolved value.
+
+    Returns ``True`` when the field is absent (default behavior).
+    Exits with an error when the value is not a boolean.
+    """
+    if raw_credit is None:
+        return True
+    if not isinstance(raw_credit, bool):
+        _exit_error(f"'{FIELD_CREDIT}' must be true or false, got {raw_credit!r}.")
+    return raw_credit
+
+
+def _validate_run_options(
+    max_iterations: int | None,
+    delay: float,
+    timeout: float | None,
+) -> None:
+    """Validate numeric CLI run options.
+
+    Exits with an error when any value is out of range or non-finite.
+    """
+    if max_iterations is not None and max_iterations < 1:
+        _exit_error(f"'-n' must be a positive integer, got {max_iterations}.")
+    if not math.isfinite(delay) or delay < 0:
+        _exit_error(f"'--delay' must be non-negative, got {delay}.")
+    if timeout is not None and (not math.isfinite(timeout) or timeout <= 0):
+        _exit_error(f"'--timeout' must be a positive number, got {timeout}.")
+
+
 def _build_run_config(
     ralph_path: str,
     max_iterations: int | None,
@@ -382,18 +412,8 @@ def _build_run_config(
     if extra_args:
         ralph_args = _parse_user_args(extra_args, declared_names)
 
-    # Parse credit field (default: True)
-    credit = fm.get(FIELD_CREDIT, True)
-    if not isinstance(credit, bool):
-        _exit_error(f"'{FIELD_CREDIT}' must be true or false, got {credit!r}.")
-
-    # Validate numeric options
-    if max_iterations is not None and max_iterations < 1:
-        _exit_error(f"'-n' must be a positive integer, got {max_iterations}.")
-    if not math.isfinite(delay) or delay < 0:
-        _exit_error(f"'--delay' must be non-negative, got {delay}.")
-    if timeout is not None and (not math.isfinite(timeout) or timeout <= 0):
-        _exit_error(f"'--timeout' must be a positive number, got {timeout}.")
+    credit = _validate_credit(fm.get(FIELD_CREDIT))
+    _validate_run_options(max_iterations, delay, timeout)
 
     return RunConfig(
         agent=agent,
