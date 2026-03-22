@@ -31,6 +31,8 @@ Ralph loops work best when a task has these properties:
 | **Codebase migrations** (JS to TS, Python 2 to 3) | Each file is one iteration; the compiler validates |
 | **Bug triage** | Each bug is one iteration; regression tests verify the fix |
 | **Refactoring** | Each extraction/rename is one iteration; tests catch regressions |
+| **Security hardening** | Run a scanner each iteration; the agent picks one finding, fixes it, and verifies the fix |
+| **Research & knowledge building** | Each iteration deepens one area; a report file accumulates findings across iterations |
 
 ## What doesn't work well
 
