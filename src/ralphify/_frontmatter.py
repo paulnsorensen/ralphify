@@ -38,6 +38,9 @@ _FRONTMATTER_DELIMITER = "---"
 # underscores.  Used by cli.py (validation) and resolver.py (placeholders).
 CMD_NAME_RE = re.compile(r"[a-zA-Z0-9_-]+")
 
+# Human-readable description of allowed name characters, paired with CMD_NAME_RE.
+VALID_NAME_CHARS_MSG = "Names may only contain letters, digits, hyphens, and underscores."
+
 # Pre-compiled pattern to strip HTML comments from body text.
 _HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 
