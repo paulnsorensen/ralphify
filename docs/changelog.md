@@ -7,6 +7,20 @@ keywords: ralphify changelog, release history, new features, version updates, br
 
 All notable changes to ralphify are documented here.
 
+## 0.2.4 — 2026-03-22
+
+### Fixed
+
+- **Timed-out agent output not echoed when logging enabled** — when using `--log-dir` and the agent timed out, partial output was written to the log file but silently swallowed from the terminal. Both completion and timeout paths now echo consistently.
+- **`--` separator not ending flag parsing in user args** — `ralph run my-ralph -- --verbose ./src` now correctly treats `--verbose` as a positional value instead of parsing it as a flag.
+
+### Improved
+
+- **Extracted `ProcessResult` base class** — `RunResult` and `AgentResult` now share a common base with consistent `success` / `timed_out` semantics, reducing duplication in `_runner.py` and `_agent.py`.
+- **Code quality** — extracted CLI validation helpers, renamed `resolver.py` to `_resolver.py` to match private module convention, deduplicated output echoing in `_agent.py`.
+
+---
+
 ## 0.2.3 — 2026-03-21
 
 ### Added
