@@ -51,6 +51,19 @@ def _exit_error(msg: str) -> NoReturn:
     raise typer.Exit(1)
 
 
+def _validate_name(name: str, context: str) -> None:
+    """Validate that *name* contains only characters valid for placeholders.
+
+    *context* labels the kind of name for the error message (e.g.
+    ``"Arg"`` or ``"Command"``).
+    """
+    if not CMD_NAME_RE.fullmatch(name):
+        _exit_error(
+            f"{context} name '{name}' contains invalid characters. "
+            f"{VALID_NAME_CHARS_MSG}"
+        )
+
+
 BANNER = [
     ("██████╗░░█████╗░██╗░░░░░██████╗░██╗░░██╗██╗███████╗██╗░░░██╗", "#8B6CF0"),
     ("██╔══██╗██╔══██╗██║░░░░░██╔══██╗██║░░██║██║██╔════╝╚██╗░██╔╝", "#A78BF5"),
@@ -232,11 +245,7 @@ def _parse_commands(raw_commands: list[dict[str, Any]]) -> list[Command]:
                 _exit_error(f"Command '{key}' must be a non-empty string.")
         cmd_name = cmd_def[CMD_FIELD_NAME]
         cmd_run = cmd_def[CMD_FIELD_RUN]
-        if not CMD_NAME_RE.fullmatch(cmd_name):
-            _exit_error(
-                f"Command name '{cmd_name}' contains invalid characters. "
-                f"{VALID_NAME_CHARS_MSG}"
-            )
+        _validate_name(cmd_name, "Command")
         if cmd_name in seen_names:
             _exit_error(f"Duplicate command name '{cmd_name}'.")
         seen_names.add(cmd_name)
@@ -319,11 +328,7 @@ def _build_run_config(
         if not all(isinstance(a, str) for a in declared_names):
             _exit_error(f"'{FIELD_ARGS}' items must be strings, got non-string value.")
         for arg_name in declared_names:
-            if not CMD_NAME_RE.fullmatch(arg_name):
-                _exit_error(
-                    f"Arg name '{arg_name}' contains invalid characters. "
-                    f"{VALID_NAME_CHARS_MSG}"
-                )
+            _validate_name(arg_name, "Arg")
     ralph_args: dict[str, str] = {}
     if extra_args:
         ralph_args = _parse_user_args(extra_args, declared_names)
