@@ -85,6 +85,23 @@ def _write_log(
     return log_file
 
 
+def _echo_output(
+    stdout: str | bytes | None,
+    stderr: str | bytes | None,
+) -> None:
+    """Echo captured output to the terminal so the user still sees it.
+
+    Called after output has been written to a log file — without this,
+    captured output would be silently swallowed when logging is enabled.
+    """
+    if stdout:
+        text = stdout if isinstance(stdout, str) else stdout.decode("utf-8", errors="replace")
+        sys.stdout.write(text)
+    if stderr:
+        text = stderr if isinstance(stderr, str) else stderr.decode("utf-8", errors="replace")
+        sys.stderr.write(text)
+
+
 def _supports_stream_json(cmd: list[str]) -> bool:
     """Return True if the agent command supports ``--output-format stream-json``.
 
@@ -228,10 +245,7 @@ def _run_agent_blocking(
     except subprocess.TimeoutExpired as exc:
         log_file = _write_log(log_path_dir, iteration, exc.stdout, exc.stderr)
         if log_path_dir:
-            if exc.stdout:
-                sys.stdout.write(exc.stdout)
-            if exc.stderr:
-                sys.stderr.write(exc.stderr)
+            _echo_output(exc.stdout, exc.stderr)
         return AgentResult(
             returncode=None,
             elapsed=time.monotonic() - start,
@@ -241,10 +255,7 @@ def _run_agent_blocking(
 
     log_file = _write_log(log_path_dir, iteration, result.stdout, result.stderr)
     if log_path_dir:
-        if result.stdout:
-            sys.stdout.write(result.stdout)
-        if result.stderr:
-            sys.stderr.write(result.stderr)
+        _echo_output(result.stdout, result.stderr)
 
     return AgentResult(
         returncode=result.returncode,
