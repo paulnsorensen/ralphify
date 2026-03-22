@@ -223,6 +223,9 @@ def _parse_user_args(
                     f"Positional argument '{token}' requires args declared in {RALPH_MARKER} frontmatter. "
                     f"Use --name value syntax or add 'args: [...]' to your {RALPH_MARKER}."
                 )
+            # Skip declared names already provided via named flags
+            while positional_index < len(declared_names) and declared_names[positional_index] in result:
+                positional_index += 1
             if positional_index >= len(declared_names):
                 raise typer.BadParameter(
                     f"Too many positional arguments. Expected at most {len(declared_names)} "

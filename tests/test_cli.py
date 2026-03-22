@@ -513,6 +513,11 @@ class TestParseUserArgs:
         result = _parse_user_args(["./src", "--focus", "perf"], ["dir", "focus"])
         assert result == {"dir": "./src", "focus": "perf"}
 
+    def test_named_flag_before_positional_no_overwrite(self):
+        """--dir ./src perf should assign perf to 'focus', not overwrite 'dir'."""
+        result = _parse_user_args(["--dir", "./src", "perf"], ["dir", "focus"])
+        assert result == {"dir": "./src", "focus": "perf"}
+
     def test_positional_without_declaration_errors(self):
         with pytest.raises(typer.BadParameter, match="requires args declared"):
             _parse_user_args(["./src"], None)
