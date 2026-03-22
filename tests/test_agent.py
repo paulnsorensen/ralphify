@@ -1,15 +1,19 @@
 """Tests for the _agent module — subprocess execution, log writing, and stream parsing."""
 
 import io
+import os
+import signal
 import subprocess
+import sys
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from helpers import MOCK_POPEN, MOCK_SUBPROCESS, fail_proc, make_mock_popen, ok_proc
 
 from ralphify._agent import (
     AgentResult,
+    _kill_process_group,
     _read_agent_stream,
     _run_agent_streaming,
     _supports_stream_json,
@@ -432,3 +436,158 @@ class TestExecuteAgentStreaming:
         assert result.timed_out is True
         assert result.returncode is None
         proc.kill.assert_called()
+
+
+class TestKillProcessGroup:
+    """Tests for _kill_process_group — process group cleanup logic."""
+
+    def _make_proc(self, poll_return=None, pid=12345):
+        proc = MagicMock()
+        proc.pid = pid
+        proc.poll.return_value = poll_return
+        proc.wait.return_value = 0
+        return proc
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only behavior")
+    @patch("ralphify._agent.os.killpg")
+    @patch("ralphify._agent.os.getpgid")
+    def test_sends_sigterm_then_waits(self, mock_getpgid, mock_killpg):
+        """When process is a session leader, SIGTERM is sent first."""
+        proc = self._make_proc(poll_return=None, pid=42)
+        mock_getpgid.return_value = 42  # pgid == pid → session leader
+
+        _kill_process_group(proc)
+
+        mock_killpg.assert_any_call(42, signal.SIGTERM)
+        proc.wait.assert_called_once_with(timeout=3)
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only behavior")
+    @patch("ralphify._agent.os.killpg")
+    @patch("ralphify._agent.os.getpgid")
+    def test_escalates_to_sigkill_on_timeout(self, mock_getpgid, mock_killpg):
+        """When SIGTERM doesn't stop the process within 3s, SIGKILL is sent."""
+        proc = self._make_proc(poll_return=None, pid=42)
+        mock_getpgid.return_value = 42
+        proc.wait.side_effect = subprocess.TimeoutExpired(cmd="agent", timeout=3)
+
+        _kill_process_group(proc)
+
+        assert mock_killpg.call_count == 2
+        mock_killpg.assert_any_call(42, signal.SIGTERM)
+        mock_killpg.assert_any_call(42, signal.SIGKILL)
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only behavior")
+    @patch("ralphify._agent.os.killpg")
+    @patch("ralphify._agent.os.getpgid")
+    def test_skips_killpg_when_not_session_leader(self, mock_getpgid, mock_killpg):
+        """When pgid != pid, falls back to proc.kill() to avoid killing caller."""
+        proc = self._make_proc(poll_return=None, pid=42)
+        mock_getpgid.return_value = 1  # pgid != pid → not session leader
+
+        _kill_process_group(proc)
+
+        mock_killpg.assert_not_called()
+        proc.kill.assert_called_once()
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only behavior")
+    @patch("ralphify._agent.os.getpgid")
+    def test_falls_back_on_getpgid_error(self, mock_getpgid):
+        """When getpgid raises OSError, falls back to proc.kill()."""
+        proc = self._make_proc(poll_return=None, pid=42)
+        mock_getpgid.side_effect = ProcessLookupError("no such process")
+
+        _kill_process_group(proc)
+
+        proc.kill.assert_called_once()
+
+    def test_already_exited_process(self):
+        """When process already exited (poll != None), just calls proc.kill()."""
+        proc = self._make_proc(poll_return=0, pid=42)
+
+        _kill_process_group(proc)
+
+        proc.kill.assert_called_once()
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only behavior")
+    @patch("ralphify._agent.os.killpg")
+    @patch("ralphify._agent.os.getpgid")
+    def test_killpg_oserror_falls_back(self, mock_getpgid, mock_killpg):
+        """When killpg raises OSError, falls back to proc.kill()."""
+        proc = self._make_proc(poll_return=None, pid=42)
+        mock_getpgid.return_value = 42
+        mock_killpg.side_effect = OSError("permission denied")
+
+        _kill_process_group(proc)
+
+        proc.kill.assert_called_once()
+
+
+class TestProcessGroupIsolation:
+    """Tests verifying that agent subprocesses use session/group isolation."""
+
+    @patch(MOCK_POPEN, side_effect=ok_proc)
+    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only behavior")
+    def test_blocking_uses_start_new_session(self, mock_popen):
+        """Blocking mode passes start_new_session=True on POSIX."""
+        execute_agent(["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1)
+
+        call_kwargs = mock_popen.call_args[1]
+        assert call_kwargs.get("start_new_session") is True
+
+    @patch(MOCK_POPEN)
+    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only behavior")
+    def test_streaming_uses_start_new_session(self, mock_popen):
+        """Streaming mode passes start_new_session=True on POSIX."""
+        mock_popen.return_value = make_mock_popen(returncode=0)
+        _run_agent_streaming(
+            ["claude", "-p"], "prompt", timeout=None, log_path_dir=None, iteration=1,
+        )
+
+        call_kwargs = mock_popen.call_args[1]
+        assert call_kwargs.get("start_new_session") is True
+
+    @patch(MOCK_POPEN)
+    def test_blocking_timeout_calls_kill_process_group(self, mock_popen):
+        """On timeout in blocking mode, _kill_process_group is called."""
+        proc = ok_proc()
+        proc.communicate.side_effect = [
+            subprocess.TimeoutExpired(cmd="echo", timeout=5),
+            ("", ""),
+        ]
+        proc.poll.return_value = None
+        mock_popen.return_value = proc
+
+        with patch("ralphify._agent._kill_process_group") as mock_kill:
+            execute_agent(["echo"], "prompt", timeout=5, log_path_dir=None, iteration=1)
+
+        mock_kill.assert_called_once_with(proc)
+
+    @patch(MOCK_POPEN)
+    def test_blocking_keyboard_interrupt_calls_kill_process_group(self, mock_popen):
+        """On KeyboardInterrupt in blocking mode, _kill_process_group is called."""
+        proc = ok_proc()
+        proc.communicate.side_effect = KeyboardInterrupt
+        proc.poll.return_value = None
+        mock_popen.return_value = proc
+
+        with patch("ralphify._agent._kill_process_group") as mock_kill:
+            with pytest.raises(KeyboardInterrupt):
+                execute_agent(["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1)
+
+        mock_kill.assert_called_once_with(proc)
+
+    @patch("ralphify._agent.time.monotonic")
+    @patch(MOCK_POPEN)
+    def test_streaming_timeout_calls_kill_process_group(self, mock_popen, mock_time):
+        """On timeout in streaming mode, _kill_process_group is called."""
+        mock_time.side_effect = [0.0, 100.0, 100.0]
+        proc = make_mock_popen(stdout_lines="line1\n", returncode=0)
+        proc.poll.return_value = None
+        mock_popen.return_value = proc
+
+        with patch("ralphify._agent._kill_process_group") as mock_kill:
+            _run_agent_streaming(
+                ["claude", "-p"], "prompt", timeout=5, log_path_dir=None, iteration=1,
+            )
+
+        mock_kill.assert_called()
