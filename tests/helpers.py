@@ -13,7 +13,7 @@ from typing import Any
 from unittest.mock import MagicMock
 
 from ralphify._events import Event, QueueEmitter
-from ralphify._frontmatter import serialize_frontmatter
+from ralphify._frontmatter import RALPH_MARKER, serialize_frontmatter
 from ralphify._run_types import RunConfig, RunState
 from ralphify._runner import RunResult
 
@@ -65,7 +65,7 @@ def make_ralph(
     if args:
         frontmatter["args"] = args
     content = serialize_frontmatter(frontmatter, prompt)
-    (ralph_dir / "RALPH.md").write_text(content)
+    (ralph_dir / RALPH_MARKER).write_text(content)
     return ralph_dir
 
 
@@ -78,7 +78,7 @@ def make_config(tmp_path: Path, ralph_content: str = "test prompt", **overrides)
     """
     ralph_dir = tmp_path / "my-ralph"
     ralph_dir.mkdir(exist_ok=True)
-    ralph_file = ralph_dir / "RALPH.md"
+    ralph_file = ralph_dir / RALPH_MARKER
     ralph_file.write_text(ralph_content)
 
     defaults = dict(

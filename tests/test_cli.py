@@ -9,6 +9,7 @@ from typer.testing import CliRunner
 
 from helpers import MOCK_ENGINE_SLEEP, MOCK_SKILLS_WHICH, MOCK_SUBPROCESS, MOCK_WHICH, ok_result, fail_result, make_ralph
 from ralphify import __version__
+from ralphify._frontmatter import RALPH_MARKER
 from ralphify.cli import app, _parse_commands, _parse_user_args
 
 runner = CliRunner()
@@ -42,7 +43,7 @@ class TestRun:
         monkeypatch.chdir(tmp_path)
         ralph_dir = tmp_path / "my-ralph"
         ralph_dir.mkdir()
-        (ralph_dir / "RALPH.md").write_text("just a prompt, no frontmatter")
+        (ralph_dir / RALPH_MARKER).write_text("just a prompt, no frontmatter")
         result = runner.invoke(app, ["run", str(ralph_dir)])
         assert result.exit_code == 1
         assert "agent" in result.output.lower()
@@ -51,7 +52,7 @@ class TestRun:
         monkeypatch.chdir(tmp_path)
         ralph_dir = tmp_path / "my-ralph"
         ralph_dir.mkdir()
-        (ralph_dir / "RALPH.md").write_text("---\nagent: \"  \"\n---\ngo")
+        (ralph_dir / RALPH_MARKER).write_text("---\nagent: \"  \"\n---\ngo")
         result = runner.invoke(app, ["run", str(ralph_dir)])
         assert result.exit_code == 1
         assert "agent" in result.output.lower()
@@ -60,7 +61,7 @@ class TestRun:
         monkeypatch.chdir(tmp_path)
         ralph_dir = tmp_path / "my-ralph"
         ralph_dir.mkdir()
-        (ralph_dir / "RALPH.md").write_text("---\nagent: 123\n---\ngo")
+        (ralph_dir / RALPH_MARKER).write_text("---\nagent: 123\n---\ngo")
         result = runner.invoke(app, ["run", str(ralph_dir)])
         assert result.exit_code == 1
         assert "agent" in result.output.lower()
@@ -78,7 +79,7 @@ class TestRun:
         ralph_dir = tmp_path / "my-ralph"
         ralph_dir.mkdir()
         # Valid YAML but shlex.split raises ValueError on unmatched quotes
-        (ralph_dir / "RALPH.md").write_text(
+        (ralph_dir / RALPH_MARKER).write_text(
             '---\nagent: \'claude "unclosed\'\n---\ngo'
         )
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
@@ -102,7 +103,7 @@ class TestRun:
         monkeypatch.chdir(tmp_path)
         ralph_dir = tmp_path / "my-ralph"
         ralph_dir.mkdir()
-        (ralph_dir / "RALPH.md").write_text(
+        (ralph_dir / RALPH_MARKER).write_text(
             f"---\nagent: claude -p\n{frontmatter}\n---\ngo"
         )
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
@@ -117,7 +118,7 @@ class TestRun:
         monkeypatch.chdir(tmp_path)
         ralph_dir = tmp_path / "my-ralph"
         ralph_dir.mkdir()
-        (ralph_dir / "RALPH.md").write_text(
+        (ralph_dir / RALPH_MARKER).write_text(
             f"---\nagent: claude -p --dangerously-skip-permissions\n{yaml_value}\n---\ngo"
         )
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
@@ -129,7 +130,7 @@ class TestRun:
         monkeypatch.chdir(tmp_path)
         ralph_dir = tmp_path / "my-ralph"
         ralph_dir.mkdir()
-        (ralph_dir / "RALPH.md").write_text(
+        (ralph_dir / RALPH_MARKER).write_text(
             f"---\nagent: claude -p\nargs: {args_value}\n---\ngo"
         )
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
@@ -149,7 +150,7 @@ class TestRun:
         monkeypatch.chdir(tmp_path)
         ralph_dir = tmp_path / "my-ralph"
         ralph_dir.mkdir()
-        (ralph_dir / "RALPH.md").write_text(
+        (ralph_dir / RALPH_MARKER).write_text(
             f'---\nagent: claude -p\nargs:\n  - "{name}"\n---\ngo'
         )
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
@@ -166,7 +167,7 @@ class TestRun:
         monkeypatch.chdir(tmp_path)
         ralph_dir = tmp_path / "my-ralph"
         ralph_dir.mkdir()
-        (ralph_dir / "RALPH.md").write_text(
+        (ralph_dir / RALPH_MARKER).write_text(
             f"---\nagent: claude -p\nargs: {args_yaml}\n---\ngo"
         )
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
@@ -238,7 +239,7 @@ class TestRun:
     def test_reads_prompt_each_iteration(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path, prompt="v1")
-        ralph_file = ralph_dir / "RALPH.md"
+        ralph_file = ralph_dir / RALPH_MARKER
 
         call_count = 0
 
@@ -325,7 +326,7 @@ class TestRun:
         """Can pass path to RALPH.md file directly."""
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
-        result = runner.invoke(app, ["run", str(ralph_dir / "RALPH.md"), "-n", "1"])
+        result = runner.invoke(app, ["run", str(ralph_dir / RALPH_MARKER), "-n", "1"])
         assert result.exit_code == 0
 
 
@@ -452,7 +453,7 @@ class TestInit:
         monkeypatch.chdir(tmp_path)
         result = runner.invoke(app, ["init", "my-task"])
         assert result.exit_code == 0
-        ralph_file = tmp_path / "my-task" / "RALPH.md"
+        ralph_file = tmp_path / "my-task" / RALPH_MARKER
         assert ralph_file.exists()
         assert "Created" in result.output
 
@@ -460,11 +461,11 @@ class TestInit:
         monkeypatch.chdir(tmp_path)
         result = runner.invoke(app, ["init"])
         assert result.exit_code == 0
-        assert (tmp_path / "RALPH.md").exists()
+        assert (tmp_path / RALPH_MARKER).exists()
 
     def test_errors_if_exists(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
-        (tmp_path / "RALPH.md").write_text("existing")
+        (tmp_path / RALPH_MARKER).write_text("existing")
         result = runner.invoke(app, ["init"])
         assert result.exit_code == 1
         assert "already exists" in result.output
@@ -473,20 +474,20 @@ class TestInit:
         monkeypatch.chdir(tmp_path)
         result = runner.invoke(app, ["init", "new-dir"])
         assert result.exit_code == 0
-        assert (tmp_path / "new-dir" / "RALPH.md").exists()
+        assert (tmp_path / "new-dir" / RALPH_MARKER).exists()
 
     def test_uses_existing_directory(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / "existing-dir").mkdir()
         result = runner.invoke(app, ["init", "existing-dir"])
         assert result.exit_code == 0
-        assert (tmp_path / "existing-dir" / "RALPH.md").exists()
+        assert (tmp_path / "existing-dir" / RALPH_MARKER).exists()
 
     def test_template_has_valid_frontmatter(self, tmp_path, monkeypatch):
         from ralphify._frontmatter import parse_frontmatter
         monkeypatch.chdir(tmp_path)
         runner.invoke(app, ["init", "my-task"])
-        content = (tmp_path / "my-task" / "RALPH.md").read_text()
+        content = (tmp_path / "my-task" / RALPH_MARKER).read_text()
         fm, body = parse_frontmatter(content)
         assert "agent" in fm
         assert isinstance(fm["commands"], list)
@@ -566,7 +567,7 @@ class TestDuplicateArgNamesRejected:
         monkeypatch.chdir(tmp_path)
         ralph_dir = tmp_path / "my-ralph"
         ralph_dir.mkdir()
-        (ralph_dir / "RALPH.md").write_text(
+        (ralph_dir / RALPH_MARKER).write_text(
             "---\nagent: claude -p\nargs:\n  - foo\n  - foo\n---\ngo"
         )
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
@@ -734,7 +735,7 @@ class TestCreditFrontmatter:
         monkeypatch.chdir(tmp_path)
         ralph_dir = tmp_path / "my-ralph"
         ralph_dir.mkdir(exist_ok=True)
-        (ralph_dir / "RALPH.md").write_text(
+        (ralph_dir / RALPH_MARKER).write_text(
             "---\nagent: claude -p --dangerously-skip-permissions\ncredit: false\n---\ngo"
         )
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
@@ -745,7 +746,7 @@ class TestCreditFrontmatter:
         monkeypatch.chdir(tmp_path)
         ralph_dir = tmp_path / "my-ralph"
         ralph_dir.mkdir(exist_ok=True)
-        (ralph_dir / "RALPH.md").write_text(
+        (ralph_dir / RALPH_MARKER).write_text(
             "---\nagent: claude -p --dangerously-skip-permissions\ncredit: maybe\n---\ngo"
         )
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])

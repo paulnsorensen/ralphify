@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from ralphify._frontmatter import RALPH_MARKER
 from ralphify._run_types import (
     DEFAULT_COMMAND_TIMEOUT,
     RUN_ID_LENGTH,
@@ -45,7 +46,7 @@ class TestRunConfig:
         config = RunConfig(
             agent="echo",
             ralph_dir=tmp_path,
-            ralph_file=tmp_path / "RALPH.md",
+            ralph_file=tmp_path / RALPH_MARKER,
         )
         assert config.project_root == Path(".")
 
@@ -53,7 +54,7 @@ class TestRunConfig:
         config = RunConfig(
             agent="echo",
             ralph_dir=tmp_path,
-            ralph_file=tmp_path / "RALPH.md",
+            ralph_file=tmp_path / RALPH_MARKER,
         )
         assert config.commands == []
         assert config.args == {}
