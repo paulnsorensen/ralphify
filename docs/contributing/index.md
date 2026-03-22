@@ -1,4 +1,5 @@
 ---
+title: Contributing to Ralphify
 description: Set up a ralphify development environment, run tests, understand the architecture, and submit pull requests.
 keywords: ralphify contributing, development setup, pull requests, open source, contributor guide
 ---

@@ -1,4 +1,5 @@
 ---
+title: Ralphify Python API
 description: Use ralphify as a Python library — run loops programmatically, manage concurrent runs, listen to events, and configure ralphs without the CLI.
 keywords: ralphify Python API, programmatic agent loops, RunConfig, run_loop, concurrent runs, event listeners
 ---
