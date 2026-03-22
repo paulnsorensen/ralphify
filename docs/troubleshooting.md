@@ -10,9 +10,16 @@ Common issues and how to fix them. If your problem isn't listed here, run `ralph
 
 ## Setup issues
 
-### "RALPH.md not found" or "No RALPH.md in directory"
+### "is not a directory or RALPH.md file" / "RALPH.md not found"
 
-The path you passed to `ralph run` doesn't contain a `RALPH.md` file. Make sure the directory exists and has a `RALPH.md`:
+The path you passed to `ralph run` doesn't resolve to a valid ralph. The command accepts either a **directory** containing `RALPH.md` or a **direct path** to a `RALPH.md` file:
+
+```bash
+ralph run my-ralph              # directory containing RALPH.md
+ralph run my-ralph/RALPH.md     # direct path to the file
+```
+
+If you're getting this error, check that the path exists and points to the right place:
 
 ```bash
 ls my-ralph/RALPH.md
