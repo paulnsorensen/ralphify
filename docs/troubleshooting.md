@@ -308,16 +308,53 @@ git checkout -b feature-a && ralph run feature-a-ralph
 git checkout -b feature-b && ralph run feature-b-ralph
 ```
 
+For programmatic control over concurrent runs, use the [Python API's `RunManager`](api.md#concurrent-runs-with-runmanager).
+
 ### What files should I commit?
 
 | File / directory | Commit? | Why |
 |---|---|---|
 | `my-ralph/RALPH.md` | **Yes** | The ralph definition |
+| `my-ralph/*.sh` | **Yes** | Helper scripts referenced by commands |
 | `ralph_logs/` | **No** | Iteration logs — add to `.gitignore` |
 
 ### Can I edit RALPH.md while the loop runs?
 
 Yes. The prompt body (everything below the frontmatter) is re-read every iteration — edit the prompt text and changes take effect on the next cycle. Frontmatter fields (`agent`, `commands`, `args`) are parsed once at startup, so changing those requires restarting the loop.
+
+### How do I disable the co-author credit in commits?
+
+By default, ralphify appends an instruction asking the agent to add `Co-authored-by: Ralphify <noreply@ralphify.co>` to commit messages. To disable it, set `credit: false` in your RALPH.md frontmatter:
+
+```yaml
+---
+agent: claude -p --dangerously-skip-permissions
+credit: false
+---
+```
+
+### How do I make a ralph reusable across projects?
+
+Use `args` to parameterize your ralph instead of hardcoding project-specific values:
+
+```markdown
+---
+agent: claude -p --dangerously-skip-permissions
+args: [dir, focus]
+commands:
+  - name: tests
+    run: uv run pytest {{ args.dir }}
+---
+
+Focus on {{ args.dir }}. Priority: {{ args.focus }}
+```
+
+```bash
+ralph run my-ralph --dir ./api --focus "error handling"
+ralph run my-ralph --dir ./frontend --focus "accessibility"
+```
+
+See [Parameterized ralphs](writing-prompts.md#parameterized-ralphs) for more patterns.
 
 ## Getting more help
 
