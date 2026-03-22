@@ -99,7 +99,7 @@ Your instructions here. Use {{ args.dir }} for user arguments.
 {{ args.focus }}                 # Replaced with --focus value from CLI
 ```
 
-- Pass via `ralph run my-ralph --dir ./src --focus "perf"` (named flags)
+- Pass via `ralph run my-ralph --dir ./src --focus "perf"` or `--dir=./src` (named flags)
 - Or positionally: `ralph run my-ralph ./src "perf"` (requires `args:` in frontmatter)
 - Missing args resolve to empty string
 

@@ -75,6 +75,9 @@ Focus area: {{ args.focus }}
 # Named flags
 ralph run research --dir ./my-project --focus "performance"
 
+# Equals syntax works too
+ralph run research --dir=./my-project --focus="performance"
+
 # Positional args (requires args: [dir, focus] in frontmatter)
 ralph run research ./my-project "performance"
 
