@@ -162,6 +162,16 @@ commands:
 
 ## Command issues
 
+### "Command '...' has invalid syntax"
+
+A command's `run` string has malformed shell syntax — usually an unmatched quote. The error message tells you which command failed:
+
+```
+Command 'tests' has invalid syntax: 'uv run pytest -x "unclosed'. Check the 'commands' field in your RALPH.md frontmatter.
+```
+
+Fix the quoting in the `run` value. If your command needs complex quoting, point it at a script instead — see [Command with pipes or redirections not working](#command-with-pipes-or-redirections-not-working).
+
 ### "Command '...' binary not found"
 
 A command in your `commands` field references a binary that isn't installed or isn't on your PATH. The error message tells you which command failed:
