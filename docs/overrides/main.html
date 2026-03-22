@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 
 {% block extrahead %}
-  {% if page and page.title %}
+  {% if page and page.meta and page.meta.title %}
+    {% set page_title = page.meta.title ~ " - " ~ config.site_name %}
+  {% elif page and page.title %}
     {% set page_title = page.title ~ " - " ~ config.site_name %}
   {% else %}
     {% set page_title = config.site_name %}
@@ -81,7 +83,7 @@
   </script>
 
   <!-- WebSite + Organization structured data (home page only) -->
-  {% if page and (page.title == "Home" or not page.title) %}
+  {% if page and page.is_homepage %}
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -99,7 +101,7 @@
   {% endif %}
 
   <!-- SoftwareApplication structured data (home page only) -->
-  {% if page and (page.title == "Home" or not page.title) %}
+  {% if page and page.is_homepage %}
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -125,7 +127,7 @@
   {% endif %}
 
   <!-- TechArticle structured data for docs pages -->
-  {% if page and page.title and page.title != "Home" %}
+  {% if page and page.title and not page.is_homepage %}
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
