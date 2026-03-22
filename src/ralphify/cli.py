@@ -307,11 +307,11 @@ def _build_run_config(
 
     # Parse user args
     declared_names = fm.get(FIELD_ARGS)
-    if declared_names is not None and not isinstance(declared_names, list):
-        _exit_error(f"'{FIELD_ARGS}' must be a list of strings.")
-    if declared_names is not None and not all(isinstance(a, str) for a in declared_names):
-        _exit_error(f"'{FIELD_ARGS}' items must be strings, got non-string value.")
     if declared_names is not None:
+        if not isinstance(declared_names, list):
+            _exit_error(f"'{FIELD_ARGS}' must be a list of strings.")
+        if not all(isinstance(a, str) for a in declared_names):
+            _exit_error(f"'{FIELD_ARGS}' items must be strings, got non-string value.")
         for arg_name in declared_names:
             if not CMD_NAME_RE.fullmatch(arg_name):
                 _exit_error(

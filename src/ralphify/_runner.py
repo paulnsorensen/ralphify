@@ -73,9 +73,9 @@ def run_command(
             returncode=result.returncode,
             output=collect_output(result.stdout, result.stderr),
         )
-    except subprocess.TimeoutExpired as e:
+    except subprocess.TimeoutExpired as exc:
         return RunResult(
             returncode=None,
-            output=collect_output(e.stdout, e.stderr),
+            output=collect_output(exc.stdout, exc.stderr),
             timed_out=True,
         )
