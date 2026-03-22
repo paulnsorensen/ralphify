@@ -111,6 +111,11 @@ def _run_commands(
                 f"Command '{cmd.name}' binary not found: {run_str!r}. "
                 f"{_COMMANDS_FIELD_HINT}"
             ) from exc
+        except ValueError as exc:
+            raise ValueError(
+                f"Command '{cmd.name}' has invalid syntax: {run_str!r}. "
+                f"{_COMMANDS_FIELD_HINT}"
+            ) from exc
         results[cmd.name] = result.output
     return results
 

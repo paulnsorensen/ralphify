@@ -781,6 +781,15 @@ class TestRunCommands:
         with pytest.raises(FileNotFoundError, match="Command 'missing' binary not found"):
             _run_commands(commands, ralph_dir=tmp_path, project_root=tmp_path, user_args={})
 
+    @patch(MOCK_RUN_COMMAND, side_effect=ValueError("No closing quotation"))
+    def test_command_invalid_syntax_raises_with_context(self, mock_run_cmd, tmp_path):
+        """ValueError from run_command (e.g. malformed quotes) is re-raised
+        with the command name so the user knows which command failed."""
+        commands = [Command(name="broken", run="echo 'unterminated")]
+
+        with pytest.raises(ValueError, match="Command 'broken' has invalid syntax"):
+            _run_commands(commands, ralph_dir=tmp_path, project_root=tmp_path, user_args={})
+
 
 class TestAssemblePrompt:
     """Unit tests for _assemble_prompt — reading and resolving the prompt template."""
