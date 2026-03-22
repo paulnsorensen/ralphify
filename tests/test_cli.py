@@ -546,6 +546,21 @@ class TestParseUserArgs:
 
 
 @patch(MOCK_WHICH, return_value="/usr/bin/claude")
+class TestDuplicateArgNamesRejected:
+    def test_duplicate_declared_arg_names_rejected(self, mock_which, tmp_path, monkeypatch):
+        """args: [foo, foo] should be rejected — duplicate names cause silent overwrites."""
+        monkeypatch.chdir(tmp_path)
+        ralph_dir = tmp_path / "my-ralph"
+        ralph_dir.mkdir()
+        (ralph_dir / "RALPH.md").write_text(
+            "---\nagent: claude -p\nargs:\n  - foo\n  - foo\n---\ngo"
+        )
+        result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
+        assert result.exit_code == 1
+        assert "duplicate" in result.output.lower()
+
+
+@patch(MOCK_WHICH, return_value="/usr/bin/claude")
 class TestRunWithUserArgs:
     @patch(MOCK_SUBPROCESS, side_effect=ok_result)
     def test_named_args_resolved_in_prompt(self, mock_run, mock_which, tmp_path, monkeypatch):

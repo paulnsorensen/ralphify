@@ -327,8 +327,12 @@ def _build_run_config(
             _exit_error(f"'{FIELD_ARGS}' must be a list of strings.")
         if not all(isinstance(a, str) for a in declared_names):
             _exit_error(f"'{FIELD_ARGS}' items must be strings, got non-string value.")
+        seen_arg_names: set[str] = set()
         for arg_name in declared_names:
             _validate_name(arg_name, "Arg")
+            if arg_name in seen_arg_names:
+                _exit_error(f"Duplicate arg name '{arg_name}'.")
+            seen_arg_names.add(arg_name)
     ralph_args: dict[str, str] = {}
     if extra_args:
         ralph_args = _parse_user_args(extra_args, declared_names)
