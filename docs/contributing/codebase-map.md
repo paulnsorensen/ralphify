@@ -29,7 +29,7 @@ src/ralphify/           # All source code
 ├── _skills.py          # Skill installation and agent detection for `ralph new`
 ├── _console_emitter.py # Rich console renderer for run-loop events (ConsoleEmitter)
 ├── _events.py          # Event types, emitter protocol, and BoundEmitter convenience wrapper
-├── _output.py          # Combine stdout+stderr, format durations
+├── _output.py          # ProcessResult base class, combine stdout+stderr, format durations
 └── skills/             # Bundled skill definitions (installed into agent skill dirs)
     └── new-ralph/      # AI-guided ralph creation skill for `ralph new`
 
@@ -133,6 +133,10 @@ Events are defined in `_events.py:EventType`, with a corresponding TypedDict pay
 ### Credit trailer
 
 When `credit` is `true` (the default), `engine.py:_assemble_prompt()` appends `_CREDIT_INSTRUCTION` to the prompt — a short instruction telling the agent to include a `Co-authored-by: Ralphify` trailer in git commits. Users can opt out with `credit: false` in frontmatter.
+
+### Subprocess result types
+
+`_output.py` defines `ProcessResult`, the base dataclass for subprocess results (provides `returncode`, `timed_out`, and a `success` property). Both `_runner.py:RunResult` (command execution) and `_agent.py:AgentResult` (agent execution) extend it. If you add a new subprocess wrapper, inherit from `ProcessResult` to get consistent success/timeout semantics.
 
 ### Command parsing
 

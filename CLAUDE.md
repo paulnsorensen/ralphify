@@ -28,7 +28,7 @@ Key modules:
 - `_runner.py` — Generic command execution with timeout
 - `_events.py` — Event types, emitter protocol (NullEmitter, QueueEmitter, FanoutEmitter), and BoundEmitter convenience wrapper
 - `_console_emitter.py` — Rich terminal rendering of events
-- `_output.py` — Combine stdout+stderr, format durations
+- `_output.py` — `ProcessResult` base class, combine stdout+stderr, format durations
 - `_skills.py` — Skill installation, agent detection, and command building for `ralph new`
 - `skills/new-ralph/SKILL.md` — AI-guided ralph creation skill (bundled, installed into agent skill dir)
 
