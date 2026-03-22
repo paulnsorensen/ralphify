@@ -53,7 +53,7 @@ def _extract_frontmatter_block(text: str) -> tuple[str, str]:
     frontmatter block is found.
     """
     lines = text.split("\n")
-    if not lines or lines[0].strip() != _FRONTMATTER_DELIMITER:
+    if not lines or lines[0].rstrip() != _FRONTMATTER_DELIMITER:
         return "", text
 
     for i, line in enumerate(lines[1:], start=1):

@@ -57,6 +57,14 @@ class TestExtractFrontmatterBlock:
         _, body = _extract_frontmatter_block(text)
         assert body == "Hello"
 
+    def test_indented_opening_delimiter_not_treated_as_frontmatter(self):
+        """Leading whitespace before the opening '---' means no frontmatter —
+        consistent with the closing delimiter which also requires column 0."""
+        text = "  ---\nagent: claude\n---\nBody"
+        fm, body = _extract_frontmatter_block(text)
+        assert fm == ""
+        assert body == text
+
     def test_indented_triple_dash_not_treated_as_closing_delimiter(self):
         """An indented '---' inside a YAML block scalar must not be mistaken
         for the closing frontmatter delimiter.  Only unindented '---' at
