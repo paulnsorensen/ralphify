@@ -796,8 +796,10 @@ class TestAssemblePrompt:
 
     def test_reads_prompt_from_ralph_file(self, tmp_path):
         config = make_config(tmp_path, "simple prompt", max_iterations=1, credit=False)
+        state = make_state()
+        state.iteration = 1
 
-        result = _assemble_prompt(config, {})
+        result = _assemble_prompt(config, state, {})
 
         assert result == "simple prompt"
 
@@ -809,8 +811,10 @@ class TestAssemblePrompt:
             max_iterations=1,
             credit=False,
         )
+        state = make_state()
+        state.iteration = 1
 
-        result = _assemble_prompt(config, {"tests": "all passed"})
+        result = _assemble_prompt(config, state, {"tests": "all passed"})
 
         assert result == "Results: all passed"
 
@@ -822,37 +826,47 @@ class TestAssemblePrompt:
             args={"dir": "./src"},
             credit=False,
         )
+        state = make_state()
+        state.iteration = 1
 
-        result = _assemble_prompt(config, {})
+        result = _assemble_prompt(config, state, {})
 
         assert result == "Search ./src"
 
     def test_clears_unresolved_placeholders(self, tmp_path):
         config = make_config(tmp_path, "Before {{ args.missing }} after", max_iterations=1, args={}, credit=False)
+        state = make_state()
+        state.iteration = 1
 
-        result = _assemble_prompt(config, {})
+        result = _assemble_prompt(config, state, {})
 
         assert result == "Before  after"
 
     def test_strips_html_comments(self, tmp_path):
         config = make_config(tmp_path, "Before <!-- hidden --> after", max_iterations=1, credit=False)
+        state = make_state()
+        state.iteration = 1
 
-        result = _assemble_prompt(config, {})
+        result = _assemble_prompt(config, state, {})
 
         assert result == "Before  after"
 
     def test_credit_instruction_appended_by_default(self, tmp_path):
         config = make_config(tmp_path, "simple prompt", max_iterations=1)
+        state = make_state()
+        state.iteration = 1
 
-        result = _assemble_prompt(config, {})
+        result = _assemble_prompt(config, state, {})
 
         assert result.startswith("simple prompt")
         assert "Co-authored-by: Ralphify <noreply@ralphify.co>" in result
 
     def test_credit_false_omits_instruction(self, tmp_path):
         config = make_config(tmp_path, "simple prompt", max_iterations=1, credit=False)
+        state = make_state()
+        state.iteration = 1
 
-        result = _assemble_prompt(config, {})
+        result = _assemble_prompt(config, state, {})
 
         assert result == "simple prompt"
 
@@ -869,11 +883,55 @@ class TestAssemblePrompt:
             commands=[Command(name="tests", run="pytest")],
             credit=False,
         )
+        state = make_state()
+        state.iteration = 1
 
-        result = _assemble_prompt(config, {"tests": "5 passed"})
+        result = _assemble_prompt(config, state, {"tests": "5 passed"})
 
         assert "Filter: {{ commands.tests }}" in result
         assert "Tests: 5 passed" in result
+
+    def test_resolves_context_placeholders(self, tmp_path):
+        config = make_config(
+            tmp_path,
+            "Name: {{ context.name }}, Iter: {{ context.iteration }}, Max: {{ context.max_iterations }}",
+            max_iterations=5,
+            credit=False,
+        )
+        state = make_state()
+        state.iteration = 3
+
+        result = _assemble_prompt(config, state, {})
+
+        assert result == "Name: my-ralph, Iter: 3, Max: 5"
+
+    def test_context_max_iterations_empty_when_unlimited(self, tmp_path):
+        config = make_config(
+            tmp_path,
+            "Max: {{ context.max_iterations }}",
+            max_iterations=None,
+            credit=False,
+        )
+        state = make_state()
+        state.iteration = 1
+
+        result = _assemble_prompt(config, state, {})
+
+        assert result == "Max: "
+
+    def test_context_name_is_ralph_dir_name(self, tmp_path):
+        config = make_config(
+            tmp_path,
+            "Name: {{ context.name }}",
+            max_iterations=1,
+            credit=False,
+        )
+        state = make_state()
+        state.iteration = 1
+
+        result = _assemble_prompt(config, state, {})
+
+        assert result == "Name: my-ralph"
 
 
 class TestCreditInLoop:
