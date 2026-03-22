@@ -14,7 +14,13 @@ hide:
 <strong>Put your AI coding agent in a <code>while True</code> loop and let it ship.</strong>
 </p>
 
-Ralphify is a minimal CLI harness for autonomous AI coding loops, inspired by the [Ralph Wiggum technique](https://ghuntley.com/ralph/). It runs commands, assembles a prompt with the output, pipes it to an AI coding agent, and repeats — each iteration starts with a fresh context window.
+Ralphify is a minimal CLI harness for autonomous AI coding loops, inspired by the [Ralph Wiggum technique](https://ghuntley.com/ralph/). The core idea fits in one line:
+
+```bash
+while :; do cat RALPH.md | claude -p ; done
+```
+
+Ralphify wraps this into a proper tool — running commands that feed test results and context into each iteration, tracking progress, and handling clean shutdown.
 
 [Get Started](getting-started.md){ .md-button .md-button--primary }
 [View Cookbook](cookbook.md){ .md-button }
