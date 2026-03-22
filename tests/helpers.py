@@ -148,12 +148,14 @@ def fail_proc(*_args: Any, stdout: str = "", stderr: str = "", **_kwargs: Any) -
     return _make_mock_proc(returncode=1, stdout=stdout, stderr=stderr)
 
 
-def timeout_proc(*_args: Any, timeout: float = 5, **_kwargs: Any) -> MagicMock:
+def timeout_proc(
+    *_args: Any, timeout: float = 5, stdout: str = "", stderr: str = "", **_kwargs: Any,
+) -> MagicMock:
     """Popen mock whose communicate() raises TimeoutExpired."""
     proc = _make_mock_proc(returncode=0)
     proc.communicate.side_effect = [
         subprocess.TimeoutExpired(cmd="agent", timeout=timeout),
-        ("", ""),
+        (stdout, stderr),
     ]
     proc.poll.return_value = None
     return proc

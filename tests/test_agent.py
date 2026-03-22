@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from helpers import MOCK_POPEN, MOCK_SUBPROCESS, fail_proc, make_mock_popen, ok_proc
+from helpers import MOCK_POPEN, MOCK_SUBPROCESS, fail_proc, make_mock_popen, ok_proc, timeout_proc
 
 from ralphify._agent import (
     AgentResult,
@@ -189,15 +189,8 @@ class TestExecuteAgentBlocking:
         assert result.returncode == 1
         assert result.timed_out is False
 
-    @patch(MOCK_POPEN)
+    @patch(MOCK_POPEN, side_effect=timeout_proc)
     def test_timeout(self, mock_popen):
-        proc = ok_proc()
-        proc.communicate.side_effect = [
-            subprocess.TimeoutExpired(cmd="echo", timeout=5),
-            ("", ""),
-        ]
-        proc.poll.return_value = None
-        mock_popen.return_value = proc
         result = execute_agent(["echo"], "prompt", timeout=5, log_path_dir=None, iteration=1)
 
         assert result.returncode is None
@@ -217,13 +210,7 @@ class TestExecuteAgentBlocking:
 
     @patch(MOCK_POPEN)
     def test_writes_log_on_timeout(self, mock_popen, tmp_path):
-        proc = ok_proc()
-        proc.communicate.side_effect = [
-            subprocess.TimeoutExpired(cmd="echo", timeout=5),
-            ("partial", "err"),
-        ]
-        proc.poll.return_value = None
-        mock_popen.return_value = proc
+        mock_popen.return_value = timeout_proc(stdout="partial", stderr="err")
         result = execute_agent(
             ["echo"], "prompt", timeout=5, log_path_dir=tmp_path, iteration=1,
         )
@@ -235,13 +222,7 @@ class TestExecuteAgentBlocking:
     def test_timeout_echoes_captured_output(self, mock_popen, tmp_path, capsys):
         """When logging is enabled and the agent times out, partial output
         should be echoed to the terminal — same as on normal completion."""
-        proc = ok_proc()
-        proc.communicate.side_effect = [
-            subprocess.TimeoutExpired(cmd="echo", timeout=5),
-            ("partial stdout", "partial stderr"),
-        ]
-        proc.poll.return_value = None
-        mock_popen.return_value = proc
+        mock_popen.return_value = timeout_proc(stdout="partial stdout", stderr="partial stderr")
         execute_agent(
             ["echo"], "prompt", timeout=5, log_path_dir=tmp_path, iteration=1,
         )
