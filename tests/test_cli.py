@@ -1,4 +1,4 @@
-"""Tests for the v2 CLI."""
+"""Tests for the CLI."""
 
 import subprocess
 from unittest.mock import patch
@@ -563,6 +563,21 @@ class TestParseUserArgs:
         """--=value should be rejected — empty arg name."""
         with pytest.raises(typer.BadParameter, match="invalid characters"):
             _parse_user_args(["--=value"], None)
+
+    def test_double_dash_ends_flag_parsing(self):
+        """-- should end flag parsing; remaining tokens are positional."""
+        result = _parse_user_args(["--dir", "./src", "--", "remaining"], ["dir", "extra"])
+        assert result == {"dir": "./src", "extra": "remaining"}
+
+    def test_double_dash_allows_flag_like_positional(self):
+        """After --, values starting with -- are treated as positional."""
+        result = _parse_user_args(["--", "--verbose"], ["pattern"])
+        assert result == {"pattern": "--verbose"}
+
+    def test_double_dash_only_positional_args(self):
+        """-- with all positional args and no named flags."""
+        result = _parse_user_args(["--", "a", "b"], ["x", "y"])
+        assert result == {"x": "a", "y": "b"}
 
 
 @patch(MOCK_WHICH, return_value="/usr/bin/claude")

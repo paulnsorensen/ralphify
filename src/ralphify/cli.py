@@ -195,13 +195,18 @@ def _parse_user_args(
     """Parse extra CLI args into a dict of user arguments.
 
     Supports ``--name value`` (named) and positional args mapped to
-    *declared_names* from frontmatter ``args: [...]``.
+    *declared_names* from frontmatter ``args: [...]``.  A bare ``--``
+    token ends flag parsing — everything after it is positional.
     """
     result: dict[str, str] = {}
     positional_index = 0
+    flags_ended = False
     it = iter(raw_args)
     for token in it:
-        if token.startswith("--"):
+        if not flags_ended and token == "--":
+            flags_ended = True
+            continue
+        if not flags_ended and token.startswith("--"):
             rest = token[2:]
             if "=" in rest:
                 name, value = rest.split("=", 1)
