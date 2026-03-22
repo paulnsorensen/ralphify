@@ -68,11 +68,12 @@ ralph run my-ralph
 
 ### Placeholder resolution
 
-The resolver (`_resolver.py`) handles:
+The resolver (`_resolver.py`) handles `{{ commands.<name> }}` and `{{ args.<name> }}` placeholders. Two functions:
 
-- `{{ commands.tests }}` — replaced with the test command's output
-- `{{ args.dir }}` — replaced with the user argument value
-- Unmatched placeholders resolve to empty string
+- **`resolve_all()`** — resolves both placeholder kinds in a **single pass** so that a value inserted by one kind (e.g., an arg value containing `{{ commands.foo }}`) is never re-processed as the other kind. Used by the engine for final prompt assembly.
+- **`resolve_args()`** — resolves only `{{ args.<name> }}` placeholders. Used by the engine to expand arg references inside command `run` strings before executing them.
+
+Unmatched placeholders resolve to empty string in both functions.
 
 ### Event system
 
@@ -122,6 +123,8 @@ The CLI uses a `ConsoleEmitter` (defined in `_console_emitter.py`) that renders 
 ### If you change frontmatter fields...
 
 Frontmatter parsing is in `_frontmatter.py:parse_frontmatter()`, which returns a raw dict. Each field is then validated and coerced by a dedicated helper in `cli.py` — e.g. `_validate_agent()`, `_validate_commands()`, `_validate_credit()`. Adding a new frontmatter field means adding a new validator in `cli.py` and wiring it into `_build_run_config()`.
+
+**Field name constants** (`FIELD_AGENT`, `FIELD_COMMANDS`, `FIELD_ARGS`, `FIELD_CREDIT`, `CMD_FIELD_NAME`, `CMD_FIELD_RUN`, `CMD_FIELD_TIMEOUT`) are centralized in `_frontmatter.py`. Always import these constants instead of hardcoding strings like `"agent"` or `"commands"` — this keeps error messages, validation, and placeholder resolution in sync when fields are renamed.
 
 ### If you add a new CLI command...
 
