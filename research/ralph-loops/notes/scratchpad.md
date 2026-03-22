@@ -892,6 +892,40 @@ After 25 iterations, the research is mature (25 chapters, 22 insights, 210+ sour
 - Memory decay is a feature: Claude Code's 7-day progress half-life and 30-day context half-life prevent unbounded accumulation while preserving critical knowledge.
 - HN "favorite CLAUDE.md lines" thread (March 22) reveals persona-based instruction ("Murphy" defensive engineer) and the "Table Flip Rule" (never backward-compat without approval).
 
+## Iteration 30 — 2026-03-22
+
+**Decision: RESEARCH**
+
+**Focus area:** Three threads:
+1. **Workflow composition & CI/CD integration** — how practitioners chain agents, embed them in CI pipelines, and manage agent fleets
+2. **The latest practitioner voices (March 20-25, 2026)** — freshest metrics, patterns, and production data
+3. **Agent fleet management** — framework landscape, multi-agent orchestrators, DAG patterns
+
+**What was done:**
+- Launched 3 parallel research agents: ACI/browser (no web access — provided training data synthesis), latest March 2026 content (excellent — 20+ sources via web), workflow composition (excellent — 20+ sources via web)
+- Deep-read 40+ new sources across two productive agents
+- Created chapter 28 (Workflow Composition, CI/CD Integration & Agent Fleet Patterns) covering: Google ADK 8 patterns, CI as agent scheduler (Elastic 20 days saved, Red Hat Cicaddy), typed schemas at handoffs (GitHub Blog), 40% project cancellation (Deloitte), framework landscape (LangGraph/CrewAI/AutoGen), DAG orchestration, Cursor Automations, fresh practitioner metrics
+- Added 1 new insight to REPORT.md (#24: CI/CD as scheduling infrastructure + anti-complexity positioning)
+- Added 18 new sources to notes/sources.md, 9 new insights to notes/insights.md
+- Added 3 new questions to questions.md (inter-ralph dependencies, typed output schemas, `ralph ci` output format)
+- Updated REPORT.md with new chapter, key sources (4 new), and insight #24
+
+**Key surprises:**
+- Elastic saved 20 days of engineering work by running Claude Code in Buildkite CI — the most quantified CI/CD integration case study
+- Red Hat's critical insight: "CI/CD pipelines already have everything agents need — no dedicated platform required" — directly validates ralphify's minimalism
+- 40% of agentic AI projects may be cancelled by 2027 due to complexity (Deloitte) — anti-complexity is ralphify's strongest moat
+- GitHub Blog identifies context loss at handoffs as #1 multi-agent failure — ralph's command system already solves this
+- Hash-based line identification (blog.can.ac) yields +5-14pp gains with 20% token reduction — harness-level optimization with massive impact
+- IntelligentTools: 47 commits overnight for $23.14 with 80% success — the most concrete overnight-run case study found
+- Shopify CEO replicated Karpathy's autoresearch (37 experiments, 19% gain) — executive validation of the pattern
+- Shipyard: "Multi-agent doesn't make sense for 95% of tasks" — strong anti-complexity signal
+- LangGraph Skills pattern saves 40% tokens vs Subagents (4 fewer LLM calls) — architecture choice has massive cost impact
+
+**Next iteration should focus on:**
+- Refine cycle (iteration 31): 24 insights, 28 chapters — trim back to ~22 insights. Consider merging #18 (deployment tiers) content into #24 (CI/CD integration) since they overlap.
+- Or: update Ch06 (implications) with CI/CD integration, `ralph ci`, DAG orchestration, anti-complexity positioning
+- Or: research the "agent-computer interface" (ACI) thread — how agents interact with GUIs and browsers, implications for ralph loops that need non-CLI verification
+
 **Next iteration should focus on:**
 - Refine cycle (iteration 30): 23 insights, 27 chapters — trim insights back to ~22, update Ch06 with memory engineering and event-driven loop findings
 - Or: research the TDD+agent authority hierarchy — the remaining high-priority open question

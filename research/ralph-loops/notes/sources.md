@@ -400,3 +400,24 @@
 - https://arxiv.org/abs/2502.12110 — A-MEM — Zettelkasten-inspired agentic memory with dynamic indexing, NeurIPS 2025 — **medium**
 - https://arxiv.org/abs/2601.02553 — SimpleMem — Three-stage compression: 30x token reduction, 43.24 F1 on LoCoMo vs Mem0's 34.20 — **medium**
 - https://hackernoon.com/the-complete-guide-to-ai-agent-memory-files-claudemd-agentsmd-and-beyond — HackerNoon — Taxonomy of CLAUDE.md, AGENTS.md, and agent memory file patterns — **medium**
+
+## Iteration 30 — Workflow Composition, CI/CD Integration & Agent Fleets
+
+- https://www.elastic.co/search-labs/blog/ci-pipelines-claude-ai-agent — Elastic — Claude Code in Buildkite CI: 24 PRs fixed, 22 commits, 20 days saved. CLAUDE.md as team guidelines. Auto-merge disabled. — **high**
+- https://developers.redhat.com/articles/2026/03/12/how-develop-agentic-workflows-ci-pipeline-cicaddy — Red Hat — Cicaddy: pipeline-native agent framework, MCP as tool interface, one-shot execution with multi-turn reasoning, 3 agent types — **high**
+- https://github.blog/ai-and-ml/generative-ai/multi-agent-workflows-often-fail-heres-how-to-engineer-ones-that-dont/ — GitHub Blog — Typed schemas at handoff points, action schemas, MCP — #1 failure cause is context loss — **high**
+- https://developers.googleblog.com/developers-guide-to-multi-agent-patterns-in-adk/ — Google — 8 core multi-agent patterns in ADK: Sequential, Coordinator, Parallel, Hierarchical, Generator/Critic, Iterative, HitL, Composite — **high**
+- https://www.deloitte.com/us/en/insights/industry/technology/technology-media-and-telecom-predictions/2026/ai-agent-orchestration.html — Deloitte — $8.5B agent market, 40% of projects may be cancelled by 2027 due to complexity — **high**
+- https://intelligenttools.co/blog/claude-code-unsupervised-8-hours-ralph-loop — IntelligentTools — 47 commits overnight, 8 files refactored, test coverage 62%→87%, $23.14 cost, 80% success rate — **high**
+- https://news.ycombinator.com/item?id=46988596 — HN/blog.can.ac — Hash-based line identification: +5-14pp on coding benchmarks, ~20% token reduction. "Harness reveals optimization potential." — **high**
+- https://fortune.com/2026/03/17/andrej-karpathy-loop-autonomous-ai-agents-future/ — Fortune — Karpathy: 700 experiments, 2 days. Shopify CEO: 37 experiments overnight, 19% gain. "The final boss battle." — **high**
+- https://blog.langchain.com/choosing-the-right-multi-agent-architecture/ — LangChain — Subagents vs Skills vs Handoffs vs Router decision matrix. Skills save 40% tokens via statefulness. — **high**
+- https://techcrunch.com/2026/03/05/cursor-is-rolling-out-a-new-system-for-agentic-coding/ — TechCrunch — Cursor Automations: event-triggered agents (Slack, Linear, GitHub, PagerDuty), isolated Ubuntu VMs — **high**
+- https://shipyard.build/blog/claude-code-multi-agent/ — Shipyard — Agent Teams, Gas Town, Multiclaude. "Multi-agent doesn't make sense for 95% of tasks." — **medium**
+- https://www.alibabacloud.com/blog/from-react-to-ralph-loop-a-continuous-iteration-paradigm-for-ai-agents_602799 — Alibaba Cloud — ReAct vs Ralph comparison: context rot vs forced iteration. Token costs $50-150 large tasks. 5-50 iteration limits. — **medium**
+- https://docs.bswen.com/blog/2026-03-21-agent-task-handoff-coordination/ — BSWEN — HANDOFF.md files as state transfer between agents. Context loss is #1 multi-agent failure. — **medium**
+- https://news.ycombinator.com/item?id=47162581 — HN/__parallaxis — Context Harness: Rust/SQLite/FTS5 hybrid search, MCP-compatible, WAL mode for concurrent read/write — **medium**
+- https://news.ycombinator.com/item?id=47141035 — HN/Charlie Guo (OpenAI) — Emerging harness engineering playbook from OpenAI, Stripe, OpenClaw — **medium**
+- https://www.salesforce.com/news/stories/connectivity-report-announcement-2026/ — Salesforce — Multi-agent adoption to surge 67% by 2027. 86% of IT leaders cite complexity concern. — **medium**
+- https://www.datacamp.com/tutorial/crewai-vs-langgraph-vs-autogen — DataCamp — Framework comparison: LangGraph 2.2x faster than CrewAI, 8-9x token efficiency differences — **medium**
+- https://pasqualepillitteri.it/en/news/381/claude-code-march-2026-updates — Pasquale Pillitteri — Claude Code /loop (v2.1.71), 1M context (v2.1.75), /effort command (v2.1.76), MCP Elicitation — **medium**

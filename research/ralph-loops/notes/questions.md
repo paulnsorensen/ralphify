@@ -12,6 +12,9 @@
 - [ ] What's the optimal ratio of spec-writing time to execution time in spec+ralph integrated workflows?
 - [ ] What's the right model routing strategy for ralph loops — task-based (plan/implement/verify), budget-based (downgrade on threshold), or time-based (Opus daytime, Codex overnight)?
 - [ ] At what loop scale do durable execution frameworks (Temporal, Inngest) outperform filesystem-as-checkpoint?
+- [ ] How should inter-ralph dependencies be declared — `depends_on` in frontmatter, or external DAG definition? What's the right granularity?
+- [ ] What typed output schemas for ralph commands would catch format drift while staying minimal?
+- [ ] What does a production `ralph ci` command need to output for CI/CD integration — JSON structured results, exit codes, or both?
 
 ## Answered
 - [x] How does Stripe's "Blueprints" architecture compare to RALPH.md for defining deterministic+agent hybrid workflows? — Blueprints interleave deterministic nodes (linting, testing, file ops) with agentic nodes (code generation, PR writing). RALPH.md already implements this: commands = deterministic nodes, prompt body = agentic directive. Gap: Blueprints have explicit error recovery (bounded retry → human escalation). See Ch20.

@@ -109,7 +109,7 @@ def _supports_stream_json(cmd: list[str]) -> bool:
     """
     if not cmd:
         return False
-    binary = Path(cmd[0]).name
+    binary = Path(cmd[0]).stem
     return binary == _CLAUDE_BINARY
 
 

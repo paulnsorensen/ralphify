@@ -34,6 +34,14 @@ class TestSupportsStreamJson:
     def test_claude_like_name(self):
         assert _supports_stream_json(["claude-code"]) is False
 
+    def test_claude_with_cmd_extension(self):
+        """On Windows, npm installs claude as claude.cmd — streaming must
+        still be detected."""
+        assert _supports_stream_json(["claude.cmd", "-p"]) is True
+
+    def test_claude_with_exe_extension(self):
+        assert _supports_stream_json(["claude.exe", "-p"]) is True
+
 
 class TestWriteLog:
     def test_creates_log_file(self, tmp_path):
