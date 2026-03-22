@@ -232,6 +232,45 @@ If a `{{ commands.my-command }}` placeholder produces nothing in the prompt:
 
 By default, agent output goes directly to the terminal. If you're using `--log-dir`, output is captured and then replayed — you'll still see it, but only after the iteration completes.
 
+## CLI flag issues
+
+### "'-n' must be a positive integer"
+
+The `-n` flag sets how many iterations to run. It must be at least 1:
+
+```bash
+# ✗ Wrong
+ralph run my-ralph -n 0
+
+# ✓ Correct
+ralph run my-ralph -n 1
+```
+
+### "'--delay' must be non-negative"
+
+The `--delay` flag sets seconds to wait between iterations. It can be zero but not negative:
+
+```bash
+# ✗ Wrong
+ralph run my-ralph --delay -5
+
+# ✓ Correct
+ralph run my-ralph --delay 0
+ralph run my-ralph --delay 30
+```
+
+### "'--timeout' must be a positive number"
+
+The `--timeout` flag sets the per-iteration time limit in seconds. It must be greater than zero:
+
+```bash
+# ✗ Wrong
+ralph run my-ralph --timeout 0
+
+# ✓ Correct
+ralph run my-ralph --timeout 300
+```
+
 ## Common questions
 
 ### Can I run multiple loops in parallel?
