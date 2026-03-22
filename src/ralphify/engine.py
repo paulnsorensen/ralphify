@@ -39,7 +39,7 @@ from ralphify._run_types import (
     RunStatus,
 )
 from ralphify._runner import run_command
-from ralphify._resolver import resolve_args, resolve_commands
+from ralphify._resolver import resolve_all, resolve_args
 
 
 _PAUSE_POLL_INTERVAL = 0.25  # seconds between pause/resume checks
@@ -125,8 +125,7 @@ def _assemble_prompt(
     """
     raw = config.ralph_file.read_text(encoding="utf-8")
     _, prompt = parse_frontmatter(raw)
-    prompt = resolve_args(prompt, config.args)
-    prompt = resolve_commands(prompt, command_outputs)
+    prompt = resolve_all(prompt, command_outputs, config.args)
     if config.credit:
         prompt += _CREDIT_INSTRUCTION
     return prompt
