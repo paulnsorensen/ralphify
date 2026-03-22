@@ -10,7 +10,7 @@ This tutorial walks through setting up ralphify, creating a ralph with commands,
 ## Prerequisites
 
 - **Python 3.11+**
-- **An AI coding agent CLI** — this tutorial uses Claude Code, but ralphify works with [any agent that accepts piped input](agents.md)
+- **An AI coding agent CLI** — this tutorial uses [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Install it with `npm install -g @anthropic-ai/claude-code`. Ralphify also works with [other agents](agents.md).
 - **A project with a test suite** (we'll use this for the feedback loop)
 
 ## Step 1: Install ralphify
