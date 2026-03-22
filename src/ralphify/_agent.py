@@ -57,16 +57,29 @@ _SESSION_KWARGS: dict[str, Any] = (
 def _kill_process_group(proc: subprocess.Popen[Any]) -> None:
     """Kill the agent process and its entire process group.
 
-    On POSIX, sends SIGKILL to the process group (because we used
-    ``start_new_session=True``, the agent's PID *is* the group leader).
-    Falls back to ``proc.kill()`` on Windows or if ``os.killpg`` fails.
+    On POSIX, sends SIGTERM then SIGKILL to the process group — but only when
+    the process is actually a session leader (its pgid equals its pid).  This
+    guard prevents accidentally killing the *caller's* process group when the
+    child was not started with ``start_new_session=True`` (e.g. in tests).
+    Falls back to ``proc.kill()`` on Windows or if the group kill fails.
     """
-    if sys.platform != "win32":
+    if sys.platform != "win32" and proc.poll() is None:
         try:
-            os.killpg(proc.pid, signal.SIGKILL)
-            return
+            pgid = os.getpgid(proc.pid)
         except (OSError, ProcessLookupError):
-            pass
+            pgid = None
+
+        if pgid == proc.pid:
+            try:
+                os.killpg(pgid, signal.SIGTERM)
+                try:
+                    proc.wait(timeout=3)
+                    return
+                except subprocess.TimeoutExpired:
+                    os.killpg(pgid, signal.SIGKILL)
+                    return
+            except (OSError, ProcessLookupError):
+                pass
     proc.kill()
 
 
@@ -202,6 +215,7 @@ def _run_agent_streaming(
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         **SUBPROCESS_TEXT_KWARGS,
+        **_SESSION_KWARGS,
     )
     try:
         # Popen with PIPE guarantees non-None streams; guard explicitly
@@ -215,13 +229,13 @@ def _run_agent_streaming(
         stream = _read_agent_stream(proc.stdout, deadline, on_activity)
 
         if stream.timed_out:
-            proc.kill()
+            _kill_process_group(proc)
         proc.wait()
 
         stderr_data = proc.stderr.read()
     finally:
         if proc.poll() is None:
-            proc.kill()
+            _kill_process_group(proc)
             proc.wait()
 
     log_file = _write_log(log_path_dir, iteration, "".join(stream.stdout_lines), stderr_data)
