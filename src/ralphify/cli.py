@@ -233,6 +233,28 @@ def _parse_user_args(
     return result
 
 
+def _validate_declared_args(raw_args: Any) -> list[str] | None:
+    """Validate the ``args`` field from frontmatter and return a clean list.
+
+    Returns ``None`` when *raw_args* is ``None`` (field absent).  Exits
+    with an error when the value is malformed (wrong type, invalid names,
+    or duplicates).
+    """
+    if raw_args is None:
+        return None
+    if not isinstance(raw_args, list):
+        _exit_error(f"'{FIELD_ARGS}' must be a list of strings.")
+    if not all(isinstance(a, str) for a in raw_args):
+        _exit_error(f"'{FIELD_ARGS}' items must be strings, got non-string value.")
+    seen: set[str] = set()
+    for name in raw_args:
+        _validate_name(name, "Arg")
+        if name in seen:
+            _exit_error(f"Duplicate arg name '{name}'.")
+        seen.add(name)
+    return raw_args
+
+
 def _parse_commands(raw_commands: list[dict[str, Any]]) -> list[Command]:
     """Validate and parse raw command dicts from frontmatter into Command objects."""
     commands: list[Command] = []
@@ -321,18 +343,7 @@ def _build_run_config(
     commands = _parse_commands(raw_commands)
 
     # Parse user args
-    declared_names = fm.get(FIELD_ARGS)
-    if declared_names is not None:
-        if not isinstance(declared_names, list):
-            _exit_error(f"'{FIELD_ARGS}' must be a list of strings.")
-        if not all(isinstance(a, str) for a in declared_names):
-            _exit_error(f"'{FIELD_ARGS}' items must be strings, got non-string value.")
-        seen_arg_names: set[str] = set()
-        for arg_name in declared_names:
-            _validate_name(arg_name, "Arg")
-            if arg_name in seen_arg_names:
-                _exit_error(f"Duplicate arg name '{arg_name}'.")
-            seen_arg_names.add(arg_name)
+    declared_names = _validate_declared_args(fm.get(FIELD_ARGS))
     ralph_args: dict[str, str] = {}
     if extra_args:
         ralph_args = _parse_user_args(extra_args, declared_names)
