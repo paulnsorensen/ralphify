@@ -135,10 +135,10 @@ def _read_agent_stream(
     result_text: str | None = None
 
     for line in stdout:
+        stdout_lines.append(line)
+
         if deadline is not None and time.monotonic() > deadline:
             return _StreamResult(stdout_lines=stdout_lines, result_text=result_text, timed_out=True)
-
-        stdout_lines.append(line)
         stripped = line.strip()
         if not stripped:
             continue

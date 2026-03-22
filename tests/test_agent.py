@@ -126,6 +126,18 @@ class TestReadAgentStream:
 
         assert result.timed_out is True
 
+    def test_timeout_preserves_last_read_line(self):
+        """When timeout fires after reading a line, that line must still be
+        included in stdout_lines — otherwise log output silently loses data."""
+        stream = io.StringIO("line1\nline2\n")
+        result = _read_agent_stream(stream, deadline=0.001, on_activity=None)
+
+        assert result.timed_out is True
+        # The stream reader already consumed at least one line before
+        # noticing the deadline — that line must be in stdout_lines.
+        assert len(result.stdout_lines) >= 1
+        assert result.stdout_lines[0] == "line1\n"
+
     def test_result_type_without_result_field_ignored(self):
         stream = io.StringIO('{"type": "result"}\n')
         result = _read_agent_stream(stream, deadline=None, on_activity=None)
