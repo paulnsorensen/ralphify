@@ -558,16 +558,20 @@ pick the next task from TODO.md and implement it.</code></pre>
             <p>An autonomous AI coding cycle: assemble a prompt, pipe it to an agent, let the agent work, repeat. Each iteration starts fresh &mdash; no stale context, no accumulated conversation history.</p>
           </details>
           <details class="faq-item">
-            <summary>How is this different from running my agent once?</summary>
+            <summary>How is Ralphify different from running my AI coding agent once?</summary>
             <p>A single agent run fills up its context window, slows down, and loses focus. Ralphify resets every iteration &mdash; fresh codebase, fresh data, fresh prompt. You steer, the loop executes.</p>
           </details>
           <details class="faq-item">
-            <summary>Does Ralphify need a web UI?</summary>
+            <summary>Does Ralphify require a web UI or JavaScript runtime?</summary>
             <p>No. It's a pure CLI tool. Runs in your terminal, works over SSH, no browser needed.</p>
           </details>
           <details class="faq-item">
-            <summary>What's &ldquo;agent FOMO&rdquo;?</summary>
+            <summary>What is agent FOMO?</summary>
             <p>That nagging feeling that everyone else has an AI coding agent shipping code right now&thinsp;&mdash;&thinsp;and you don't. Ralph fixes this. Set it up once, and your agent runs autonomously while you're away.</p>
+          </details>
+          <details class="faq-item">
+            <summary>What is an AI agent validation harness?</summary>
+            <p>A validation harness wraps an AI coding agent with automated checks &mdash; tests, linters, type checkers &mdash; that run after every agent action. Ralphify is a minimal harness that validates each iteration and feeds failures back to the agent, creating a self-correcting loop.</p>
           </details>
         </div>
       </div>
