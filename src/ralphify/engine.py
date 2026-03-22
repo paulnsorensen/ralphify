@@ -91,8 +91,9 @@ def _run_commands(
     directory.  Other commands run from the project root.
     """
     results: dict[str, str] = {}
+    quoted_args = {k: shlex.quote(v) for k, v in user_args.items()}
     for cmd in commands:
-        run_str = resolve_args(cmd.run, user_args)
+        run_str = resolve_args(cmd.run, quoted_args)
         # Determine working directory: if the command starts with ./ it's
         # relative to the ralph directory, otherwise use project root.
         if run_str.startswith(_RELATIVE_CMD_PREFIX):

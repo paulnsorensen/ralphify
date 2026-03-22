@@ -747,6 +747,21 @@ class TestRunCommands:
         assert mock_run_cmd.call_args.kwargs["cwd"] == ralph_dir
         assert mock_run_cmd.call_args.kwargs["command"] == "./check.sh"
 
+    @patch(MOCK_RUN_COMMAND)
+    def test_arg_values_with_spaces_are_shell_quoted_in_commands(self, mock_run_cmd, tmp_path):
+        """Arg values containing spaces must be shell-quoted when substituted
+        into command run strings so shlex.split treats them as single tokens."""
+        mock_run_cmd.return_value = ok_run_result(output="found it")
+        commands = [Command(name="search", run="grep {{ args.pattern }} src/")]
+
+        _run_commands(commands, ralph_dir=tmp_path, project_root=tmp_path, user_args={"pattern": "hello world"})
+
+        resolved_cmd = mock_run_cmd.call_args.kwargs["command"]
+        # The value must be quoted so shlex.split produces a single token
+        import shlex
+        tokens = shlex.split(resolved_cmd)
+        assert tokens == ["grep", "hello world", "src/"]
+
     @patch(MOCK_RUN_COMMAND, side_effect=FileNotFoundError("no-such-binary"))
     def test_command_not_found_raises_with_context(self, mock_run_cmd, tmp_path):
         commands = [Command(name="missing", run="no-such-binary --flag")]
