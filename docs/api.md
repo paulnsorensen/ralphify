@@ -162,7 +162,7 @@ Lifecycle status of a run.
 | `PAUSED` | `"paused"` | Paused between iterations, waiting for resume |
 | `STOPPED` | `"stopped"` | Stopped by user via `request_stop()` |
 | `COMPLETED` | `"completed"` | Reached `max_iterations` or finished naturally |
-| `FAILED` | `"failed"` | Crashed with an unhandled exception |
+| `FAILED` | `"failed"` | Stopped by `--stop-on-error` after a failed/timed-out iteration, or crashed with an unhandled exception |
 
 ---
 
