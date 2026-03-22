@@ -33,6 +33,14 @@ class ProcessResult:
         return self.returncode == 0 and not self.timed_out
 
 
+def ensure_str(value: str | bytes) -> str:
+    """Decode *value* to a string if it is bytes, passing strings through.
+
+    Uses UTF-8 with replacement so non-decodable bytes never raise.
+    """
+    return value if isinstance(value, str) else value.decode("utf-8", errors="replace")
+
+
 def collect_output(
     stdout: str | bytes | None,
     stderr: str | bytes | None,
@@ -45,7 +53,7 @@ def collect_output(
     parts: list[str] = []
     for stream in (stdout, stderr):
         if stream:
-            parts.append(stream if isinstance(stream, str) else stream.decode("utf-8", errors="replace"))
+            parts.append(ensure_str(stream))
     return "".join(parts)
 
 

@@ -25,7 +25,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import IO, Any
 
-from ralphify._output import SUBPROCESS_TEXT_KWARGS, ProcessResult, collect_output
+from ralphify._output import SUBPROCESS_TEXT_KWARGS, ProcessResult, collect_output, ensure_str
 
 # Agent binary name that supports --output-format stream-json.
 _CLAUDE_BINARY = "claude"
@@ -95,11 +95,9 @@ def _echo_output(
     captured output would be silently swallowed when logging is enabled.
     """
     if stdout:
-        text = stdout if isinstance(stdout, str) else stdout.decode("utf-8", errors="replace")
-        sys.stdout.write(text)
+        sys.stdout.write(ensure_str(stdout))
     if stderr:
-        text = stderr if isinstance(stderr, str) else stderr.decode("utf-8", errors="replace")
-        sys.stderr.write(text)
+        sys.stderr.write(ensure_str(stderr))
 
 
 def _supports_stream_json(cmd: list[str]) -> bool:

@@ -2,7 +2,7 @@
 
 import pytest
 
-from ralphify._output import ProcessResult, collect_output, format_duration
+from ralphify._output import ProcessResult, collect_output, ensure_str, format_duration
 
 
 class TestProcessResult:
@@ -27,6 +27,25 @@ class TestProcessResult:
     def test_timed_out_defaults_to_false(self):
         result = ProcessResult(returncode=0)
         assert result.timed_out is False
+
+
+class TestEnsureStr:
+    def test_str_passthrough(self):
+        assert ensure_str("hello") == "hello"
+
+    def test_bytes_decoded(self):
+        assert ensure_str(b"hello\n") == "hello\n"
+
+    def test_invalid_bytes_replaced(self):
+        result = ensure_str(b"hello\xff")
+        assert "hello" in result
+        assert "\ufffd" in result
+
+    def test_empty_str(self):
+        assert ensure_str("") == ""
+
+    def test_empty_bytes(self):
+        assert ensure_str(b"") == ""
 
 
 class TestCollectOutput:
