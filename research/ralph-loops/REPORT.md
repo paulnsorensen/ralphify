@@ -8,55 +8,45 @@
 
 2. **The verification layer is the whole game.** Spotify's LLM-judge vetoes 25% of sessions; Karpathy's scalar metric auto-reverts bad experiments. Without strong verification, agents drift. The best systems layer deterministic checks (tests, lint) with LLM evaluation.
 
-3. **Three primitives define a loop: editable asset, measurable metric, time-boxed cycle.** Karpathy's autoresearch distilled this to 630 lines running 700 experiments in 2 days. When all three are clear, reliability is high.
+3. **Three primitives define a loop: editable asset, measurable metric, time-boxed cycle.** Karpathy's autoresearch distilled this to 630 lines running 700 experiments in 2 days. When all three are clear, reliability is high. For async workflows, hibernate-and-wake (Meta's REA) outperforms polling — shut down between jobs, resume when results are ready.
 
-4. **One item per loop is the universal scope rule.** Every practitioner system limits each iteration to a single task. Batching causes drift. Spotify's #1 veto trigger is scope creep.
+4. **One item per loop is the universal scope rule.** Every practitioner system limits each iteration to a single task. Batching causes drift. Spotify's #1 veto trigger is scope creep. SWE-Bench Pro confirms: multi-file coordination drops below 25% success vs. 70%+ for single-issue tasks.
 
 5. **"Probabilistic inside, deterministic at edges."** Generation is flexible; evaluation is rigid. Commands (deterministic) evaluate; prompts (probabilistic) generate. Tests written by humans, implementations by agents.
 
-6. **Output redirection prevents context flooding.** `> run.log 2>&1` then `grep` for metrics — the single most impactful technique for agent loop reliability. Verbose output kills agent performance.
+6. **Three-phase prompt architecture (research→plan→implement) is the validated workflow.** Each phase gets a fresh context window loading only the previous phase's artifact. Independently converged on by HumanLayer, Anthropic, and Test Double.
 
-7. **Three-phase prompt architecture (research→plan→implement) is the validated workflow.** Each phase gets a fresh context window loading only the previous phase's artifact. Independently converged on by HumanLayer, Anthropic, and Test Double.
+7. **"On the loop" beats "in the loop."** Fix the harness, not the output. Every prompt improvement benefits all future iterations — creating a flywheel.
 
-8. **"On the loop" beats "in the loop."** Fix the harness, not the output. Every prompt improvement benefits all future iterations — creating a flywheel.
+8. **Cost control requires agent self-awareness and hard limits.** Unbounded autonomy produces $47K incidents. MCP servers (Agent Budget Guard) let agents track their own spending. Combined with per-task budgets, prompt caching (~90% input cost reduction), and tiered model routing, practitioners achieve 60-80% cost cuts. Hard ceilings, rate limiters, and loop detectors are non-negotiable.
 
-9. **Specification files have an instruction ceiling (~150-200).** More rules = worse instruction-following across the board. Keep CLAUDE.md under 300 lines; use it as a router, not a monolith. Never auto-generate.
+9. **Design for the hard 20%: real productivity gains are 8-13%, not 50%.** AI agents hit the same ceiling as every previous "replace programming" technology. Thoughtworks' grounded calculation: ~40% of time is coding × ~60% AI-useful × ~55% faster = 8-13% net. Code churn doubled, refactoring dropped from 25% to under 10%. The last 20% costs 80% of the tokens — loops must be designed for this reality, not marketing claims.
 
-10. **Cost control requires agent self-awareness and hard limits.** Unbounded autonomy produces $47K incidents. MCP servers (Agent Budget Guard) let agents track their own spending. Combined with per-task budgets, prompt caching (~90% input cost reduction), and tiered model routing, practitioners achieve 60-80% cost cuts. Hard ceilings, rate limiters, and loop detectors are non-negotiable.
+10. **Git is the universal state backend.** Commits as checkpoints, revert-on-failure, diffs as progress documentation. The four recurring state files: specification (frozen), progress log (append-only), task list (shrinking), knowledge base (growing).
 
-11. **The 70-80% problem is real and universal.** AI agents hit the same ceiling as every previous "replace programming" technology. The last 20% costs 80% of the tokens. Loops must be designed for the hard 20%, not the easy 80%.
+11. **Multi-agent orchestration works for independent tasks, fails for coordination.** Cursor's planner-worker-judge architecture scales to 1M+ lines across hundreds of agents — but only because workers are fully independent. Flat coordination and optimistic concurrency both failed; role-based hierarchy with 3-5 parallel worktrees is the practical ceiling. Shared-state coordination is fragile and 4-15x more expensive.
 
-12. **Git is the universal state backend.** Commits as checkpoints, revert-on-failure, diffs as progress documentation. The four recurring state files: specification (frozen), progress log (append-only), task list (shrinking), knowledge base (growing).
+12. **Measure iterations in actions, not time.** Successful agents complete tasks in 3-7 meaningful actions. Beyond 15 actions, success probability drops sharply. Action count is a better circuit breaker signal than wall clock time.
 
-13. **Hibernate-and-wake > polling for long operations.** Meta's REA shuts down between async jobs rather than maintaining sessions. Ralphify's loop-with-commands already enables this pattern.
+13. **Trust scales through micro-interactions, but greater autonomy demands tighter constraints.** Anthropic's data: auto-approve rises from 20% to 40% over 750 sessions. Experienced users interrupt *more*, not less. One failure erases weeks of confidence (GitLab). Counter-intuitively, strict dependency flows and deterministic guardrails enable more agent freedom — hooks on every tool call, file write, and commit make guardrails unavoidable. Agentic coding is XP rediscovered: when agents generate 10-100x more code, CI, strong typing, and architecture tests become non-negotiable.
 
-14. **Multi-agent orchestration works for independent tasks, fails for coordination.** Cursor's planner-worker-judge architecture scales to 1M+ lines across hundreds of agents — but only because workers are fully independent. Flat coordination and optimistic concurrency both failed; role-based hierarchy with 3-5 parallel worktrees is the practical ceiling. Shared-state coordination is fragile and 4-15x more expensive.
+14. **Test the harness, not the agent output.** Block's record/playback pattern captures real LLM interactions to JSON, then replays deterministically — testing harness logic without burning tokens. LangChain improved from Top 30 to Top 5 on Terminal Bench by changing only the harness. Live LLM tests never run in CI: "too expensive, too slow, and too flaky."
 
-15. **Measure iterations in actions, not time.** Successful agents complete tasks in 3-7 meaningful actions. Beyond 15 actions, success probability drops sharply. Action count is a better circuit breaker signal than wall clock time.
+15. **Build your harness to be rippable — permanent layers vs. temporary scaffolding.** Vercel removed 80% of agent tools and got better results. Manus refactored their harness 5x in 6 months. Permanent: context engineering, architectural constraints, safety boundaries. Temporary: reasoning optimization, loop detection, planning decomposition. Before adding middleware, ask: "Will I want to remove this when the next model ships?"
 
-16. **Trust is earned through hundreds of micro-interactions, not configured.** Anthropic's data: auto-approve rises from 20% to 40% over 750 sessions. Experienced users interrupt *more*, not less — shifting from action-by-action approval to outcome-focused monitoring. But one failure erases weeks of accumulated confidence (GitLab). The Trust Equation: Trust = (Competence × Consistency × Recoverability) / Consequence.
+16. **Entropy management is the third pillar of harness engineering.** Agent-generated codebases accumulate documentation drift, convention divergence, and dead code. OpenAI spent every Friday cleaning "AI slop" until they automated it with periodic garbage-collection agents that scan for constraint violations and open targeted refactoring PRs. The "cleanup ralph" is the operational complement to the "development ralph." CodeScene's data confirms the inverse: Code Health 9.5+ is the threshold for optimal agent performance — agents fail more and burn excess tokens on unhealthy codebases.
 
-17. **Test the harness, not the agent output.** Block's record/playback pattern captures real LLM interactions to JSON, then replays deterministically — testing harness logic without burning tokens. LangChain improved from Top 30 to Top 5 on Terminal Bench by changing only the harness. Live LLM tests never run in CI: "too expensive, too slow, and too flaky."
+17. **Completion promise gating replaces subjective self-assessment.** Machine-verifiable exit markers (`<promise>COMPLETE</promise>`) combined with stop hooks prevent premature loop exit. The agent exits only when external verification passes — not when it *thinks* it's done. This is the architectural fix for the fundamental weakness in ReAct-style self-assessment.
 
-18. **Build your harness to be rippable — permanent layers vs. temporary scaffolding.** Vercel removed 80% of agent tools and got better results. Manus refactored their harness 5x in 6 months. Permanent: context engineering, architectural constraints, safety boundaries. Temporary: reasoning optimization, loop detection, planning decomposition. Before adding middleware, ask: "Will I want to remove this when the next model ships?"
+18. **MCP servers extend the harness, not the loop.** 5,000+ MCP servers and 97M monthly SDK downloads have created an infrastructure layer for agent loops — debugging (Deebo), profiling (CodSpeed), live docs (Context7), cost tracking (Budget Guard), browser testing (Playwright). But tool definitions consume up to 72% of context window; dynamic tool loading (85% token reduction via Anthropic's Tool Search) is essential. Start with 3-5 high-value servers, not 50.
 
-19. **Entropy management is the third pillar of harness engineering.** Agent-generated codebases accumulate documentation drift, convention divergence, and dead code. OpenAI spent every Friday cleaning "AI slop" until they automated it with periodic garbage-collection agents that scan for constraint violations and open targeted refactoring PRs. The "cleanup ralph" is the operational complement to the "development ralph."
+19. **Context engineering replaces prompt engineering.** Context is a finite, depletable resource — the goal is "the smallest set of high-signal tokens that maximize likelihood of desired outcome." Preference order: raw > compaction > summarization. Context rot degrades output after 20-30 exchanges; fresh-context-per-iteration is the architectural fix. Output redirection (`> run.log 2>&1` then `grep`) prevents context flooding — the single most impactful reliability technique. Specification files have a ~150-200 instruction ceiling; keep CLAUDE.md under 300 lines as a router, not a monolith. Architecture documentation yields 40% fewer errors and 55% faster completion.
 
-20. **Completion promise gating replaces subjective self-assessment.** Machine-verifiable exit markers (`<promise>COMPLETE</promise>`) combined with stop hooks prevent premature loop exit. The agent exits only when external verification passes — not when it *thinks* it's done. This is the architectural fix for the fundamental weakness in ReAct-style self-assessment.
+20. **Agent throughput exceeds human review capacity.** The new bottleneck is human attention, not agent speed. 78% of Claude Code sessions involve multi-file edits with 47 tool calls. Intent-failure detection — agents that follow rules but miss product intent — is the hardest gap. Agents can pass all tests while building the wrong thing.
 
-21. **MCP servers extend the harness, not the loop.** 5,000+ MCP servers and 97M monthly SDK downloads have created an infrastructure layer for agent loops — debugging (Deebo), profiling (CodSpeed), live docs (Context7), cost tracking (Budget Guard), browser testing (Playwright). But tool definitions consume up to 72% of context window; dynamic tool loading (85% token reduction via Anthropic's Tool Search) is essential. Start with 3-5 high-value servers, not 50.
+21. **Budget awareness should be continuous, not binary.** Google's BATS framework surfaces real-time resource availability inside the agent's reasoning loop. Agents that see their remaining budget make qualitatively different decisions — choosing simpler approaches, skipping optional improvements, flagging limits. Hard cutoffs are necessary but insufficient; continuous budget signals enable smarter execution.
 
-22. **Context engineering replaces prompt engineering.** Context is a finite, depletable resource. The goal: "the smallest set of high-signal tokens that maximize likelihood of desired outcome." Preference order: raw > compaction > summarization. Context rot degrades output after 20-30 exchanges — fresh-context-per-iteration (ralphify's design) is the architectural fix. Projects with architecture documentation see 40% fewer agent errors and 55% faster completion.
-
-23. **Greater autonomy demands tighter constraints.** Counter-intuitive but validated: strict dependency flows and deterministic guardrails enable more agent freedom, not less. Hooks make guardrails unavoidable — run on every tool call, file write, and commit. Van Eyck: agentic coding is XP rediscovered. When agents generate 10-100x more code, CI, strong typing, and architecture tests become non-negotiable.
-
-24. **Agent throughput exceeds human review capacity.** The new bottleneck is human attention, not agent speed. 78% of Claude Code sessions involve multi-file edits with 47 tool calls. Intent-failure detection — agents that follow rules but miss product intent — is the hardest gap. Agents can pass all tests while building the wrong thing.
-
-25. **Real productivity gains are 8-13%, not 50%.** Thoughtworks' grounded calculation: ~40% of time is coding × ~60% of that is AI-useful × ~55% faster when useful = 8-13% net. Code churn doubled, copy-paste code increased 50%, refactoring dropped from 25% to under 10%. Agent loops must be designed for this reality, not marketing claims.
-
-26. **Budget awareness should be continuous, not binary.** Google's BATS framework surfaces real-time resource availability inside the agent's reasoning loop. Agents that see their remaining budget make qualitatively different decisions — choosing simpler approaches, skipping optional improvements, flagging limits. Hard cutoffs are necessary but insufficient; continuous budget signals enable smarter execution.
-
-27. **Loop fingerprinting detects stuck agents without LLM calls.** Track the combination of last tool call + result hash. If this fingerprint repeats 3+ times, the agent is looping, not progressing. Map failure types to actions: non-retryable → STOP, rate limits → bounded RETRY, transient → ESCALATE. Deterministic, zero-cost, production-proven.
+22. **Loop fingerprinting detects stuck agents without LLM calls.** Track the combination of last tool call + result hash. If this fingerprint repeats 3+ times, the agent is looping, not progressing. Map failure types to actions: non-retryable → STOP, rate limits → bounded RETRY, transient → ESCALATE. Deterministic, zero-cost, production-proven.
 
 ## Chapters
 
@@ -66,7 +56,7 @@
 | 2 | [Verification & Quality Gates](chapters/02-verification-gates.md) | How Spotify, Karpathy, and others build verification layers that prevent drift |
 | 3 | [Karpathy's Autoresearch](chapters/03-autoresearch.md) | The minimal agent loop distilled to 3 primitives and 630 lines |
 | 4 | [Production Systems at Scale](chapters/04-production-scale.md) | Meta's REA, Spotify's Honk, Codex long-horizon — enterprise patterns |
-| 5 | [Multi-Agent Orchestration](chapters/05-multi-agent.md) | Fleet management, parallel worktrees, coordinator patterns |
+| 5 | [Multi-Agent Orchestration](chapters/05-multi-agent.md) | Cursor's architecture evolution, worktree isolation, 3-5 agent ceiling, coordinator patterns |
 | 6 | [Implications for Ralphify](chapters/06-ralphify-implications.md) | Framework gaps, cookbook recipes, prompt engineering lessons, competitive positioning |
 | 7 | [Anti-Patterns & Failure Modes](chapters/07-anti-patterns.md) | The ten recurring failure modes and practitioner-validated remedies |
 | 8 | [Specification Files](chapters/08-specification-files.md) | CLAUDE.md, AGENTS.md patterns from 2,500+ repos and real-world configs |
@@ -142,3 +132,4 @@
 - [How to Run a Multi-Agent Coding Workspace](https://www.augmentcode.com/guides/how-to-run-a-multi-agent-coding-workspace) — Augment Code (6 coordination patterns, worktree isolation, failure taxonomy)
 - [The Loop as Laboratory: 3,190 Cycles](https://dev.to/meridian-ai/the-loop-as-laboratory-what-3190-cycles-of-autonomous-ai-operation-reveal-23je) — Meridian AI (30-day autonomous operation, identity persistence, 9 sub-agents)
 - [Agent Loops Forever: How to Stop](https://matrixtrak.com/blog/agents-loop-forever-how-to-stop) — MatrixTrak (fingerprint detection, error classification, stopping conditions)
+- [Agentic AI Coding: Best Practice Patterns](https://codescene.com/blog/agentic-ai-coding-best-practice-patterns-for-speed-with-quality) — CodeScene (Code Health 9.5+ threshold, multi-level safeguarding, 2-3x speedup)

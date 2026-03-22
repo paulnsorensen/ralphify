@@ -288,3 +288,45 @@
 - Update Ch05 (multi-agent) with Cursor's architecture and worktree scaling data
 - Update Ch06 (implications) with production orchestration findings: fingerprinting, budget signals, worktree-native parallel execution
 - Consider adding a "Practitioner Cookbook" chapter with concrete, copy-paste-ready ralph patterns
+
+## Iteration 13 — 2026-03-22
+
+**Decision: HYBRID — refine (primary) + targeted research (secondary)**
+
+**Refine focus:**
+1. REPORT.md: trim 27 → ~22 insights by merging related pairs:
+   - Merge #6 (output redirection) into #22 (context engineering) — output redirection is a specific context engineering technique
+   - Merge #11 (70-80% problem) + #25 (8-13% real productivity) → single "realistic expectations" insight
+   - Merge #13 (hibernate-and-wake) as a bullet under #3 (three primitives) — it's a pattern detail
+   - Fold #16 (trust micro-interactions) into a tighter version combined with #23 (greater autonomy = tighter constraints)
+   - Merge #9 (spec file ceiling) into #22 (context engineering) — spec file size is a context management concern
+2. Update Ch05 (multi-agent) with Cursor's planner-worker-judge evolution, worktree scaling, and Augment Code patterns
+3. Tighten intro paragraph to absorb any folded insights
+
+**Research focus (secondary):**
+- One quick search for the absolute latest (March 20-22, 2026) practitioner content on agent loops/harness engineering
+
+**What was done:**
+- Trimmed REPORT.md from 27 to 22 insights by merging 5 related pairs:
+  - #6 (output redirection) + #9 (spec file ceiling) → folded into #19 (context engineering)
+  - #11 (70-80% problem) + #25 (8-13% productivity) → merged into #9 (realistic expectations)
+  - #13 (hibernate-wake) → folded into #3 (three primitives)
+  - #16 (trust micro-interactions) + #23 (greater autonomy = tighter constraints) → merged into #13 (trust & autonomy)
+- Updated Ch05 (Multi-Agent) with Cursor's planner-worker-judge architecture evolution, worktree isolation patterns, and Augment Code's coordination guide
+- Updated Ch06 (Implications) with production orchestration section: loop fingerprinting, continuous budget signals, worktree-native parallel execution
+- Added loop fingerprinting as 6th competitive differentiator in Ch06
+- Cleaned up duplicate question in notes/questions.md
+- Searched latest March 2026 content: found CodeScene's Code Health threshold (9.5+), MIT Missing Semester agentic coding lecture, swarm-cli DAG pipeline
+- Added CodeScene data to insight #16 (entropy management) — first quantified "AI readiness" threshold
+- Added 3 new sources, 5 new insights to notes, 2 new questions
+
+**Key surprises:**
+- Code Health 9.5+ is the threshold for optimal AI agent performance — first quantified codebase readiness metric. Agents get confused by the same patterns as humans.
+- MIT now teaches agentic coding as core curriculum (Missing Semester) — academic validation of the field
+- DAG-based ralph orchestration (swarm-cli) treats multi-agent pipelines as directed graphs — but practitioners still drop to manual mode for the hard 20%
+- Trimming REPORT.md from 27→22 insights actually improved readability — several insights were restatements of the same principle
+
+**Next iteration should focus on:**
+- Research: deeper dive into codebase readiness metrics — is Code Health 9.5+ validated by others? What does "AI-ready code" look like?
+- Or: explore the Anthropic 2026 Agentic Coding Trends Report PDF for new data points
+- Or: refine cycle — 15 chapters is still at the upper limit, consider merging Ch09 (prompt assembly) into Ch14 (context engineering)

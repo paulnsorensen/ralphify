@@ -291,6 +291,30 @@ mcp:
 
 This would serve as documentation (what tools does this ralph use?) and eventually as a setup command (`ralph install-mcp` that configures the agent's MCP settings).
 
+## Production Orchestration Patterns
+
+Findings from Cursor's 1M+ line deployment, Meridian's 3,190-cycle experiment, and practitioner production data suggest three areas where ralphify can add production-grade capabilities:
+
+### Loop Fingerprinting (High Priority)
+
+Stuck agent detection without LLM calls. Track the combination of last tool call + result hash per iteration. If this fingerprint repeats 3+ consecutive times, the agent is looping. MatrixTrak's error classification matrix maps failure types to actions:
+- **Non-retryable** (syntax errors, missing files) → STOP
+- **Rate limits** → bounded RETRY with backoff
+- **Transient** (timeouts, network) → ESCALATE to human
+
+Ralphify could implement this as a built-in check between iterations — zero cost, deterministic, and it prevents the most common production failure mode.
+
+### Continuous Budget Signals (Medium Priority)
+
+Google's BATS framework surfaces real-time resource availability inside the agent's reasoning loop. Agents that see their remaining budget make qualitatively different decisions. For ralphify, this means:
+- Surface iteration count / max_iterations in the prompt (e.g., "Iteration 7 of 20")
+- When token usage is available, include it: "~$2.30 spent of $10 budget"
+- Agents with budget visibility choose simpler approaches when resources are scarce
+
+### Worktree-Native Parallel Execution (Lower Priority, High Impact)
+
+Ralphify's `manager.py` already supports concurrent runs. The missing piece is git worktree isolation — each parallel ralph gets its own worktree, preventing file conflicts. Boris Cherny and Augment Code converge on 3-5 parallel worktrees as the practical ceiling. Sequential merge with rebase is the validated integration strategy.
+
 ## Competitive Positioning
 
 Ralphify sits at a validated sweet spot: simpler than full orchestration frameworks (LangGraph, CrewAI) but more structured than raw bash loops. The Karpathy autoresearch moment — 630 lines running 700 experiments — proves that "simple harness, powerful results" wins.
@@ -301,4 +325,5 @@ The key differentiators to develop:
 3. **Cost-aware loops.** `max_iterations`, iteration metrics, and prompt caching guidance would address the #1 operational pain point practitioners report.
 4. **Skills ecosystem integration.** With 500+ skills in a compatible format, ralphify can offer a rich library of pre-built ralphs out of the box.
 5. **Iteration observability.** Per-iteration metrics (duration, command pass/fail, iteration count, estimated cost) surfaced in CLI output. Ralph TUI shows the market wants this — completion rate, stuck detection, cost per feature are the three metrics practitioners track. Ralphify can provide this natively without requiring a separate dashboard.
-6. **Rippable-by-design architecture.** As models improve, ralphify should get simpler. Design features to be removable (e.g., loop detection can be a plugin, not core). This positions ralphify as a framework that evolves with models rather than fighting them.
+6. **Loop fingerprinting.** Zero-cost stuck detection built into the loop — no other tool in this weight class offers deterministic doom loop prevention.
+7. **Rippable-by-design architecture.** As models improve, ralphify should get simpler. Design features to be removable (e.g., loop detection can be a plugin, not core). This positions ralphify as a framework that evolves with models rather than fighting them.

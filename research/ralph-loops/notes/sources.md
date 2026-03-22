@@ -170,6 +170,10 @@
 - https://ralphable.com/blog/ralph-loop-methodology — Ralphable — 75+ ralph loop examples across coding, writing, analysis — **medium**
 - https://docs.bswen.com/blog/2026-03-21-git-worktrees-parallel-claude-code/ — BSWEN — Git worktrees for parallel Claude Code agents, practical setup guide — **medium**
 
+- https://codescene.com/blog/agentic-ai-coding-best-practice-patterns-for-speed-with-quality — CodeScene — Code Health 9.5+ threshold for optimal AI agent performance, 2-3x speedup, multi-level safeguarding, "speed amplifies both good and bad decisions" — **high**
+- https://missing.csail.mit.edu/2026/agentic-coding/ — MIT Missing Semester — Academic curriculum on agentic coding: "intern not subordinate" mental model, /llms.txt standard, subagent delegation, 200-line agent architecture — **medium**
+- https://github.com/swarm-cli — swarm-cli — DAG pipeline orchestration for ralph loops: planner→implementer→reviewer as continuous pipeline, Docker-like CLI — **medium**
+
 ## Lower Relevance
 
 - https://www.permit.io/blog/human-in-the-loop-for-ai-agents-best-practices-frameworks-use-cases-and-demo — Permit.io — Human-in-the-loop patterns for AI agents — **low**

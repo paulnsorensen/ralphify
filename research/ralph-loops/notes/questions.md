@@ -11,7 +11,6 @@
 - [x] How do practitioners test their harness/loop configurations themselves (not the agent output, but the harness)? — Block's TestProvider (record/playback pattern), LangChain's composable middleware with per-layer testing, Datadog's 5-layer verification pyramid. Key rule: live LLM tests never run in CI. See chapter 11.
 - [ ] What's the optimal ratio of spec-writing time to execution time in the spec+ralph integrated workflow?
 - [ ] How do teams handle the asymmetric trust problem (one failure erases weeks of accumulated confidence)?
-- [ ] What does a "rippable" harness look like in practice — which middleware layers get removed first as models improve?
 - [ ] What pass@k / pass^k thresholds do teams target before promoting an agent configuration to production?
 - [ ] How effective is the "meta-ralph" pattern — a ralph that optimizes other ralphs via eval feedback? Arize showed +5-10% on SWE-bench, but has anyone applied this to ralph loops specifically?
 - [ ] Does "always-in-prompt" vs "invoked-on-demand" skill placement have a measurable impact at scale? Vercel's small sample (33 vs 29) is suggestive but inconclusive.
@@ -30,6 +29,8 @@
 - [ ] How do teams calibrate loop fingerprint thresholds (3 repeats? 5?) for different task types? Creative tasks may show more repetition than deterministic ones.
 - [ ] Does continuous budget signaling (Google's BATS) measurably change agent behavior vs. hard cutoffs alone? No controlled study yet.
 - [x] What does multi-agent coordination look like at scale (1M+ lines)? — Cursor's planner-worker-judge: flat coordination fails, optimistic concurrency fails, role-based hierarchy succeeds. Workers must be fully independent. See Ch15.
+- [ ] What Code Health thresholds do teams target before deploying agents on a codebase? CodeScene says 9.5+ — is this validated by other teams?
+- [ ] Does DAG-based ralph orchestration (swarm-cli) outperform sequential phase execution for multi-phase workflows?
 
 ## Answered
 - [x] What are the most effective patterns for keeping agents on track during long-running loops? — Fresh context resets + file-based state + verification gates. See chapters 01-02.

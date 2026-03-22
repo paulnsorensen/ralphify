@@ -62,11 +62,30 @@ The most successful multi-agent patterns involve **fully independent** tasks:
 - No shared state beyond the repository
 - Merge at the end with human review
 
-### Planner-Worker Hierarchy
-When coordination is needed:
-1. **Planner agent** decomposes work and assigns tasks
-2. **Worker agents** execute independently
-3. **Judge agent** reviews outputs (optional, use sparingly)
+### Planner-Worker-Judge Hierarchy (Cursor's Architecture Evolution)
+
+Cursor's journey to scaling agents across 1M+ line codebases is the most instructive case study. They tried three architectures before finding one that works:
+
+1. **Flat coordination (failed)** — All agents shared state and communicated as peers. Collapsed under coordination overhead.
+2. **Optimistic concurrency (failed)** — Agents worked independently and merged optimistically. Merge conflicts and semantic conflicts escalated unpredictably.
+3. **Role-based hierarchy (succeeded)** — Distinct roles with clear responsibilities:
+   - **Planner**: Decomposes work, assigns tasks. Can spawn sub-planners recursively for large tasks.
+   - **Workers**: Execute independently in isolated worktrees. No awareness of other workers.
+   - **Judge**: Reviews outputs against specifications. Deterministic checks first, LLM evaluation second.
+
+Key findings from Cursor's production deployment:
+- **Workers must be fully independent.** Any shared state between workers creates fragile coordination.
+- **Model selection per role matters.** GPT-5.2 outperforms coding-specialized GPT-5.1-Codex as a planner. Match model capability to role, not task type.
+- **"Prompting over architecture."** Extensive prompt experimentation yielded better results than architectural refinements. The model is probably fine — it's a skill issue.
+- **3-5 parallel worktrees is the practical ceiling.** Beyond 5-7 agents, rate limits, merge conflicts, and review bottleneck eat the gains (validated independently by Boris Cherny and Augment Code).
+
+### Worktree Isolation at Scale
+
+Augment Code's guide to multi-agent workspaces identifies 6 coordination patterns, with worktree isolation as the clear winner:
+- Each agent gets its own git worktree (isolated branch, shared object store)
+- Sequential merge with rebase is the validated integration strategy
+- Failure taxonomy: semantic conflicts (hardest), test regressions, style drift, dependency conflicts
+- The review bottleneck is the practical limit — human attention, not agent capacity
 
 ### Karpathy's Vision for Collaborative Research
 > "The goal is not to emulate a single PhD student, it's to emulate a research community of them."

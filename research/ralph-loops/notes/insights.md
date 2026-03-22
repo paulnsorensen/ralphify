@@ -143,6 +143,13 @@
 - **Agent observability has consolidated around 5 platforms but none target ralph loops specifically.** Braintrust, Helicone, Galileo, Fiddler, Vellum — all general-purpose. Ralph-loop-specific metrics (iteration count, command pass/fail, loop fingerprint) are a gap ralphify could fill.
 - **The ralph loop's power comes from enforced engineering discipline, not the bash loop.** Sam Keen: specs before implementation, automated validation gates, fresh context per iteration. "The skills that matter most may be the ones we've always had." Converges with Van Eyck's "XP rediscovered" and Fowler's "relocating rigor."
 
+## Codebase Readiness (NEW — Iteration 13)
+- **Code Health 9.5+ is the threshold for optimal AI agent performance.** CodeScene's empirical data: agents get confused by the same patterns as humans — low Code Health increases failure rate and burns excess tokens. 2-3x speedup achieved only after codebase reached high health scores.
+- **"Speed amplifies both good design and bad decisions."** CodeScene frames the agentic coding challenge as infrastructure, not capability. The infrastructure layer (Code Health + MCP tools + AGENTS.md) transforms principles into executable guidance.
+- **Multi-level safeguarding prevents quality degradation across iterations.** Three tiers: continuous review during generation, pre-commit checks, PR pre-flight validation. This extends the verification gates pattern (Ch02) with a quality-specific lens.
+- **MIT now teaches agentic coding as core curriculum.** Missing Semester's "Agentic Coding" lecture uses the "intern not subordinate" mental model — set expectations around guidance and correction cycles, not autonomy. The `/llms.txt` standard for token-efficient documentation is gaining academic adoption.
+- **DAG-based ralph orchestration treats the planner→implementer→reviewer pipeline as a directed graph.** swarm-cli manages multi-agent loops as DAG stages with a Docker-like CLI, enabling "perpetual motion machine" autonomous development — though practitioners report dropping to manual mode for specialized requirements (the 20% problem again).
+
 ## Ralphify-Specific
 - **Ralphify's command system naturally supports the "commands as verifiers" pattern.** Running tests/metrics as commands and injecting results into the prompt is exactly what Spotify and Karpathy do — ralphify just needs to formalize verification as a first-class concept.
 - **Agent skills as portable packages is a validated trend.** Ralphify's skill system aligns with the industry direction of installable, reusable instruction sets.
