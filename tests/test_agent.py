@@ -1,7 +1,6 @@
 """Tests for the _agent module — subprocess execution, log writing, and stream parsing."""
 
 import io
-import os
 import signal
 import subprocess
 import sys
@@ -419,14 +418,14 @@ class TestExecuteAgentStreaming:
         proc.kill.assert_called()
 
 
-class TestKillProcessGroup:
-    """Tests for _kill_process_group — process group cleanup logic."""
+class TestProcessGroupCleanup:
+    """Process group cleanup, isolation, and _kill_process_group tests."""
 
-    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only behavior")
+    pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only behavior")
+
     @patch("ralphify._agent.os.killpg")
     @patch("ralphify._agent.os.getpgid")
     def test_session_leader_gets_sigterm(self, mock_getpgid, mock_killpg):
-        """When process is a session leader, SIGTERM is sent to the group."""
         proc = MagicMock(pid=42, poll=MagicMock(return_value=None))
         mock_getpgid.return_value = 42
 
@@ -435,11 +434,9 @@ class TestKillProcessGroup:
         mock_killpg.assert_any_call(42, signal.SIGTERM)
         proc.wait.assert_called_once_with(timeout=3)
 
-    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only behavior")
     @patch("ralphify._agent.os.killpg")
     @patch("ralphify._agent.os.getpgid")
     def test_escalates_to_sigkill_on_timeout(self, mock_getpgid, mock_killpg):
-        """When SIGTERM doesn't stop the process within 3s, SIGKILL is sent."""
         proc = MagicMock(pid=42, poll=MagicMock(return_value=None))
         proc.wait.side_effect = subprocess.TimeoutExpired(cmd="agent", timeout=3)
         mock_getpgid.return_value = 42
@@ -449,11 +446,9 @@ class TestKillProcessGroup:
         mock_killpg.assert_any_call(42, signal.SIGTERM)
         mock_killpg.assert_any_call(42, signal.SIGKILL)
 
-    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only behavior")
     @patch("ralphify._agent.os.killpg")
     @patch("ralphify._agent.os.getpgid")
     def test_not_session_leader_falls_back_to_kill(self, mock_getpgid, mock_killpg):
-        """When pgid != pid, falls back to proc.kill()."""
         proc = MagicMock(pid=42, poll=MagicMock(return_value=None))
         mock_getpgid.return_value = 1
 
@@ -463,25 +458,18 @@ class TestKillProcessGroup:
         proc.kill.assert_called_once()
 
     def test_already_exited_falls_back_to_kill(self):
-        """When process already exited, just calls proc.kill()."""
         proc = MagicMock(pid=42, poll=MagicMock(return_value=0))
 
         _kill_process_group(proc)
 
         proc.kill.assert_called_once()
 
-
-class TestProcessGroupIsolation:
-    """Tests verifying that agent subprocesses use session/group isolation."""
-
     @patch(MOCK_POPEN, side_effect=ok_proc)
-    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only behavior")
     def test_blocking_uses_start_new_session(self, mock_popen):
         execute_agent(["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1)
         assert mock_popen.call_args[1].get("start_new_session") is True
 
     @patch(MOCK_POPEN)
-    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only behavior")
     def test_streaming_uses_start_new_session(self, mock_popen):
         mock_popen.return_value = make_mock_popen(returncode=0)
         _run_agent_streaming(
