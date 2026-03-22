@@ -12,6 +12,7 @@ Everything you need at a glance. Bookmark this page.
 
 ```bash
 ralph run my-ralph                 # Run loop forever (Ctrl+C to stop)
+ralph run my-ralph/RALPH.md        # Can also pass the file path directly
 ralph run my-ralph -n 5            # Run 5 iterations
 ralph run my-ralph -n 1 --log-dir logs  # Single iteration with output capture
 ralph run my-ralph --stop-on-error # Stop if agent exits non-zero or times out

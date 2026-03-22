@@ -436,7 +436,7 @@ def _build_run_config(
 @app.command(context_settings={"allow_extra_args": True, "allow_interspersed_args": True, "ignore_unknown_options": True})
 def run(
     ctx: typer.Context,
-    path: str = typer.Argument(..., help="Path to the ralph directory (containing RALPH.md)."),
+    path: str = typer.Argument(..., help="Path to a ralph directory or RALPH.md file."),
     n: int | None = typer.Option(None, "-n", help="Max number of iterations. Infinite if not set."),
     stop_on_error: bool = typer.Option(False, "--stop-on-error", "-s", help="Stop if the agent exits non-zero or times out."),
     delay: float = typer.Option(0, "--delay", "-d", help="Seconds to wait between iterations."),
