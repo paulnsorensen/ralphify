@@ -22,6 +22,7 @@ All notable changes to ralphify are documented here.
 - **Arg values with spaces breaking command execution** — when `{{ args.name }}` placeholders were substituted into command `run` strings, values containing spaces (e.g. `"hello world"`) were split into separate tokens by `shlex.split`, causing the wrong command to execute. Arg values are now shell-quoted before substitution so they are always treated as single tokens.
 - **Helpful error when command has invalid syntax** — when a command's `run` string has malformed shell syntax (e.g. unmatched quotes), the error now identifies which command failed and points to the `commands` field. Previously this surfaced as a bare `ValueError` like "No closing quotation" with no context.
 - **Empty arg values breaking `./` working directory detection** — when an `{{ args.name }}` placeholder resolved to an empty string, the substitution could introduce leading whitespace that prevented the `./` prefix from being detected, causing the command to run from the project root instead of the ralph directory.
+- **Windows `.cmd`/`.exe` extension breaking streaming mode detection** — on Windows, `claude` is installed as `claude.cmd` or `claude.exe`. The streaming mode check compared the full filename (including extension) against `"claude"`, so it never matched. Ralphify now compares the stem only, enabling real-time activity tracking on Windows.
 
 ### Improved
 
