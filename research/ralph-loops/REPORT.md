@@ -81,22 +81,14 @@
 
 ## Open Questions
 
-- How do cross-company model diversity reviewers compare to same-family self-review in measurable quality? **[Partially answered in Ch8/Ch22]** — Zencoder: 68% task overlap cross-vendor vs. 84% same-vendor, capturing 15-30% more tasks. But no controlled study on review quality specifically.
 - What's the optimal ratio of spec-writing time to execution time in spec+ralph integrated workflows?
-- How do teams decide between session-scoped, CI/CD-integrated, and cloud-native deployment for their agent loops?
-- What's the right cadence for garbage-collection/cleanup ralphs — daily, weekly, event-triggered?
 - How does guardrails.md scale — at what point do accumulated guardrails become contradictory or context-consuming?
-- How do teams handle the reliability math problem (99%^20 = 82%) — shorter loops, better per-step accuracy, or acceptance of failure rates? **[Partially answered in Ch26]** — 4-layer fault tolerance (retry→fallback→classify→checkpoint) drops unrecoverable failures from 23%→2%. Durable execution provides exactly-once step semantics. But for ralph loops, filesystem-as-checkpoint + fresh context is sufficient for most cases.
 - Which memory architecture (observational, graph, self-editing, RAG) best fits ralph loops — and can a "memory ralph" replace vector DB infrastructure?
-- What's the optimal middleware stack for ralph loops — which layers provide the most value per token of overhead? **[Partially answered in Ch22]** — LangChain's 4-layer stack (env mapping, loop detection, reasoning budget, pre-completion verification) is the best documented example.
-- How does Azure SRE Agent's concurrent memory staleness problem manifest in multi-ralph scenarios with shared state files?
-- Does the "reasoning sandwich" generalize beyond Terminal Bench? **[Partially answered in Ch22]** — Outperforms uniform allocation by 12.6 points, but no real-world ralph loop validation yet.
-- How quickly will A2A adoption close the gap with MCP (97M downloads)? Will multi-ralph coordination benefit from A2A, or is file-based handoff sufficient for most use cases?
-- What's the optimal credential architecture for ralph loops — env vars (simple), vault integration (better), or injection proxy (strongest)? At what scale does the complexity of injection proxies pay off?
-- How does Keycard's runtime governance model interact with ralph loops that run in CI/CD vs. local development? Is the audit trail useful for debugging loop failures?
-- What domain-specific verification patterns emerge for non-code ralph loops? **[Partially answered in Ch25]** — verification adapter pattern (domain-specific command producing pass/fail) generalizes: `terraform validate`, `dbt test`, security scanner baselines. Databricks doubled success with this approach. But no formal "adapter interface" exists yet.
-- How do teams handle the agent observability gap? **[Partially answered in Ch25]** — three tiers: MCP-native (Iris, lightweight), enterprise platforms (Splunk AI Agent Monitoring GA Q1 2026), and iteration-level telemetry (files changed, command pass/fail, cost). Microsoft positions observability as a release requirement. But minimum viable monitoring for ralph loops specifically is undefined.
-- Will the AgenticOS concept (ASPLOS 2026) produce practical primitives that benefit ralph loop execution, or will containers/VMs remain the dominant runtime?
+- How does the authority hierarchy (specs>tests>code) interact with TDD loops where tests are written by the agent?
+- At what point does architectural drift from agent-generated code become unrepairable — is there a measurable "point of no return"?
+- How do teams decide which harness layers to rip when a new model ships — is there a systematic evaluation process?
+- What's the right model routing strategy for ralph loops — task-based, budget-based, or time-based? At what scale does router complexity pay off?
+- At what loop scale do durable execution frameworks (Temporal, Inngest) outperform filesystem-as-checkpoint?
 
 ## Key Sources (Top 30 — full list in [notes/sources.md](notes/sources.md))
 

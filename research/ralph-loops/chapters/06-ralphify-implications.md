@@ -551,6 +551,41 @@ Only 47.1% of deployed AI agents are actively monitored (Gravitee 2026). 88% of 
 
 This data feeds loop fingerprinting (Ch15) and circuit breakers (Ch16), creating an integrated observability layer without external dependencies. Microsoft now positions observability as a **release requirement** for agents, not an optional add-on.
 
+## Resilience & Model Routing
+
+Ch26 research reveals production-grade resilience patterns that map directly to ralphify:
+
+### Model Routing in RALPH.md (Medium Priority)
+
+Sierra AI's AIMD-based model failover and the inner/outer loop separation suggest a `model` field that supports per-phase routing:
+
+```yaml
+model:
+  plan: opus
+  implement: sonnet
+  verify: haiku
+  fallback: [sonnet, haiku]  # degradation chain
+```
+
+The engine (outer loop) handles model selection and fallback; the agent (inner loop) focuses on the task. Combined with prompt caching, model routing alone saves 40-70% on cost.
+
+### Fault Tolerance Layers (Low Effort, High Value)
+
+The 4-layer fault tolerance stack (retry → fallback → classify → checkpoint) drops unrecoverable failures from 23% to under 2%. Layers 1-3 are harness concerns; Layer 4 (checkpoint) is already handled by fresh-context-per-iteration. Ralphify could implement retry + error classification in the engine with ~3 days of work.
+
+### Destructive Action Gates (High Priority)
+
+10 documented production incidents (Claude Code deleting home dirs, Cursor ignoring "DO NOT RUN", agents running `terraform destroy` on live prod) validate that instruction-level controls are insufficient. A `deny` list in RALPH.md frontmatter could enable harness-level interception:
+
+```yaml
+deny:
+  - rm -rf
+  - terraform destroy
+  - DROP TABLE
+```
+
+This is the "non-bypassable gate" pattern from NVIDIA OpenShell and Grith — the harness intercepts before the agent can execute.
+
 ## Competitive Positioning
 
 Ralphify sits at a validated sweet spot: simpler than full orchestration frameworks (LangGraph, CrewAI) but more structured than raw bash loops. The Karpathy autoresearch moment — 630 lines running 700 experiments — proves that "simple harness, powerful results" wins.
@@ -568,3 +603,4 @@ The key differentiators to develop:
 10. **Practitioner-to-production bridge.** The 6 converged cookbook patterns are individual-use today. Ralphify can be the framework that adds operational safeguards (revert, fingerprinting, budget, circuit breakers) to make them production-ready. This is the most differentiated positioning: not a new pattern, but the production wrapper around patterns people already use.
 11. **Zero-secret architecture.** RALPH.md already declares dependencies — extending to credential scopes enables harness-managed secret injection where agents never touch credentials directly. With AI commits leaking secrets at 2x the baseline, this is both a security and a trust differentiator.
 12. **Domain-agnostic "any metric" positioning.** Ralph loops work wherever the three primitives exist (editable asset, measurable metric, time-boxed cycle). Databricks proved autonomous data engineering (32%→77% success); pentest loops run security audits; DevOps loops migrate infrastructure. Ralphify's RALPH.md format is domain-neutral by design — the verification command is the only domain-specific component. This positions ralphify as the universal harness, not a coding-only tool.
+13. **Built-in resilience.** Model routing with fallback chains, retry with exponential backoff, destructive-action deny lists, and graceful degradation tiers. Opus 4.6 ranks #33 in one harness but #5 in another on the same benchmark — the harness matters more than the model. Ralphify providing production-grade resilience out of the box is a concrete value add over raw bash loops.

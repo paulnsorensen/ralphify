@@ -3,26 +3,16 @@
 ## Open
 
 ### High Priority (directly actionable for ralphify)
-- [ ] How do teams handle the reliability math problem (99%^20 = 82%) — shorter loops, better per-step accuracy, or acceptance of failure rates? **[Partially answered in Ch26]** — 4-layer fault tolerance (retry→fallback→classify→checkpoint) drops unrecoverable from 23%→2%. Durable execution provides exactly-once semantics. For ralph loops, filesystem-as-checkpoint is sufficient for most cases.
 - [ ] Which memory architecture (observational, graph, self-editing, RAG) best fits ralph loops — and can a "memory ralph" replace vector DB infrastructure?
-- [ ] What's the optimal credential architecture for ralph loops — env vars (simple), vault integration (better), or injection proxy (strongest)? At what scale does proxy complexity pay off? **[Partially answered in Ch24]** — credential injection proxy is the converged answer (Vercel/GitHub/NVIDIA), but no data on the complexity threshold.
 - [ ] How does the authority hierarchy (specs>tests>code) interact with TDD loops where tests are written by the agent?
 - [ ] At what point does architectural drift from agent-generated code become unrepairable — is there a measurable "point of no return"?
 - [ ] How do teams decide which harness layers to rip when a new model ships — is there a systematic evaluation process?
 
 ### Medium Priority (emerging patterns worth tracking)
-- [ ] What domain-specific verification patterns emerge for non-code ralph loops? Is there a generalizable "verification adapter" pattern? **[Partially answered in Ch25]** — Verification adapter pattern generalizes: domain-specific command producing pass/fail. Databricks doubled success. No formal adapter interface yet.
-- [ ] How do teams handle the agent observability gap — build custom, adopt enterprise platforms, or use MCP-native tools (Iris)? **[Partially answered in Ch25]** — Three tiers: MCP-native (Iris), enterprise (Splunk GA Q1 2026), iteration telemetry. Microsoft: observability = release requirement.
-- [ ] Will the AgenticOS concept (ASPLOS 2026) produce practical primitives for ralph loop execution?
-- [ ] How quickly will A2A adoption close the gap with MCP (97M downloads)? Will multi-ralph coordination benefit from A2A, or is file-based handoff sufficient?
-- [ ] Does the "reasoning sandwich" generalize beyond Terminal Bench? **[Partially answered in Ch22]** — Outperforms uniform allocation by 12.6 points, but no real-world ralph loop validation yet.
+- [ ] What's the optimal ratio of spec-writing time to execution time in spec+ralph integrated workflows?
 - [ ] How does guardrails.md scale — at what point do accumulated guardrails become contradictory or context-consuming?
-- [ ] What's the right cadence for garbage-collection/cleanup ralphs — daily, weekly, event-triggered? OpenAI did it weekly (Fridays) before automating.
-- [ ] How does cross-company model diversity (Opus architect, Sonnet dev, Codex reviewer) compare to same-family self-review in measurable quality? **[Partially answered in Ch8/Ch22]** — 68% task overlap cross-vendor vs. 84% same-vendor, but no controlled review quality study.
-- [ ] Will MCP Apps (UI rendering) compete with or complement AG-UI for agent frontend experiences?
-- [ ] How do teams handle the PR staleness cascade — when agents produce PRs faster than review capacity? Is pre-loop staleness detection sufficient, or do teams throttle agent output?
 - [ ] What's the right model routing strategy for ralph loops — task-based (plan/implement/verify), budget-based (downgrade on threshold), or time-based (Opus daytime, Codex overnight)?
-- [ ] At what loop scale do durable execution frameworks (Temporal, Inngest) outperform filesystem-as-checkpoint? Is there a measurable threshold (hours? iterations? cost?)?
+- [ ] At what loop scale do durable execution frameworks (Temporal, Inngest) outperform filesystem-as-checkpoint?
 
 ## Answered
 - [x] How does Stripe's "Blueprints" architecture compare to RALPH.md for defining deterministic+agent hybrid workflows? — Blueprints interleave deterministic nodes (linting, testing, file ops) with agentic nodes (code generation, PR writing). RALPH.md already implements this: commands = deterministic nodes, prompt body = agentic directive. Gap: Blueprints have explicit error recovery (bounded retry → human escalation). See Ch20.
@@ -55,3 +45,9 @@
 - [x] What emerging tools/frameworks are challenging the "simple harness" philosophy? — BMAD+Ralph adds structured planning; ralph-claude-code adds circuit breakers; Aura Guard adds deterministic safety middleware. But "simple harness" still wins for most use cases. See chapter 10.
 - [x] What's the optimal CLAUDE.md/RALPH.md length? — Validated at <300 lines broadly. Boris Cherny uses CLAUDE.md as living documentation (adding mistakes). Mario Giancini uses per-project configs for monorepos. See chapter 10.
 - [x] What does long-running agent operation (30+ days) teach about state design that shorter loops miss? — Four competing memory architectures (observational, graph, self-editing, RAG), five compression failure modes, and the compound failure math (85% per step → 20% for 10 steps). Restorable compression (keep pointers, not content) is the emerging best practice. Periodic fresh starts beat accumulated memory. See Ch19.
+- [x] How do teams handle the reliability math problem (99%^20 = 82%)? — 4-layer fault tolerance (retry→fallback→classify→checkpoint) drops unrecoverable from 23%→2%. For ralph loops, filesystem-as-checkpoint + fresh context is sufficient for most cases. Durable execution frameworks only needed for multi-day loops. See Ch26.
+- [x] What's the optimal credential architecture for ralph loops? — Credential injection proxy is the converged answer (Vercel/GitHub/NVIDIA independently). Agent never touches secrets; harness injects at runtime. See Ch24.
+- [x] What domain-specific verification patterns emerge for non-code ralph loops? — Verification adapter pattern generalizes: domain-specific command producing pass/fail. Databricks doubled success (32%→77%). See Ch25.
+- [x] How do teams handle the agent observability gap? — Three tiers: MCP-native (Iris), enterprise (Splunk GA Q1 2026), iteration telemetry (files changed, command pass/fail, cost). Microsoft: observability = release requirement. See Ch25.
+- [x] Does the "reasoning sandwich" generalize beyond Terminal Bench? — Outperforms uniform allocation by 12.6 points. No real-world ralph loop validation yet, but the pattern is sound: heavy reasoning for planning/verification, lighter for implementation. See Ch22.
+- [x] How do cross-company model diversity reviewers compare to same-family self-review? — 68% task overlap cross-vendor vs. 84% same-vendor, capturing 15-30% more tasks (Zencoder). No controlled study on review quality specifically. See Ch8/Ch22.

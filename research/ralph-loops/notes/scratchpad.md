@@ -838,3 +838,31 @@ After 25 iterations, the research is mature (25 chapters, 22 insights, 210+ sour
 - Refine cycle (iteration 28): 22 insights, 26 chapters — the chapter count keeps growing. Consider merging some chapters or tightening the report.
 - Update Ch06 (implications) with resilience findings: model routing in RALPH.md frontmatter, degradation tiers, inner/outer loop as framework architecture
 - Or: research the "agent identity and access management" thread — WSO2's finding that 80% of orgs report risky agent behaviors
+
+## Iteration 28 — 2026-03-22
+
+**Decision: REFINE** (after 2 consecutive research iterations, the report needs quality tightening)
+
+**Focus areas:**
+1. Update Ch06 (implications) with Ch26 resilience findings: model routing, fault tolerance, destructive-action gates
+2. Trim REPORT.md open questions from 16 to 8 — move substantially-answered to questions.md Answered section
+3. Sync questions.md — move 7 questions from Open to Answered, trim verbose "[Partially answered]" annotations
+4. Add 13th competitive differentiator to Ch06: built-in resilience
+
+**What was done:**
+- Updated Ch06 with new "Resilience & Model Routing" section: model routing frontmatter, fault tolerance layers, destructive action deny lists
+- Added 13th competitive differentiator: "Built-in resilience" (model routing, retry, deny lists, degradation tiers)
+- Trimmed REPORT.md Open Questions from 16 to 8 — removed substantially-answered questions and verbose partial-answer annotations
+- Synced questions.md: moved 7 questions to Answered section, reduced Open from 17 to 8 (4 high-priority, 4 medium-priority)
+- REPORT.md now 130 lines (within 150-line target)
+
+**Key improvements:**
+- Open questions are now genuinely open — no more "[Partially answered in ChN]" noise
+- Ch06 now covers all 26 chapters' findings comprehensively
+- 13 competitive differentiators give a clear product roadmap
+- The research workspace is tight and readable at every level
+
+**Next iteration should focus on:**
+- Research: explore memory architectures for ralph loops — the highest-priority open question. Can a "memory ralph" (periodic consolidation) replace vector DB infrastructure?
+- Or: explore the TDD+agent interaction — how does the authority hierarchy work when tests are agent-written?
+- Or: final polish pass — consider whether 26 chapters could be consolidated into ~20 thematic groups
