@@ -155,7 +155,10 @@ def _run_agent_phase(
             timeout=config.timeout,
             log_path_dir=config.log_dir,
             iteration=state.iteration,
-            on_activity=lambda data: emit(EventType.AGENT_ACTIVITY, AgentActivityData(raw=data, iteration=state.iteration)),
+            on_activity=lambda data: emit(
+                EventType.AGENT_ACTIVITY,
+                AgentActivityData(raw=data, iteration=state.iteration),
+            ),
         )
     except FileNotFoundError as exc:
         raise FileNotFoundError(
@@ -206,7 +209,10 @@ def _run_iteration(
     # Run commands and collect outputs for placeholder resolution
     command_outputs: dict[str, str] = {}
     if config.commands:
-        emit(EventType.COMMANDS_STARTED, CommandsStartedData(iteration=iteration, count=len(config.commands)))
+        emit(
+            EventType.COMMANDS_STARTED,
+            CommandsStartedData(iteration=iteration, count=len(config.commands)),
+        )
         command_outputs = _run_commands(
             config.commands, config.ralph_dir, config.project_root, config.args,
         )
@@ -217,7 +223,10 @@ def _run_iteration(
 
     # Assemble prompt
     prompt = _assemble_prompt(config, command_outputs)
-    emit(EventType.PROMPT_ASSEMBLED, PromptAssembledData(iteration=iteration, prompt_length=len(prompt)))
+    emit(
+        EventType.PROMPT_ASSEMBLED,
+        PromptAssembledData(iteration=iteration, prompt_length=len(prompt)),
+    )
 
     # Run agent
     agent_succeeded = _run_agent_phase(prompt, config, state, emit)
