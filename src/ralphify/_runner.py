@@ -46,6 +46,7 @@ def run_command(
     ``None`` (default), ``subprocess.run`` inherits the parent env.
 
     On timeout, returns ``returncode=None`` and ``timed_out=True``.
+    Raises ``FileNotFoundError`` if the command binary does not exist.
     """
     cmd = shlex.split(command)
     if not cmd:

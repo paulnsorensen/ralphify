@@ -45,6 +45,7 @@ from ralphify._resolver import resolve_args, resolve_commands
 _PAUSE_POLL_INTERVAL = 0.25  # seconds between pause/resume checks
 _RELATIVE_CMD_PREFIX = "./"  # commands starting with this run from the ralph directory
 _AGENT_FIELD_HINT = "Check the 'agent' field in your RALPH.md frontmatter."
+_COMMANDS_FIELD_HINT = "Check the 'commands' field in your RALPH.md frontmatter."
 
 _CREDIT_INSTRUCTION = (
     "\n\n---\n\n"
@@ -98,11 +99,17 @@ def _run_commands(
             cwd = ralph_dir
         else:
             cwd = project_root
-        result = run_command(
-            command=run_str,
-            cwd=cwd,
-            timeout=cmd.timeout,
-        )
+        try:
+            result = run_command(
+                command=run_str,
+                cwd=cwd,
+                timeout=cmd.timeout,
+            )
+        except FileNotFoundError as exc:
+            raise FileNotFoundError(
+                f"Command '{cmd.name}' binary not found: {run_str!r}. "
+                f"{_COMMANDS_FIELD_HINT}"
+            ) from exc
         results[cmd.name] = result.output
     return results
 

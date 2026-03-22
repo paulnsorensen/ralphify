@@ -5,6 +5,7 @@ import threading
 import time
 from unittest.mock import patch
 
+import pytest
 from helpers import MOCK_RUN_COMMAND, MOCK_SUBPROCESS, drain_events, event_types, events_of_type, fail_result, make_config, make_state, ok_result, ok_run_result
 
 from ralphify._events import BoundEmitter, EventType, NullEmitter, QueueEmitter
@@ -745,6 +746,13 @@ class TestRunCommands:
 
         assert mock_run_cmd.call_args.kwargs["cwd"] == ralph_dir
         assert mock_run_cmd.call_args.kwargs["command"] == "./check.sh"
+
+    @patch(MOCK_RUN_COMMAND, side_effect=FileNotFoundError("no-such-binary"))
+    def test_command_not_found_raises_with_context(self, mock_run_cmd, tmp_path):
+        commands = [Command(name="missing", run="no-such-binary --flag")]
+
+        with pytest.raises(FileNotFoundError, match="Command 'missing' binary not found"):
+            _run_commands(commands, ralph_dir=tmp_path, project_root=tmp_path, user_args={})
 
 
 class TestAssemblePrompt:
