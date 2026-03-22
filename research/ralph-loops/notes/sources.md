@@ -292,3 +292,16 @@
 - https://www.thoughtworks.com/en-us/insights/blog/agile-engineering-practices/spec-driven-development-unpacking-2025-new-engineering-practices — Thoughtworks — SDD as 2025's most important new practice — **high**
 - https://openspec.pro/ — OpenSpec — Brownfield-first SDD, 27K+ stars, YC-backed, 4-phase state machine — **high**
 - https://chiefloop.com/concepts/prd-format.html — Chief — Autonomous PRD agent; structured user stories with acceptance criteria checkboxes — **medium**
+
+## New Sources — Iteration 21
+
+- https://blog.langchain.com/improving-deep-agents-with-harness-engineering/ — LangChain — Top 30→Top 5 on Terminal Bench via harness-only changes; 4 middleware layers; reasoning sandwich (xhigh-high-xhigh = 66.5%); trace analyzer skill — **critical**
+- https://blog.langchain.com/open-swe-an-open-source-framework-for-internal-coding-agents/ — LangChain — Open SWE captures Stripe/Coinbase/Ramp internal patterns; middleware safety nets (open_pr_if_needed, message queue injection); March 17, 2026 — **critical**
+- https://techcommunity.microsoft.com/blog/appsonazureblog/the-agent-that-investigates-itself/4500073 — Microsoft — Azure SRE Agent self-improvement loop: searches 24h errors, traces to root cause, submits PR; 80% error reduction in 2 weeks — **critical**
+- https://techcommunity.microsoft.com/blog/appsonazureblog/context-engineering-lessons-from-building-azure-sre-agent/4481200/ — Microsoft — Filesystem-as-world replaces RAG: Intent Met 45%→75%; 4-phase architecture evolution (100+ tools → ~5); code interpreter pattern; concurrent memory staleness unsolved — **critical**
+- https://zencoder.ai/blog/20k-bug-that-changed-evals — Zencoder — $20K eval bug: spec quality masks model differences (6pt spread → 26pt); multi-model complementarity data (68% cross-vendor overlap); 730-task analysis — **critical**
+- https://iximiuz.com/en/posts/grounded-take-on-agentic-coding/ — Ivan Velichko / iximiuz — 50K lines/month on 100K LOC codebase; dangerous failure modes (removing features, XSS); domain knowledge irreplaceable; 90% usefulness drop without dev environment — **critical**
+- https://github.com/strongdm/attractor/blob/main/coding-agent-loop-spec.md — StrongDM — Attractor: fully programmable agentic loop; host steers mid-task; read-before-write enforcement via middleware; config changes between turns — **high**
+- https://github.com/axon-core/axon — Axon — Kubernetes-native agent framework: Task CRD → isolated Pod → autonomous work → branch/PR/cost output; any agent (Claude, Codex, Gemini) — **high**
+- https://devops.com/open-swe-captures-the-architecture-that-stripe-coinbase-and-ramp-built-independently-for-internal-coding-agents/ — DevOps.com — Open SWE captures independently-evolved enterprise patterns; deterministic middleware for critical operations — **high**
+- https://www.mager.co/blog/2026-03-17-open-swe-coding-agents/ — Mager — Build internal coding agent in 10 minutes with Open SWE; middleware handles "what if the LLM forgets" — **medium**

@@ -559,3 +559,44 @@
 - Refine cycle (iteration 21): 25 insights, 21 chapters — trim insights back to ~22, consider merging Ch20 and Ch21 or trimming overlap
 - Update Ch06 (implications) with intent-failure prevention patterns and spec-driven validation recommendations
 - Or: research the "cleanup ralph" / entropy management pattern more deeply — concrete implementations
+
+## Iteration 21 — 2026-03-22
+
+**Decision: HYBRID — research (primary) + refine (secondary)**
+
+**Research focus:** Middleware-based harness architecture and eval methodology — the most concrete, actionable new patterns not yet covered. Sub-areas:
+1. LangChain Deep Agents middleware stack (Top 30→Top 5)
+2. Azure SRE Agent self-improvement loop and filesystem-as-world
+3. Open SWE/Attractor middleware safety net patterns
+4. Zencoder $20K eval methodology lesson
+5. iximiuz practitioner reality check (50K lines/month)
+6. Kubernetes-native agent execution (Axon)
+
+**Refine focus:**
+1. REPORT.md: merged insights #23+#24+#25 → 2 tighter insights, added new middleware+eval insights = 25 total
+2. Cleaned up Open Questions — removed answered ones, added 3 new middleware-related questions
+
+**What was done:**
+- Searched across 9 web queries and launched 3 parallel research agents for deep source reading
+- Deep-read 10+ new high-signal sources: LangChain Deep Agents, Open SWE, Azure SRE Agent (2 posts), Zencoder eval bug, iximiuz practitioner report, StrongDM Attractor, Axon K8s controller
+- Created chapter 22 (Middleware Architecture & Eval Methodology) covering: composable middleware stacks, reasoning sandwich, filesystem-as-world, self-improvement loop, eval hidden variables, multi-model complementarity, practitioner reality, K8s-native execution
+- Added 14 new insights to notes, 10 new sources, 4 new questions
+- Merged insights #23-25 into 2 tighter insights in REPORT.md, added 2 new insights (#24 middleware, #25 eval methodology) = 25 total
+- Updated REPORT.md Key Sources with 7 new entries
+- Updated Open Questions: partially answered cross-model diversity, added 3 new questions
+
+**Key surprises:**
+- LangChain went from Top 30 to Top 5 on Terminal Bench by changing ONLY the harness — the model was held constant. +13.7 percentage points from middleware alone.
+- The "reasoning sandwich" (xhigh for planning/verification, high for implementation) beats uniform xhigh by 12.6 points — and uniform xhigh TIMES OUT due to 2x+ token burn. More reasoning ≠ better.
+- Azure SRE Agent went through FOUR distinct failed phases (100+ tools → 3 tools → 50+ agents → few generalists). The trajectory is striking: tool explosion → tool consolidation → agent explosion → agent consolidation.
+- Azure SRE Agent's self-improvement loop: it investigates its OWN errors, traces to root cause in its OWN codebase, submits PRs. Reduced errors 80% in 2 weeks. This is the meta-ralph pattern applied to infrastructure.
+- Filesystem-as-world drove Intent Met from 45% to 75% — replacing RAG entirely. Memory as navigable Markdown files beats embedding retrieval. Validates ralph loops' fundamental design.
+- Zencoder's $20K eval bug revealed: detailed instructions MASK model differences (6pt spread). Minimal instructions + verification tests REVEAL them (26pt spread). This has huge implications for RALPH.md design — strong verification + minimal prescription may unlock more capability.
+- Cross-vendor models (Anthropic+Google) have only 68% task overlap vs 84% same-vendor — multi-model orchestration is quantitatively validated.
+- iximiuz's 50K lines/month is the most grounded practitioner report — every line still needs review. Agents REMOVE features to avoid implementing them. Without a dev environment, agents lose 90% of usefulness.
+- Open SWE (March 17, 2026) captures the internal agent architecture that Stripe, Coinbase, and Ramp built independently — strong signal of convergence.
+
+**Next iteration should focus on:**
+- Refine cycle (iteration 22): 25 insights, 22 chapters — trim insights to ~22. Consider merging #23 (intent failure + specs + on-the-loop) which is now very long.
+- Update Ch06 (implications) with middleware findings: post-iteration hooks, reasoning budget allocation, middleware as ralphify feature
+- Or: research agent security and sandboxing patterns — NIST public comment period, Axon-style isolation, the security implications of autonomous agents

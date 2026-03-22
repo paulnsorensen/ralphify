@@ -5,7 +5,16 @@ from datetime import datetime, timezone
 
 from helpers import drain_events
 
-from ralphify._events import BoundEmitter, Event, EventType, FanoutEmitter, NullEmitter, QueueEmitter
+from ralphify._events import (
+    LOG_ERROR,
+    LOG_INFO,
+    BoundEmitter,
+    Event,
+    EventType,
+    FanoutEmitter,
+    NullEmitter,
+    QueueEmitter,
+)
 
 
 class TestEvent:
@@ -113,6 +122,40 @@ class TestBoundEmitter:
         events = drain_events(q)
         assert all(e.run_id == "run-123" for e in events)
         assert len(events) == 3
+
+    def test_log_info_emits_log_message_at_info_level(self):
+        q = QueueEmitter()
+        emit = BoundEmitter(q, "run-log")
+        emit.log_info("Waiting 5s...")
+
+        events = drain_events(q)
+        assert len(events) == 1
+        assert events[0].type == EventType.LOG_MESSAGE
+        assert events[0].data["message"] == "Waiting 5s..."
+        assert events[0].data["level"] == LOG_INFO
+
+    def test_log_error_emits_log_message_at_error_level(self):
+        q = QueueEmitter()
+        emit = BoundEmitter(q, "run-log")
+        emit.log_error("Something broke")
+
+        events = drain_events(q)
+        assert len(events) == 1
+        assert events[0].type == EventType.LOG_MESSAGE
+        assert events[0].data["message"] == "Something broke"
+        assert events[0].data["level"] == LOG_ERROR
+        assert "traceback" not in events[0].data
+
+    def test_log_error_includes_traceback_when_provided(self):
+        q = QueueEmitter()
+        emit = BoundEmitter(q, "run-log")
+        emit.log_error("Crashed", traceback="Traceback (most recent call last):\n  ...")
+
+        events = drain_events(q)
+        assert len(events) == 1
+        assert events[0].data["message"] == "Crashed"
+        assert events[0].data["level"] == LOG_ERROR
+        assert events[0].data["traceback"] == "Traceback (most recent call last):\n  ..."
 
 
 class TestFanoutEmitter:

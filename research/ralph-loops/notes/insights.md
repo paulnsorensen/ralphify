@@ -221,6 +221,22 @@
 - **Four major SDD frameworks have converged.** GitHub Spec Kit (72K+ stars), AWS Kiro, OpenSpec (27K+ stars, YC-backed), Chief. All share: specify → plan → tasks → implement. Stripe Blueprints (1,300+ PRs/week) mix deterministic and agentic nodes.
 - **Multi-agent review dispatches 5 independent reviewers.** Anthropic's Code Review checks CLAUDE.md compliance, bugs, git history, PR comments, code comments. 84% finding rate on large PRs. Context-First Review (Qodo) also captures cross-repo usage and intent.
 
+## Middleware Architecture & Eval Methodology (NEW — Iteration 21)
+- **Composable middleware stacks are the emerging standard for production harnesses.** LangChain, StrongDM, and Open SWE all converge on before_model/after_model/before_tool/after_tool hooks — the web framework middleware pattern applied to agents. Don't modify the loop; layer behavior on top.
+- **LangChain improved Terminal Bench from 52.8% to 66.5% (Top 30→Top 5) by changing only the harness.** Four middleware layers: LocalContextMiddleware (environment mapping), LoopDetectionMiddleware (per-file edit counts), ReasoningSandwichMiddleware (reasoning budget allocation), PreCompletionChecklistMiddleware (exit verification).
+- **The "reasoning sandwich" outperforms uniform reasoning allocation.** xhigh reasoning for planning and verification, high for implementation = 66.5%. Uniform xhigh = 53.9% (timeouts). Uniform high = 63.6%. Where you think hardest matters more than how hard you think.
+- **Azure SRE Agent replaces RAG with filesystem-as-world: Intent Met 45%→75%.** Memory is structured Markdown files navigated with Unix tools, not retrieved via embeddings. Validates ralph loops' file-based state approach.
+- **Azure SRE Agent evolved through 4 failed phases: 100+ tools → 3 wide tools → 50+ agents → few generalists.** Domain knowledge moved from system prompts into readable files. "Trust the model — giving wide tools and letting it reason outperformed hand-coded tool chains."
+- **The self-diagnosing agent: SRE Agent reduced its own errors 80% in 2 weeks.** Scheduled task searches 24h of LLM errors, clusters top hitters, traces to root cause in its own codebase, submits PRs. Human review still required.
+- **Specification quality masks true model capability differences.** Zencoder: under detailed instructions, all models cluster within ~6 points. Under minimal guidance + tests, they spread across 26 points. Standard benchmarks have hit ceiling limits.
+- **Cross-vendor model pairs are most complementary (68% overlap) vs same-vendor (84%).** Multi-model orchestration captures 15-30% more tasks. Anthropic+Google is the best pairing.
+- **Open SWE captures the internal coding agent pattern from Stripe/Coinbase/Ramp.** Middleware safety nets: open_pr_if_needed (deterministic PR creation), check_message_queue (mid-run human injection), ToolErrorMiddleware (graceful error handling).
+- **50K lines/month in production is achievable but every line needs review.** iximiuz: 10-100x velocity on well-scoped tasks, but vague product prompts fail. Batch issue lists (20+) → nearly all unresolved. Individual issues → solved. Domain-specific knowledge remains irreplaceable.
+- **Dangerous practitioner-observed failure modes: removing features to avoid implementing them, introducing XSS, skipping failing tests.** These are not edge cases — they are common patterns when verification is weak.
+- **Agents lose ~90% of usefulness without a dev environment.** Running against a "bare" codebase without tests or verification tooling makes agents nearly useless. The dev environment IS the harness.
+- **Kubernetes-native agent execution (Axon) maps cleanly to ralph loops.** RALPH.md as Task CRD, K8s controller handles isolation/scaling/cost tracking. Each agent runs in an ephemeral Pod with scoped credentials.
+- **Azure SRE Agent's concurrent memory staleness is an unsolved problem.** Multiple sessions writing conflicting patterns to the same file. Directly relevant to multi-ralph scenarios with shared state.
+
 ## Ralphify-Specific
 - **Ralphify's command system naturally supports the "commands as verifiers" pattern.** Running tests/metrics as commands and injecting results into the prompt is exactly what Spotify and Karpathy do — ralphify just needs to formalize verification as a first-class concept.
 - **Agent skills as portable packages is a validated trend.** Ralphify's skill system aligns with the industry direction of installable, reusable instruction sets.

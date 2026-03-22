@@ -48,11 +48,11 @@
 
 22. **pass^k, not pass@k, is the production-readiness metric.** An agent with 70% success rate shows 97% pass@3 but only 34% pass^3. Enterprise tiers: internal tools (74-90% pass^1 acceptable), customer-facing (80% pass^1 but degrades on pass^8), long-running autonomous (not ready — agents "spiral rather than self-correct" once misaligned). Promotion gates should require pass^k stability across multiple k values.
 
-23. **Intent failure has five distinct mechanisms, each requiring a different fix.** Test gaming (30.4% reward-hacking rate — METR), silent fallback insertion, local patch myopia (50% regression rate — SWE-CI), business logic blindness, and semantic-without-functional correctness. The authority hierarchy pattern (specs > tests > code) prevents test gaming; independent ground truth commands prevent self-congratulation; fresh context prevents cascading regression. The unified defense: never let the agent modify tests, and verify outcomes against independent references.
+23. **Intent failure has five mechanisms; spec-driven development is the fix.** Test gaming (30.4% reward-hacking — METR), silent fallback insertion, local patch myopia (50% regression — SWE-CI), business logic blindness, and semantic-without-functional correctness. The unified defense: the authority hierarchy (specs > tests > code) where agents never modify tests, and outcomes are verified against independent ground truth. Spec-driven development (ICSE 2026) formalizes three rigor levels; Stripe's Blueprints (1,300+ PRs/week) and GitHub Spec Kit (72K+ stars) prove it at scale. AI agents perform 50% better with clear specs. The "on the loop" position — designing the harness rather than reviewing every output — defines the ralph author's role. Human effort is highest-leverage at plans and outcomes, not code.
 
-24. **Spec-driven development is the architectural answer to intent failure.** Three rigor levels (spec-first, spec-anchored, spec-as-source) from ICSE 2026. Four major frameworks (GitHub Spec Kit 72K+ stars, AWS Kiro, OpenSpec 27K+ stars, Chief). Stripe's Blueprints (1,300+ PRs/week) interleave deterministic and agentic nodes — the exact pattern RALPH.md already implements. AI agents perform 50% better with clear specs vs. vague prompts. The human role shifts from writing code to writing specs.
+24. **The harness is a middleware stack, not a monolith.** LangChain improved from Top 30 to Top 5 on Terminal Bench 2.0 by changing only the harness — four composable middleware layers (environment mapping, loop detection, reasoning budget allocation, pre-completion verification) wrapped the same model. Open SWE captures the Stripe/Coinbase/Ramp internal pattern; StrongDM's Attractor adds read-before-write enforcement. The "reasoning sandwich" (heavy reasoning for planning and verification, lighter for implementation) outperforms uniform reasoning allocation. Azure SRE Agent drove Intent Met from 45% to 75% by replacing RAG with filesystem-as-world — and now the agent investigates its own failures, reducing errors 80% via automated self-diagnosis PRs.
 
-25. **The "on the loop" position defines the ralph author's role.** Neither reviewing every line (in the loop) nor ignoring output (out of the loop), but designing the harness — specifications, quality checks, and feedback loops — that makes agents self-correcting. Human effort is highest-leverage at the front (reviewing plans) and back (validating outcomes) of the pipeline, not in the middle (reading code). A bad line of a plan creates hundreds of bad lines of code.
+25. **Specification quality is a hidden variable that masks true agent capability.** Zencoder's $20K eval bug revealed: under detailed instructions, all frontier models cluster within ~6 percentage points; under minimal guidance plus verification tests, the same models spread across 26 points. Cross-vendor model pairs (Anthropic + Google) show only 68% task overlap vs. 84% same-vendor — multi-model orchestration captures 15-30% more tasks. Loops with strong verification commands but minimal prescriptive prompts may unlock more capability than instruction-heavy designs.
 
 ## Chapters
 
@@ -79,20 +79,20 @@
 | 19 | [Long-Running Agent State & Memory](chapters/19-long-running-state-memory.md) | Duration-failure curve, 4 memory architectures, 5 compression failure modes, restorable compression, state file patterns at scale |
 | 20 | [Spec-Driven & Intent-Aligned Workflows](chapters/20-spec-driven-intent-aligned-workflows.md) | Three rigor levels (spec-first/anchored/as-source), Stripe Blueprints, GitHub Spec Kit, OpenSpec, Kiro, Chief PRD agent, BDD+AI, contract testing, acceptance criteria verification, CSDD |
 | 21 | [Intent-Failure Detection & Human-Agent Collaboration](chapters/21-intent-failure-human-agent-collaboration.md) | Five intent-failure mechanisms, authority hierarchy (specs>tests>code), independent ground truth, on-the-loop framework, PR Contract, conductor/orchestrator duality, role evolution |
+| 22 | [Middleware Architecture & Eval Methodology](chapters/22-middleware-architecture-eval-methodology.md) | Composable middleware stacks (LangChain Top 30→Top 5), Azure SRE self-improvement loop (45%→75% Intent Met), Open SWE/Attractor patterns, reasoning sandwich, eval hidden variables, multi-model complementarity, practitioner reality (50K lines/month), Kubernetes-native execution |
 
 ## Open Questions
 
-- How do cross-company model diversity reviewers compare to same-family self-review in measurable quality?
+- How do cross-company model diversity reviewers compare to same-family self-review in measurable quality? **[Partially answered in Ch22]** — Zencoder data shows 68% task overlap cross-vendor vs. 84% same-vendor. Multi-model captures 15-30% more tasks. But no controlled quality comparison of review specifically.
 - What's the optimal ratio of spec-writing time to execution time in spec+ralph integrated workflows?
 - How do teams decide between session-scoped, CI/CD-integrated, and cloud-native deployment for their agent loops?
-- What's the optimal eval dataset size for meta-loop prompt optimization (Arize used 150 train/150 test — is that enough)?
 - What's the right cadence for garbage-collection/cleanup ralphs — daily, weekly, event-triggered?
-- At what point does architectural drift from agent-generated code become unrepairable — is there a measurable "point of no return"?
-- Does the two-phase plan-then-build pattern measurably reduce "built the wrong thing" failures? **[Partially answered in Ch21]** — The authority hierarchy (specs>tests>code) and independent ground truth verification are the validated techniques. TiCoder doubled accuracy (40%→84%) through interactive spec disambiguation. The two-phase pattern reduces intent failure by front-loading human review to plans, but no controlled study yet measures the reduction.
 - How does guardrails.md scale — at what point do accumulated guardrails become contradictory or context-consuming?
 - How do teams handle the reliability math problem (99%^20 = 82%) — shorter loops, better per-step accuracy, or acceptance of failure rates?
 - Which memory architecture (observational, graph, self-editing, RAG) best fits ralph loops — and can a "memory ralph" replace vector DB infrastructure?
-- How does Stripe's "Blueprints" architecture compare to RALPH.md for defining deterministic+agent hybrid workflows? **[Answered in Ch20]** — Blueprints interleave deterministic nodes (linting, testing, file ops) with agentic nodes (code generation, PR writing). RALPH.md already implements this pattern: `commands` are deterministic nodes, the prompt body is the agentic directive. The key gap is that Blueprints support explicit error recovery (failed deterministic -> bounded agentic retry -> human escalation) while ralph loops lack this structured fallback.
+- What's the optimal middleware stack for ralph loops — which layers provide the most value per token of overhead?
+- How does Azure SRE Agent's concurrent memory staleness problem manifest in multi-ralph scenarios with shared state files?
+- Does the "reasoning sandwich" pattern (heavy reasoning for planning/verification, lighter for implementation) generalize beyond Terminal Bench to real-world ralph loops?
 
 ## Key Sources
 
@@ -185,3 +185,9 @@
 - [Technical Design Spec Pattern](https://www.arguingwithalgorithms.com/posts/technical-design-spec-pattern.html) — Tom Yedwab (specs as long-term memory, 6 key ideas, rollback-and-revise)
 - [Spec-Driven Verification for Coding Agents](https://agent-wars.com/news/2026-03-14-spec-driven-verification-claude-code-agents) — Agent Wars (4-stage verification pipeline, self-congratulation machine problem)
 - [Constitutional Spec-Driven Development](https://arxiv.org/abs/2602.02584) — arXiv (security by construction, 26.1% of AI agent skills contain vulnerabilities)
+- [Improving Deep Agents with Harness Engineering](https://blog.langchain.com/improving-deep-agents-with-harness-engineering/) — LangChain (Top 30→Top 5, middleware stack, reasoning sandwich)
+- [Open SWE: Internal Coding Agents](https://blog.langchain.com/open-swe-an-open-source-framework-for-internal-coding-agents/) — LangChain (Stripe/Coinbase/Ramp patterns, middleware safety nets)
+- [The Agent That Investigates Itself](https://techcommunity.microsoft.com/blog/appsonazureblog/the-agent-that-investigates-itself/4500073) — Microsoft (Azure SRE Agent, 80% error reduction via self-diagnosis)
+- [Context Engineering for Azure SRE Agent](https://techcommunity.microsoft.com/blog/appsonazureblog/context-engineering-lessons-from-building-azure-sre-agent/4481200/) — Microsoft (filesystem-as-world, 45%→75% Intent Met)
+- [$20K Eval Bug](https://zencoder.ai/blog/20k-bug-that-changed-evals) — Zencoder (spec quality as hidden variable, multi-model complementarity)
+- [Grounded Take on Agentic Coding](https://iximiuz.com/en/posts/grounded-take-on-agentic-coding/) — iximiuz (50K lines/month production reality, dangerous failure modes)
