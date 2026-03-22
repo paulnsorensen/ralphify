@@ -329,6 +329,36 @@ manager.resume_run(docs_run.state.run_id)
 manager.stop_run(docs_run.state.run_id)
 ```
 
+### `ManagedRun`
+
+Each run created by `RunManager` is wrapped in a `ManagedRun` — a bundle of config, state, and event queue.
+
+| Field | Type | Description |
+|---|---|---|
+| `config` | `RunConfig` | The run's configuration |
+| `state` | `RunState` | Observable state — inspect progress or call control methods |
+| `emitter` | `QueueEmitter` | Event queue — drain `emitter.queue` to consume events |
+
+#### Adding custom listeners
+
+Register additional emitters to receive events from a run. Add listeners **before** calling `start_run()`:
+
+```python
+from ralphify import RunManager, RunConfig, ManagedRun
+
+class SlackNotifier:
+    def emit(self, event):
+        if event.type == EventType.RUN_STOPPED:
+            notify_slack(f"Run {event.run_id} finished")
+
+manager = RunManager()
+run = manager.create_run(config)
+run.add_listener(SlackNotifier())  # receives all events alongside the queue
+manager.start_run(run.state.run_id)
+```
+
+When extra listeners are registered, events are broadcast to both the built-in queue and all custom listeners via a `FanoutEmitter`.
+
 ### `RunManager` methods
 
 | Method | Description |
