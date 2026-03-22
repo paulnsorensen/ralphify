@@ -81,8 +81,9 @@ ralph run research --dir=./my-project --focus="performance"
 # Positional args (requires args: [dir, focus] in frontmatter)
 ralph run research ./my-project "performance"
 
-# Mixed
-ralph run research ./my-project --focus "performance"
+# Mixed — positional args skip names already provided via flags
+ralph run research --focus "performance" ./my-project
+# dir="./my-project", focus="performance"
 ```
 
 Missing args resolve to an empty string.
