@@ -211,8 +211,10 @@ chmod +x scripts/run-tests.sh
 ```yaml
 commands:
   - name: tests
-    run: ./scripts/run-tests.sh
+    run: scripts/run-tests.sh
 ```
+
+Commands without a `./` prefix run from the project root, so `scripts/run-tests.sh` resolves to `<project-root>/scripts/run-tests.sh`. If you want to bundle the script next to your `RALPH.md`, use the `./` prefix instead — see [Working directory](how-it-works.md#2-run-commands) for details.
 
 ### Command always failing
 
