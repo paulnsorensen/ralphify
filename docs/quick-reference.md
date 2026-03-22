@@ -68,7 +68,7 @@ Your instructions here. Use {{ args.dir }} for user arguments.
 |---|---|---|---|
 | `agent` | string | yes | Full agent command (piped via stdin) |
 | `commands` | list | no | Commands to run each iteration |
-| `args` | list | no | User argument names |
+| `args` | list | no | User argument names. Letters, digits, hyphens, and underscores only. |
 | `credit` | bool | no | Append co-author trailer instruction to prompt (default: `true`) |
 
 ### Command fields

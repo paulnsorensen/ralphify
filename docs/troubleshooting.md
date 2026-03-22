@@ -97,12 +97,13 @@ Common causes:
 
 ## Frontmatter issues
 
-### "Command name contains invalid characters"
+### "Command name contains invalid characters" / "Arg name contains invalid characters"
 
-Command names may only contain letters, digits, hyphens, and underscores (`a-z`, `A-Z`, `0-9`, `-`, `_`). Names with dots, spaces, or special characters are rejected because they can't be referenced by `{{ commands.<name> }}` placeholders.
+Command names and arg names may only contain letters, digits, hyphens, and underscores (`a-z`, `A-Z`, `0-9`, `-`, `_`). Names with dots, spaces, or special characters are rejected because they can't be used in `{{ commands.<name> }}` or `{{ args.<name> }}` placeholders.
 
 ```yaml
 # ✗ Wrong — dots and spaces aren't allowed
+args: [my.focus, test subject]
 commands:
   - name: my.tests
     run: uv run pytest -x
@@ -110,6 +111,7 @@ commands:
     run: uv run pytest -x
 
 # ✓ Correct — use hyphens or underscores
+args: [my-focus, test_subject]
 commands:
   - name: my-tests
     run: uv run pytest -x
