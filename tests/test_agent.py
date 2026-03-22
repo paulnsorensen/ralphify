@@ -201,6 +201,22 @@ class TestExecuteAgentBlocking:
         assert result.log_file.exists()
 
     @patch(MOCK_SUBPROCESS)
+    def test_timeout_echoes_captured_output(self, mock_run, tmp_path, capsys):
+        """When logging is enabled and the agent times out, partial output
+        should be echoed to the terminal — same as on normal completion."""
+        exc = subprocess.TimeoutExpired(cmd="echo", timeout=5)
+        exc.stdout = "partial stdout"
+        exc.stderr = "partial stderr"
+        mock_run.side_effect = exc
+        execute_agent(
+            ["echo"], "prompt", timeout=5, log_path_dir=tmp_path, iteration=1,
+        )
+
+        captured = capsys.readouterr()
+        assert "partial stdout" in captured.out
+        assert "partial stderr" in captured.err
+
+    @patch(MOCK_SUBPROCESS)
     def test_no_log_when_dir_not_set(self, mock_run):
         mock_run.return_value = ok_result()
         result = execute_agent(["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1)

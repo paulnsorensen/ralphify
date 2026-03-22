@@ -227,6 +227,11 @@ def _run_agent_blocking(
         )
     except subprocess.TimeoutExpired as exc:
         log_file = _write_log(log_path_dir, iteration, exc.stdout, exc.stderr)
+        if log_path_dir:
+            if exc.stdout:
+                sys.stdout.write(exc.stdout)
+            if exc.stderr:
+                sys.stderr.write(exc.stderr)
         return AgentResult(
             returncode=None,
             elapsed=time.monotonic() - start,
