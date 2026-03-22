@@ -127,14 +127,8 @@ def fail_result(
     return _make_completed_process(returncode=1, stdout=stdout, stderr=stderr)
 
 
-def _make_mock_proc(
-    returncode: int = 0, stdout: str = "", stderr: str = "",
-) -> MagicMock:
-    """Build a MagicMock that mimics Popen for the agent blocking path.
-
-    The mock supports ``communicate()`` returning ``(stdout, stderr)``
-    and exposes ``.returncode``, ``.wait()``, ``.poll()``, and ``.pid``.
-    """
+def _make_mock_proc(returncode: int = 0, stdout: str = "", stderr: str = "") -> MagicMock:
+    """Build a MagicMock that mimics Popen for the agent blocking path."""
     proc = MagicMock()
     proc.returncode = returncode
     proc.communicate.return_value = (stdout, stderr)
@@ -144,28 +138,17 @@ def _make_mock_proc(
     return proc
 
 
-def ok_proc(
-    *_args: Any, stdout: str = "", stderr: str = "", **_kwargs: Any,
-) -> MagicMock:
-    """Popen mock with exit code 0.
-
-    Works as a direct factory and as a ``side_effect`` callable where
-    mock call args are silently absorbed.  Used by agent/engine/CLI tests
-    that mock ``subprocess.Popen``.
-    """
+def ok_proc(*_args: Any, stdout: str = "", stderr: str = "", **_kwargs: Any) -> MagicMock:
+    """Popen mock with exit code 0.  Works as a factory and ``side_effect``."""
     return _make_mock_proc(returncode=0, stdout=stdout, stderr=stderr)
 
 
-def fail_proc(
-    *_args: Any, stdout: str = "", stderr: str = "", **_kwargs: Any,
-) -> MagicMock:
+def fail_proc(*_args: Any, stdout: str = "", stderr: str = "", **_kwargs: Any) -> MagicMock:
     """Popen mock with exit code 1."""
     return _make_mock_proc(returncode=1, stdout=stdout, stderr=stderr)
 
 
-def timeout_proc(
-    *_args: Any, timeout: float = 5, **_kwargs: Any,
-) -> MagicMock:
+def timeout_proc(*_args: Any, timeout: float = 5, **_kwargs: Any) -> MagicMock:
     """Popen mock whose communicate() raises TimeoutExpired."""
     proc = _make_mock_proc(returncode=0)
     proc.communicate.side_effect = [
@@ -198,8 +181,6 @@ def make_mock_popen(
     proc.wait.return_value = returncode
     proc.poll.return_value = returncode  # not None → process finished
     return proc
-
-
 
 
 def drain_events(emitter: QueueEmitter) -> list[Event]:
