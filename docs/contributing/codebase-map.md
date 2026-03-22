@@ -111,7 +111,7 @@ The CLI uses a `ConsoleEmitter` (defined in `_console_emitter.py`) that renders 
 
 1. **`engine.py`** — The core run loop. Uses `RunConfig` and `RunState` (from `_run_types.py`) and `EventEmitter`. This is where iteration logic lives.
 2. **`_run_types.py`** — `RunConfig`, `RunState`, `RunStatus`, and `Command`. These are the shared data types used by the engine, CLI, and manager.
-3. **`cli.py`** — All CLI commands. Delegates to `engine.run_loop()` for the actual loop. Terminal event rendering lives in `_console_emitter.py`.
+3. **`cli.py`** — All CLI commands. Validates frontmatter fields via extracted helpers (`_validate_agent`, `_validate_commands`, `_validate_credit`, `_validate_run_options`, `_validate_declared_args`), builds a `RunConfig`, and delegates to `engine.run_loop()` for the actual loop. Terminal event rendering lives in `_console_emitter.py`.
 4. **`_frontmatter.py`** — YAML frontmatter parsing. Extracts `agent`, `commands`, `args` from the RALPH.md file.
 5. **`_resolver.py`** — Template placeholder logic. Small file but critical.
 6. **`_skills.py`** + **`skills/`** — The skill system behind `ralph new`. `_skills.py` handles agent detection, reads bundled skill definitions from `skills/`, installs them into the agent's skill directory, and builds the command to launch the agent.
@@ -120,7 +120,7 @@ The CLI uses a `ConsoleEmitter` (defined in `_console_emitter.py`) that renders 
 
 ### If you change frontmatter fields...
 
-Frontmatter parsing is in `_frontmatter.py:parse_frontmatter()`. The field names are consumed in `cli.py` and `engine.py`. Adding a new typed field may require updating the coercion logic in `parse_frontmatter()`.
+Frontmatter parsing is in `_frontmatter.py:parse_frontmatter()`, which returns a raw dict. Each field is then validated and coerced by a dedicated helper in `cli.py` — e.g. `_validate_agent()`, `_validate_commands()`, `_validate_credit()`. Adding a new frontmatter field means adding a new validator in `cli.py` and wiring it into `_build_run_config()`.
 
 ### If you add a new CLI command...
 
@@ -136,7 +136,7 @@ When `credit` is `true` (the default), `engine.py:_assemble_prompt()` appends `_
 
 ### Subprocess result types
 
-`_output.py` defines `ProcessResult`, the base dataclass for subprocess results (provides `returncode`, `timed_out`, and a `success` property). Both `_runner.py:RunResult` (command execution) and `_agent.py:AgentResult` (agent execution) extend it. If you add a new subprocess wrapper, inherit from `ProcessResult` to get consistent success/timeout semantics.
+`_output.py` defines `ProcessResult`, the base dataclass for subprocess results (provides `returncode`, `timed_out`, and a `success` property). Both `_runner.py:RunResult` (command execution) and `_agent.py:AgentResult` (agent execution) extend it. If you add a new subprocess wrapper, inherit from `ProcessResult` to get consistent success/timeout semantics. The module also provides `ensure_str()` for bytes-to-string decoding, `collect_output()` for combining stdout+stderr, and `SUBPROCESS_TEXT_KWARGS` — the shared kwargs dict used by all `subprocess.Popen` calls to ensure consistent encoding and stream handling.
 
 ### Command parsing
 
