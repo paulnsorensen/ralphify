@@ -264,3 +264,31 @@
 - https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/ — METR — RCT: experienced devs 19% slower with AI, believe they're 20% faster, N=246 — **high**
 - https://www.coderabbit.ai/blog/2025-was-the-year-of-ai-speed-2026-will-be-the-year-of-ai-quality — CodeRabbit — 1.7x defect rate in AI-generated code vs human — **medium**
 - https://harness-engineering.ai/blog/daily-ai-agent-news-roundup-march-20-2026-3/ — harness-engineering.ai — GPT-5.4 with 1M context + Pro Mode, Skylos security tool, framework comparison — **medium**
+
+## Iteration 20 — Intent Failure & Human-Agent Collaboration
+- https://arxiv.org/html/2603.17150 — Microsoft Research — Intent Formalization: specification spectrum from tests to DSLs, TiCoder doubled accuracy 40%→84% — **critical**
+- https://doodledapp.com/feed/ai-made-every-test-pass-the-code-was-still-wrong — Doodledapp — AI tests what code does, not what it should do; independent ground truth is the fix — **critical**
+- https://dev.to/stephenc222/ai-agents-can-pass-tests-they-still-cant-maintain-systems-2004 — Stephen C. — SWE-CI: agents break existing behavior in ~50% of maintenance iterations — **critical**
+- https://metr.org/blog/2025-06-05-recent-reward-hacking/ — METR — o3 reward-hacked 30.4% of RE-Bench runs, admits misalignment 10/10 times when asked — **critical**
+- https://dev.to/slimd/i-stopped-my-ai-coding-agent-from-rewriting-tests-heres-the-prompt-architecture-that-worked-1io8 — slimd — Authority hierarchy (specs>tests>code) via PactKit; pre-existing tests read-only — **high**
+- https://martinfowler.com/articles/exploring-gen-ai/sdd-3-tools.html — Boeckeler/Martin Fowler — Compares Kiro, spec-kit, Tessl; three SDD approaches — **high**
+- https://bryanfinster.substack.com/p/ai-broke-your-code-review-heres-how — Bryan Finster — Nyquist principle: defect detection must exceed production rate; 400-line threshold — **high**
+- https://addyosmani.com/blog/code-review-ai/ — Addy Osmani — PR Contract framework: intent + proof + risk + review focus; logic errors 75% more common in AI code — **high**
+- https://www.seangoedecke.com/agents-and-fallbacks/ — Sean Goedecke — Agents silently add fallback code paths; can't evaluate prototypes with hidden backups — **high**
+- https://www.augmentcode.com/product/intent — Augment Code — Living specs with Coordinator + Verifier agents; bidirectional spec-code sync — **high**
+- https://www.getautonoma.com/blog/amazon-vibe-coding-lessons — Autonoma AI — 4 Sev-1 incidents in 90 days, 6.3M lost orders; verification layer didn't scale — **critical**
+- https://www.designative.info/2026/03/08/preventing-agent-drift-designing-ai-systems-that-stay-aligned-with-human-intent/ — Designative — 4-stage intention lifecycle: Capture→Persist→Maintain→Validate — **medium**
+- https://addyosmani.com/blog/future-agentic-coding/ — Addy Osmani — Conductor (synchronous, tight) vs Orchestrator (async, parallel); role evolution timeline — **high**
+- https://thenewstack.io/anthropic-launches-a-multi-agent-code-review-tool-for-claude-code/ — Anthropic — 5 independent reviewer agents; 84% finding rate on large PRs averaging 7.5 issues — **high**
+- https://www.qodo.ai/blog/5-ai-code-review-pattern-predictions-in-2026/ — Qodo — Context-First Review: understand why the diff exists, not just what changed — **medium**
+- https://lucumr.pocoo.org/2025/12/22/a-year-of-vibes/ — Armin Ronacher — PRs lack prompt/failure transparency; value in failures discarded by VCS — **medium**
+- https://github.blog/ai-and-ml/generative-ai/spec-driven-development-with-ai-get-started-with-a-new-open-source-toolkit/ — GitHub — Spec Kit: specify→plan→tasks→implement; "intent is the source of truth" — **high**
+- https://addyosmani.com/blog/good-spec/ — Addy Osmani — Three-tier boundaries (always/ask/never); kick off with concise spec, let AI expand — **high**
+- https://intent-driven.dev/knowledge/best-practices/ — Intent-Driven.dev — "Are the artifacts human reviewable?" test for feature sizing — **medium**
+- https://www.nxcode.io/resources/news/agentic-engineering-complete-guide-vibe-coding-ai-agents-2026 — NxCode — Role shift: code writing→intent specification + constraint design + output validation — **medium**
+- https://www.augmentcode.com/guides/vibe-coding-vs-spec-driven-development — Augment Code — When to use vibe (prototypes) vs spec-driven (production) — **medium**
+- https://arxiv.org/abs/2602.00180 — ICSE 2026 — Three rigor levels: spec-first, spec-anchored, spec-as-source; 50% error reduction — **critical**
+- https://www.mindstudio.ai/blog/stripe-minions-blueprint-architecture-deterministic-agentic-nodes — MindStudio — Stripe Blueprints: deterministic+agentic nodes, dependency update example — **high**
+- https://www.thoughtworks.com/en-us/insights/blog/agile-engineering-practices/spec-driven-development-unpacking-2025-new-engineering-practices — Thoughtworks — SDD as 2025's most important new practice — **high**
+- https://openspec.pro/ — OpenSpec — Brownfield-first SDD, 27K+ stars, YC-backed, 4-phase state machine — **high**
+- https://chiefloop.com/concepts/prd-format.html — Chief — Autonomous PRD agent; structured user stories with acceptance criteria checkboxes — **medium**

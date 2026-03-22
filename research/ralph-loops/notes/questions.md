@@ -34,9 +34,15 @@
 - [ ] Does GitHub's "Continuous AI" (agentic workflows) change team dynamics vs. traditional CI/CD? Early adoption data?
 - [ ] At what point does architectural drift from agent-generated code become unrepairable — is there a measurable "point of no return"?
 - [ ] Which memory architecture (observational, graph, self-editing, RAG) best fits ralph loops — and can a "memory ralph" replace vector DB infrastructure?
-- [ ] How does Stripe's "Blueprints" architecture compare to RALPH.md for defining deterministic+agent hybrid workflows?
+- [ ] How does the authority hierarchy (specs>tests>code) interact with TDD loops where tests are written by the agent?
+- [ ] What's the optimal number of acceptance criteria per RALPH.md — is there a ceiling like the 150-200 instruction limit?
+- [ ] How do teams implement "spec validation" gates — human review, AI-assisted ambiguity detection, or both?
+- [ ] Does multi-agent review (5 independent reviewers) produce diminishing returns vs. 2-3 specialized reviewers?
+- [ ] How do practitioners prevent silent fallback insertion — is there a deterministic detection technique beyond code review?
 
 ## Answered
+- [x] How does Stripe's "Blueprints" architecture compare to RALPH.md for defining deterministic+agent hybrid workflows? — Blueprints interleave deterministic nodes (linting, testing, file ops) with agentic nodes (code generation, PR writing). RALPH.md already implements this: commands = deterministic nodes, prompt body = agentic directive. Gap: Blueprints have explicit error recovery (bounded retry → human escalation). See Ch20.
+- [x] Does the two-phase plan-then-build pattern measurably reduce "built the wrong thing" failures? — Partially. Authority hierarchy (specs>tests>code) and independent ground truth are the validated techniques. TiCoder doubled accuracy (40%→84%) via interactive spec disambiguation. No controlled study yet on plan-then-build specifically. See Ch21.
 - [x] How do practitioners handle non-deterministic verification (e.g., subjective quality in writing/design tasks)? — Block's 4-layer testing pyramid: deterministic foundation + record/playback + probabilistic benchmarks + LLM-as-judge with rubrics (3 rounds, majority vote). See chapter 11.
 - [x] What patterns exist for gradually increasing agent autonomy as trust builds? — Trust Equation (Competence × Consistency × Recoverability / Consequence), 4-level trust ladder, Anthropic's empirical data (20%→40% auto-approve over 750 sessions). See chapter 11.
 - [x] What's the real-world false negative rate for LLM-as-judge verification beyond Spotify's 25%? — GPT-4 agrees with human experts 85% (MT-Bench), but faithfulness correlation only ρ=0.55. Verbosity bias >90%, position bias up to 70%. Panel-of-judges outperforms single judge. See chapter 11.

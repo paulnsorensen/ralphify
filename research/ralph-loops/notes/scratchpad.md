@@ -525,3 +525,37 @@
 - Refine cycle (iteration 20): 22 insights, 19 chapters — the chapter count is high. Consider merging some chapters.
 - Or: update Ch06 (implications) with memory ralph pattern, restorable compression guideline, ETH Zurich validation, Stripe competitive context
 - Or: research the "built the wrong thing" / intent-failure problem more deeply — it was flagged as the defining failure mode of 2026 but lacks concrete solutions
+
+## Iteration 20 — 2026-03-22
+
+**Decision: RESEARCH**
+
+**Focus area:** The intent-failure problem and human-agent collaboration models — how practitioners prevent agents from passing all tests but building the wrong thing. This is flagged as the defining unsolved problem of 2026 but lacks concrete solutions in the research. Sub-questions:
+1. What concrete techniques exist for detecting/preventing intent-failure (beyond "write better specs")?
+2. How are practitioners structuring the human review layer for agent-generated work?
+3. What does "intent alignment" look like in practice — intent specs, acceptance criteria, behavioral tests?
+4. Are there emerging patterns for "spec validation" before execution begins?
+
+**What was done:**
+- Launched 3 parallel research agents: intent-failure detection (excellent), human-agent collaboration (excellent), spec-driven workflows (excellent — wrote Ch20)
+- Deep-read 40+ new sources across all three threads
+- Agent 3 created chapter 20 (Spec-Driven & Intent-Aligned Workflows) covering Stripe Blueprints, GitHub Spec Kit, OpenSpec, Kiro, Chief, BDD+AI, contract testing, CSDD
+- Created chapter 21 (Intent-Failure Detection & Human-Agent Collaboration) covering: 5 intent-failure mechanisms, authority hierarchy, independent ground truth, on-the-loop framework, conductor/orchestrator duality, PR Contract, role evolution, Amazon counter-example
+- Added 3 new insights to REPORT.md (#23-#25): intent-failure mechanisms, spec-driven development, on-the-loop framework
+- Added 12 new insights to notes, 25+ new sources, 5 new questions, 2 questions answered
+- Updated REPORT.md open questions: marked Stripe Blueprints and plan-then-build as answered
+
+**Key surprises:**
+- o3 reward-hacked 30.4% of the time AND admitted misalignment 10/10 times when asked — models KNOW they're gaming tests
+- SWE-CI: even Claude Opus broke existing behavior in ~50% of maintenance iterations — local patch myopia is universal
+- Microsoft Research's TiCoder doubled accuracy (40%→84%) through interactive spec disambiguation — asking users to approve/reject ambiguous test cases
+- Amazon had 4 Sev-1 incidents in 90 days including 6.3M lost orders — the verification layer literally didn't scale with generation
+- Anthropic's multi-agent review dispatches 5 independent reviewers; 84% finding rate on large PRs
+- The authority hierarchy (specs>tests>code) maps DIRECTLY to ralph loops: commands are read-only verification
+- "On the loop" (Boeckeler/Fowler) is the perfect articulation of what ralph authors do
+- GitHub Spec Kit has 72K+ stars — spec-driven development is mainstream, not niche
+
+**Next iteration should focus on:**
+- Refine cycle (iteration 21): 25 insights, 21 chapters — trim insights back to ~22, consider merging Ch20 and Ch21 or trimming overlap
+- Update Ch06 (implications) with intent-failure prevention patterns and spec-driven validation recommendations
+- Or: research the "cleanup ralph" / entropy management pattern more deeply — concrete implementations

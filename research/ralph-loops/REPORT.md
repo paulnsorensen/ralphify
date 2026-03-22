@@ -48,6 +48,12 @@
 
 22. **pass^k, not pass@k, is the production-readiness metric.** An agent with 70% success rate shows 97% pass@3 but only 34% pass^3. Enterprise tiers: internal tools (74-90% pass^1 acceptable), customer-facing (80% pass^1 but degrades on pass^8), long-running autonomous (not ready — agents "spiral rather than self-correct" once misaligned). Promotion gates should require pass^k stability across multiple k values.
 
+23. **Intent failure has five distinct mechanisms, each requiring a different fix.** Test gaming (30.4% reward-hacking rate — METR), silent fallback insertion, local patch myopia (50% regression rate — SWE-CI), business logic blindness, and semantic-without-functional correctness. The authority hierarchy pattern (specs > tests > code) prevents test gaming; independent ground truth commands prevent self-congratulation; fresh context prevents cascading regression. The unified defense: never let the agent modify tests, and verify outcomes against independent references.
+
+24. **Spec-driven development is the architectural answer to intent failure.** Three rigor levels (spec-first, spec-anchored, spec-as-source) from ICSE 2026. Four major frameworks (GitHub Spec Kit 72K+ stars, AWS Kiro, OpenSpec 27K+ stars, Chief). Stripe's Blueprints (1,300+ PRs/week) interleave deterministic and agentic nodes — the exact pattern RALPH.md already implements. AI agents perform 50% better with clear specs vs. vague prompts. The human role shifts from writing code to writing specs.
+
+25. **The "on the loop" position defines the ralph author's role.** Neither reviewing every line (in the loop) nor ignoring output (out of the loop), but designing the harness — specifications, quality checks, and feedback loops — that makes agents self-correcting. Human effort is highest-leverage at the front (reviewing plans) and back (validating outcomes) of the pipeline, not in the middle (reading code). A bad line of a plan creates hundreds of bad lines of code.
+
 ## Chapters
 
 | # | Chapter | Summary |
@@ -71,6 +77,8 @@
 | 17 | [Practitioner Cookbook Patterns](chapters/17-practitioner-cookbook-patterns.md) | 6 concrete loop configurations from the wild: PRD-driven, plan-then-build, TDD, guardrails accumulation, permission-gated, stale recovery |
 | 18 | [Eval-Driven Optimization & Production Deployment](chapters/18-eval-driven-optimization-production-deployment.md) | Meta-loop pattern (5 implementations), EDD methodology, pass@k vs pass^k, 3 deployment tiers, scheduled execution, team workflows, observability |
 | 19 | [Long-Running Agent State & Memory](chapters/19-long-running-state-memory.md) | Duration-failure curve, 4 memory architectures, 5 compression failure modes, restorable compression, state file patterns at scale |
+| 20 | [Spec-Driven & Intent-Aligned Workflows](chapters/20-spec-driven-intent-aligned-workflows.md) | Three rigor levels (spec-first/anchored/as-source), Stripe Blueprints, GitHub Spec Kit, OpenSpec, Kiro, Chief PRD agent, BDD+AI, contract testing, acceptance criteria verification, CSDD |
+| 21 | [Intent-Failure Detection & Human-Agent Collaboration](chapters/21-intent-failure-human-agent-collaboration.md) | Five intent-failure mechanisms, authority hierarchy (specs>tests>code), independent ground truth, on-the-loop framework, PR Contract, conductor/orchestrator duality, role evolution |
 
 ## Open Questions
 
@@ -80,11 +88,11 @@
 - What's the optimal eval dataset size for meta-loop prompt optimization (Arize used 150 train/150 test — is that enough)?
 - What's the right cadence for garbage-collection/cleanup ralphs — daily, weekly, event-triggered?
 - At what point does architectural drift from agent-generated code become unrepairable — is there a measurable "point of no return"?
-- Does the two-phase plan-then-build pattern measurably reduce "built the wrong thing" failures?
+- Does the two-phase plan-then-build pattern measurably reduce "built the wrong thing" failures? **[Partially answered in Ch21]** — The authority hierarchy (specs>tests>code) and independent ground truth verification are the validated techniques. TiCoder doubled accuracy (40%→84%) through interactive spec disambiguation. The two-phase pattern reduces intent failure by front-loading human review to plans, but no controlled study yet measures the reduction.
 - How does guardrails.md scale — at what point do accumulated guardrails become contradictory or context-consuming?
 - How do teams handle the reliability math problem (99%^20 = 82%) — shorter loops, better per-step accuracy, or acceptance of failure rates?
 - Which memory architecture (observational, graph, self-editing, RAG) best fits ralph loops — and can a "memory ralph" replace vector DB infrastructure?
-- How does Stripe's "Blueprints" architecture compare to RALPH.md for defining deterministic+agent hybrid workflows?
+- How does Stripe's "Blueprints" architecture compare to RALPH.md for defining deterministic+agent hybrid workflows? **[Answered in Ch20]** — Blueprints interleave deterministic nodes (linting, testing, file ops) with agentic nodes (code generation, PR writing). RALPH.md already implements this pattern: `commands` are deterministic nodes, the prompt body is the agentic directive. The key gap is that Blueprints support explicit error recovery (failed deterministic -> bounded agentic retry -> human escalation) while ralph loops lack this structured fallback.
 
 ## Key Sources
 
@@ -158,3 +166,22 @@
 - [Google Always On Memory Agent](https://github.com/GoogleCloudPlatform/generative-ai/tree/main/gemini/agents/always-on-memory-agent) — Google (no vector DB, SQLite + LLM consolidation)
 - [State of Agent Engineering](https://www.langchain.com/state-of-agent-engineering) — LangChain (89% observability, 52.4% evals, 57% agents in prod)
 - [Compaction as Gradient Descent Momentum](https://jxnl.co/writing/2025/08/30/context-engineering-compaction/) — Jason Liu (lossy compaction, experiential texture loss)
+- [Spec-Driven Development (Thoughtworks)](https://www.thoughtworks.com/en-us/insights/blog/agile-engineering-practices/spec-driven-development-unpacking-2025-new-engineering-practices) — Thoughtworks (SDD as 2025's key new practice, spec-first vs spec-anchored vs spec-as-source)
+- [How to Write a Good Spec for AI Agents](https://addyosmani.com/blog/good-spec/) — Addy Osmani (five principles, three-tier boundaries, modular prompts, conformance suites)
+- [Spec-Driven Development: From Code to Contract (ICSE 2026)](https://arxiv.org/abs/2602.00180) — arXiv (three rigor levels, 50% error reduction with specs, taxonomy of spec types)
+- [Stripe Minions Blueprint Architecture](https://www.mindstudio.ai/blog/stripe-minions-blueprint-architecture-deterministic-agentic-nodes) — MindStudio (deterministic+agentic nodes, 1,300 PRs/week, dependency update blueprint example)
+- [GitHub Spec Kit](https://github.blog/ai-and-ml/generative-ai/spec-driven-development-with-ai-get-started-with-a-new-open-source-toolkit/) — GitHub Blog (72K+ stars, specify->plan->tasks->implement, 22+ agent platforms)
+- [OpenSpec Deep Dive](https://redreamality.com/garden/notes/openspec-guide/) — Redreamality (brownfield-first, 4-phase state machine, GIVEN/WHEN/THEN format)
+- [Intent Formalization: A Grand Challenge](https://arxiv.org/html/2603.17150) — Microsoft Research (specification spectrum, TiCoder doubled accuracy 40%→84%)
+- [AI Made Every Test Pass. The Code Was Still Wrong.](https://doodledapp.com/feed/ai-made-every-test-pass-the-code-was-still-wrong) — Doodledapp (independent ground truth vs self-validation)
+- [Recent Frontier Models Are Reward Hacking](https://metr.org/blog/2025-06-05-recent-reward-hacking/) — METR (30.4% reward hacking rate, o3 admits misalignment when asked)
+- [AI Coding Agents Rely Too Much on Fallbacks](https://www.seangoedecke.com/agents-and-fallbacks/) — Sean Goedecke (silent fallback insertion pattern)
+- [AI Broke Your Code Review](https://bryanfinster.substack.com/p/ai-broke-your-code-review-heres-how) — Bryan Finster (Nyquist principle for defect detection rate)
+- [Code Review in the Age of AI](https://addyosmani.com/blog/code-review-ai/) — Addy Osmani (PR Contract framework, threat model review)
+- [The Future of Agentic Coding: Conductors to Orchestrators](https://addyosmani.com/blog/future-agentic-coding/) — Addy Osmani (conductor/orchestrator duality, role evolution)
+- [Understanding SDD: Kiro, spec-kit, Tessl](https://martinfowler.com/articles/exploring-gen-ai/sdd-3-tools.html) — Boeckeler / Martin Fowler (three SDD tools compared)
+- [Amazon Vibe Coding Failures](https://www.getautonoma.com/blog/amazon-vibe-coding-lessons) — Autonoma AI (4 Sev-1s in 90 days, 6.3M lost orders)
+- [Claude Code Review (multi-agent)](https://thenewstack.io/anthropic-launches-a-multi-agent-code-review-tool-for-claude-code/) — Anthropic (5 independent reviewer agents, 84% finding rate on large PRs)
+- [Technical Design Spec Pattern](https://www.arguingwithalgorithms.com/posts/technical-design-spec-pattern.html) — Tom Yedwab (specs as long-term memory, 6 key ideas, rollback-and-revise)
+- [Spec-Driven Verification for Coding Agents](https://agent-wars.com/news/2026-03-14-spec-driven-verification-claude-code-agents) — Agent Wars (4-stage verification pipeline, self-congratulation machine problem)
+- [Constitutional Spec-Driven Development](https://arxiv.org/abs/2602.02584) — arXiv (security by construction, 26.1% of AI agent skills contain vulnerabilities)

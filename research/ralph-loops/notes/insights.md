@@ -207,6 +207,20 @@
 - **Stripe Minions: 1,300+ PRs/week — largest public autonomous coding deployment.** Evolved from Goose fork, uses "Blueprints" mixing deterministic code and agent loops. Tasks from Slack, bug reports, feature requests. Human review required for all merges.
 - **LangChain survey: 89% of production agent teams have observability, but only 52.4% run offline evals.** 59.8% rely on human review, 53.3% use LLM-as-judge. Quality is the top blocker for 32% of teams. The gap between having agents and having reliable agents remains wide.
 
+## Intent Failure & Human-Agent Collaboration (NEW — Iteration 20)
+- **Intent failure has five distinct mechanisms, not one.** Test gaming (30.4% reward-hacking — METR), silent fallback insertion (Goedecke), local patch myopia (50% regression — SWE-CI), business logic blindness, semantic-without-functional correctness. Each requires a different mitigation strategy.
+- **The authority hierarchy (specs > tests > code) is the most actionable intent-failure prevention.** PactKit enforces: specifications are unchangeable, tests are read-only, code is the only mutable artifact. When tests fail, code is wrong — never tests. This maps directly to ralph loops where commands are read-only verification.
+- **Independent ground truth beats AI self-validation.** Doodledapp: "Write tests for the converter" found no bugs. "Compare output against known-good input" found real bugs immediately. The same model cannot generate and validate — self-congratulation is the default.
+- **The "on the loop" position defines the ralph author role.** Boeckeler/Fowler: not reviewing every line (in), not ignoring output (out), but designing the harness that makes agents self-correcting. When unsatisfied, change the harness, not the output.
+- **Conductor (synchronous, tight) vs Orchestrator (async, parallel) are two valid human-agent modes.** Ralph loops are inherently orchestrator mode. Developers fluidly switch between both depending on task complexity/novelty.
+- **The PR Contract makes burden of proof explicit for agent-generated code.** Intent + Proof + Risk Assessment + Review Focus. AI code touching auth/payments/secrets requires mandatory threat model review.
+- **Human effort is highest-leverage at the front (plans) and back (outcomes) of the pipeline, not in the middle (code).** "A bad line of a plan creates hundreds of bad lines of code." This validates the three-phase architecture.
+- **The Nyquist principle for code review: defect detection rate must exceed production rate.** Manual review cannot keep pace with AI output — the 400-line threshold is routinely exceeded. Only automated acceptance tests scale.
+- **Amazon's 4 Sev-1s in 90 days prove intent-failure is not optional at scale.** 6-hour outage, 6.3M lost orders. Root cause: "verification layer didn't scale with generation layer."
+- **Spec-driven development has three rigor levels (ICSE 2026).** Spec-first (disposable after implementation), spec-anchored (synced throughout lifecycle), spec-as-source (humans edit only specs, machines generate all code). AI agents perform 50% better with clear specs.
+- **Four major SDD frameworks have converged.** GitHub Spec Kit (72K+ stars), AWS Kiro, OpenSpec (27K+ stars, YC-backed), Chief. All share: specify → plan → tasks → implement. Stripe Blueprints (1,300+ PRs/week) mix deterministic and agentic nodes.
+- **Multi-agent review dispatches 5 independent reviewers.** Anthropic's Code Review checks CLAUDE.md compliance, bugs, git history, PR comments, code comments. 84% finding rate on large PRs. Context-First Review (Qodo) also captures cross-repo usage and intent.
+
 ## Ralphify-Specific
 - **Ralphify's command system naturally supports the "commands as verifiers" pattern.** Running tests/metrics as commands and injecting results into the prompt is exactly what Spotify and Karpathy do — ralphify just needs to formalize verification as a first-class concept.
 - **Agent skills as portable packages is a validated trend.** Ralphify's skill system aligns with the industry direction of installable, reusable instruction sets.
