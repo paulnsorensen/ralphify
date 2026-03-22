@@ -311,6 +311,13 @@ def _build_run_config(
         _exit_error(f"'{FIELD_ARGS}' must be a list of strings.")
     if declared_names is not None and not all(isinstance(a, str) for a in declared_names):
         _exit_error(f"'{FIELD_ARGS}' items must be strings, got non-string value.")
+    if declared_names is not None:
+        for arg_name in declared_names:
+            if not CMD_NAME_RE.fullmatch(arg_name):
+                _exit_error(
+                    f"Arg name '{arg_name}' contains invalid characters. "
+                    f"Names may only contain letters, digits, hyphens, and underscores."
+                )
     ralph_args: dict[str, str] = {}
     if extra_args:
         ralph_args = _parse_user_args(extra_args, declared_names)

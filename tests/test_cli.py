@@ -122,6 +122,26 @@ class TestRun:
         assert result.exit_code == 1
         assert "must be a list" in result.output.lower()
 
+    @pytest.mark.parametrize("name", [
+        "my.arg",
+        "has space",
+        "arg@home",
+        "name!",
+        "a/b",
+    ], ids=["dot", "space", "at-sign", "exclamation", "slash"])
+    def test_errors_with_invalid_arg_name_chars(self, mock_which, tmp_path, monkeypatch, name):
+        """Arg names with chars outside [a-zA-Z0-9_-] can never be
+        referenced by placeholders and must be rejected early."""
+        monkeypatch.chdir(tmp_path)
+        ralph_dir = tmp_path / "my-ralph"
+        ralph_dir.mkdir()
+        (ralph_dir / "RALPH.md").write_text(
+            f'---\nagent: claude -p\nargs:\n  - "{name}"\n---\ngo'
+        )
+        result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
+        assert result.exit_code == 1
+        assert "invalid" in result.output.lower()
+
     @pytest.mark.parametrize("args_yaml,id_label", [
         ("[1, 2]", "integers"),
         ("[true, false]", "booleans"),
