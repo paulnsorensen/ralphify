@@ -12,6 +12,7 @@ All notable changes to ralphify are documented here.
 
 ### Fixed
 
+- **Placeholder cross-contamination between args and commands** — when an arg value contained text like `{{ commands.tests }}`, the sequential resolution would re-process it as a command placeholder, injecting unrelated output. Placeholders are now resolved in a single pass so inserted values are never re-scanned.
 - **Helpful error when command binary is not found** — when a `commands` entry references a binary that isn't installed (e.g. `run: mypy src/`), the error now identifies which command failed and points to the `commands` field. Previously this surfaced as a generic crash with no context.
 - **Timed-out agent output not echoed when logging enabled** — when using `--log-dir` and the agent timed out, partial output was written to the log file but silently swallowed from the terminal. Both completion and timeout paths now echo consistently.
 - **`--` separator not ending flag parsing in user args** — `ralph run my-ralph -- --verbose ./src` now correctly treats `--verbose` as a positional value instead of parsing it as a flag.
