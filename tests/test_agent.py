@@ -99,6 +99,18 @@ class TestReadAgentStream:
         assert len(result.stdout_lines) == 1
         assert len(activities) == 0
 
+    @pytest.mark.parametrize("line", ["42\n", '"hello"\n', "[1,2,3]\n", "true\n", "null\n"])
+    def test_ignores_valid_json_non_object_lines(self, line):
+        """Valid JSON that is not a JSON object (e.g. number, string, array)
+        should be silently skipped, not crash with AttributeError."""
+        activities = []
+        stream = io.StringIO(line)
+        result = _read_agent_stream(stream, deadline=None, on_activity=activities.append)
+
+        assert len(result.stdout_lines) == 1
+        assert len(activities) == 0
+        assert result.result_text is None
+
     def test_skips_empty_lines(self):
         activities = []
         stream = io.StringIO("\n\n")
