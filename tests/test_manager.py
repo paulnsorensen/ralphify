@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from helpers import MOCK_SUBPROCESS, drain_events, event_types, make_config, ok_result
+from helpers import MOCK_SUBPROCESS, drain_events, event_types, make_config, ok_proc
 
 from ralphify._events import EventType, FanoutEmitter, QueueEmitter
 from ralphify._run_types import RUN_ID_LENGTH, RunStatus
@@ -44,7 +44,7 @@ class TestRunManagerCreateRun:
 
 
 class TestRunManagerStartRun:
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_start_run_starts_thread(self, mock_run, tmp_path):
         manager = RunManager()
         config = make_config(tmp_path, max_iterations=1)
@@ -57,7 +57,7 @@ class TestRunManagerStartRun:
         managed.thread.join(timeout=5)
         assert managed.state.status == RunStatus.COMPLETED
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_start_run_thread_is_daemon(self, mock_run, tmp_path):
         manager = RunManager()
         config = make_config(tmp_path, max_iterations=1)
@@ -70,7 +70,7 @@ class TestRunManagerStartRun:
         assert managed.thread.daemon is True
         managed.thread.join(timeout=5)
 
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_start_run_emits_events_to_queue(self, mock_run, tmp_path):
         manager = RunManager()
         config = make_config(tmp_path, max_iterations=1)
@@ -88,7 +88,7 @@ class TestRunManagerStartRun:
 
 
 class TestRunManagerStartRunGuards:
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_start_run_raises_on_double_start(self, mock_run, tmp_path):
         manager = RunManager()
         config = make_config(tmp_path, max_iterations=1)
@@ -126,7 +126,7 @@ class TestRunManagerInvalidRunId:
 
 
 class TestRunManagerStopRun:
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_stop_run_stops_running_run(self, mock_run, tmp_path):
         manager = RunManager()
         config = make_config(tmp_path, max_iterations=100, delay=0.1)
@@ -156,7 +156,7 @@ class TestRunManagerPauseResume:
             if call_count == 1:
                 pause_done.set()
                 resume_allowed.wait(timeout=5)
-            return ok_result(*args, **kwargs)
+            return ok_proc(*args, **kwargs)
 
         mock_run.side_effect = counting_ok
 
@@ -237,7 +237,7 @@ class TestManagedRunBuildEmitter:
 
 
 class TestRunManagerExtraListeners:
-    @patch(MOCK_SUBPROCESS, side_effect=ok_result)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_extra_listeners_receive_events(self, mock_run, tmp_path):
         manager = RunManager()
         config = make_config(tmp_path, max_iterations=1)

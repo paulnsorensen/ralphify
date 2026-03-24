@@ -16,6 +16,8 @@ Two execution modes are supported:
 from __future__ import annotations
 
 import json
+import os
+import signal
 import subprocess
 import sys
 import time
@@ -42,6 +44,43 @@ _RESULT_FIELD = "result"
 # Log file naming — timestamp format and iteration zero-padding width.
 _LOG_TIMESTAMP_FORMAT = "%Y%m%d-%H%M%S"
 _LOG_ITERATION_PAD_WIDTH = 3
+
+# Subprocess kwargs that isolate agent processes in their own session/group.
+# On POSIX this uses start_new_session so the agent and all its children
+# form a separate process group that can be killed together.
+_SESSION_KWARGS: dict[str, Any] = (
+    {} if sys.platform == "win32"
+    else {"start_new_session": True}
+)
+
+
+def _kill_process_group(proc: subprocess.Popen[Any]) -> None:
+    """Kill the agent process and its entire process group.
+
+    On POSIX, sends SIGTERM then SIGKILL to the process group — but only when
+    the process is actually a session leader (its pgid equals its pid).  This
+    guard prevents accidentally killing the *caller's* process group when the
+    child was not started with ``start_new_session=True`` (e.g. in tests).
+    Falls back to ``proc.kill()`` on Windows or if the group kill fails.
+    """
+    if sys.platform != "win32" and proc.poll() is None:
+        try:
+            pgid = os.getpgid(proc.pid)
+        except (OSError, ProcessLookupError):
+            pgid = None
+
+        if pgid == proc.pid:
+            try:
+                os.killpg(pgid, signal.SIGTERM)
+                try:
+                    proc.wait(timeout=3)
+                    return
+                except subprocess.TimeoutExpired:
+                    os.killpg(pgid, signal.SIGKILL)
+                    return
+            except (OSError, ProcessLookupError):
+                pass
+    proc.kill()
 
 
 @dataclass
@@ -176,6 +215,7 @@ def _run_agent_streaming(
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         **SUBPROCESS_TEXT_KWARGS,
+        **_SESSION_KWARGS,
     )
     try:
         # Popen with PIPE guarantees non-None streams; guard explicitly
@@ -189,13 +229,13 @@ def _run_agent_streaming(
         stream = _read_agent_stream(proc.stdout, deadline, on_activity)
 
         if stream.timed_out:
-            proc.kill()
+            _kill_process_group(proc)
         proc.wait()
 
         stderr_data = proc.stderr.read()
     finally:
         if proc.poll() is None:
-            proc.kill()
+            _kill_process_group(proc)
             proc.wait()
 
     log_file = _write_log(log_path_dir, iteration, "".join(stream.stdout_lines), stderr_data)
@@ -222,6 +262,10 @@ def _run_agent_blocking(
     then echoed to stdout/stderr so the user still sees it live.  When unset,
     output streams directly to the terminal (no capture overhead).
 
+    The subprocess is started in its own process group so that on
+    ``KeyboardInterrupt`` or timeout the entire child tree can be killed
+    via :func:`_kill_process_group`.
+
     Returns ``returncode=None`` when the process times out.
     Raises ``FileNotFoundError`` if the command binary does not exist.
     """
@@ -230,20 +274,27 @@ def _run_agent_blocking(
     timed_out = False
     stdout: str | bytes | None = None
     stderr: str | bytes | None = None
+    capture = log_path_dir is not None
 
+    proc = subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE if capture else None,
+        stderr=subprocess.PIPE if capture else None,
+        **SUBPROCESS_TEXT_KWARGS,
+        **_SESSION_KWARGS,
+    )
     try:
-        result = subprocess.run(
-            cmd,
-            input=prompt,
-            **SUBPROCESS_TEXT_KWARGS,
-            timeout=timeout,
-            capture_output=log_path_dir is not None,
-        )
-        returncode = result.returncode
-        stdout, stderr = result.stdout, result.stderr
-    except subprocess.TimeoutExpired as exc:
+        stdout, stderr = proc.communicate(input=prompt, timeout=timeout)
+        returncode = proc.returncode
+    except subprocess.TimeoutExpired:
+        _kill_process_group(proc)
+        stdout, stderr = proc.communicate()
         timed_out = True
-        stdout, stderr = exc.stdout, exc.stderr
+    except KeyboardInterrupt:
+        _kill_process_group(proc)
+        proc.wait()
+        raise
 
     log_file = _write_log(log_path_dir, iteration, stdout, stderr)
     if log_path_dir:
