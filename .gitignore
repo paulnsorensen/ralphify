@@ -11,4 +11,5 @@ ralph_logs/
 node_modules/
 .playwright-cli/
 mess/
+.ralphify/
 .DS_Store

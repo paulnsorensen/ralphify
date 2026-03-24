@@ -27,6 +27,7 @@ src/ralphify/           # All source code
 ├── _run_types.py       # RunConfig, RunState, RunStatus, Command — shared data types
 ├── _runner.py          # Execute shell commands with timeout and capture output
 ├── _frontmatter.py     # Parse YAML frontmatter from RALPH.md, marker constants
+├── _source.py          # GitHub source parsing and git-based ralph fetching for `ralph add`
 ├── _skills.py          # Skill installation and agent detection for `ralph new`
 ├── _console_emitter.py # Rich console renderer for run-loop events (ConsoleEmitter)
 ├── _events.py          # Event types, emitter protocol, and BoundEmitter convenience wrapper

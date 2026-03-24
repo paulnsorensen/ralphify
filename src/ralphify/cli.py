@@ -203,6 +203,37 @@ def init(
     _console.print(f"[dim]Edit the file, then run:[/dim] ralph run {name or '.'}")
 
 
+@app.command()
+def add(
+    source: str = typer.Argument(..., help="GitHub source: owner/repo or owner/repo/ralph-name"),
+) -> None:
+    """Add a ralph from a GitHub repository."""
+    from ralphify._source import fetch_ralphs, parse_github_source
+
+    try:
+        parsed = parse_github_source(source)
+    except ValueError as exc:
+        _exit_error(str(exc))
+
+    ralphs_dir = Path.cwd() / _RALPHIFY_RALPHS_DIR
+    ralphs_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        result = fetch_ralphs(parsed, ralphs_dir)
+    except RuntimeError as exc:
+        _exit_error(str(exc))
+
+    if len(result.installed) == 1:
+        name, _ = result.installed[0]
+        _console.print(f"[green]Added[/green] {name}")
+        _console.print(f"[dim]Run it with:[/dim] ralph run {name}")
+    else:
+        _console.print(f"[green]Added {len(result.installed)} ralphs from {parsed.handle}:[/green]")
+        for name, _ in result.installed:
+            _console.print(f"  {name}")
+        _console.print(f"\n[dim]Run any with:[/dim] ralph run <name>")
+
+
 def _parse_user_args(
     raw_args: list[str],
     declared_names: list[str] | None,
@@ -321,6 +352,18 @@ def _validate_commands(raw_commands: Any) -> list[Command]:
     return _parse_command_items(raw_commands)
 
 
+_RALPHIFY_RALPHS_DIR = Path(".ralphify") / "ralphs"
+"""Project-local directory for installed ralphs."""
+
+
+def _installed_ralph_path(name: str) -> Path | None:
+    """Return the installed ralph directory if it exists, else *None*."""
+    path = Path.cwd() / _RALPHIFY_RALPHS_DIR / name
+    if (path / RALPH_MARKER).is_file():
+        return path
+    return None
+
+
 def _resolve_ralph_paths(ralph_path: str) -> tuple[Path, Path]:
     """Resolve the ralph directory and RALPH.md file from a user-provided path.
 
@@ -336,7 +379,15 @@ def _resolve_ralph_paths(ralph_path: str) -> tuple[Path, Path]:
         ralph_dir = path.parent
         ralph_file = path
     else:
-        _exit_error(f"'{ralph_path}' is not a directory or {RALPH_MARKER} file.")
+        # Fallback: check installed ralphs in .ralphify/ralphs/<name>/
+        installed = _installed_ralph_path(ralph_path)
+        if installed is not None:
+            ralph_dir = installed
+            ralph_file = installed / RALPH_MARKER
+        else:
+            _exit_error(
+                f"'{ralph_path}' is not a directory, {RALPH_MARKER} file, or installed ralph."
+            )
 
     if not ralph_file.exists():
         _exit_error(f"{RALPH_MARKER} not found at '{ralph_file}'.")

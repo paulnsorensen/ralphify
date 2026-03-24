@@ -875,3 +875,42 @@ class TestTwoStageCtrlC:
         runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
         restored = signal.getsignal(signal.SIGINT)
         assert restored == original
+
+
+# ── Name-based resolution (installed ralphs) ────────────────────────
+
+
+@patch(MOCK_WHICH, return_value="/usr/bin/claude")
+class TestInstalledRalphResolution:
+    def test_run_resolves_installed_ralph_by_name(self, mock_which, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        installed = tmp_path / ".ralphify" / "ralphs" / "my-tool"
+        installed.mkdir(parents=True)
+        (installed / RALPH_MARKER).write_text("---\nagent: claude -p\n---\ngo")
+        result = runner.invoke(app, ["run", "my-tool", "-n", "1"])
+        # Should attempt to run (may fail at agent exec, but should NOT error on path resolution)
+        assert "not a directory" not in result.output.lower()
+        assert "installed ralph" not in result.output.lower()
+
+    def test_local_path_takes_precedence(self, mock_which, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        # Create both a local dir and an installed ralph with the same name
+        local = tmp_path / "my-tool"
+        local.mkdir()
+        (local / RALPH_MARKER).write_text("---\nagent: claude -p\n---\nlocal prompt")
+
+        installed = tmp_path / ".ralphify" / "ralphs" / "my-tool"
+        installed.mkdir(parents=True)
+        (installed / RALPH_MARKER).write_text("---\nagent: claude -p\n---\ninstalled prompt")
+
+        # Run should use the local path, not the installed one
+        # We verify by checking the config reads the local prompt
+        from ralphify.cli import _resolve_ralph_paths
+        ralph_dir, ralph_file = _resolve_ralph_paths("my-tool")
+        assert "local prompt" in ralph_file.read_text()
+
+    def test_error_mentions_installed_ralph(self, mock_which, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        result = runner.invoke(app, ["run", "nonexistent"])
+        assert result.exit_code == 1
+        assert "installed ralph" in result.output.lower()
