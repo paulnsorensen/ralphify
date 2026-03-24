@@ -6,7 +6,7 @@ keywords: ralphify cookbook, autonomous coding recipes, RALPH.md examples, docum
 
 # Cookbook
 
-Copy-pasteable setups for common autonomous workflows. Each recipe is a real, runnable ralph from the [`cookbooks/`](https://github.com/computerlovetech/ralphify/tree/main/cookbooks) directory.
+Copy-pasteable setups for common autonomous workflows. Each recipe is a real, runnable ralph from the [`examples/`](https://github.com/computerlovetech/ralphify/tree/main/examples) directory.
 
 All recipes use **Claude Code** as the agent. To use a different agent, swap the `agent` field — see [Using with Different Agents](agents.md).
 
@@ -22,7 +22,7 @@ A general-purpose loop for a Python project using pytest and ruff.
 **`python-dev/RALPH.md`**
 
 ```markdown
---8<-- "cookbooks/python-dev/RALPH.md"
+--8<-- "examples/python-dev/RALPH.md"
 ```
 
 ```bash
@@ -38,7 +38,7 @@ A loop that continuously improves code quality without changing functionality. I
 **`improve-codebase/RALPH.md`**
 
 ```markdown
---8<-- "cookbooks/improve-codebase/RALPH.md"
+--8<-- "examples/improve-codebase/RALPH.md"
 ```
 
 ```bash
@@ -55,7 +55,7 @@ A loop focused on writing and improving documentation.
 **`docs/RALPH.md`**
 
 ```markdown
---8<-- "cookbooks/docs/RALPH.md"
+--8<-- "examples/docs/RALPH.md"
 ```
 
 ```bash
@@ -72,7 +72,7 @@ A loop that discovers bugs and fixes them. The agent reads the codebase, finds a
 **`bug-hunter/RALPH.md`**
 
 ```markdown
---8<-- "cookbooks/bug-hunter/RALPH.md"
+--8<-- "examples/bug-hunter/RALPH.md"
 ```
 
 ```bash
@@ -91,7 +91,7 @@ This is a more advanced ralph — it uses `args` for the research topic, helper 
 **`research/RALPH.md`**
 
 ```markdown
---8<-- "cookbooks/research/RALPH.md"
+--8<-- "examples/research/RALPH.md"
 ```
 
 The helper scripts (`show-focus.sh`, `show-questions.sh`, etc.) read from the workspace files and surface key state. The `review.sh` script pipes the full workspace to a separate Claude call that acts as an editorial reviewer — giving the research agent targeted feedback each iteration.
@@ -111,13 +111,13 @@ A loop for batch code transformations — migrating from one pattern to another 
 **`migrate/RALPH.md`**
 
 ```markdown
---8<-- "cookbooks/migrate/RALPH.md"
+--8<-- "examples/migrate/RALPH.md"
 ```
 
 The `count-remaining.sh` script receives the pattern as an argument (resolved from `{{ args.old_pattern }}` in the `run` field) to find files that still need migration:
 
 ```bash
---8<-- "cookbooks/migrate/count-remaining.sh"
+--8<-- "examples/migrate/count-remaining.sh"
 ```
 
 ```bash
@@ -136,7 +136,7 @@ An iterative security review loop. The agent runs a scanner each iteration, pick
 **`security/RALPH.md`**
 
 ```markdown
---8<-- "cookbooks/security/RALPH.md"
+--8<-- "examples/security/RALPH.md"
 ```
 
 ```bash
@@ -154,7 +154,7 @@ A loop that systematically increases test coverage. The agent sees the current c
 **`test-coverage/RALPH.md`**
 
 ```markdown
---8<-- "cookbooks/test-coverage/RALPH.md"
+--8<-- "examples/test-coverage/RALPH.md"
 ```
 
 ```bash

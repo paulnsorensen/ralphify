@@ -5,6 +5,10 @@ commands:
     run: uv run pytest -x
   - name: remaining
     run: ./count-remaining.sh {{ args.old_pattern }}
+  - name: types
+    run: uv run ty check
+  - name: lint
+    run: uv run ruff check .
   - name: git-log
     run: git log --oneline -10
 args:
@@ -29,11 +33,19 @@ Migrate all usages of `{{ args.old_pattern }}` to `{{ args.new_pattern }}`.
 
 {{ commands.tests }}
 
+## Type checking
+
+{{ commands.types }}
+
+## Lint
+
+{{ commands.lint }}
+
 ## Recent commits
 
 {{ commands.git-log }}
 
-If tests are failing, fix them before migrating more files.
+If tests, types, or lint are failing, fix them before migrating more files.
 
 ## Rules
 

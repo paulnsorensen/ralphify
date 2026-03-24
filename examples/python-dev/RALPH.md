@@ -3,6 +3,8 @@ agent: claude -p --dangerously-skip-permissions
 commands:
   - name: tests
     run: uv run pytest -x
+  - name: types
+    run: uv run ty check
   - name: lint
     run: uv run ruff check .
   - name: git-log
@@ -19,9 +21,15 @@ commands:
 
 {{ commands.tests }}
 
+## Type checking
+
+{{ commands.types }}
+
 ## Lint results
 
 {{ commands.lint }}
+
+Fix any type errors or lint violations above before starting new work.
 
 You are an autonomous coding agent running in a loop. Each iteration
 starts with a fresh context. Your progress lives in the code and git.

@@ -3,6 +3,10 @@ agent: claude -p --dangerously-skip-permissions
 commands:
   - name: tests
     run: uv run pytest -x
+  - name: types
+    run: uv run ty check
+  - name: lint
+    run: uv run ruff check .
   - name: git-log
     run: git log --oneline -10
 args:
@@ -19,11 +23,19 @@ code and git.
 
 {{ commands.tests }}
 
+## Type checking
+
+{{ commands.types }}
+
+## Lint
+
+{{ commands.lint }}
+
 ## Recent commits
 
 {{ commands.git-log }}
 
-If tests are failing, fix them before hunting for new bugs.
+If tests, types, or lint are failing, fix that before hunting for new bugs.
 
 ## Task
 

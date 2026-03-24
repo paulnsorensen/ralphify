@@ -3,6 +3,10 @@ agent: claude -p --dangerously-skip-permissions
 commands:
   - name: coverage
     run: uv run pytest --cov=src --cov-report=term-missing -q
+  - name: types
+    run: uv run ty check
+  - name: lint
+    run: uv run ruff check .
   - name: git-log
     run: git log --oneline -10
 args:
@@ -18,9 +22,19 @@ starts with a fresh context. Your progress lives in the code and git.
 
 {{ commands.coverage }}
 
+## Lint
+
+{{ commands.lint }}
+
 ## Recent commits
 
 {{ commands.git-log }}
+
+## Type checking
+
+{{ commands.types }}
+
+Fix any type errors or lint violations above before writing new tests.
 
 ## Task
 

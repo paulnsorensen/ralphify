@@ -7,6 +7,10 @@ commands:
     run: cat SECURITY_FINDINGS.md
   - name: tests
     run: uv run pytest -x
+  - name: types
+    run: uv run ty check
+  - name: lint
+    run: uv run ruff check .
   - name: git-log
     run: git log --oneline -10
 ---
@@ -28,11 +32,19 @@ starts with a fresh context. Your progress lives in the code and git.
 
 {{ commands.tests }}
 
+## Type checking
+
+{{ commands.types }}
+
+## Lint
+
+{{ commands.lint }}
+
 ## Recent commits
 
 {{ commands.git-log }}
 
-If tests are failing, fix them before addressing security findings.
+If tests, types, or lint are failing, fix them before addressing security findings.
 
 ## Task
 
