@@ -25,6 +25,7 @@ FIELD_AGENT = "agent"
 FIELD_COMMANDS = "commands"
 FIELD_ARGS = "args"
 FIELD_CREDIT = "credit"
+FIELD_RALPH = "ralph"
 
 # Sub-field names within each command mapping.
 CMD_FIELD_NAME = "name"
