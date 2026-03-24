@@ -8,6 +8,20 @@ keywords: ralphify changelog, release history, new features, version updates, br
 
 All notable changes to ralphify are documented here.
 
+## 0.3.0 — 2026-03-24
+
+### Added
+
+- **`ralph add` — install ralphs from GitHub** — share and reuse ralphs across projects. Run `ralph add owner/repo/ralph-name` to fetch a ralph from any GitHub repo and install it locally. Then just `ralph run ralph-name`. Supports installing a single ralph by name, an entire repo as a ralph, or all ralphs in a repo at once. Installed ralphs live in `.ralphify/ralphs/` (gitignored, disposable).
+- **Two-stage Ctrl+C** — first Ctrl+C gracefully finishes the current iteration, second Ctrl+C force-stops immediately. Agent subprocesses now run in their own process group for reliable cleanup.
+- **Iteration monitor UI** — iteration results are now rendered as markdown using Rich, with a polished run header and cleaner formatting. Thanks to [@malpou](https://github.com/malpou) for contributing this improvement.
+
+### Improved
+
+- **Process group isolation** — agent subprocesses (both streaming and blocking) now run in dedicated process groups, preventing zombie processes on timeout or cancellation.
+
+---
+
 ## 0.2.5 — 2026-03-22
 
 ### Added

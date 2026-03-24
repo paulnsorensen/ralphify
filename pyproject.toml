@@ -1,6 +1,6 @@
 [project]
 name = "ralphify"
-version = "0.2.3"
+version = "0.3.0"
 description = "Stop stressing over not having an agent running. Ralph is always running"
 readme = "README.md"
 license = "MIT"
