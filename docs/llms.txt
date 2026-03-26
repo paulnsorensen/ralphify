@@ -1,0 +1,89 @@
+# Ralphify
+
+> A minimal CLI harness for autonomous AI coding loops. Run commands, assemble a prompt, pipe it to an agent, and repeat with fresh context each iteration.
+
+Ralphify puts your AI coding agent in a `while True` loop. Each iteration: run commands (tests, lint, git log), inject their output into a prompt via placeholders, pipe the prompt to an agent, and repeat. The agent starts fresh every cycle — no context decay, no conversation bloat.
+
+## Quick install
+
+```bash
+uv tool install ralphify
+```
+
+Requires Python 3.11+ and an AI agent CLI (Claude Code recommended).
+
+## Core concept
+
+A **ralph** is a directory containing a `RALPH.md` file. That file has YAML frontmatter (agent command, commands, args) and a prompt body with `{{ placeholders }}`.
+
+```markdown
+---
+agent: claude -p --dangerously-skip-permissions
+commands:
+  - name: tests
+    run: uv run pytest -x
+---
+
+{{ commands.tests }}
+
+You are an autonomous coding agent running in a loop.
+Fix failing tests before starting new work.
+Read TODO.md and implement the next task.
+```
+
+Run it:
+
+```bash
+ralph run my-ralph         # Loop forever (Ctrl+C to stop)
+ralph run my-ralph -n 5    # Run 5 iterations
+```
+
+## Key features
+
+- **Self-healing feedback loop**: Command output (test failures, lint errors) feeds into each iteration — the agent sees and fixes its own mistakes.
+- **Live steering**: Edit `RALPH.md` while the loop runs. Changes take effect on the next iteration.
+- **Fresh context every cycle**: No conversation bloat or hallucinated memories. The agent reads current codebase state each time.
+- **Progress in git**: Every iteration commits to git. Roll back with `git reset` if needed.
+- **Any agent**: Works with Claude Code, Aider, Codex CLI, or any CLI that reads stdin.
+- **Shareable ralphs**: Install pre-built ralphs from GitHub with `ralph add owner/repo`.
+
+## Placeholder types
+
+- `{{ commands.<name> }}` — replaced with command output (stdout + stderr)
+- `{{ args.<name> }}` — replaced with user argument values from CLI flags
+- `{{ ralph.name }}` — ralph directory name
+- `{{ ralph.iteration }}` — current iteration number (1-based)
+- `{{ ralph.max_iterations }}` — total iterations if `-n` was set
+
+## CLI commands
+
+- `ralph run <path> [-n N] [--log-dir DIR] [--stop-on-error] [--timeout SEC] [--delay SEC]` — run the loop
+- `ralph init <name>` — scaffold a ralph from template
+- `ralph new [name]` — AI-guided ralph creation
+- `ralph add <source>` — install ralph(s) from GitHub
+
+## Python API
+
+```python
+from ralphify import run_loop, RunConfig, RunState
+```
+
+Embed the loop in automation pipelines. See the API docs for details.
+
+## Documentation
+
+- [Getting Started](https://ralphify.co/docs/getting-started/): Install to running loop in 10 minutes
+- [When to Use](https://ralphify.co/docs/when-to-use/): Task suitability guide
+- [How it Works](https://ralphify.co/docs/how-it-works/): Iteration lifecycle details
+- [Writing Prompts](https://ralphify.co/docs/writing-prompts/): Patterns for effective loop prompts
+- [Using with Different Agents](https://ralphify.co/docs/agents/): Claude Code, Aider, Codex CLI setup
+- [Cookbook](https://ralphify.co/docs/cookbook/): Copy-pasteable recipes for coding, docs, research
+- [CLI Reference](https://ralphify.co/docs/cli/): All commands and options
+- [Python API](https://ralphify.co/docs/api/): Programmatic usage
+- [Quick Reference](https://ralphify.co/docs/quick-reference/): Cheat sheet
+- [Troubleshooting](https://ralphify.co/docs/troubleshooting/): Common issues and fixes
+
+## Source
+
+- PyPI: https://pypi.org/project/ralphify/
+- GitHub: https://github.com/computerlovetech/ralphify
