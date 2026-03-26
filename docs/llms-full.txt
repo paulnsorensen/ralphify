@@ -10,7 +10,10 @@ Docs: https://ralphify.co/docs/
 
 # Home
 
-Ralphify is a minimal CLI harness for autonomous AI coding loops, inspired by the Ralph Wiggum technique (https://ghuntley.com/ralph/). The core idea fits in one line:
+Put your AI coding agent in a while True loop and let it ship.
+
+
+Ralphify is a minimal CLI harness for autonomous AI coding loops, inspired by the [Ralph Wiggum technique](https://ghuntley.com/ralph/). The core idea fits in one line:
 
 ```bash
 while :; do cat RALPH.md | claude -p ; done
@@ -18,13 +21,27 @@ while :; do cat RALPH.md | claude -p ; done
 
 Ralphify wraps this into a proper tool — running commands that feed test results and context into each iteration, tracking progress, and handling clean shutdown.
 
+[Get Started](getting-started.md)
+[View Cookbook](cookbook.md)
+
+---
+
 ## Install
 
-```bash
-uv tool install ralphify
-```
 
-Also available via `pipx install ralphify` or `pip install ralphify`.
+    ```bash
+    uv tool install ralphify
+    ```
+
+
+    ```bash
+    pipx install ralphify
+    ```
+
+
+    ```bash
+    pip install ralphify
+    ```
 
 ## Create a ralph and run it
 
@@ -77,106 +94,229 @@ ralph run my-ralph         # Start the loop (Ctrl+C to stop)
 ralph run my-ralph -n 3    # Run 3 iterations
 ```
 
+### What it looks like
+
+```text
+$ ralph run my-ralph -n 3 --log-dir ralph_logs
+
+▶ Running: my-ralph
+  2 commands · max 3 iterations
+
+── Iteration 1 ──
+  Commands: 2 ran
+✓ Iteration 1 completed (52.3s)
+  → ralph_logs/001_20250115-142301.log
+
+── Iteration 2 ──
+  Commands: 2 ran
+✗ Iteration 2 failed with exit code 1 (23.1s)
+  → ralph_logs/002_20250115-142512.log
+
+── Iteration 3 ──
+  Commands: 2 ran
+✓ Iteration 3 completed (41.7s)
+  → ralph_logs/003_20250115-143012.log
+
+──────────────────────
+Done: 3 iterations — 2 succeeded, 1 failed
+```
+
 Edit `RALPH.md` while the loop is running — changes take effect on the next iteration.
 
 ## Or grab one from GitHub
+
+Install a pre-built ralph from any GitHub repo and run it immediately:
 
 ```bash
 ralph add owner/repo/my-ralph    # Install a ralph from GitHub
 ralph run my-ralph               # Run it
 ```
 
+`ralph add` fetches the ralph and installs it locally. You can install a single ralph by name, or all ralphs in a repo at once with `ralph add owner/repo`. See the [CLI reference](cli.md#ralph-add) for details.
+
+---
+
 ## Why ralph loops?
 
 A single agent conversation fills up its context window, slows down, and eventually loses the plot. ralph loops solve this by resetting every iteration — the agent always starts fresh.
 
-- **Fresh context, no decay** — each iteration starts with a clean context window. No conversation bloat, no hallucinated memories.
-- **Commands as feedback** — commands run each iteration and their output feeds into the prompt. When tests fail, the agent sees the failure and fixes it.
-- **Steer while it runs** — the prompt is re-read every iteration. Edit RALPH.md while the loop runs.
-- **Progress lives in git** — every iteration commits to git. Roll back with `git reset` if needed.
+
+-   :material-refresh:{ .lg .middle } **Fresh context, no decay**
+
+    ---
+
+    Each iteration starts with a clean context window. No conversation bloat, no hallucinated memories, no degradation over time. The agent reads the current state of the codebase every loop.
+
+-   :material-shield-check-outline:{ .lg .middle } **Commands as feedback**
+
+    ---
+
+    Commands run each iteration and their output feeds into the prompt. When tests fail, the agent sees the failure output and fixes it in the next iteration — a self-healing feedback loop.
+
+-   :material-pencil-outline:{ .lg .middle } **Steer while it runs**
+
+    ---
+
+    The prompt is re-read every iteration. Edit `RALPH.md` while the loop runs and the agent follows your new rules on the next cycle. When it does something dumb, add a sign.
+
+-   :material-git:{ .lg .middle } **Progress lives in git**
+
+    ---
+
+    Every iteration commits to git. If something goes wrong, `git log` shows exactly what happened and `git reset` rolls it back. No opaque internal state to debug or lose.
+
+
+---
 
 ## Requirements
 
 - Python 3.11+
-- Claude Code CLI (or any agent CLI that accepts piped input)
+- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) (or [any agent CLI](agents.md) that accepts piped input)
 
 ---
 
+## Next steps
+
+- **[When to Use](when-to-use.md)** — figure out if a ralph loop fits your task
+- **[Getting Started](getting-started.md)** — from install to a running loop in 10 minutes
+- **[Writing Prompts](writing-prompts.md)** — patterns for effective autonomous loop prompts
+- **[Cookbook](cookbook.md)** — copy-pasteable setups for coding, docs, research, and more
+- **[Python API](api.md)** — embed the loop in your own automation
+
+---
+
+# When to Use Ralphify
+
 # When to use ralph loops
 
-ralph loops are powerful but they're not the right tool for everything. This page helps you decide whether a loop fits your task.
+ralph loops are powerful but they're not the right tool for everything. This page helps you decide whether a loop fits your task before you invest time setting one up.
 
 ## The sweet spot
 
 ralph loops work best when a task has these properties:
 
-**Decomposable into small, independent steps.** The loop does one thing per iteration. Tasks that naturally break into "do this, then this, then this" are ideal.
+**Decomposable into small, independent steps.** The loop does one thing per iteration. Tasks that naturally break into "do this, then this, then this" are ideal — implementing features from a TODO list, writing tests module by module, fixing lint errors one at a time.
 
-**Has a clear definition of "done" for each step.** Commands need something to validate. If you can express "this iteration succeeded" as a command that exits 0 or non-zero, the self-healing loop works.
+**Has a clear definition of "done" for each step.** Commands need something to validate. If you can express "this iteration succeeded" as a command that exits 0 or non-zero (tests pass, build succeeds, lint is clean), the self-healing loop works. If success requires human judgment ("does this look good?"), a loop can't self-correct.
 
-**Benefits from fresh context.** Long conversations degrade. If your task will take more than 15-20 minutes of agent work, a loop outperforms a single conversation.
+**Benefits from fresh context.** Long conversations degrade — the agent loses track of earlier instructions, fills up the context window, and starts making mistakes. If your task will take more than 15-20 minutes of agent work, a loop outperforms a single conversation because each iteration starts clean with the current state of the codebase.
 
-**Progress is visible in the codebase.** The agent's work must be observable on disk — files changed, tests added, docs written, commits made.
+**Progress is visible in the codebase.** The agent's work must be observable on disk — files changed, tests added, docs written, commits made. The next iteration reads the codebase to understand what's been done. Tasks that produce output elsewhere (a Slack message, a deployment, an email) need a wrapper that records progress locally.
 
 ## What works well
 
-- Implementing features from a spec — each feature is one iteration; test commands validate correctness
-- Writing tests — each module is one iteration; coverage commands guide prioritization
-- Fixing lint / type errors — each fix is small and independently verifiable
-- Documentation improvements — each page is one iteration; build commands validate
-- Codebase migrations (JS to TS, Python 2 to 3) — each file is one iteration
-- Bug triage — each bug is one iteration; regression tests verify the fix
-- Refactoring — each extraction/rename is one iteration; tests catch regressions
-- Security hardening — run a scanner each iteration; the agent picks one finding and fixes it
-- Research & knowledge building — each iteration deepens one area; a report file accumulates findings
+| Task | Why it fits |
+|---|---|
+| **Implementing features from a spec** | Each feature is one iteration; test commands validate correctness |
+| **Writing tests** | Each module is one iteration; coverage commands guide prioritization |
+| **Fixing lint / type errors** | Each fix is small and independently verifiable |
+| **Documentation improvements** | Each page is one iteration; build commands validate |
+| **Codebase migrations** (JS to TS, Python 2 to 3) | Each file is one iteration; the compiler validates |
+| **Bug triage** | Each bug is one iteration; regression tests verify the fix |
+| **Refactoring** | Each extraction/rename is one iteration; tests catch regressions |
+| **Security hardening** | Run a scanner each iteration; the agent picks one finding, fixes it, and verifies the fix |
+| **Research & knowledge building** | Each iteration deepens one area; a report file accumulates findings across iterations |
 
 ## What doesn't work well
 
-- Design decisions — requires human judgment about trade-offs
-- Tasks requiring multi-step reasoning across iterations — each iteration starts fresh
-- One-shot tasks — if the task takes 5 minutes, just chat with the agent
-- Tasks with no automated validation — without command feedback, there's no self-healing
-- Creative writing — prose quality is subjective
-- Interacting with external services — API calls and deployments are hard to undo
+| Task | Why it doesn't fit |
+|---|---|
+| **Design decisions** | Requires human judgment about trade-offs — no command can validate "is this the right architecture?" |
+| **Tasks requiring multi-step reasoning across iterations** | Each iteration starts fresh — the agent can't "continue where it left off" from memory, only from what's on disk |
+| **One-shot tasks** | If the task takes 5 minutes and you won't repeat it, just chat with the agent — the loop setup overhead isn't worth it |
+| **Tasks with no automated validation** | Without command feedback, there's no self-healing — the agent may compound errors across iterations |
+| **Creative writing** | Prose quality is subjective; no command can validate "is this well-written?" |
+| **Interacting with external services** | API calls, deployments, and messages are hard to undo if the agent makes a mistake |
 
 ## Loop vs. single conversation
 
-Use a **single conversation** when the task takes less than 10-15 minutes, requires interactive iteration, back-and-forth discussion, or subjective decisions.
+Use a **single conversation** when:
 
-Use a **ralph loop** when the task involves many similar independent steps, you want autonomous operation, you have validation commands, or the task would fill up a conversation's context window.
+- The task will take less than 10-15 minutes
+- You want to iterate interactively with the agent
+- The task requires back-and-forth discussion
+- You need to make subjective decisions along the way
+
+Use a **ralph loop** when:
+
+- The task involves many similar, independent steps
+- You want the agent to work autonomously without your attention
+- You have commands that can validate correctness (tests, linters, builds)
+- The task would fill up a conversation's context window
+- You want to walk away and come back to completed work
+
+## Making a borderline task work
+
+Some tasks seem like they don't fit but can be adapted:
+
+**"There's no automated validation for this."** Write a command for it. Even a simple script that checks for obvious problems (file exists, no syntax errors, word count above threshold) catches the worst failures. Add it to your `commands` list and reference it in the prompt.
+
+**"The task requires multi-step reasoning."** Use a `PLAN.md` or `TODO.md` file as the coordination mechanism. The agent reads the plan each iteration, marks steps done, and the next iteration continues from there. The plan file IS the agent's memory.
+
+**"Each iteration depends on the previous one."** That's fine — the agent reads the codebase, which includes all previous iterations' commits. As long as progress is visible on disk, the fresh context model works. The agent doesn't need conversation memory when the code tells the story.
+
+**"I need to review the agent's work before it continues."** Use `-n 1` to run single iterations, review, then run again. Or use `--stop-on-error` with a command that checks for your sign-off.
 
 ## How many iterations?
 
-- Start with `-n 3` to verify your setup
-- Use `-n 10-20` for bounded tasks
-- Run unlimited for open-ended improvement tasks with good command feedback
-- Use `--stop-on-error` when each iteration must succeed before the next
-- Set `--timeout` as a safety net for unattended runs
+- **Start with `-n 3`** to verify your setup works and the agent produces useful output
+- **Use `-n 10-20`** for bounded tasks (a TODO list with known items)
+- **Run unlimited** (`ralph run my-ralph` without `-n`) for open-ended improvement tasks with good command feedback — the commands prevent the agent from going off the rails
+- **Use `--stop-on-error`** when each iteration must succeed before the next one makes sense
+- **Set `--timeout`** as a safety net for unattended runs — if the agent enters an unexpected state (interactive prompt, infinite loop), the timeout kills it instead of blocking the loop forever
+
+## Next steps
+
+- [Getting Started](getting-started.md) — set up your first loop
+- [Writing Prompts](writing-prompts.md) — patterns for effective autonomous loop prompts
+- [Cookbook](cookbook.md) — copy-pasteable setups for common workflows
 
 ---
 
 # Getting Started
 
+# Getting Started
+
+This tutorial walks through setting up ralphify, creating a ralph with commands, and running a productive autonomous loop. By the end, you'll have a self-healing coding loop that validates its own work.
+
 ## Prerequisites
 
-- Python 3.11+
-- An AI coding agent CLI — this tutorial uses Claude Code. Install with `npm install -g @anthropic-ai/claude-code`.
-- A project with a test suite
+- **Python 3.11+**
+- **An AI coding agent CLI** — this tutorial uses [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Install it with `npm install -g @anthropic-ai/claude-code`. Ralphify also works with [other agents](agents.md).
+- **A project with a test suite** (we'll use this for the feedback loop)
 
 ## Step 1: Install ralphify
 
 ```bash
 uv tool install ralphify
+```
+
+Verify it's working:
+
+```bash
 ralph --version
 ```
 
 ## Step 2: Create a ralph
 
+The fastest way to scaffold a ralph is `ralph init`:
+
 ```bash
 ralph init my-ralph
 ```
 
-This creates `my-ralph/RALPH.md` with a ready-to-customize template. Alternatively, use `ralph new` for AI-guided setup, or create the file manually.
+This creates `my-ralph/RALPH.md` with a ready-to-customize template including an example command, arg, and prompt. Edit the task section, [test it](#step-3-do-a-test-run), then follow [Step 4](#step-4-add-a-test-command) to add a test command — test feedback is what makes the loop self-healing.
+
+Alternatively, use `ralph new` for AI-guided setup, or create the file manually as shown below.
+
+**Installing an existing ralph?**
+    If someone has shared a ralph on GitHub, skip the manual setup and install it directly:
+
+    ```bash
+    ralph add owner/repo
+    ```
+
+    This installs to `.ralphify/ralphs/` so you can run it by name with `ralph run `. See the [CLI reference](cli.md#ralph-add) for all source formats.
 
 ### Manual setup
 
@@ -202,24 +342,445 @@ implement it fully, then mark it done.
 - Mark the completed task in TODO.md
 ```
 
-The `-p` flag enables non-interactive mode (reads prompt from stdin). The `--dangerously-skip-permissions` flag disables approval prompts so the agent can work autonomously.
+**What does `--dangerously-skip-permissions` do?**
+    Claude Code normally asks for your approval before running shell commands, editing files, or making git commits. The `--dangerously-skip-permissions` flag disables these interactive prompts so the agent can work autonomously without waiting for input. The `-p` flag enables non-interactive ("print") mode, which reads the prompt from stdin instead of opening a chat session.
 
 ## Step 3: Do a test run
+
+Run a single iteration to verify your setup works:
 
 ```bash
 ralph run my-ralph -n 1 --log-dir ralph_logs
 ```
 
-Review the log to see what the agent did:
+This runs a single iteration and saves the output to `ralph_logs/`. Review the log to see what the agent did:
 
 ```bash
 ls ralph_logs/
 cat ralph_logs/001_*.log
 ```
 
+**Add `ralph_logs/` to `.gitignore`**
+    Log files are useful for debugging but shouldn't be committed:
+
+    ```bash
+    echo "ralph_logs/" >> .gitignore
+    ```
+
+If the agent produced useful work, you're ready to add test feedback.
+
+**Something not working?**
+    If the agent errored or didn't do anything useful, check [Troubleshooting](troubleshooting.md) for common issues — agent hangs, missing commands, and frontmatter mistakes are all covered there.
+
 ## Step 4: Add a test command
 
-Commands run each iteration and their output is injected into the prompt via `{{ commands.<name> }}` placeholders:
+Commands run each iteration and their output is injected into the prompt via `{{ commands. }}` placeholders. Add a test command and its placeholder:
+
+```markdown
+---
+agent: claude -p --dangerously-skip-permissions
+commands:
+  - name: tests
+    run: uv run pytest -x
+---
+
+# Prompt
+
+## Test results
+
+{{ commands.tests }}
+
+You are an autonomous coding agent running in a loop. Each iteration
+starts with a fresh context. Your progress lives in the code and git.
+
+Read TODO.md for the current task list. Pick the top uncompleted task,
+implement it fully, then mark it done.
+
+If tests are failing, fix them before starting new work.
+
+## Rules
+
+- One task per iteration
+- No placeholder code — full, working implementations only
+- Commit with a descriptive message like `feat: add X` or `fix: resolve Y`
+- Mark the completed task in TODO.md
+```
+
+The `tests` command runs `uv run pytest -x` each iteration. Its output replaces `{{ commands.tests }}` in the prompt, so the agent always sees the current test results. If tests fail, the agent fixes them — that's the self-healing loop.
+
+## Step 5: Add more commands
+
+Add a lint command and a git log for context:
+
+```markdown
+---
+agent: claude -p --dangerously-skip-permissions
+commands:
+  - name: tests
+    run: uv run pytest -x
+  - name: lint
+    run: uv run ruff check .
+  - name: git-log
+    run: git log --oneline -10
+---
+
+# Prompt
+
+## Recent commits
+
+{{ commands.git-log }}
+
+## Test results
+
+{{ commands.tests }}
+
+## Lint results
+
+{{ commands.lint }}
+
+You are an autonomous coding agent running in a loop. Each iteration
+starts with a fresh context. Your progress lives in the code and git.
+
+Read TODO.md for the current task list. Pick the top uncompleted task,
+implement it fully, then mark it done.
+
+If tests or lint are failing, fix them before starting new work.
+
+## Rules
+
+- One task per iteration
+- No placeholder code — full, working implementations only
+- Commit with a descriptive message like `feat: add X` or `fix: resolve Y`
+- Mark the completed task in TODO.md
+```
+
+## Step 6: Run the loop
+
+Start with a few iterations to verify everything works:
+
+```bash
+ralph run my-ralph -n 3 --log-dir ralph_logs
+```
+
+Watch the output. Each iteration runs the commands, assembles the prompt with the command output, and pipes it to the agent:
+
+```text
+▶ Running: my-ralph
+  3 commands · max 3 iterations
+
+── Iteration 1 ──
+  Commands: 3 ran
+✓ Iteration 1 completed (45.2s)
+  → ralph_logs/001_20250115-142301.log
+
+── Iteration 2 ──
+  Commands: 3 ran
+✗ Iteration 2 failed with exit code 1 (23.1s)
+  → ralph_logs/002_20250115-142512.log
+
+── Iteration 3 ──
+  Commands: 3 ran
+✓ Iteration 3 completed (38.5s)
+  → ralph_logs/003_20250115-142812.log
+
+──────────────────────
+Done: 3 iterations — 2 succeeded, 1 failed
+```
+
+If the agent breaks a test, the next iteration sees the failure output via `{{ commands.tests }}` and fixes it automatically.
+
+Once you're confident the loop works, drop the `-n 3` to let it run indefinitely. Press `Ctrl+C` to stop.
+
+## Step 7: Steer while it runs
+
+The prompt body is re-read from disk every iteration. You can edit `RALPH.md` while the loop is running and the agent follows your changes on the next cycle.
+
+When the agent does something you don't want, add a rule:
+
+```markdown
+## Rules
+
+- Do NOT delete failing tests — fix the underlying code instead
+```
+
+When you want to shift focus, change the task:
+
+```markdown
+Read TODO.md and focus only on the API module.
+```
+
+This is the most powerful part of ralph loops — you're steering a running agent with a text file. See [Tuning a running loop](writing-prompts.md#tuning-a-running-loop) for more patterns.
+
+**Frontmatter changes need a restart**
+    Only the **prompt body** is re-read each iteration. Frontmatter fields (`agent`, `commands`, `args`) are parsed once at startup. If you add a new command or change the agent, stop the loop with `Ctrl+C` and restart it.
+
+## Next steps
+
+- [Writing Prompts](writing-prompts.md) — patterns for writing effective autonomous loop prompts
+- [Cookbook](cookbook.md) — copy-pasteable setups for coding, docs, research, and more
+- [How it Works](how-it-works.md) — what happens inside each iteration
+- [Troubleshooting](troubleshooting.md) — when things don't work as expected
+- [CLI Reference](cli.md) — all commands and options
+
+---
+
+# How it Works
+
+# How it works
+
+This page explains what ralphify does under the hood during each iteration. Understanding the lifecycle helps you write better prompts, debug unexpected behavior, and make informed decisions about commands.
+
+## The iteration lifecycle
+
+Every iteration follows the same sequence:
+
+```mermaid
+flowchart TD
+    A[Start iteration] --> B[Re-read RALPH.md from disk]
+    B --> C[Run commands]
+    C --> D[Resolve placeholders]
+    D --> E[Assemble prompt]
+    E --> F[Pipe prompt to agent]
+    F --> G{Agent exits}
+    G --> H[Next iteration]
+    H --> A
+```
+
+Here's what happens at each step.
+
+### 1. Re-read RALPH.md
+
+The prompt body (everything below the frontmatter) is read from disk **every iteration**. This means you can edit the prompt text — add rules, change the task, adjust constraints — while the loop is running. Changes take effect on the next cycle.
+
+Frontmatter fields (`agent`, `commands`, `args`) are parsed once at startup. To change those, restart the loop.
+
+### 2. Run commands
+
+Each command defined in the `commands` frontmatter runs in order and captures its output (stdout + stderr). Commands run from the **project root** by default. Commands starting with `./` run relative to the **ralph directory** instead — useful for scripts bundled alongside your `RALPH.md`.
+
+Command output is captured **regardless of exit code** — a command like `pytest -x` exits non-zero when tests fail, but its output is exactly what you want in the prompt.
+
+Each command has a default timeout of 60 seconds. If a command takes longer, the process is killed and the output captured so far is used. Override this with the `timeout` field for slow commands (e.g., a large test suite):
+
+```yaml
+commands:
+  - name: tests
+    run: uv run pytest -x
+    timeout: 300  # 5 minutes
+```
+
+### 3. Resolve placeholders
+
+Each `{{ commands. }}` placeholder in the prompt body is replaced with the corresponding command's output. **Only commands referenced by a placeholder appear in the prompt** — if you define a command but don't use `{{ commands. }}` for it, the command still runs every iteration but its output is excluded. This forces you to place data deliberately rather than accidentally dumping everything into the prompt.
+
+Placeholders for `{{ args. }}` are replaced with user argument values from the CLI — both in the prompt body and in command `run` strings.
+
+`{{ ralph.* }}` placeholders provide runtime metadata — no frontmatter configuration needed:
+
+- `{{ ralph.name }}` — the ralph's directory name (e.g. `my-ralph`)
+- `{{ ralph.iteration }}` — current iteration number (1-based)
+- `{{ ralph.max_iterations }}` — total iterations if `-n` was set, empty otherwise
+
+These are useful for iteration-aware prompts — for example, telling the agent to wrap up on the last iteration, or including the ralph name in commit messages.
+
+Unmatched placeholders resolve to an empty string — you won't see raw `{{ }}` text in the assembled prompt.
+
+### 4. Assemble the prompt
+
+The prompt body (everything below the YAML frontmatter in `RALPH.md`) with all placeholders resolved becomes the fully assembled prompt — a single text string ready for the agent.
+
+HTML comments (``) are stripped during assembly — they never reach the agent. Use them for notes to yourself, like why a rule exists or what to change next. See [Annotate your prompt with HTML comments](writing-prompts.md#annotate-your-prompt-with-html-comments) for examples.
+
+By default, ralphify appends a **co-author trailer instruction** to the end of the prompt, asking the agent to include `Co-authored-by: Ralphify ` in its commit messages. This gives visibility into which commits were produced by a ralph loop. To disable it, set `credit: false` in the frontmatter.
+
+### 5. Pipe prompt to agent
+
+The assembled prompt is piped to the agent command via stdin:
+
+```bash
+echo "" | claude -p --dangerously-skip-permissions
+```
+
+The agent reads the prompt, does work in the current directory (edits files, runs commands, makes commits), and exits. Ralphify waits for the agent process to finish.
+
+When the agent command starts with `claude`, ralphify automatically adds `--output-format stream-json --verbose` to enable structured streaming. This lets ralphify track agent activity in real time — you don't need to configure this yourself.
+
+### 6. Repeat
+
+The loop starts the next iteration from step 1. The RALPH.md is re-read, commands run again with fresh output, and the agent gets a new prompt reflecting the current state of the codebase.
+
+## What gets re-read each iteration
+
+| What | When read | Why it matters |
+|---|---|---|
+| Prompt body | Every iteration | Edit the prompt while the loop runs — the next iteration follows your new instructions |
+| Command output | Every iteration | The agent always sees fresh data (latest git log, current test status, etc.) |
+| Frontmatter (`agent`, `commands`, `args`) | Once at startup | Parsed when the loop starts. Restart to pick up changes. |
+| User arguments | Once at startup | Passed via CLI flags, constant for the run |
+
+## How prompt assembly looks in practice
+
+Here's a concrete example. Given this `RALPH.md`:
+
+```markdown
+---
+agent: claude -p --dangerously-skip-permissions
+commands:
+  - name: git-log
+    run: git log --oneline -5
+  - name: tests
+    run: uv run pytest -x
+---
+
+# Prompt
+
+## Recent commits
+
+{{ commands.git-log }}
+
+## Test results
+
+{{ commands.tests }}
+
+Read TODO.md and implement the next task.
+If tests are failing, fix them first.
+```
+
+### Iteration 1 (tests passing)
+
+The assembled prompt piped to the agent:
+
+```markdown
+# Prompt
+
+## Recent commits
+
+a1b2c3d feat: add user model
+e4f5g6h fix: resolve database connection timeout
+i7j8k9l docs: update API reference
+
+## Test results
+
+============================= 5 passed in 1.23s ==============================
+
+Read TODO.md and implement the next task.
+If tests are failing, fix them first.
+```
+
+### Iteration 2 (tests broken by iteration 1)
+
+```markdown
+# Prompt
+
+## Recent commits
+
+x1y2z3a feat: add login endpoint
+a1b2c3d feat: add user model
+e4f5g6h fix: resolve database connection timeout
+
+## Test results
+
+FAILED tests/test_auth.py::test_login - AssertionError: expected 200, got 401
+============================= 1 failed, 4 passed in 1.45s ====================
+
+Read TODO.md and implement the next task.
+If tests are failing, fix them first.
+```
+
+The agent sees the test failure and the instruction to fix it first. This is the **self-healing feedback loop**: the agent breaks something, the command captures the failure, and the agent sees it in the next iteration.
+
+## Command execution order
+
+Commands run in the order they appear in the `commands` list in the RALPH.md frontmatter. All commands run regardless of whether earlier commands fail.
+
+```yaml
+commands:
+  - name: tests      # Runs first
+    run: uv run pytest -x
+  - name: lint       # Runs second
+    run: uv run ruff check .
+  - name: git-log    # Runs third
+    run: git log --oneline -10
+```
+
+## Stop conditions
+
+The loop continues until one of these happens:
+
+| Condition | What happens |
+|---|---|
+| `Ctrl+C` (first) | Gracefully finishes the current iteration, then stops the loop. The agent completes its work and the iteration result is recorded. |
+| `Ctrl+C` (second) | Force-stops immediately — kills the agent process and exits. Use when you don't want to wait for the current iteration to finish. |
+| `-n` limit reached | Loop stops after completing the specified number of iterations |
+| `--stop-on-error` and agent exits non-zero or times out | Loop stops after the current iteration |
+| `--timeout` exceeded | Agent process is killed, iteration is marked as timed out, loop continues (unless `--stop-on-error`) |
+
+## Next steps
+
+- [Getting Started](getting-started.md) — set up your first loop
+- [Writing Prompts](writing-prompts.md) — patterns for effective autonomous loop prompts
+- [CLI Reference](cli.md) — all commands and options
+- [Troubleshooting](troubleshooting.md) — when things don't work as expected
+
+---
+
+# Writing Prompts
+
+# Writing Prompts
+
+**TL;DR**
+    Every good RALPH.md has three parts: **orientation** (tell the agent it's in a loop with no memory), **task source** (point at something concrete like TODO.md), and **rules** (constraints matter more than instructions). Add commands for self-healing feedback. Edit the prompt while the loop runs to steer the agent.
+
+Your `RALPH.md` is the single most important file in a ralph loop. A good prompt turns an AI coding agent into a productive autonomous worker. A bad one produces noise.
+
+## The anatomy of a good RALPH.md
+
+Every effective ralph has three parts in the prompt body:
+
+### 1. Role and orientation
+
+Tell the agent what it is, how it works, and where progress lives. This prevents the agent from trying to have a conversation, ask questions, or wait for input.
+
+```markdown
+You are an autonomous coding agent running in a loop. Each iteration
+starts with a fresh context. Your progress lives in the code and git.
+```
+
+This framing matters because the agent has **no memory between iterations**. Without it, the agent may try to pick up where it "left off" or reference work it can't see.
+
+### 2. Task source
+
+Point the agent at something concrete to work on. The most common mistake is being vague ("improve the codebase"). Instead, give the agent a **specific place to look** for work:
+
+| Pattern | When to use |
+|---|---|
+| `Read TODO.md and pick the top uncompleted task` | When you maintain a task list |
+| `Read PLAN.md and implement the next step` | For sequential multi-step work |
+| `Find the module with the lowest test coverage` | For coverage-driven testing |
+| `Read the codebase and find the biggest documentation gap` | For open-ended improvement |
+| `Fix the failing tests shown above` | When commands feed failures back |
+
+The key is that the agent can **find work without you telling it what to do each time**. The task source is what makes the loop autonomous.
+
+### 3. Rules and constraints
+
+Constraints are more important than instructions. The agent knows how to code — what it doesn't know is your project's conventions, what to avoid, and when to stop.
+
+```markdown
+## Rules
+
+- One task per iteration
+- No placeholder code — full, working implementations only
+- Run tests before committing
+- Commit with a descriptive message like `feat: add X` or `fix: resolve Y`
+- Do not modify existing tests to make them pass
+```
+
+## Using commands for dynamic data
+
+Commands are what make the loop self-healing. Instead of static instructions, you inject live data into every iteration.
+
+### Test feedback loop
 
 ```markdown
 ---
@@ -233,15 +794,17 @@ commands:
 
 {{ commands.tests }}
 
-You are an autonomous coding agent running in a loop. Each iteration
-starts with a fresh context. Your progress lives in the code and git.
-
-If tests are failing, fix them before starting new work.
+Fix any failing tests before starting new work.
+Then read TODO.md and implement the next task.
 ```
 
-## Step 5: Add more commands
+The agent sees the current test results every iteration. If it broke something in the last iteration, the failure output is right there in the prompt.
 
-```yaml
+### Multiple signals
+
+```markdown
+---
+agent: claude -p --dangerously-skip-permissions
 commands:
   - name: tests
     run: uv run pytest -x
@@ -249,134 +812,32 @@ commands:
     run: uv run ruff check .
   - name: git-log
     run: git log --oneline -10
-```
-
-## Step 6: Run the loop
-
-```bash
-ralph run my-ralph -n 3 --log-dir ralph_logs
-```
-
-Once confident, drop `-n 3` to run indefinitely. Press Ctrl+C to stop.
-
-## Step 7: Steer while it runs
-
-The prompt body is re-read every iteration. Edit RALPH.md while the loop runs — changes take effect on the next cycle.
-
-Note: Frontmatter fields (agent, commands, args) are parsed once at startup. If you change those, restart the loop.
-
+  - name: coverage
+    run: uv run pytest --cov=src --cov-report=term-missing -q
 ---
 
-# How it Works
+## Recent commits
 
-## The iteration lifecycle
+{{ commands.git-log }}
 
-Every iteration follows the same sequence:
+## Test results
 
-1. Re-read RALPH.md from disk
-2. Run commands
-3. Resolve placeholders
-4. Assemble prompt
-5. Pipe prompt to agent
-6. Wait for agent to exit
-7. Repeat
+{{ commands.tests }}
 
-### 1. Re-read RALPH.md
+## Lint status
 
-The prompt body is read from disk every iteration. Edit the prompt text while the loop is running — changes take effect on the next cycle. Frontmatter fields are parsed once at startup.
+{{ commands.lint }}
 
-### 2. Run commands
+## Coverage
 
-Each command runs in order and captures stdout + stderr. Commands run from the project root by default. Commands starting with `./` run relative to the ralph directory.
-
-Command output is captured regardless of exit code. Each command has a default timeout of 60 seconds, configurable with the `timeout` field.
-
-### 3. Resolve placeholders
-
-- `{{ commands.<name> }}` — replaced with the corresponding command's output
-- `{{ args.<name> }}` — replaced with user argument values from the CLI
-- `{{ ralph.name }}` — ralph directory name
-- `{{ ralph.iteration }}` — current iteration number (1-based)
-- `{{ ralph.max_iterations }}` — total iterations if `-n` was set, empty otherwise
-
-Only commands referenced by a placeholder appear in the prompt. Unmatched placeholders resolve to empty string.
-
-### 4. Assemble the prompt
-
-The prompt body with all placeholders resolved becomes the fully assembled prompt. HTML comments (`<!-- ... -->`) are stripped during assembly.
-
-By default, ralphify appends a co-author trailer instruction asking the agent to include `Co-authored-by: Ralphify <noreply@ralphify.co>` in commits. Disable with `credit: false` in frontmatter.
-
-### 5. Pipe prompt to agent
-
-```bash
-echo "<assembled prompt>" | claude -p --dangerously-skip-permissions
+{{ commands.coverage }}
 ```
 
-When the agent command starts with `claude`, ralphify automatically adds `--output-format stream-json --verbose` for structured streaming.
+Pick the 2-3 most useful signals. Don't dump everything — each command's output eats into the agent's context window.
 
-### 6. Repeat
+### Shell features in commands
 
-The loop starts the next iteration from step 1 with fresh command output and the current state of the codebase.
-
-## What gets re-read each iteration
-
-- Prompt body: every iteration (edit while running)
-- Command output: every iteration (fresh data)
-- Frontmatter (agent, commands, args): once at startup (restart to change)
-- User arguments: once at startup (constant for the run)
-
-## Stop conditions
-
-- Ctrl+C (first): gracefully finishes current iteration, then stops
-- Ctrl+C (second): force-stops immediately
-- `-n` limit reached: stops after specified iterations
-- `--stop-on-error` and agent exits non-zero or times out: stops after current iteration
-- `--timeout` exceeded: agent killed, iteration marked as timed out, loop continues (unless --stop-on-error)
-
----
-
-# Writing Effective Loop Prompts
-
-Your RALPH.md is the single most important file in a ralph loop. It defines the agent, the commands, and the prompt.
-
-## The anatomy of a good RALPH.md
-
-### 1. Role and orientation
-
-Tell the agent what it is and how it works:
-
-```markdown
-You are an autonomous coding agent running in a loop. Each iteration
-starts with a fresh context. Your progress lives in the code and git.
-```
-
-### 2. Task source
-
-Point the agent at something concrete:
-
-- `Read TODO.md and pick the top uncompleted task` — when you maintain a task list
-- `Read PLAN.md and implement the next step` — for sequential multi-step work
-- `Find the module with the lowest test coverage` — for coverage-driven testing
-- `Fix the failing tests shown above` — when commands feed failures back
-
-### 3. Rules and constraints
-
-Constraints are more important than instructions:
-
-```markdown
-## Rules
-
-- One task per iteration
-- No placeholder code — full, working implementations only
-- Run tests before committing
-- Commit with a descriptive message
-- Do not modify existing tests to make them pass
-```
-
-## Shell features in commands
-
-Commands are run directly, not through a shell — pipes, redirections, and chaining don't work. Use a script as an escape hatch:
+Commands are run directly, not through a shell — pipes (`|`), redirections (`2>&1`), and chaining (`&&`) don't work in the `run` field. If you need shell features, point the command at a script:
 
 ```yaml
 commands:
@@ -384,25 +845,118 @@ commands:
     run: ./check-status.sh
 ```
 
-Commands starting with `./` run relative to the ralph directory.
+Commands starting with `./` run relative to the ralph directory, so you can keep scripts alongside the `RALPH.md`. Other commands run from the project root. See [Troubleshooting](troubleshooting.md#command-with-pipes-or-redirections-not-working) if you hit quoting issues.
+
+### Command timeouts
+
+Each command has a 60-second timeout by default. If a command takes longer (slow test suites, builds, review agents), it gets killed and the output so far is used. Override it per command:
+
+```yaml
+commands:
+  - name: tests
+    run: uv run pytest
+    timeout: 300  # 5 minutes
+  - name: review
+    run: ./review.sh
+    timeout: 120
+```
+
+Set timeouts generously — a killed command means the agent sees truncated output. See the [command fields reference](quick-reference.md#command-fields) for all options.
 
 ## Patterns that work
 
 ### The TODO-driven loop
 
-Agent reads TODO.md, picks one task, implements it, marks it done. You control priority by reordering the list.
+Maintain a `TODO.md` that the agent reads and updates each iteration.
+
+```markdown
+---
+agent: claude -p --dangerously-skip-permissions
+commands:
+  - name: tests
+    run: uv run pytest -x
+---
+
+{{ commands.tests }}
+
+Read TODO.md for the current task list. Pick the top uncompleted task,
+implement it fully, then mark it done.
+
+If tests are failing, fix them before starting new work.
+
+## Rules
+
+- One task per iteration
+- No placeholder code — full implementations only
+- Commit with a descriptive message
+- Mark the completed task in TODO.md
+```
+
+**Why it works:** The agent always knows what to do next. You control priority by reordering the list. You can add tasks while the loop runs.
 
 ### The self-healing loop
 
 Rely on command output to define "done" and let failures guide the agent.
 
+```markdown
+---
+agent: claude -p --dangerously-skip-permissions
+commands:
+  - name: tests
+    run: uv run pytest -x
+  - name: lint
+    run: uv run ruff check .
+  - name: typecheck
+    run: uv run mypy src/
+---
+
+{{ commands.tests }}
+
+{{ commands.lint }}
+
+{{ commands.typecheck }}
+
+Read PLAN.md and implement the next incomplete step. If any of the
+commands above show failures, fix those first before moving on.
+
+## Rules
+
+- Fix command failures before starting new work
+- One step per iteration
+- Commit each completed step separately
+```
+
+**Why it works:** Failed commands automatically show their output. The agent sees exactly what broke and fixes it. You don't need to write error-handling instructions for every possible failure.
+
 ### The edit-while-running loop
 
-Edit RALPH.md while the loop runs to steer the agent in real time. Add constraints when the agent does something wrong, change the task when you want to shift focus.
+The agent re-reads `RALPH.md` every iteration. You can steer the loop in real time.
+
+```markdown
+---
+agent: claude -p --dangerously-skip-permissions
+---
+
+You are an autonomous agent improving this project's documentation.
+
+## Current focus
+
+
+Focus on the API reference docs. Each endpoint needs a working
+curl example and a description of the response format.
+
+## Rules
+
+- One page per iteration
+- Verify all code examples run correctly
+- Commit with `docs: ...` prefix
+```
+
+**Why it works:** When the agent does something you don't want, you add a constraint. When you want it to shift focus, you edit the "Current focus" section. The next iteration picks up your changes immediately.
 
 ### Parameterized ralphs
 
-Use `args` to make a ralph reusable:
+Use user arguments to make a ralph reusable across different projects or configurations. Args work in both the prompt body and command `run` fields:
 
 ```markdown
 ---
@@ -411,59 +965,219 @@ args: [dir, focus]
 commands:
   - name: git-log
     run: git log --oneline -10 -- {{ args.dir }}
+  - name: research-so-far
+    run: cat RESEARCH.md
 ---
 
+## Recent changes in {{ args.dir }}
+
+{{ commands.git-log }}
+
+## Research so far
+
+{{ commands.research-so-far }}
+
 Research the codebase at {{ args.dir }}.
+
 Focus area: {{ args.focus }}
+
+## Rules
+
+- Read the code before making claims
+- Cite specific file paths and line numbers
+- Summarize findings in RESEARCH.md
 ```
+
+Run the same ralph against different targets:
 
 ```bash
 ralph run research --dir ./api --focus "error handling"
+ralph run research --dir ./frontend --focus "state management"
 ```
+
+The `git-log` command uses `{{ args.dir }}` to show only commits touching the target directory — the same arg value is resolved in both command `run` strings and the prompt body.
 
 ### ralph context placeholders
 
-- `{{ ralph.name }}` — ralph directory name
-- `{{ ralph.iteration }}` — current iteration number (1-based)
-- `{{ ralph.max_iterations }}` — total iterations if `-n` was set
+Three `{{ ralph.* }}` placeholders are available automatically — no frontmatter needed:
 
-Use these for iteration-aware prompts — telling the agent to wrap up on the last iteration, or including the ralph name in commit messages.
+| Placeholder | Value |
+|---|---|
+| `{{ ralph.name }}` | ralph directory name (e.g. `my-ralph`) |
+| `{{ ralph.iteration }}` | Current iteration number (1-based) |
+| `{{ ralph.max_iterations }}` | Total iterations if `-n` was set, empty otherwise |
 
-## Anti-patterns to avoid
+Use these to change the agent's behavior based on where it is in the run, or to include the ralph name in output files and commit messages.
 
-- **Too vague** — "Improve the codebase" gives no direction
-- **Too many tasks per iteration** — one iteration = one task
-- **No validation step** — without tests or a command, the agent will commit broken code
-- **No commit instructions** — ralphify doesn't commit for the agent; explicit commit instructions are needed
+```markdown
+---
+agent: claude -p --dangerously-skip-permissions
+commands:
+  - name: tests
+    run: uv run pytest -x
+---
+
+{{ commands.tests }}
+
+This is iteration {{ ralph.iteration }} of {{ ralph.max_iterations }}.
+
+If this is the last iteration, wrap up: clean up TODOs, run a final
+check, and write a short summary of what was accomplished in PROGRESS.md.
+Otherwise, read TODO.md and implement the next task.
+
+## Rules
+
+- One task per iteration
+- Fix failing tests before starting new work
+- Commit with a descriptive message
+```
+
+```bash
+ralph run my-ralph -n 10
+```
+
+**Why it works:** Without this, the agent treats every iteration identically. With iteration awareness, you can tell it to be more exploratory early on and more conservative as the run winds down — or to write a summary on the final pass so you come back to a clean status report.
+
+## Anti-patterns that waste iterations
+
+### "Improve the codebase" — vague prompts with no task source
+
+```markdown
+
+Improve the codebase. Make things better.
+```
+
+The agent doesn't know what "better" means to you. Always point at a concrete task source.
+
+### "Do five things at once" — overloading a single iteration
+
+```markdown
+
+Implement user authentication, add rate limiting, write tests for
+both, update the API docs, and deploy to staging.
+```
+
+One iteration = one task. If the agent tries to do five things, it'll do all of them poorly.
+
+### "Implement and commit" — no validation before committing
+
+```markdown
+
+Read TODO.md, implement the next task, and commit.
+```
+
+Without "run tests before committing" or a test command, the agent will commit broken code. Always include validation, either in the prompt text or via commands.
+
+### "Fix bugs" — no commit instructions
+
+```markdown
+
+Fix bugs from the issue tracker.
+```
+
+Ralphify doesn't commit for the agent — the agent must do it. Without explicit commit instructions, some agents won't commit at all, and progress is lost when the next iteration starts fresh.
+
+**Co-author credit**
+    By default, ralphify appends an instruction to each prompt asking the agent to include a `Co-authored-by: Ralphify ` trailer in commit messages. This gives visibility into which commits came from a ralph loop. To disable it, set `credit: false` in frontmatter.
 
 ## Tuning a running loop
 
-- When the agent does something dumb, add a sign (a rule)
-- When the agent gets stuck in a loop, add explicit fallback instructions
-- When you want to shift focus, edit the task source
-- When the agent is too ambitious, tighten the scope constraint
+The most powerful feature of ralph loops is that you can edit `RALPH.md` while the loop is running. Here's how to use this effectively:
 
-HTML comments in RALPH.md are stripped before prompt assembly — use them for notes to yourself.
+**When the agent does something dumb, add a sign.** This is the core insight from the [Ralph Wiggum technique](https://ghuntley.com/ralph/). If the agent keeps deleting tests instead of fixing them:
 
-## Prompt size
+```markdown
+## Rules
+- Do NOT delete or skip failing tests — fix the code instead
+```
 
-- Core prompt: 20-50 lines is the sweet spot
-- Commands: pick the 2-3 most useful signals
-- Use scripts to filter verbose command output
+**When the agent gets stuck in a loop,** it's usually because the prompt is ambiguous about what to do when something fails. Add explicit fallback instructions:
+
+```markdown
+- If you can't fix a failing test after one attempt, move on to the next task
+  and leave a TODO comment explaining the issue
+```
+
+**When you want to shift focus,** edit the task source. Change "Read TODO.md" to "Focus only on the API module" and the next iteration follows the new direction.
+
+**When the agent is too ambitious,** tighten the scope constraint:
+
+```markdown
+- Touch at most 3 files per iteration
+- Do not refactor code that isn't directly related to the current task
+```
+
+### Annotate your prompt with HTML comments
+
+**HTML comments are stripped before the prompt reaches the agent**
+    HTML comments in your RALPH.md are automatically stripped during prompt assembly — they never reach the agent and don't waste context window. Use them to annotate why rules were added, what to change next, or when to remove a temporary constraint:
+
+    ```markdown
+    
+
+    ## Rules
+
+    - Do NOT delete failing tests — fix the underlying code instead
+
+    
+    ```
+
+    You can freely add and edit comments while the loop runs — they're stripped every iteration.
+
+## How long should your prompt be?
+
+Keep your prompt focused. A long prompt eats into the agent's context window, leaving less room for the actual codebase.
+
+- **Core prompt:** 20-50 lines is the sweet spot
+- **Commands:** 2-3 signals max — don't add commands whose output the agent doesn't need
+- **Command output:** Can be long, but consider scripts that filter to the relevant lines if your commands produce verbose output
+
+## Next steps
+
+- [Getting Started](getting-started.md) — set up your first loop
+- [Cookbook](cookbook.md) — copy-pasteable setups for common use cases
+- [CLI Reference](cli.md) — all commands and options
 
 ---
 
 # Using with Different Agents
 
-Ralphify works with any CLI that reads a prompt from stdin and exits when done.
+# Using with Different Agents
+
+Ralphify works with **any CLI that reads a prompt from stdin and exits when done**. Claude Code is the default, but you can use any tool that follows this contract.
+
+This page shows how to configure the `agent` field in your RALPH.md for popular agents and how to write your own wrapper.
+
+## Agent comparison
+
+| Agent | Stdin support | Streaming | `ralph new` support | Wrapper needed |
+|---|---|---|---|---|
+| [Claude Code](#claude-code) | Native (`-p`) | Yes — real-time activity tracking | Yes | No |
+| [Aider](#aider) | Via bash wrapper | No | No | Yes (`bash -c`) |
+| [Codex CLI](#codex-cli) | Native (`exec`) | No | Yes | No |
+| [Custom](#custom-wrapper-script) | You implement it | No | No | Yes (script) |
+
+If you're not sure which to pick: **start with Claude Code.** It has the deepest integration, the best autonomous coding capabilities, and is the default.
 
 ## What ralphify needs from an agent
 
-1. Read a prompt from stdin
-2. Do work in the current directory
-3. Exit when done (exit code 0 = success, non-zero = failure)
+Every iteration, ralphify runs your agent like this:
 
-## Claude Code (recommended)
+```bash
+echo "" | 
+```
+
+Your agent must:
+
+1. **Read a prompt from stdin** — the full assembled prompt is piped in
+2. **Do work in the current directory** — edit files, run commands, make commits
+3. **Exit when done** — exit code 0 means success, non-zero means failure
+
+That's it. No special protocol, no API — just stdin in, work done, process exits.
+
+## Claude Code
+
+The default and recommended agent.
 
 ```markdown
 ---
@@ -471,11 +1185,33 @@ agent: claude -p --dangerously-skip-permissions
 ---
 ```
 
-Install: `npm install -g @anthropic-ai/claude-code`
+| Flag | Purpose |
+|---|---|
+| `-p` | Non-interactive mode — reads prompt from stdin, prints output, exits |
+| `--dangerously-skip-permissions` | Skips approval prompts so the agent can work autonomously |
 
-Ralphify auto-adds `--output-format stream-json --verbose` for real-time activity tracking.
+Install Claude Code:
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+**Why `--dangerously-skip-permissions`?**
+    Without this flag, Claude Code pauses to ask for approval before editing files, running commands, or making commits. In an autonomous loop, nobody is there to approve — so the agent would hang forever. Commands in your RALPH.md act as your guardrails instead.
+
+### Automatic streaming mode
+
+When ralphify detects that the agent command starts with `claude`, it automatically adds `--output-format stream-json --verbose` to the command. You don't need to add these flags yourself.
+
+This enables ralphify to:
+
+- Parse Claude Code's structured JSON output line by line
+- Track agent activity in real time
+- Extract the final result text from the agent's response
 
 ## Aider
+
+[Aider](https://aider.chat) is an AI pair-programming tool that works with multiple LLM providers.
 
 ```markdown
 ---
@@ -483,9 +1219,26 @@ agent: bash -c 'aider --yes-always --no-auto-commits --message "$(cat -)"'
 ---
 ```
 
-Aider doesn't natively read from stdin, so the bash wrapper reads stdin with `cat -` and passes it as a `--message` argument.
+| Flag | Purpose |
+|---|---|
+| `--yes-always` | Auto-approve all changes (no interactive prompts) |
+| `--no-auto-commits` | Let your prompt control when commits happen |
+| `--message "..."` | Pass the prompt as a message instead of stdin |
+
+**Why the bash wrapper?**
+    Aider doesn't natively read prompts from stdin. The `bash -c` wrapper reads stdin with `cat -` and passes it as a `--message` argument.
+
+### Aider with a specific model
+
+```markdown
+---
+agent: bash -c 'aider --yes-always --no-auto-commits --model claude-sonnet-4-6 --message "$(cat -)"'
+---
+```
 
 ## Codex CLI
+
+[OpenAI Codex CLI](https://github.com/openai/codex) supports non-interactive use natively via its `exec` subcommand.
 
 ```markdown
 ---
@@ -493,104 +1246,311 @@ agent: codex exec --sandbox danger-full-access -
 ---
 ```
 
+| Flag | Purpose |
+|---|---|
+| `exec` | Non-interactive mode — designed for piped/scripted use |
+| `--sandbox danger-full-access` | Full filesystem access for autonomous operation |
+| `-` | Read prompt from stdin |
+
 ## Custom wrapper script
 
-For full control, write a wrapper script that reads stdin and calls your agent:
+For full control, write a wrapper script that reads stdin and calls your agent however it needs to be called.
+
+**`ralph-agent.sh`**
 
 ```bash
 #!/bin/bash
 set -e
+
+# Read the prompt from stdin
 PROMPT=$(cat -)
+
+# Call your agent however it works
 my-custom-agent --input "$PROMPT" --auto-approve
 ```
+
+```bash
+chmod +x ralph-agent.sh
+```
+
+**`my-ralph/RALPH.md`**
 
 ```markdown
 ---
 agent: ./ralph-agent.sh
 ---
+
+Your prompt here.
 ```
 
 ## Testing your setup
 
+Verify the agent works outside of ralphify first. The command depends on which agent you're using:
+
+
+    ```bash
+    echo "Say hello and nothing else" | claude -p --dangerously-skip-permissions
+    ```
+
+    ```text
+    Hello!
+    ```
+
+
+    ```bash
+    echo "Say hello and nothing else" | bash -c 'aider --yes-always --no-auto-commits --message "$(cat -)"'
+    ```
+
+
+    ```bash
+    echo "Say hello and nothing else" | codex exec --sandbox danger-full-access -
+    ```
+
+If the agent prints a response and exits, your setup is working. If it hangs or errors, fix the agent installation before continuing.
+
+Then test through ralphify with a single iteration:
+
 ```bash
-echo "Say hello" | <your-agent-command>
 ralph run my-ralph -n 1 --log-dir ralph_logs
 ```
+
+**Non-Claude-Code agents**
+    Disable auto-commits if your prompt handles commits — most agents have this feature, and it conflicts with prompt-driven commit instructions. Use `--timeout` as a safety net in case the agent enters an unexpected interactive mode.
+
+## How agent output works
+
+Ralphify uses two different execution modes depending on the agent:
+
+### Streaming mode (Claude Code)
+
+When the agent command starts with `claude`, ralphify spawns the process with `Popen` and reads its JSON output line by line. This enables:
+
+- **Live activity tracking** — the terminal shows what the agent is doing in real time
+- **Result text extraction** — the agent's final response is captured
+- **Verbose logging** — with `--log-dir`, logs include the agent's internal tool calls and reasoning
+
+### Blocking mode (all other agents)
+
+For non-Claude agents, ralphify uses `subprocess.run` and waits for the process to exit. Output behavior depends on whether you're using `--log-dir`:
+
+- **Without `--log-dir`** — agent output streams directly to your terminal in real time
+- **With `--log-dir`** — output is captured, written to a log file, then replayed to the terminal after the iteration completes
+
+Both modes support all ralphify features (commands, timeouts, iteration tracking). The difference is only in how output is handled during each iteration.
+
+## Adapting other tools
+
+Many AI coding tools don't read from stdin directly but can be adapted with a bash wrapper. The pattern is:
+
+```bash
+bash -c '  --message "$(cat -)"'
+```
+
+The `cat -` reads the piped prompt from stdin and passes it as a command-line argument. This works for any tool that accepts a prompt via a flag (like `--message`, `--input`, `--prompt`).
+
+If the tool has no way to accept a prompt non-interactively, a [custom wrapper script](#custom-wrapper-script) is the escape hatch — you can use the prompt text however the tool needs it.
+
+## Next steps
+
+- [Getting Started](getting-started.md) — set up your first loop with the agent you just configured
+- [Writing Prompts](writing-prompts.md) — patterns for writing effective autonomous loop prompts
+- [Troubleshooting](troubleshooting.md) — when the agent hangs, produces no output, or exits unexpectedly
 
 ---
 
 # Cookbook
 
-Copy-pasteable setups for common autonomous workflows. All recipes use Claude Code as the agent.
+# Cookbook
 
-## Run autonomous ML experiments
+Copy-pasteable setups for common autonomous workflows. Each recipe is a real, runnable ralph from the [`examples/`](https://github.com/computerlovetech/ralphify/tree/main/examples) directory.
 
-An autonomous ML research loop inspired by Karpathy's autoresearch. The agent runs experiments on a training script to minimize validation loss.
+All recipes use **Claude Code** as the agent. To use a different agent, swap the `agent` field — see [Using with Different Agents](agents.md).
+
+**User arguments in recipes**
+    Many recipes accept CLI arguments like `--focus` or `--target`. These aren't built-in flags — they're **user arguments** declared in each recipe's `args` field. When you pass `--focus "test coverage"`, the value replaces `{{ args.focus }}` in the prompt. See [User Arguments](cli.md#user-arguments) for details.
+
+---
+
+## Run autonomous ML experiments {: #autoresearch }
+
+An autonomous ML research loop inspired by [Karpathy's autoresearch](https://github.com/karpathy/autoresearch). The agent runs experiments on a training script to minimize validation loss — modifying code, training for 5 minutes, keeping improvements and reverting failures.
+
+**`autoresearch/RALPH.md`**
+
+```markdown
+--8<-- "examples/autoresearch/RALPH.md"
+```
+
+The helper scripts surface experiment state each iteration:
+
+**`autoresearch/show-results.sh`**
+
+```bash
+--8<-- "examples/autoresearch/show-results.sh"
+```
+
+**`autoresearch/show-last-run.sh`**
+
+```bash
+--8<-- "examples/autoresearch/show-last-run.sh"
+```
 
 ```bash
 ralph run autoresearch --train_script train.py --prepare_script prepare.py
 ```
 
-## Improve code quality continuously
+The `train_script` and `prepare_script` args let you point the ralph at any autoresearch-style project. The agent handles everything autonomously: establishing a baseline on the first iteration, then running experiments indefinitely. Each iteration is one hypothesis tested — modify the train script, train, evaluate, keep or revert.
 
-A loop that runs tests, type checking, and lint each iteration, then picks one improvement.
+---
+
+## Improve code quality continuously {: #codebase-improvement }
+
+A loop that continuously improves code quality without changing functionality. It runs tests, type checking, and lint each iteration, then picks one improvement to make.
+
+**`improve-codebase/RALPH.md`**
+
+```markdown
+--8<-- "examples/improve-codebase/RALPH.md"
+```
 
 ```bash
 ralph run improve-codebase -n 10 --log-dir ralph_logs
 ralph run improve-codebase -n 5 --focus "focus on test coverage"
 ```
 
-## Write and improve documentation automatically
+---
+
+## Write and improve documentation automatically {: #documentation-loop }
+
+A loop focused on writing and improving documentation.
+
+**`docs/RALPH.md`**
+
+```markdown
+--8<-- "examples/docs/RALPH.md"
+```
 
 ```bash
 ralph run docs --log-dir ralph_logs
 ralph run docs --focus "focus on the API reference pages"
 ```
 
-## Find and fix bugs automatically
+---
 
-The agent reads the codebase, finds a real bug, writes a failing test, then fixes it.
+## Find and fix bugs automatically {: #bug-hunter }
+
+A loop that discovers bugs and fixes them. The agent reads the codebase, finds a real bug (edge case, off-by-one, missing validation), writes a failing test to prove it, then fixes it.
+
+**`bug-hunter/RALPH.md`**
+
+```markdown
+--8<-- "examples/bug-hunter/RALPH.md"
+```
 
 ```bash
 ralph run bug-hunter -n 10 --log-dir ralph_logs
+ralph run bug-hunter -n 5 --focus "focus on input validation"
 ```
 
-## Run structured AI research loops
+---
 
-A structured research loop with helper scripts, args for the research topic, and a timeout on the review command.
+## Run structured AI research loops {: #deep-research }
+
+A structured research loop that builds up a report over many iterations. Uses shell scripts as commands to track maturity, show the question tree, and even run an editorial review agent that gives feedback between iterations.
+
+This is a more advanced ralph — it uses `args` for the research topic, helper scripts (run with `./` relative to the ralph directory), and a `timeout` on the review command.
+
+**`research/RALPH.md`**
+
+```markdown
+--8<-- "examples/research/RALPH.md"
+```
+
+The helper scripts (`show-focus.sh`, `show-questions.sh`, etc.) read from the workspace files and surface key state. The `review.sh` script pipes the full workspace to a separate Claude call that acts as an editorial reviewer — giving the research agent targeted feedback each iteration.
 
 ```bash
 ralph run research --workspace ai-safety --focus "current approaches to AI alignment"
 ```
 
-## Migrate code patterns across a codebase
+This recipe shows several advanced patterns: commands that call scripts relative to the ralph directory (`./show-focus.sh`), a command with a `timeout`, a command that itself calls an AI agent (`review.sh` pipes to `claude -p`), and `args` used in the prompt body via `{{ args.workspace }}` placeholders.
 
-A loop for batch code transformations with a `remaining` command that counts files still needing migration.
+---
+
+## Migrate code patterns across a codebase {: #code-migration }
+
+A loop for batch code transformations — migrating from one pattern to another across a codebase. The `remaining` command counts how many files still need migration, giving the agent a clear finish line.
+
+**`migrate/RALPH.md`**
+
+```markdown
+--8<-- "examples/migrate/RALPH.md"
+```
+
+The `count-remaining.sh` script receives the pattern as an argument (resolved from `{{ args.old_pattern }}` in the `run` field) to find files that still need migration:
+
+```bash
+--8<-- "examples/migrate/count-remaining.sh"
+```
 
 ```bash
 ralph run migrate --old_pattern "from utils import legacy_helper" \
                   --new_pattern "from core.helpers import modern_helper"
 ```
 
-## Automate security scanning and fixes
+The `remaining` command gives the agent a shrinking counter and a list of files still needing attention, so it always knows where to focus next.
 
-The agent runs a scanner each iteration, picks one finding, fixes it, and verifies the fix.
+---
+
+## Automate security scanning and fixes {: #security-scan }
+
+An iterative security review loop. The agent runs a scanner each iteration, picks one finding, fixes it, and verifies the fix. Good for systematically hardening a codebase.
+
+**`security/RALPH.md`**
+
+```markdown
+--8<-- "examples/security/RALPH.md"
+```
 
 ```bash
 ralph run security -n 10 --log-dir ralph_logs
 ```
 
-## Increase test coverage automatically
+Swap `bandit` for your scanner of choice — `semgrep`, `npm audit`, `cargo audit`, etc. The pattern works the same: scan, pick a finding, fix it, log it.
 
-The agent sees current coverage and uncovered functions, then writes tests for one module per iteration.
+---
+
+## Increase test coverage automatically {: #test-coverage }
+
+A loop that systematically increases test coverage. The agent sees the current coverage percentage and a list of uncovered functions, then writes tests for one module per iteration.
+
+**`test-coverage/RALPH.md`**
+
+```markdown
+--8<-- "examples/test-coverage/RALPH.md"
+```
 
 ```bash
 ralph run test-coverage -n 10 --log-dir ralph_logs
+ralph run test-coverage -n 5 --target "focus on error handling paths"
 ```
+
+The coverage report gives the agent a clear metric to improve and shows exactly which lines are missing, so it always knows where to focus.
+
+---
+
+## Next steps
+
+- [Writing Prompts](writing-prompts.md) — customize your recipe's prompt with patterns for task sources, constraints, and live editing
+- [CLI Reference](cli.md) — all `ralph run` options (`--timeout`, `--stop-on-error`, `--delay`, user args)
+- [Troubleshooting](troubleshooting.md) — when the agent hangs, commands fail, or output looks wrong
 
 ---
 
 # Quick Reference
+
+# Quick Reference
+
+Everything you need at a glance. Bookmark this page.
 
 ## CLI commands
 
@@ -612,9 +1572,12 @@ ralph new docs                     # AI-guided creation with name pre-filled
 
 ralph add owner/repo               # Install ralph(s) from a GitHub repo
 ralph add owner/repo/my-ralph      # Install a specific ralph by name
+ralph add https://github.com/owner/repo/tree/main/my-ralph  # URL from GitHub
 
 ralph --version                    # Show version
 ```
+
+Full flag descriptions and examples → [CLI reference](cli.md)
 
 ## Directory structure
 
@@ -623,83 +1586,213 @@ my-ralph/
 └── RALPH.md              # Prompt + configuration (required)
 ```
 
-A ralph is a directory with a RALPH.md file. That's it.
+That's it. A ralph is a directory with a `RALPH.md` file. See [Getting Started](getting-started.md) to create your first one.
 
 ## RALPH.md format
 
 ```markdown
 ---
-agent: claude -p --dangerously-skip-permissions    # Required: agent command
-commands:                                           # Optional: run each iteration
+agent: claude -p --dangerously-skip-permissions # (1)!
+commands: # (2)!
   - name: tests
     run: uv run pytest -x
   - name: lint
     run: uv run ruff check .
-args: [dir, focus]                                  # Optional: declared user arguments
+  - name: git-log
+    run: git log --oneline -10
+args: [dir, focus] # (3)!
 ---
 
-# Prompt body
+# Prompt body  
+
+{{ commands.git-log }} 
 
 {{ commands.tests }}
 
 {{ commands.lint }}
 
-Your instructions here. Use {{ args.dir }} for user arguments.
+Your instructions here. Use {{ args.dir }} for user arguments. 
 ```
+
+1. **Required.** The full shell command to pipe the prompt to. `-p` enables non-interactive mode, `--dangerously-skip-permissions` lets the agent work autonomously.
+2. **Optional.** Each command runs every iteration and its output fills the matching `{{ commands. }}` placeholder.
+3. **Optional.** Declares positional argument names. Named flags (`--dir`, `--focus`) work without this — `args` is only needed for positional usage.
+4. Everything below the `---` frontmatter is the prompt body. It's re-read from disk every iteration, so you can edit it while the loop runs.
+5. Replaced with the command's stdout + stderr. Only commands with a matching placeholder appear in the assembled prompt.
+6. Replaced with the `--dir` value from the CLI. Missing args resolve to an empty string.
 
 ### Frontmatter fields
 
-- `agent` (string, required) — full agent command
-- `commands` (list, optional) — commands to run each iteration
-- `args` (list, optional) — user argument names
-- `credit` (bool, optional) — co-author trailer instruction (default: true)
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `agent` | string | yes | Full agent command (piped via stdin). See [agent configuration](agents.md) for supported agents. |
+| `commands` | list | no | Commands to run each iteration |
+| `args` | list | no | User argument names. Letters, digits, hyphens, and underscores only. |
+| `credit` | bool | no | Append co-author trailer instruction to prompt (default: `true`) |
 
 ### Command fields
 
-- `name` (string, required) — identifier for `{{ commands.<name> }}`
-- `run` (string, required) — shell command to execute
-- `timeout` (number, default 60) — max seconds before killed
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `name` | string | (required) | Identifier for `{{ commands. }}`. Letters, digits, hyphens, and underscores only. |
+| `run` | string | (required) | Shell command to execute (supports `{{ args. }}` placeholders). Commands starting with `./` run from the ralph directory; others run from the project root. |
+| `timeout` | number | `60` | Max seconds before the command is killed |
 
 ## Placeholders
 
-- `{{ commands.<name> }}` — command output (stdout + stderr)
-- `{{ args.<name> }}` — user argument values from CLI
-- `{{ ralph.name }}` — ralph directory name
-- `{{ ralph.iteration }}` — current iteration number (1-based)
-- `{{ ralph.max_iterations }}` — total iterations if `-n` was set
+### Command placeholders
 
-Unmatched placeholders resolve to empty string.
+```markdown
+{{ commands.tests }}              # Replaced with test command output
+{{ commands.git-log }}            # Replaced with git-log command output
+```
+
+- Output includes stdout + stderr regardless of exit code
+- Only commands referenced by a placeholder appear in the prompt — unreferenced commands still run but their output is excluded
+- Unmatched placeholders resolve to empty string
+- Must be `commands` (plural)
+
+For details on writing effective prompts with placeholders, see [Writing Prompts](writing-prompts.md).
+
+### User argument placeholders
+
+```markdown
+{{ args.dir }}                   # Replaced with --dir value from CLI
+{{ args.focus }}                 # Replaced with --focus value from CLI
+```
+
+- Pass via `ralph run my-ralph --dir ./src --focus "perf"` or `--dir=./src` (named flags)
+- Or positionally: `ralph run my-ralph ./src "perf"` (requires `args:` in frontmatter)
+- Mixed: `ralph run my-ralph --focus "perf" ./src` — positional args skip names already provided via flags
+- `--` ends flag parsing: `ralph run my-ralph -- --verbose ./src` treats `--verbose` as a positional value
+- Missing args resolve to empty string
+- See [CLI reference → User arguments](cli.md#user-arguments) for full details on flag and positional parsing
+
+### ralph placeholders
+
+```markdown
+{{ ralph.name }}               # ralph directory name (e.g. "my-ralph")
+{{ ralph.iteration }}          # Current iteration number (1-based)
+{{ ralph.max_iterations }}     # Total iterations if -n was set, empty otherwise
+```
+
+- Automatically available — no frontmatter configuration needed
+- Useful for progress tracking, naming logs, or adjusting behavior near the end of a run
+- See [How it Works](how-it-works.md) for more on the loop lifecycle
 
 ## The loop
 
-1. Re-read RALPH.md from disk
+Each iteration:
+
+1. Re-read `RALPH.md` from disk
 2. Run all commands in order, capture output
-3. Resolve placeholders
+3. Resolve `{{ commands.* }}`, `{{ args.* }}`, and `{{ ralph.* }}` placeholders
 4. Pipe assembled prompt to agent via stdin
 5. Wait for agent to exit
 6. Repeat
 
-## Stopping the loop
+### Stopping the loop
 
-- Ctrl+C (once): finishes current iteration gracefully, then stops
-- Ctrl+C (twice): force-kills agent and exits immediately
-- `-n` limit reached: stops after specified iterations
-- `--stop-on-error`: stops if agent exits non-zero or times out
+| Action | What happens |
+|---|---|
+| `Ctrl+C` (once) | Finishes the current iteration gracefully, then stops |
+| `Ctrl+C` (twice) | Force-kills the agent process and exits immediately |
+| `-n` limit reached | Stops after the specified number of iterations |
+| `--stop-on-error` | Stops if agent exits non-zero or times out |
+
+## Live editing
+
+- The prompt body is re-read from disk every iteration — edit the prompt while the loop runs (frontmatter is parsed once at startup)
+- HTML comments (``) are stripped from the prompt — use them for notes to yourself
+
+Tips on structuring prompts for different tasks → [Writing Prompts](writing-prompts.md)
 
 ## `ralph add` source formats
 
-- `owner/repo` — all ralphs in the repo
-- `owner/repo/my-ralph` — specific ralph by name
-- `https://github.com/owner/repo` — full URL
-- `https://github.com/owner/repo/tree/main/my-ralph` — URL from GitHub browser
+| Format | Example | What it does |
+|---|---|---|
+| Shorthand | `owner/repo` | Installs all ralphs in the repo (or the repo itself if root has `RALPH.md`) |
+| Subpath | `owner/repo/my-ralph` | Installs the ralph named `my-ralph` from the repo |
+| Full URL | `https://github.com/owner/repo` | Same as shorthand |
+| GitHub tree URL | `https://github.com/owner/repo/tree/main/my-ralph` | Extracts the path from the URL — works when you copy a URL from the GitHub browser UI |
 
-Installed ralphs go to `.ralphify/ralphs/<name>/`.
+Installed ralphs go to `.ralphify/ralphs//`. Re-running `ralph add` overwrites without warning (that's how you update). See the [CLI reference](cli.md) for full `ralph add` options.
+
+## Common patterns
+
+### Minimal ralph
+
+```markdown
+---
+agent: claude -p --dangerously-skip-permissions
+---
+
+Read TODO.md and implement the next task. Commit when done.
+```
+
+### Self-healing with test feedback
+
+```markdown
+---
+agent: claude -p --dangerously-skip-permissions
+commands:
+  - name: tests
+    run: uv run pytest -x
+---
+
+{{ commands.tests }}
+
+Fix failing tests before starting new work.
+Read TODO.md and implement the next task.
+```
+
+### Parameterized ralph
+
+```markdown
+---
+agent: claude -p --dangerously-skip-permissions
+args: [dir, focus]
+---
+
+Research the codebase at {{ args.dir }}.
+Focus area: {{ args.focus }}.
+```
+
+```bash
+ralph run research --dir ./api --focus "error handling"
+```
+
+### Debug a single iteration
+
+```bash
+ralph run my-ralph -n 1 --log-dir ralph_logs
+cat ralph_logs/001_*.log
+```
+
+### Run on a branch
+
+```bash
+git checkout -b feature && ralph run my-ralph
+```
+
+More patterns and real-world examples → [Cookbook](cookbook.md)
+
+## Next steps
+
+- [Getting Started](getting-started.md) — set up your first ralph end-to-end
+- [Writing Prompts](writing-prompts.md) — prompt structure, shell limitations, and advanced patterns
+- [Cookbook](cookbook.md) — copy-pasteable ralphs for common tasks
+- [Troubleshooting](troubleshooting.md) — common issues and how to fix them
 
 ---
 
 # CLI Reference
 
+# CLI Reference
+
 ## `ralph`
+
+With no subcommand, prints the banner and help text.
 
 ```bash
 ralph            # Show banner and help
@@ -707,9 +1800,26 @@ ralph --version  # Show version
 ralph --help     # Show help
 ```
 
+| Option | Short | Description |
+|---|---|---|
+| `--version` | `-V` | Show version and exit |
+| `--install-completion` | | Install tab completion for your current shell |
+| `--show-completion` | | Print the completion script (for manual setup) |
+| `--help` | | Show help and exit |
+
+### Shell completion
+
+```bash
+ralph --install-completion bash   # or zsh, fish
+```
+
+Restart your shell after installing. Use `--show-completion` to print the script for manual setup.
+
+---
+
 ## `ralph run`
 
-Start the autonomous coding loop.
+Start the [autonomous coding loop](how-it-works.md).
 
 ```bash
 ralph run my-ralph                         # Run forever (Ctrl+C to stop)
@@ -718,91 +1828,219 @@ ralph run my-ralph --stop-on-error         # Stop if agent exits non-zero or tim
 ralph run my-ralph --delay 10              # Wait 10s between iterations
 ralph run my-ralph --timeout 300           # Kill agent after 5 minutes per iteration
 ralph run my-ralph --log-dir ralph_logs    # Save output to log files
+ralph run my-ralph --dir ./src             # Pass user args to the ralph
 ```
 
-Options:
-- `PATH` (required) — path to ralph directory, RALPH.md file, or installed ralph name
-- `-n` — max iterations (default: unlimited)
-- `--stop-on-error` / `-s` — stop on non-zero exit or timeout
-- `--delay` / `-d` — seconds between iterations (default: 0)
-- `--timeout` / `-t` — max seconds per iteration
-- `--log-dir` / `-l` — directory for log files
+| Argument / Option | Short | Default | Description |
+|---|---|---|---|
+| `PATH` | | (required) | Path to a ralph directory containing `RALPH.md`, a direct path to a `RALPH.md` file, or the name of an installed ralph (from `ralph add`) |
+| `-n` | | unlimited | Max number of iterations |
+| `--stop-on-error` | `-s` | off | Stop loop if agent exits non-zero or times out |
+| `--delay` | `-d` | `0` | Seconds to wait between iterations |
+| `--timeout` | `-t` | none | Max seconds per iteration |
+| `--log-dir` | `-l` | none | Directory for iteration log files |
 
 ### User arguments
 
-Pass named flags after the ralph path: `ralph run research --dir ./src --focus "perf"`
+User arguments are passed as named flags after the ralph path. Use `{{ args. }}` [placeholders](writing-prompts.md#ralph-context-placeholders) in your RALPH.md to reference them.
 
-Named flags work without frontmatter declaration. The `args` field is only required for positional arguments.
+Named flags (`--name value`) work without any frontmatter declaration. The `args` field is only required when you want to pass **positional** arguments — it tells ralphify which names to map them to:
+
+```markdown
+---
+agent: claude -p --dangerously-skip-permissions
+args: [dir, focus]
+---
+
+Research the codebase at {{ args.dir }}.
+Focus area: {{ args.focus }}
+```
 
 ```bash
-# Named flags
+# Named flags (work with or without args declared in frontmatter)
 ralph run research --dir ./my-project --focus "performance"
+
+# Equals syntax works too
+ralph run research --dir=./my-project --focus="performance"
 
 # Positional args (requires args: [dir, focus] in frontmatter)
 ralph run research ./my-project "performance"
 
-# -- ends flag parsing
+# Mixed — positional args skip names already provided via flags
+ralph run research --focus "performance" ./my-project
+# dir="./my-project", focus="performance"
+
+# -- ends flag parsing — everything after is positional
 ralph run research -- --verbose ./src
+# dir="--verbose", focus="./src"
 ```
+
+Use `--` when a positional value starts with `--` and would otherwise be parsed as a flag.
+
+Missing args resolve to an empty string.
 
 ### Stopping the loop
 
-- Ctrl+C (first): finishes current iteration gracefully
-- Ctrl+C (second): force-kills agent process
+Press `Ctrl+C` to stop the loop. Ralphify uses two-stage signal handling:
+
+| Action | Behavior |
+|---|---|
+| `Ctrl+C` (first) | Finishes the current iteration gracefully, then stops the loop |
+| `Ctrl+C` (second) | Force-kills the agent process and exits immediately |
+
+The first press lets the agent complete its current work (e.g. finish a commit). If you don't want to wait, press `Ctrl+C` again to terminate immediately.
+
+The loop also stops automatically when:
+
+- All `-n` iterations have completed
+- `--stop-on-error` is set and the agent exits non-zero or times out
+
+---
 
 ## `ralph init`
 
-Scaffold a new ralph with a template.
+Scaffold a new ralph with a ready-to-customize template. No AI agent required. For a guided setup, see [`ralph new`](#ralph-new) instead.
 
 ```bash
-ralph init my-task      # Creates my-task/RALPH.md
-ralph init              # Creates RALPH.md in current directory
+ralph init my-task      # Creates my-task/RALPH.md with a generic template
+ralph init              # Creates RALPH.md in the current directory
 ```
+
+| Argument | Default | Description |
+|---|---|---|
+| `[NAME]` | none | Directory name. If omitted, creates RALPH.md in the current directory |
+
+The generated template includes an example command (`git-log`), an example arg (`focus`), and a prompt body with placeholders for both. Edit it, then run [`ralph run`](#ralph-run). See [Getting Started](getting-started.md) for a full walkthrough.
+
+Errors if `RALPH.md` already exists at the target location.
+
+---
 
 ## `ralph new`
 
-AI-guided ralph creation.
+Create a new ralph with AI-guided setup. Launches an interactive session where the agent guides you through creating a complete ralph via conversation.
 
 ```bash
-ralph new              # Agent helps you choose name and build everything
+ralph new              # Agent helps you choose a name and build everything
 ralph new my-task      # Start with a name already chosen
 ```
 
+| Argument | Default | Description |
+|---|---|---|
+| `[NAME]` | none | Name for the new ralph. If omitted, the agent will help you choose |
+
+The command detects your [agent](agents.md) and installs a skill to guide the creation process.
+
+---
+
 ## `ralph add`
 
-Install a ralph from GitHub to `.ralphify/ralphs/<name>/`.
+Add a ralph from a GitHub repository. Installs it to `.ralphify/ralphs//` so you can run it by name.
 
 ```bash
-ralph add owner/repo                                        # All ralphs in repo
-ralph add owner/repo/ralph-name                             # Specific ralph
-ralph add https://github.com/owner/repo                     # Full URL
-ralph add https://github.com/owner/repo/tree/main/my-ralph  # URL from GitHub
+ralph add owner/repo                                        # Install all ralphs in the repo
+ralph add owner/repo/ralph-name                             # Specific ralph by name
+ralph add https://github.com/owner/repo                     # Full GitHub URL
+ralph add https://github.com/owner/repo/tree/main/my-ralph  # URL copied from GitHub browser
 ```
+
+| Argument | Default | Description |
+|---|---|---|
+| `SOURCE` | required | GitHub source — shorthand (`owner/repo`), subpath (`owner/repo/path`), or full GitHub URL |
+
+**How it resolves:**
+
+- `owner/repo` — if the repo root contains `RALPH.md`, installs it as a single ralph named after the repo. Otherwise, finds and installs all ralphs in the repo.
+- `owner/repo/ralph-name` — searches the repo for a directory named `ralph-name` containing `RALPH.md`. If multiple matches are found, prints the paths and asks you to use the full subpath to disambiguate.
+- `https://github.com/owner/repo/tree/branch/path` — extracts the path from the URL. This is the format you get when you copy a URL from the GitHub web UI while browsing a directory. The branch name is used only to locate the path — `ralph add` always clones the default branch.
+
+After adding, run the ralph by name:
+
+```bash
+ralph run ralph-name
+```
+
+---
 
 ## RALPH.md format
 
-Frontmatter fields:
-- `agent` (string, required) — agent command
-- `commands` (list, optional) — commands with `name`, `run`, optional `timeout` (default 60)
-- `args` (list of strings, optional) — declared argument names
-- `credit` (bool, optional) — co-author trailer (default: true)
+The `RALPH.md` file is the single configuration and prompt file for a ralph. It uses YAML frontmatter for settings and the body for the prompt text. See [Writing Prompts](writing-prompts.md) for detailed guidance on crafting effective prompts.
 
-Placeholders:
-- `{{ commands.<name> }}` — command output
-- `{{ args.<name> }}` — user argument value
-- `{{ ralph.name }}` — ralph directory name
-- `{{ ralph.iteration }}` — iteration number (1-based)
-- `{{ ralph.max_iterations }}` — total iterations if `-n` set
+```markdown
+---
+agent: claude -p --dangerously-skip-permissions
+commands:
+  - name: tests
+    run: uv run pytest -x
+  - name: git-log
+    run: git log --oneline -10
+args: [dir, focus]
+---
+
+# Prompt body
+
+{{ commands.tests }}
+
+{{ commands.git-log }}
+
+Your instructions here. Reference args with {{ args.dir }}.
+```
+
+### Frontmatter fields
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `agent` | string | yes | The full agent command to pipe the prompt to |
+| `commands` | list | no | Commands to run each iteration (each has `name` and `run`) |
+| `args` | list of strings | no | Declared argument names for user arguments. Letters, digits, hyphens, and underscores only. |
+| `credit` | bool | no | Append co-author trailer instruction to prompt (default: `true`) |
+
+### Commands
+
+Each command has these fields:
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `name` | string | (required) | Identifier used in `{{ commands. }}` placeholders. Letters, digits, hyphens, and underscores only. |
+| `run` | string | (required) | Shell command to execute each iteration (supports `{{ args. }}` placeholders). Commands starting with `./` run from the ralph directory; others run from the project root. |
+| `timeout` | number | `60` | Max seconds before the command is killed |
+
+Commands run in order. Output (stdout + stderr) is captured regardless of exit code. Commands are parsed with `shlex.split()` — no shell features (pipes, redirections, `&&`). For shell features, point the `run` field at a script. See the [Cookbook](cookbook.md) for real-world command patterns.
+
+If a command exceeds its timeout, the process is killed and the captured output up to that point is used.
+
+### Placeholders
+
+| Syntax | Resolves to |
+|---|---|
+| `{{ commands. }}` | Output of the named command |
+| `{{ args. }}` | Value of the named user argument |
+| `{{ ralph.name }}` | ralph directory name (e.g. `my-ralph`) |
+| `{{ ralph.iteration }}` | Current iteration number (1-based) |
+| `{{ ralph.max_iterations }}` | Total iterations if `-n` was set, empty otherwise |
+
+`ralph.*` placeholders are automatically available — no frontmatter configuration needed.
+
+Unmatched placeholders resolve to an empty string.
+
+---
+
+## Next steps
+
+- [Writing Prompts](writing-prompts.md) — learn how to craft effective RALPH.md prompts
+- [Quick Reference](quick-reference.md) — condensed cheat sheet for daily use
+- [Python API](api.md) — run loops programmatically instead of via the CLI
 
 ---
 
 # Python API
 
-Use ralphify as a Python library to embed the loop in automation pipelines.
+# Python API
 
-```python
-from ralphify import run_loop, RunConfig, RunState
-```
+**TL;DR**
+    `run_loop(config, state)` runs the same loop as `ralph run` but from Python. Build a `RunConfig` with your agent, commands, and options. Pass a `RunState` to inspect progress and control the loop (pause, resume, stop). Add an `EventEmitter` to react to events. Use `RunManager` for concurrent runs.
+
+All public API is available from the top-level `ralphify` package.
 
 ## Quick start
 
@@ -821,281 +2059,1428 @@ state = RunState(run_id="my-run")
 run_loop(config, state)
 ```
 
-## RunConfig
+This runs the same loop as `ralph run my-ralph -n 3`. When the loop finishes, `state` contains the results.
 
-All settings for a single run:
+---
 
-- `agent` (str) — agent command string
-- `ralph_dir` (Path) — ralph directory path
-- `ralph_file` (Path) — RALPH.md file path
-- `commands` (list[Command]) — commands to run each iteration
-- `args` (dict[str, str]) — user argument values
-- `max_iterations` (int | None) — max iterations (None = unlimited)
-- `delay` (float) — seconds between iterations
-- `timeout` (float | None) — max seconds per iteration
-- `stop_on_error` (bool) — stop on non-zero exit
-- `log_dir` (Path | None) — log file directory
-- `credit` (bool) — co-author trailer (default: True)
-- `project_root` (Path) — project root directory
+## `run_loop(config, state, emitter=None)`
 
-## Command
+The main loop. Reads RALPH.md, runs commands, assembles prompts, pipes them to the agent, and repeats. **Blocks until the loop finishes.**
+
+| Parameter | Type | Description |
+|---|---|---|
+| `config` | `RunConfig` | All settings for the run |
+| `state` | `RunState` | Observable state — counters, status, control methods |
+| `emitter` | `EventEmitter | None` | Event listener. `None` uses `NullEmitter` (silent) |
+
+---
+
+## `RunConfig`
+
+All settings for a single run. Fields match the CLI options.
+
+```python
+from pathlib import Path
+from ralphify import RunConfig, Command
+
+config = RunConfig(
+    agent="claude -p --dangerously-skip-permissions",
+    ralph_dir=Path("my-ralph"),
+    ralph_file=Path("my-ralph/RALPH.md"),
+    commands=[
+        Command(name="tests", run="uv run pytest -x"),
+        Command(name="lint", run="uv run ruff check ."),
+    ],
+    args={"dir": "./src", "focus": "performance"},
+    max_iterations=10,
+    delay=2.0,
+    timeout=300,
+    stop_on_error=True,
+    log_dir=Path("ralph_logs"),
+    project_root=Path("."),
+)
+```
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `agent` | `str` | -- | Full agent command string |
+| `ralph_dir` | `Path` | -- | Path to the ralph directory |
+| `ralph_file` | `Path` | -- | Path to the RALPH.md file |
+| `commands` | `list[Command]` | `[]` | Commands to run each iteration |
+| `args` | `dict[str, str]` | `{}` | User argument values |
+| `max_iterations` | `int | None` | `None` | Max iterations (`None` = unlimited) |
+| `delay` | `float` | `0` | Seconds to wait between iterations |
+| `timeout` | `float | None` | `None` | Max seconds per iteration |
+| `stop_on_error` | `bool` | `False` | Stop loop if agent exits non-zero or times out |
+| `log_dir` | `Path | None` | `None` | Directory for iteration log files |
+| `credit` | `bool` | `True` | Append co-author trailer instruction to prompt |
+| `project_root` | `Path` | `Path(".")` | Project root directory |
+
+`RunConfig` is mutable — you can change fields mid-run, and the loop picks up changes at the next iteration boundary.
+
+---
+
+## `Command`
+
+A command that runs each iteration.
 
 ```python
 from ralphify import Command
+
 cmd = Command(name="tests", run="uv run pytest -x")
 cmd_slow = Command(name="integration", run="uv run pytest tests/integration", timeout=300)
 ```
 
-## RunState
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `name` | `str` | (required) | Identifier used in `{{ commands. }}` placeholders. Letters, digits, hyphens, and underscores only. |
+| `run` | `str` | (required) | Shell command to execute |
+| `timeout` | `float` | `60` | Max seconds before the command is killed |
 
-Observable state for a running loop with thread-safe control:
+---
+
+## `RunState`
+
+Observable state for a running loop. Thread-safe control methods let you stop, pause, and resume from another thread.
 
 ```python
 state = RunState(run_id="my-run")
 run_loop(config, state)
 
-print(state.status)       # RunStatus.COMPLETED
-print(state.completed)    # 4
-print(state.failed)       # 1
-print(state.total)        # 5
+print(state.status)      # RunStatus.COMPLETED
+print(state.completed)   # 4
+print(state.failed)      # 1
+print(state.timed_out_count)  # 0  (subset of failed)
+print(state.total)       # 5  (completed + failed)
+print(state.iteration)   # 5  (current iteration number)
+print(state.started_at)  # datetime or None
+```
 
+| Property | Type | Description |
+|---|---|---|
+| `run_id` | `str` | Unique identifier for this run |
+| `status` | `RunStatus` | Current lifecycle status |
+| `iteration` | `int` | Current iteration number (starts at 0) |
+| `completed` | `int` | Number of successful iterations |
+| `failed` | `int` | Number of failed iterations (includes timed out) |
+| `timed_out_count` | `int` | Number of timed-out iterations (subset of `failed`) |
+| `total` | `int` | `completed + failed` |
+| `started_at` | `datetime | None` | When the run started |
+| `paused` | `bool` | Whether the run is currently paused |
+| `stop_requested` | `bool` | Whether a stop has been requested |
+
+**Counter invariant**
+    `timed_out_count` is a **subset** of `failed`, not an independent category. A timed-out iteration increments both `timed_out_count` and `failed`. Therefore `completed + failed == total`.
+
+### Control methods
+
+Thread-safe methods for controlling the loop from another thread:
+
+```python
 state.request_stop()      # Stop after current iteration
 state.request_pause()     # Pause between iterations
 state.request_resume()    # Resume a paused loop
 ```
 
-## RunStatus
+---
 
-PENDING, RUNNING, PAUSED, STOPPED, COMPLETED, FAILED
+## `RunStatus`
+
+Lifecycle status of a run.
+
+| Status | Value | Description |
+|---|---|---|
+| `PENDING` | `"pending"` | Created but not yet started |
+| `RUNNING` | `"running"` | Loop is executing iterations |
+| `PAUSED` | `"paused"` | Paused between iterations, waiting for resume |
+| `STOPPED` | `"stopped"` | Stopped by user via `request_stop()` |
+| `COMPLETED` | `"completed"` | Reached `max_iterations` or finished naturally |
+| `FAILED` | `"failed"` | Stopped by `--stop-on-error` after a failed/timed-out iteration, or crashed with an unhandled exception |
+
+---
+
+## `StopReason`
+
+A `Literal` type indicating why a run stopped. Used in the `RUN_STOPPED` event's `reason` field.
+
+| Value | Description |
+|---|---|
+| `"completed"` | Reached `max_iterations` or finished naturally |
+| `"error"` | Crashed with an unhandled exception |
+| `"user_requested"` | Stopped via `request_stop()` or `Ctrl+C` |
+
+```python
+from ralphify import StopReason
+```
+
+---
 
 ## Event system
 
-The loop emits structured events. Implement the EventEmitter protocol (single `emit(event)` method).
+The loop emits structured events at each step. Implement the `EventEmitter` protocol (a single `emit(event)` method) to listen.
 
-### Event types
+### Custom emitter
 
-Run lifecycle: RUN_STARTED, RUN_STOPPED, RUN_PAUSED, RUN_RESUMED
-Iteration lifecycle: ITERATION_STARTED, ITERATION_COMPLETED, ITERATION_FAILED, ITERATION_TIMED_OUT
-Commands: COMMANDS_STARTED, COMMANDS_COMPLETED
-Prompt: PROMPT_ASSEMBLED
-Other: AGENT_ACTIVITY, LOG_MESSAGE
+```python
+from pathlib import Path
+from ralphify import Event, EventType, RunConfig, RunState, run_loop
+
+
+class MyEmitter:
+    def emit(self, event: Event) -> None:
+        if event.type == EventType.ITERATION_COMPLETED:
+            print(f"Iteration {event.data['iteration']} done in {event.data['duration_formatted']}")
+
+
+config = RunConfig(
+    agent="claude -p", ralph_dir=Path("my-ralph"),
+    ralph_file=Path("my-ralph/RALPH.md"), commands=[], max_iterations=3,
+)
+state = RunState(run_id="observed-run")
+run_loop(config, state, emitter=MyEmitter())
+```
+
+### `Event`
+
+Each event carries:
+
+| Field | Type | Description |
+|---|---|---|
+| `type` | `EventType` | What happened |
+| `run_id` | `str` | Which run produced this event |
+| `data` | `dict` | Event-specific payload |
+| `timestamp` | `datetime` | UTC timestamp |
+
+Use `event.to_dict()` to serialize to a JSON-compatible dict.
+
+### `EventType` reference
+
+#### Run lifecycle
+
+| Event | Data fields |
+|---|---|
+| `RUN_STARTED` | `ralph_name`, `commands` (int count), `max_iterations`, `timeout`, `delay` |
+| `RUN_STOPPED` | `reason` (`StopReason`), `total`, `completed`, `failed`, `timed_out_count` |
+| `RUN_PAUSED` | -- |
+| `RUN_RESUMED` | -- |
+
+#### Iteration lifecycle
+
+| Event | Data fields |
+|---|---|
+| `ITERATION_STARTED` | `iteration` |
+| `ITERATION_COMPLETED` | `iteration`, `returncode`, `duration`, `duration_formatted`, `detail`, `log_file`, `result_text` |
+| `ITERATION_FAILED` | same as `ITERATION_COMPLETED` |
+| `ITERATION_TIMED_OUT` | same as `ITERATION_COMPLETED` (`returncode` is `None`) |
+
+#### Commands
+
+| Event | Data fields |
+|---|---|
+| `COMMANDS_STARTED` | `iteration`, `count` |
+| `COMMANDS_COMPLETED` | `iteration`, `count` |
+
+#### Prompt assembly
+
+| Event | Data fields |
+|---|---|
+| `PROMPT_ASSEMBLED` | `iteration`, `prompt_length` |
+
+#### Other
+
+| Event | Data fields |
+|---|---|
+| `AGENT_ACTIVITY` | `iteration`, `raw` (dict — one stream-json line from the agent) |
+| `LOG_MESSAGE` | `message`, `level` (`"info"` / `"error"`), `traceback` (optional) |
 
 ### Built-in emitters
 
-- NullEmitter — discards events (default)
-- QueueEmitter — pushes to queue.Queue
-- FanoutEmitter — broadcasts to multiple emitters
-- BoundEmitter — wraps emitter with fixed run_id
-
-## Concurrent runs with RunManager
+| Emitter | Description |
+|---|---|
+| `NullEmitter` | Discards all events silently. Default when no emitter is passed. |
+| `QueueEmitter` | Pushes events into a `queue.Queue` for async consumption. |
+| `FanoutEmitter` | Broadcasts each event to multiple emitters. |
+| `BoundEmitter` | Wraps any emitter with a fixed `run_id` so you don't have to construct `Event` objects manually. Has `log_info(message)` and `log_error(message, traceback=...)` convenience methods. |
 
 ```python
+from ralphify import QueueEmitter, FanoutEmitter, BoundEmitter
+
+# Consume events from a queue
+q_emitter = QueueEmitter()
+run_loop(config, state, emitter=q_emitter)
+while not q_emitter.queue.empty():
+    event = q_emitter.queue.get()
+    print(event.to_dict())
+
+# Broadcast to multiple listeners
+fanout = FanoutEmitter([q_emitter, MyEmitter()])
+run_loop(config, state, emitter=fanout)
+
+# Emit events without constructing Event objects
+bound = BoundEmitter(q_emitter, run_id="my-run")
+bound(EventType.ITERATION_STARTED, {"iteration": 1})
+bound.log_info("Starting phase two")
+bound.log_error("Something failed", traceback=tb)
+```
+
+---
+
+## Concurrent runs with `RunManager`
+
+`RunManager` is a thread-safe registry for launching and controlling multiple ralph loops concurrently. Each run gets its own daemon thread and event queue.
+
+```python
+from pathlib import Path
 from ralphify import RunManager, RunConfig, Command
 
 manager = RunManager()
-run = manager.create_run(config)
-manager.start_run(run.state.run_id)
 
+docs_config = RunConfig(
+    agent="claude -p", ralph_dir=Path("docs-ralph"),
+    ralph_file=Path("docs-ralph/RALPH.md"),
+    commands=[Command(name="build", run="mkdocs build --strict")],
+    max_iterations=5,
+)
+tests_config = RunConfig(
+    agent="claude -p", ralph_dir=Path("tests-ralph"),
+    ralph_file=Path("tests-ralph/RALPH.md"),
+    commands=[Command(name="tests", run="uv run pytest -x")],
+    max_iterations=3,
+)
+
+docs_run = manager.create_run(docs_config)
+tests_run = manager.create_run(tests_config)
+
+manager.start_run(docs_run.state.run_id)
+manager.start_run(tests_run.state.run_id)
+
+# Check progress
 for run in manager.list_runs():
-    print(f"{run.state.run_id}: {run.state.status.value}")
+    print(f"{run.state.run_id}: {run.state.status.value} — {run.state.completed} done")
 
-manager.pause_run(run_id)
-manager.resume_run(run_id)
-manager.stop_run(run_id)
+# Control a run
+manager.pause_run(docs_run.state.run_id)
+manager.resume_run(docs_run.state.run_id)
+manager.stop_run(docs_run.state.run_id)
 ```
+
+### `ManagedRun`
+
+Each run created by `RunManager` is wrapped in a `ManagedRun` — a bundle of config, state, and event queue.
+
+| Field | Type | Description |
+|---|---|---|
+| `config` | `RunConfig` | The run's configuration |
+| `state` | `RunState` | Observable state — inspect progress or call control methods |
+| `emitter` | `QueueEmitter` | Event queue — drain `emitter.queue` to consume events |
+
+#### Adding custom listeners
+
+Register additional emitters to receive events from a run. Add listeners **before** calling `start_run()`:
+
+```python
+from ralphify import RunManager, RunConfig, ManagedRun
+
+class SlackNotifier:
+    def emit(self, event):
+        if event.type == EventType.RUN_STOPPED:
+            notify_slack(f"Run {event.run_id} finished")
+
+manager = RunManager()
+run = manager.create_run(config)
+run.add_listener(SlackNotifier())  # receives all events alongside the queue
+manager.start_run(run.state.run_id)
+```
+
+When extra listeners are registered, events are broadcast to both the built-in queue and all custom listeners via a `FanoutEmitter`.
+
+### `RunManager` methods
+
+| Method | Description |
+|---|---|
+| `create_run(config)` | Create a `ManagedRun` from a `RunConfig`. Does not start it. |
+| `start_run(run_id)` | Start the run in a daemon thread. |
+| `stop_run(run_id)` | Signal the run to stop after the current iteration. |
+| `pause_run(run_id)` | Pause the run between iterations. |
+| `resume_run(run_id)` | Resume a paused run. |
+| `list_runs()` | Return a snapshot of all registered runs. |
+| `get_run(run_id)` | Look up a run by ID. |
 
 ---
 
 # Troubleshooting
 
-## Quick checklist
+# Troubleshooting
 
-1. Run `ralph run my-ralph -n 1` — validates setup and shows clear errors
-2. Test agent outside ralphify: `echo "Say hello" | claude -p`
-3. Use `--log-dir ralph_logs` to capture output
-4. Commands don't support shell features (pipes, `&&`) — use a wrapper script
+**Quick checklist**
+    1. Run `ralph run my-ralph -n 1` — it validates your setup and shows clear errors
+    2. Test the agent outside ralphify: `echo "Say hello" | claude -p`
+    3. Use `--log-dir ralph_logs` to capture output for debugging
+    4. Commands don't support shell features (pipes, `&&`) — use a wrapper script instead
+
+Common issues and how to fix them. If your problem isn't listed here, run [`ralph run`](cli.md#ralph-run) with `-n 1` — it validates your setup and shows clear errors.
 
 ## Setup issues
 
 ### "is not a directory, RALPH.md file, or installed ralph"
 
-Check path exists: `ls my-ralph/RALPH.md` or `ls .ralphify/ralphs/my-ralph/RALPH.md`
+The path you passed to [`ralph run`](cli.md#ralph-run) doesn't resolve to a valid ralph. The command accepts a **directory** containing `RALPH.md`, a **direct path** to a `RALPH.md` file, or the **name of an installed ralph** (from [`ralph add`](cli.md#ralph-add)):
+
+```bash
+ralph run my-ralph              # directory containing RALPH.md
+ralph run my-ralph/RALPH.md     # direct path to the file
+ralph run my-ralph              # installed ralph in .ralphify/ralphs/my-ralph/
+```
+
+If you're getting this error, check that the path exists and points to the right place:
+
+```bash
+ls my-ralph/RALPH.md                       # local ralph
+ls .ralphify/ralphs/my-ralph/RALPH.md      # installed ralph
+```
 
 ### "Missing or empty 'agent' field in RALPH.md frontmatter"
 
-Add `agent:` to your frontmatter.
+Your `RALPH.md` [frontmatter](writing-prompts.md#the-anatomy-of-a-good-ralphmd) is missing the `agent` field or it's an empty string. Add it:
+
+```markdown
+---
+agent: claude -p --dangerously-skip-permissions
+---
+```
 
 ### "Agent command 'claude' not found on PATH"
 
-Install the agent CLI or check your PATH.
+The agent CLI isn't installed or isn't in your shell's PATH. Verify by running `claude --version` directly. If it's installed but not found, check your PATH. See [supported agents](agents.md) for setup instructions.
 
 ## `ralph add` issues
 
 ### "Cannot parse source"
 
-Use: `owner/repo`, `owner/repo/ralph-name`, or a full GitHub URL.
+The source format wasn't recognized. [`ralph add`](cli.md#ralph-add) accepts these formats:
+
+```bash
+ralph add owner/repo                                        # shorthand
+ralph add owner/repo/ralph-name                             # specific ralph
+ralph add https://github.com/owner/repo                     # full URL
+ralph add https://github.com/owner/repo/tree/main/my-ralph  # URL copied from GitHub
+```
+
+The easiest way to add a ralph from GitHub is to navigate to the directory in your browser and copy the URL — it works directly with `ralph add`.
 
 ### "git clone failed"
 
-Check repo exists and you have access. Private repos require git credentials.
+The repository couldn't be cloned. Common causes:
 
-### "No RALPH.md found"
+- The repository doesn't exist or has a typo in the owner/repo name
+- The repository is **private** — `ralph add` uses `git clone` under the hood, so your local git credentials must have access. If you can `git clone https://github.com/owner/repo.git` manually, `ralph add` will work too.
 
-The repo was cloned but contains no RALPH.md files.
+### "No RALPH.md found" / "No ralph named '...' found"
+
+The repository was cloned successfully but no ralphs were found. Either the repo doesn't contain any `RALPH.md` files, or the ralph name you specified doesn't match any directory in the repo.
+
+### Re-running `ralph add` overwrites without warning
+
+If you `ralph add` a ralph that's already installed in `.ralphify/ralphs/`, the existing copy is replaced silently. This is by design — it's how you update an installed ralph to the latest version. If you've made local edits to an installed ralph, copy them elsewhere before re-adding.
 
 ## Loop issues
 
-### Agent hangs
+### Agent produces no output or seems to hang
 
-Test directly: `echo "Say hello" | claude -p`. Use `--timeout` to kill stalled iterations.
+Try running the [agent command](agents.md) directly to see if it works outside of ralphify:
+
+```bash
+echo "Say hello" | claude -p
+```
+
+If it hangs there too, the issue is with the agent CLI, not ralphify. If it works standalone but hangs via ralphify, try adding `--timeout` to kill stalled iterations:
+
+```bash
+ralph run my-ralph --timeout 300
+```
 
 ### Agent exits non-zero every iteration
 
-Use `--log-dir` and check logs. Common: missing auth, failing commands, prompt too large.
+Check the agent's output to understand why. Use `--log-dir` to capture output:
 
-### Agent doesn't commit
+```bash
+ralph run my-ralph -n 1 --log-dir ralph_logs
+cat ralph_logs/001_*.log
+```
 
-Add explicit commit instructions to the prompt. Ensure agent has git permissions.
+Common causes:
 
-### Loop runs too fast / no useful work
+- The agent CLI requires authentication that hasn't been set up
+- The prompt asks the agent to run a command that fails
+- The agent's context window is being exceeded by a very large prompt
 
-Check logs. Usually: vague prompt, no task source, or agent can't find work.
+If you want the loop to stop on errors instead of continuing, use `--stop-on-error`:
+
+```bash
+ralph run my-ralph --stop-on-error --log-dir ralph_logs
+```
+
+### Agent runs but doesn't commit
+
+Ralphify doesn't commit for the agent — committing is the agent's responsibility. Make sure your prompt includes explicit commit instructions:
+
+```markdown
+## Process
+- Run tests before committing
+- Commit with a descriptive message like `feat: add X`
+```
+
+Also ensure the agent has permission to run git commands. With Claude Code, the `--dangerously-skip-permissions` flag handles this.
+
+### Loop runs too fast / agent not doing anything useful
+
+If iterations finish in seconds with no meaningful work, the agent may be exiting without taking action. Check the logs with [`--log-dir`](cli.md#ralph-run):
+
+```bash
+ralph run my-ralph -n 1 --log-dir ralph_logs
+cat ralph_logs/001_*.log
+```
+
+Common causes:
+
+- The prompt is too vague — see [anti-patterns that waste iterations](writing-prompts.md#anti-patterns-that-waste-iterations)
+- There's no concrete task source (no TODO.md, PLAN.md, or failing tests to fix) — see [the TODO-driven loop](writing-prompts.md#the-todo-driven-loop)
+- The agent can't find what it's supposed to work on
 
 ## Frontmatter issues
 
-### Invalid characters in names
+### "Invalid YAML in frontmatter"
 
-Command and arg names: letters, digits, hyphens, underscores only.
+Your YAML frontmatter has a syntax error — usually a missing colon, bad indentation, or an unquoted special character. The error message includes the YAML parser's details:
 
-### Duplicate names
+```text
+Invalid YAML in frontmatter: while parsing a block mapping ...
+```
 
-Command and arg names must be unique.
+Common fixes:
 
-### Wrong types
+```yaml
+# ✗ Wrong — missing colon, bad indentation
+agent claude -p
+commands:
+- name: tests
+run: uv run pytest
 
-`args` must be a list of strings. `commands` must be a list of {name, run} mappings.
+# ✓ Correct
+agent: claude -p
+commands:
+  - name: tests
+    run: uv run pytest
+```
+
+If your value contains special YAML characters (`:`, `#`, `{`, `[`), wrap it in quotes:
+
+```yaml
+agent: "claude -p --dangerously-skip-permissions"
+```
+
+### "Frontmatter must be a YAML mapping"
+
+The frontmatter parsed as valid YAML but isn't a key-value mapping. This usually happens when the frontmatter is a plain string or a list instead of a mapping:
+
+```yaml
+# ✗ Wrong — this is a plain string, not a mapping
+---
+claude -p --dangerously-skip-permissions
+---
+
+# ✓ Correct — key: value pairs
+---
+agent: claude -p --dangerously-skip-permissions
+---
+```
+
+### "Command name contains invalid characters" / "Arg name contains invalid characters"
+
+Command names and arg names may only contain letters, digits, hyphens, and underscores (`a-z`, `A-Z`, `0-9`, `-`, `_`). Names with dots, spaces, or special characters are rejected because they can't be used in [`{{ commands. }}` or `{{ args. }}` placeholders](writing-prompts.md#ralph-context-placeholders).
+
+```yaml
+# ✗ Wrong — dots and spaces aren't allowed
+args: [my.focus, test subject]
+commands:
+  - name: my.tests
+    run: uv run pytest -x
+  - name: test suite
+    run: uv run pytest -x
+
+# ✓ Correct — use hyphens or underscores
+args: [my-focus, test_subject]
+commands:
+  - name: my-tests
+    run: uv run pytest -x
+  - name: test_suite
+    run: uv run pytest -x
+```
+
+### "Duplicate arg name" / "Duplicate command name"
+
+Arg names and command names must be unique within a single `RALPH.md`. Duplicates are rejected at startup:
+
+```yaml
+# ✗ Wrong — "tests" appears twice
+commands:
+  - name: tests
+    run: uv run pytest -x
+  - name: tests
+    run: uv run pytest tests/integration
+
+# ✓ Correct — use distinct names
+commands:
+  - name: unit-tests
+    run: uv run pytest -x
+  - name: integration-tests
+    run: uv run pytest tests/integration
+```
+
+The same applies to `args` — each name must appear only once.
+
+### "'commands' must be a list" or "'args' must be a list of strings"
+
+YAML scalars and lists look similar. A common mistake is writing a plain string where a list is expected:
+
+```yaml
+# ✗ Wrong — this is a string, not a list
+args: focus
+commands: uv run pytest -x
+
+# ✓ Correct — use list syntax
+args: [focus]
+commands:
+  - name: tests
+    run: uv run pytest -x
+```
+
+`args` must be a list of strings (`[focus]` or `- focus`). `commands` must be a list of `{name, run}` mappings.
 
 ## Command issues
 
-### Invalid syntax
+### "Command '...' has invalid syntax"
 
-Check quoting in `run` value. Use a script for complex commands.
+A command's `run` string has malformed shell syntax — usually an unmatched quote. The error message tells you which command failed:
 
-### Binary not found
+```text
+Command 'tests' has invalid syntax: 'uv run pytest -x "unclosed'. Check the 'commands' field in your RALPH.md frontmatter.
+```
 
-Verify binary exists. Use `uv run` prefix for virtual environment tools.
+Fix the quoting in the `run` value. If your command needs complex quoting, point it at a script instead — see [Command with pipes or redirections not working](#command-with-pipes-or-redirections-not-working).
 
-### Pipes or redirections not working
+### "Command '...' binary not found"
 
-Commands use `shlex.split()` — no shell features. Point to a script instead.
+A command in your `commands` field references a binary that isn't installed or isn't on your PATH. The error message tells you which command failed:
 
-### Command timeout
+```text
+Command 'lint' binary not found: 'mypy src/'. Check the 'commands' field in your RALPH.md frontmatter.
+```
 
-Default: 60 seconds. Increase with `timeout` field per command.
+Verify the binary exists by running it directly:
+
+```bash
+mypy --version
+```
+
+If it's installed in a virtual environment, prefix the command with `uv run` or the appropriate runner:
+
+```yaml
+commands:
+  - name: lint
+    run: uv run mypy src/
+```
+
+### Command with pipes or redirections not working
+
+Commands in the `run` field are parsed with `shlex` and run **directly** — not through a shell. Shell features like pipes (`|`), redirections (`2>&1`), chaining (`&&`), and variable expansion (`$VAR`) silently fail or produce unexpected results. See [shell features in commands](writing-prompts.md#shell-features-in-commands) for background.
+
+**Won't work:**
+
+```yaml
+commands:
+  - name: tests
+    run: pytest --tb=line -q 2>&1 | tail -20
+```
+
+**Fix:** Point the command at a script instead:
+
+```bash
+#!/bin/bash
+# scripts/run-tests.sh
+pytest --tb=line -q 2>&1 | tail -20
+```
+
+```bash
+chmod +x scripts/run-tests.sh
+```
+
+```yaml
+commands:
+  - name: tests
+    run: scripts/run-tests.sh
+```
+
+Commands without a `./` prefix run from the project root, so `scripts/run-tests.sh` resolves to `/scripts/run-tests.sh`. If you want to bundle the script next to your `RALPH.md`, use the `./` prefix instead — see [Working directory](how-it-works.md#2-run-commands) for details.
+
+### Command always failing
+
+Run the command manually to see if it works:
+
+```bash
+uv run pytest -x
+```
+
+If the command fails manually, the issue isn't with ralphify — fix the underlying test/lint failures first.
+
+Note that command output is included in the prompt **regardless of exit code**. A failing test command is often exactly what you want — the agent sees the failure and fixes it.
+
+### Command output looks truncated
+
+Each command has a default timeout of **60 seconds** (see [command timeouts](writing-prompts.md#command-timeouts)). If your command takes longer (a large test suite, a slow build), it's killed at the timeout and only the output captured so far is used. The agent sees incomplete output without knowing it was cut short.
+
+**Fix:** Increase the timeout for slow commands:
+
+```yaml
+commands:
+  - name: tests
+    run: uv run pytest -x
+    timeout: 300  # 5 minutes
+```
+
+You can also speed up the command itself — for example, running a subset of tests or filtering output via a [wrapper script](#command-with-pipes-or-redirections-not-working).
 
 ### Command output missing from prompt
 
-Check name matches exactly. Must be `commands` (plural), not `command`.
+If a `{{ commands.my-command }}` placeholder produces nothing in the prompt:
+
+1. Check the command name matches exactly: `{{ commands.my-command }}` requires a command with `name: my-command`
+2. Verify the command produces output by running it manually
+3. Must be `commands` (plural) — `{{ command.name }}` won't resolve
+
+**No output visible during iteration**
+    By default, agent output goes directly to the terminal. If you're using `--log-dir`, output is captured and then replayed — you'll still see it, but only after the iteration completes.
+
+**CLI flag validation errors**
+    ### "'-n' must be a positive integer"
+
+    The `-n` flag sets how many iterations to run. It must be at least 1:
+
+    ```bash
+    # ✗ Wrong
+    ralph run my-ralph -n 0
+
+    # ✓ Correct
+    ralph run my-ralph -n 1
+    ```
+
+    ### "'--delay' must be non-negative"
+
+    The `--delay` flag sets seconds to wait between iterations. It can be zero but not negative:
+
+    ```bash
+    # ✗ Wrong
+    ralph run my-ralph --delay -5
+
+    # ✓ Correct
+    ralph run my-ralph --delay 0
+    ralph run my-ralph --delay 30
+    ```
+
+    ### "'--timeout' must be a positive number"
+
+    The `--timeout` flag sets the per-iteration time limit in seconds. It must be greater than zero:
+
+    ```bash
+    # ✗ Wrong
+    ralph run my-ralph --timeout 0
+
+    # ✓ Correct
+    ralph run my-ralph --timeout 300
+    ```
 
 ## Common questions
 
 ### Can I run multiple loops in parallel?
 
-Yes, on separate branches. Or use RunManager from the Python API.
+Yes, but they should work on **separate branches** to avoid git conflicts:
+
+```bash
+# Terminal 1
+git checkout -b feature-a && ralph run feature-a-ralph
+
+# Terminal 2
+git checkout -b feature-b && ralph run feature-b-ralph
+```
+
+For programmatic control over concurrent runs, use the [Python API's `RunManager`](api.md#concurrent-runs-with-runmanager).
+
+### What files should I commit?
+
+| File / directory | Commit? | Why |
+|---|---|---|
+| `my-ralph/RALPH.md` | **Yes** | The ralph definition |
+| `my-ralph/*.sh` | **Yes** | Helper scripts referenced by commands |
+| `ralph_logs/` | **No** | Iteration logs — add to `.gitignore` |
 
 ### Can I edit RALPH.md while the loop runs?
 
-Yes. Prompt body is re-read every iteration. Frontmatter requires a restart.
+Yes. The prompt body (everything below the frontmatter) is re-read every iteration — edit the prompt text and changes take effect on the next cycle. Frontmatter fields (`agent`, `commands`, `args`) are parsed once at startup, so changing those requires restarting the loop.
 
-### How do I disable co-author credit?
+### How do I disable the co-author credit in commits?
 
-Set `credit: false` in frontmatter.
+By default, ralphify appends an instruction asking the agent to add `Co-authored-by: Ralphify ` to commit messages. To disable it, set `credit: false` in your RALPH.md frontmatter:
 
-### How do I make a ralph reusable?
+```yaml
+---
+agent: claude -p --dangerously-skip-permissions
+credit: false
+---
+```
 
-Use `args` to parameterize values: `ralph run my-ralph --dir ./api --focus "errors"`
+### How do I make a ralph reusable across projects?
+
+Use `args` to parameterize your ralph instead of hardcoding project-specific values:
+
+```markdown
+---
+agent: claude -p --dangerously-skip-permissions
+args: [dir, focus]
+commands:
+  - name: tests
+    run: uv run pytest {{ args.dir }}
+---
+
+Focus on {{ args.dir }}. Priority: {{ args.focus }}
+```
+
+```bash
+ralph run my-ralph --dir ./api --focus "error handling"
+ralph run my-ralph --dir ./frontend --focus "accessibility"
+```
+
+See [Parameterized ralphs](writing-prompts.md#parameterized-ralphs) for more patterns.
+
+## Getting more help
+
+1. Run `ralph run my-ralph -n 1` to validate your setup — it shows clear errors
+2. Use `ralph run my-ralph -n 1 --log-dir ralph_logs` to capture a single iteration for debugging
+3. Check the [CLI reference](cli.md) for all available options
+4. File an issue at [github.com/computerlovetech/ralphify](https://github.com/computerlovetech/ralphify/issues)
+
+## Next steps
+
+- [How it works](how-it-works.md) — understand the iteration lifecycle to debug more effectively
+- [Writing prompts](writing-prompts.md) — improve your RALPH.md to avoid common loop issues
+- [Cookbook](cookbook.md) — working examples you can adapt for your project
 
 ---
 
 # Changelog
 
+# Changelog
+
+All notable changes to ralphify are documented here.
+
 ## 0.3.0 — 2026-03-24
 
-- `ralph add` — install ralphs from GitHub
-- Two-stage Ctrl+C — graceful then force stop
-- Iteration monitor UI with Rich markdown rendering
-- Process group isolation for agent subprocesses
+### Added
+
+- **`ralph add` — install ralphs from GitHub** — share and reuse ralphs across projects. Run `ralph add owner/repo/ralph-name` to fetch a ralph from any GitHub repo and install it locally. Then just `ralph run ralph-name`. Supports installing a single ralph by name, an entire repo as a ralph, or all ralphs in a repo at once. Installed ralphs live in `.ralphify/ralphs/` (gitignored, disposable).
+- **Two-stage Ctrl+C** — first Ctrl+C gracefully finishes the current iteration, second Ctrl+C force-stops immediately. Agent subprocesses now run in their own process group for reliable cleanup.
+- **Iteration monitor UI** — iteration results are now rendered as markdown using Rich, with a polished run header and cleaner formatting. Thanks to [@malpou](https://github.com/malpou) for contributing this improvement.
+
+### Improved
+
+- **Process group isolation** — agent subprocesses (both streaming and blocking) now run in dedicated process groups, preventing zombie processes on timeout or cancellation.
+
+---
 
 ## 0.2.5 — 2026-03-22
 
-- ralph placeholders: `{{ ralph.name }}`, `{{ ralph.iteration }}`, `{{ ralph.max_iterations }}`
+### Added
+
+- **ralph placeholders** — ralphs can now access runtime metadata via `{{ ralph.name }}` (ralph directory name), `{{ ralph.iteration }}` (current iteration, 1-based), and `{{ ralph.max_iterations }}` (total iterations if `-n` was set, empty otherwise). No frontmatter configuration needed.
+
+---
 
 ## 0.2.4 — 2026-03-22
 
-- Fixed placeholder cross-contamination between args and commands
-- Helpful errors for missing binaries and invalid syntax
-- Fixed timed-out output not echoed, `--` separator, garbled output, frontmatter parsing edge cases
-- Fixed arg values with spaces, Windows streaming mode detection, empty arg values
+### Fixed
+
+- **Placeholder cross-contamination between args and commands** — when an arg value contained text like `{{ commands.tests }}`, the sequential resolution would re-process it as a command placeholder, injecting unrelated output. Placeholders are now resolved in a single pass so inserted values are never re-scanned.
+- **Helpful error when command binary is not found** — when a `commands` entry references a binary that isn't installed (e.g. `run: mypy src/`), the error now identifies which command failed and points to the `commands` field. Previously this surfaced as a generic crash with no context.
+- **Timed-out agent output not echoed when logging enabled** — when using `--log-dir` and the agent timed out, partial output was written to the log file but silently swallowed from the terminal. Both completion and timeout paths now echo consistently.
+- **`--` separator not ending flag parsing in user args** — `ralph run my-ralph -- --verbose ./src` now correctly treats `--verbose` as a positional value instead of parsing it as a flag.
+- **Command output garbled when stdout lacked trailing newline** — when a command's stdout didn't end with a newline and stderr was non-empty, the two streams were concatenated directly (e.g. `"test passedwarning: dep"`), producing garbled output in log files and `{{ commands.* }}` placeholder values.
+- **Indented `---` in YAML block scalars mistaken for closing frontmatter delimiter** — the frontmatter parser used `line.strip()` to detect the closing `---`, which caused indented `---` inside YAML block scalars (e.g. `notes: |` with `  ---` content) to be treated as the end of the frontmatter. Now only `---` at column 0 is recognized as the closing delimiter.
+- **Indented opening `---` delimiter accepted inconsistently** — the opening frontmatter delimiter check used `strip()` which accepted leading whitespace (e.g. `  ---`), while the closing delimiter required column 0. Both delimiters now require `---` at column 0 per the YAML frontmatter spec.
+- **Arg values with spaces breaking command execution** — when `{{ args.name }}` placeholders were substituted into command `run` strings, values containing spaces (e.g. `"hello world"`) were split into separate tokens by `shlex.split`, causing the wrong command to execute. Arg values are now shell-quoted before substitution so they are always treated as single tokens.
+- **Helpful error when command has invalid syntax** — when a command's `run` string has malformed shell syntax (e.g. unmatched quotes), the error now identifies which command failed and points to the `commands` field. Previously this surfaced as a bare `ValueError` like "No closing quotation" with no context.
+- **Empty arg values breaking `./` working directory detection** — when an `{{ args.name }}` placeholder resolved to an empty string, the substitution could introduce leading whitespace that prevented the `./` prefix from being detected, causing the command to run from the project root instead of the ralph directory.
+- **Windows `.cmd`/`.exe` extension breaking streaming mode detection** — on Windows, `claude` is installed as `claude.cmd` or `claude.exe`. The streaming mode check compared the full filename (including extension) against `"claude"`, so it never matched. Ralphify now compares the stem only, enabling real-time activity tracking on Windows.
+
+### Improved
+
+- **`BoundEmitter` convenience methods** — `log_info(message)` and `log_error(message, traceback=...)` let Python API users emit log events without constructing `Event` objects manually.
+- **Extracted `ProcessResult` base class** — `RunResult` and `AgentResult` now share a common base with consistent `success` / `timed_out` semantics, reducing duplication in `_runner.py` and `_agent.py`.
+- **Code quality** — extracted CLI validation helpers, renamed `resolver.py` to `_resolver.py` to match private module convention, deduplicated output echoing and timeout/blocking paths in `_agent.py`, extracted `ensure_str` helper for consistent bytes-to-string decoding.
+
+---
 
 ## 0.2.3 — 2026-03-21
 
-- Co-authored-by credit trailer (opt out with `credit: false`)
+### Added
+
+- **Co-authored-by credit trailer** — every prompt now includes an instruction telling the agent to add `Co-authored-by: Ralphify ` to commit messages. On by default; opt out with `credit: false` in RALPH.md frontmatter.
+
+### Improved
+
+- **Typed event payloads** — replaced `dict[str, Any]` event data with TypedDict classes throughout the engine and console emitter for stronger type safety.
+- **Code quality** — standardized imports, extracted constants, simplified TypedDicts with `NotRequired`.
+
+---
 
 ## 0.2.2 — 2026-03-21
 
-- `ralph init` command — scaffold without AI
+### Added
+
+- **`ralph init` command** — scaffold a new ralph with a ready-to-customize template, no AI agent required. Run `ralph init my-task` to create a directory with a `RALPH.md` that includes example commands, args, and placeholders. A faster alternative to the AI-guided `ralph new`.
+- **`ralphify-cowork` skill** — a Claude Cowork skill that lets non-technical users set up and run autonomous loops from plain English. Handles installation, ralph creation, running, and tweaking — no coding knowledge needed. Install it in Cowork from `skills/ralphify-cowork/`.
+
+---
 
 ## 0.2.1 — 2026-03-21
 
-- Fixed `{{ args.* }}` placeholders in command `run` strings
+### Fixed
+
+- **`{{ args.* }}` placeholders now resolved in command `run` strings** — previously, arg placeholders were only resolved in the prompt body. Commands like `run: gh issue view {{ args.issue }}` would fail because `shlex.split` tokenized the raw placeholder into multiple arguments. Args are now resolved before command execution.
+
+---
 
 ## 0.2.0 — 2026-03-21
 
-The v2 rewrite. A ralph is now a directory with a RALPH.md file. Removed ralph.toml, .ralphify/ directory, checks, contexts, and instructions. Everything lives in one file.
+The v2 rewrite. Ralphify is now simpler: a ralph is a directory with a `RALPH.md` file. No more `ralph.toml`, no more `.ralphify/` directory, no more `ralph init`. Everything lives in one file.
 
-## 0.1.x
+### Breaking changes
 
-See full changelog at https://ralphify.co/docs/changelog/
+- **Removed `ralph.toml`** — the agent command is now in the `agent` field of RALPH.md frontmatter. No separate configuration file.
+- **Removed `ralph init`** — create a ralph directory with a `RALPH.md` file manually, or use `ralph new`.
+- **Removed `.ralphify/` directory** — no more checks, contexts, or named ralphs as separate primitives. Everything is defined in RALPH.md.
+- **Removed checks and contexts** — replaced by `commands` in RALPH.md frontmatter. Commands run each iteration and their output is available via `{{ commands. }}` placeholders.
+- **`ralph run` requires a path** — `ralph run my-ralph` instead of `ralph run` with optional name. The argument is a path to a directory containing RALPH.md.
+- **Placeholder syntax changed** — `{{ contexts. }}` is now `{{ commands. }}`. The `{{ args. }}` syntax is unchanged.
+- **User arguments** — pass named flags to your ralph: `ralph run my-ralph --dir ./src`.
+
+### Added
+
+- **`commands` frontmatter field** — define commands that run each iteration directly in RALPH.md. Each command has a `name` and `run` field.
+- **Single-file configuration** — the `agent` field, commands, args, and prompt all live in one RALPH.md file.
+
+### Fixed
+
+- **Guard against double-starting a run** — `RunManager` now prevents the same run from being started twice.
+- **Eliminate TOCTOU race in RunManager** — `start_run` is now atomic to prevent race conditions in concurrent runs.
+- **UTF-8 encoding for all subprocess calls** — prevents encoding errors on systems with non-UTF-8 defaults.
+- **Stricter input validation** — reject whitespace-only agent fields, command names, command `run` values, and command strings. Validate negative delay, non-positive `max_iterations`, and timeout values. Validate `commands` field type and reject duplicate command names. Validate command `timeout` field in frontmatter.
+- **Clear command placeholders when no commands exist** — matches the existing behavior for args placeholders.
+- **Error handling for `os.execvp` in `ralph new`** — graceful error instead of unhandled exception when the agent binary is not found.
+
+### Improved
+
+- **Extensive test coverage** — added unit tests for `_agent.py`, `_events.py`, `ConsoleEmitter`, engine internals, streaming agent execution, command cwd logic, and frontmatter edge cases.
+- **Code quality** — extracted magic strings into named constants, consolidated duplicate test helpers, replaced lambda closures with `functools.partial`, and compiled module-level regexes in the resolver.
+
+### How to upgrade from 0.1.x
+
+1. **Move agent config into RALPH.md** — take the `command` and `args` from `ralph.toml` and combine them into the `agent` field in RALPH.md frontmatter.
+
+2. **Convert checks and contexts to commands** — each check/context becomes a command entry:
+
+    ```yaml
+    # Before (separate files):
+    # .ralphify/checks/tests/CHECK.md with command: uv run pytest -x
+    # .ralphify/contexts/git-log/CONTEXT.md with command: git log --oneline -10
+
+    # After (in RALPH.md frontmatter):
+    commands:
+      - name: tests
+        run: uv run pytest -x
+      - name: git-log
+        run: git log --oneline -10
+    ```
+
+3. **Update placeholders** — change `{{ contexts. }}` to `{{ commands. }}`.
+
+4. **Move RALPH.md into a directory** — create a directory for your ralph and put RALPH.md inside it.
+
+5. **Delete old files** — remove `ralph.toml` and the `.ralphify/` directory.
+
+6. **Update CLI usage** — `ralph run` becomes `ralph run `.
+
+---
+
+## 0.1.12 — 2026-03-20
+
+### Changed
+
+- **New tagline** — updated project tagline to "Stop stressing over not having an agent running. Ralph is always running" across CLI, PyPI, and docs.
+
+---
+
+## 0.1.11 — 2026-03-18
+
+### Improved
+
+- **`ralph new` runs without permission prompts** — Claude Code is now launched with `--dangerously-skip-permissions` so the AI-guided setup flow is uninterrupted.
+- **Simpler `ralph new` experience** — the skill no longer asks users about checks, contexts, or frontmatter. Just describe what you want to automate in plain English and the agent builds the ralph for you.
+- **`ralph new` knows about user arguments** — the skill can now suggest `{{ args.name }}` placeholders when a ralph would benefit from being reusable across projects.
+
+---
+
+## 0.1.10 — 2026-03-18
+
+### Added
+
+- **User arguments for ralphs** — pass `--name value` flags or positional args to `ralph run` and reference them in prompts with `{{ args.name }}` placeholders. Declare positional arg names in frontmatter with `args: [dir, focus]`. Context and check scripts receive user arguments as `RALPH_ARG_` environment variables.
+- **Quick reference page** — single-page cheat sheet covering CLI commands, directory structure, frontmatter fields, placeholders, and common patterns.
+- **Prompt writing guide** — best practices for writing effective RALPH.md prompts, including tips on scoping, context usage, and user arguments.
+- **"How it works" page** — explains the iteration lifecycle so users understand the system model.
+- **"When to use" guide** — helps users evaluate whether ralph loops fit their task.
+- **Agent comparison table** — side-by-side comparison of supported agents with output behavior notes.
+- **Expanded cookbook** — new recipes for Python, TypeScript, Rust, Go, bug fixing, codebase migration, and multi-ralph project setup.
+
+### Fixed
+
+- Malformed `ralph.toml` now shows a helpful error message instead of a raw `KeyError`.
+
+---
+
+## 0.1.9 — 2026-03-16
+
+Tightened the primitive system: global primitives are now opt-in, context placeholders must be named, and primitives are re-discovered every iteration.
+
+### Breaking changes
+
+- **Explicit primitive dependencies required** — global checks and contexts are no longer auto-applied to all ralphs. Each ralph must declare which global primitives it uses in its frontmatter (`checks: [lint, tests]`, `contexts: [git-log]`). Unknown names produce a clear error. ralph-local primitives still auto-apply.
+- **Named placeholders only** — the bulk `{{ contexts }}` placeholder and implicit append behavior have been removed. Each context must be referenced by name (`{{ contexts.git-log }}`). Contexts not referenced by a placeholder are excluded from the prompt.
+- **Removed `ralph status` command** — setup validation has been moved into `ralph run` startup, so a separate status command is no longer needed.
+
+### Added
+
+- **Live re-discovery** — primitives are re-discovered every iteration, so adding or editing a check, context, or ralph on disk takes effect on the next cycle without restarting the loop.
+
+---
+
+## 0.1.8 — 2026-03-16
+
+Redesigned `ralph new` with AI-guided setup, and added environment variables for scripts.
+
+### Added
+
+- **AI-guided `ralph new`** — `ralph new` now installs a skill into your agent (Claude Code or Codex) and launches an interactive session where the agent guides you through creating a complete ralph — prompt, checks, and contexts — via conversation. Replaces the old `ralph new check`/`ralph new context`/`ralph new ralph` scaffolding subcommands.
+- **`RALPH_NAME` environment variable** — context and check scripts now receive the name of the current ralph in `RALPH_NAME`, so scripts can adapt their behavior based on which ralph is running.
+
+---
+
+## 0.1.7 — 2026-03-12
+
+Simplified the CLI, added a spinner during iterations, and removed the experimental web dashboard to focus on the CLI experience.
+
+### Breaking changes
+
+- **Removed `ralph ui` subcommand and web dashboard** — the experimental web dashboard introduced in 0.1.6 has been removed.
+- **Removed `ralph ralphs` subcommand** — `ralph new ` is now shorthand for `ralph new ralph `.
+- **Removed instructions primitive** — the `instructions` primitive type introduced in 0.1.3 has been removed. Use contexts for injecting reusable rules into prompts instead.
+- **Removed ad-hoc prompts (`-p` flag)** — the `--prompt` / `-p` flag on `ralph run` has been removed.
+
+### Added
+
+- **Spinner with elapsed time** — iterations now show a live spinner with elapsed seconds.
+
+### Fixed
+
+- Agent result message is now displayed in CLI output after each iteration.
+- Raw Claude Code `stream-json` output no longer leaks to the terminal during iterations.
+
+---
+
+## 0.1.6 — 2026-03-12
+
+Named ralphs, ralph-scoped primitives, and live agent activity streaming.
+
+### Added
+
+- **Named ralphs** — save reusable, task-focused ralphs in `.ralphify/ralphs//RALPH.md` and switch between them with `ralph run `.
+- **Live agent activity streaming** — when the agent command is Claude Code, the engine auto-detects it and uses `--output-format stream-json` with `subprocess.Popen` for line-by-line streaming.
+- **Contributor docs** — new `docs/contributing/` section with a codebase map.
+
+### Fixed
+
+- `RUN_STOPPED` event now emits exactly once with the correct stop reason.
+- Windows compatibility fix for Unicode characters in terminal output.
+
+---
+
+## 0.1.5 — 2026-03-11
+
+Dashboard UI polish (experimental — dashboard removed in 0.1.7).
+
+---
+
+## 0.1.4 — 2026-03-11
+
+Ad-hoc prompts, better discoverability, and expanded cookbook recipes.
+
+### Added
+
+- **Ad-hoc prompts** — `ralph run -p "Fix the login bug"` passes a prompt directly on the command line.
+- **Rust and Go cookbook recipes** — complete copy-pasteable setups.
+
+---
+
+## 0.1.3 — 2026-03-10
+
+The primitives release. Checks, contexts, and instructions turn the basic loop into a self-healing feedback system.
+
+### Added
+
+- **Checks** — post-iteration validation scripts in `.ralphify/checks/`.
+- **Contexts** — dynamic data injection in `.ralphify/contexts/`.
+- **Instructions** — reusable prompt rules in `.ralphify/instructions/`.
+
+---
+
+## 0.1.2 — 2026-03-09
+
+Quality-of-life improvements for the core loop.
+
+### Added
+
+- `ralph status` command
+- `--timeout` / `-t` option
+- `--log-dir` / `-l` option
+- `--version` / `-V` flag
+- ASCII art startup banner
+
+---
+
+## 0.1.0 — 2026-03-09
+
+Initial release.
+
+### Added
+
+- `ralph init` — create `ralph.toml` and `RALPH.md` in your project
+- `ralph run` — the core autonomous loop: read prompt, pipe to agent, repeat
+- Iteration tracking with exit codes and duration
+- `--stop-on-error` / `-s`, `-n`, `--delay` / `-d`
+- Auto-detection of project type during `ralph init`
 
 ---
 
 # Contributing
 
+# Contributing
+
+Ralphify is open source (MIT) and welcomes contributions. This page covers everything you need to set up a development environment, run tests, and submit changes.
+
+For architecture details and codebase orientation, see the [Codebase Map](codebase-map.md).
+
 ## Development setup
+
+Clone the repository and install dependencies with [uv](https://docs.astral.sh/uv/):
 
 ```bash
 git clone https://github.com/computerlovetech/ralphify.git
 cd ralphify
 uv sync
+```
+
+This installs all runtime and dev dependencies (pytest, mkdocs, mkdocs-material) into a local virtual environment.
+
+Verify the setup by running the CLI from source:
+
+```bash
 uv run ralph --version
 ```
 
 ## Running tests
 
+The test suite uses pytest with one test file per source module:
+
 ```bash
-uv run pytest
-uv run pytest -x
+uv run pytest           # Run all tests
+uv run pytest -x        # Stop on first failure
+uv run pytest -v        # Verbose output
 ```
 
-Tests use temporary directories with no external dependencies.
+Tests use temporary directories and have no external dependencies — no API keys, no network access, no Docker.
 
-## Documentation
+When adding a new feature, add tests in the corresponding file. If you're adding a new module, create a matching `test_.py` file.
+
+## Working on documentation
+
+The docs site uses [MkDocs](https://www.mkdocs.org/) with the [Material](https://squidfunk.github.io/mkdocs-material/) theme.
+
+### Local preview
 
 ```bash
-uv run mkdocs serve        # Local preview at http://127.0.0.1:8000
-uv run mkdocs build --strict  # Build check (CI uses --strict)
+uv run mkdocs serve
+```
+
+This starts a local server at `http://127.0.0.1:8000` with live reload — edits to docs files appear instantly in the browser.
+
+### Build check
+
+```bash
+uv run mkdocs build --strict
+```
+
+The `--strict` flag treats warnings as errors. The CI pipeline uses this flag, so make sure your changes build cleanly before submitting.
+
+## Working on the website
+
+The deployed site combines a static **landing page** (`website/`) and the **MkDocs docs** (`docs/`). The `docs.yml` GitHub Actions workflow builds both and deploys them together to GitHub Pages.
+
+### Local preview
+
+Use the [justfile](https://github.com/casey/just) for common build tasks:
+
+```bash
+just docs-preview         # MkDocs dev server at http://127.0.0.1:8000
+just website-build        # Build the full combined site to _site/
+just website-preview      # Build + serve at http://127.0.0.1:8080
 ```
 
 ## Submitting changes
 
-1. Fork and branch from main
-2. Make focused, atomic commits
-3. Run tests: `uv run pytest`
-4. Check docs if changed: `uv run mkdocs build --strict`
-5. Open a PR with clear description
+1. **Fork and branch** — create a feature branch from `main`:
 
-Commit message style: `docs: explain X`, `feat: add X so users can Y`, `fix: resolve X that caused Y`
+    ```bash
+    git checkout -b my-feature
+    ```
+
+2. **Make your changes** — keep commits focused and atomic.
+
+3. **Run tests** — make sure all tests pass:
+
+    ```bash
+    uv run pytest
+    ```
+
+4. **Check the docs** — if you changed anything in `docs/` or `mkdocs.yml`:
+
+    ```bash
+    uv run mkdocs build --strict
+    ```
+
+5. **Open a pull request** against `main` with a clear description of what you changed and why.
+
+### Commit messages
+
+The project uses descriptive commit messages that explain the user benefit:
+
+```text
+docs: explain X for users who want to Y
+feat: add X so users can Y
+fix: resolve X that caused Y
+```
+
+Look at `git log --oneline` for examples of the style.
 
 ## Dependencies
 
-Runtime: typer, rich, pyyaml. Minimal by design — prefer stdlib.
+Ralphify is minimal by design:
+
+- **Runtime:** `typer` (CLI framework), `rich` (terminal formatting), and `pyyaml` (YAML frontmatter parsing)
+- **Dev:** `pytest`, `mkdocs`, `mkdocs-material`
+
+Think carefully before adding a new dependency. If it can be done with the standard library, prefer that.
+
+## Release process
+
+Releases are published to PyPI automatically when a GitHub release is created:
+
+1. Update the version in `pyproject.toml`
+2. Create a GitHub release with a tag matching the version (e.g. `v0.2.0`)
+3. The `publish.yml` workflow runs tests, builds the package, verifies the version matches the tag, and publishes to PyPI
+
+Docs deploy automatically to GitHub Pages on every push to `main` that changes files in `docs/` or `mkdocs.yml`.
+
+---
+
+# Codebase Map
+
+# Codebase Map
+
+Quick orientation guide for anyone working on this codebase — human contributors and AI coding agents alike.
+
+## What this project is
+
+Ralphify is a CLI tool (`ralph`) that runs AI coding agents in autonomous loops. It reads a RALPH.md file from a ralph directory, runs commands, assembles a prompt with the output, pipes it to an agent command via stdin, waits for it to finish, then repeats. Each iteration gets a fresh context window. Progress is tracked through git commits.
+
+The core loop is simple. The complexity lives in **prompt assembly** — running commands and resolving placeholders into the prompt before each iteration.
+
+## Directory structure
+
+```
+src/ralphify/           # All source code
+├── __init__.py         # Version detection + app entry point
+├── cli.py              # CLI commands (run, new, init) — delegates to engine for the loop
+├── engine.py           # Core run loop orchestration with structured event emission
+├── manager.py          # Multi-run orchestration (concurrent runs via threads)
+├── _resolver.py        # Template placeholder resolution ({{ commands.* }}, {{ args.* }}, {{ ralph.* }})
+├── _agent.py           # Run agent subprocesses (streaming + blocking modes, log writing)
+├── _run_types.py       # RunConfig, RunState, RunStatus, Command — shared data types
+├── _runner.py          # Execute shell commands with timeout and capture output
+├── _frontmatter.py     # Parse YAML frontmatter from RALPH.md, marker constants
+├── _source.py          # GitHub source parsing and git-based ralph fetching for `ralph add`
+├── _skills.py          # Skill installation and agent detection for `ralph new`
+├── _console_emitter.py # Rich console renderer for run-loop events (ConsoleEmitter)
+├── _events.py          # Event types, emitter protocol, and BoundEmitter convenience wrapper
+├── _output.py          # ProcessResult base class, combine stdout+stderr, format durations
+└── skills/             # Bundled skill definitions (installed into agent skill dirs)
+    └── new-ralph/      # AI-guided ralph creation skill for `ralph new`
+
+tests/                  # Pytest tests — one test file per module
+docs/                   # MkDocs site (Material theme) — user-facing documentation
+docs/contributing/      # Contributor documentation (this section)
+.github/workflows/
+├── test.yml            # Run tests on push to main and PRs (Python 3.11–3.13)
+├── docs.yml            # Deploy docs to GitHub Pages on push to main
+└── publish.yml         # Publish to PyPI on release (with test gate)
+```
+
+## Architecture: how the pieces connect
+
+The CLI entry point is `cli.py:run()`, which parses options, reads the ralph directory path, and delegates to `engine.py:run_loop()` for the actual iteration cycle. The engine emits structured events via an `EventEmitter`, making the same loop reusable from both the CLI and any external orchestration layer (such as `manager.py`).
+
+```
+ralph run my-ralph
+  │
+  ├── cli.py:run() — parse options, print banner
+  │   ├── Read RALPH.md from the given directory
+  │   ├── Parse frontmatter (agent, commands, args)
+  │   └── Build RunConfig and call engine.run_loop()
+  │
+  └── engine.py:run_loop(config, state, emitter)
+       └── Loop:
+            ├── Re-read RALPH.md from disk
+            ├── Run commands → capture output
+            ├── Resolve {{ commands.* }}, {{ args.* }}, and {{ ralph.* }} placeholders
+            ├── Pipe assembled prompt to agent command via subprocess
+            ├── Emit iteration events (started, completed, failed, timed_out)
+            ├── Handle pause/resume/stop requests via RunState
+            └── Repeat
+```
+
+### Placeholder resolution
+
+The resolver (`_resolver.py`) handles three placeholder kinds: `{{ commands. }}`, `{{ args. }}`, and `{{ ralph. }}`. Two functions:
+
+- **`resolve_all()`** — resolves all three placeholder kinds in a **single pass** so that a value inserted by one kind (e.g., an arg value containing `{{ commands.foo }}`) is never re-processed as the other kind. Used by the engine for final prompt assembly. The `ralph.*` placeholders (`ralph.name`, `ralph.iteration`, `ralph.max_iterations`) provide runtime metadata and require no frontmatter configuration.
+- **`resolve_args()`** — resolves only `{{ args. }}` placeholders. Used by the engine to expand arg references inside command `run` strings before executing them.
+
+Unmatched placeholders resolve to empty string in both functions.
+
+### Event system
+
+The run loop communicates via structured events (`_events.py`). Each event has a type (`EventType` enum), run ID, typed data payload, and UTC timestamp.
+
+Event data uses TypedDict classes — one per event type — rather than free-form dicts. The key types:
+
+- **`RunStartedData`** / **`RunStoppedData`** — run lifecycle (stop reason is a `StopReason` literal: `"completed"`, `"error"`, `"user_requested"`)
+- **`IterationStartedData`** / **`IterationEndedData`** — per-iteration data (return code, duration, log path)
+- **`CommandsStartedData`** / **`CommandsCompletedData`** — command execution bookends
+- **`PromptAssembledData`** — prompt length after placeholder resolution
+- **`AgentActivityData`** — streaming agent output
+- **`LogMessageData`** — info/error messages with optional traceback
+
+All payload types are unioned as `EventData`.
+
+Emitter implementations:
+
+- **`EventEmitter`** — protocol that any listener implements (just an `emit(event)` method)
+- **`NullEmitter`** — discards events (used in tests)
+- **`QueueEmitter`** — pushes events into a `queue.Queue` for async consumption
+- **`FanoutEmitter`** — broadcasts events to multiple emitters
+- **`BoundEmitter`** — wraps any emitter with a fixed run ID, so callers don't have to pass the ID on every emit. The engine creates one per run and threads it through all internal functions.
+
+The CLI uses a `ConsoleEmitter` (defined in `_console_emitter.py`) that renders events to the terminal with Rich formatting.
+
+### Multi-run management
+
+`manager.py:RunManager` orchestrates concurrent runs:
+
+- Creates runs with unique IDs and wraps them in `ManagedRun` (config + state + emitter + thread)
+- Starts each run in a daemon thread via `engine.run_loop()`
+- Supports pause/resume/stop per run via `RunState` thread-safe control methods
+- Uses `FanoutEmitter` to broadcast events to multiple listeners
+
+## Key files to understand first
+
+1. **`engine.py`** — The core run loop. Uses `RunConfig` and `RunState` (from `_run_types.py`) and `EventEmitter`. This is where iteration logic lives.
+2. **`_run_types.py`** — `RunConfig`, `RunState`, `RunStatus`, and `Command`. These are the shared data types used by the engine, CLI, and manager.
+3. **`cli.py`** — All CLI commands. Validates frontmatter fields via extracted helpers (`_validate_agent`, `_validate_commands`, `_validate_credit`, `_validate_run_options`, `_validate_declared_args`), builds a `RunConfig`, and delegates to `engine.run_loop()` for the actual loop. Terminal event rendering lives in `_console_emitter.py`.
+4. **`_frontmatter.py`** — YAML frontmatter parsing. Extracts `agent`, `commands`, `args` from the RALPH.md file.
+5. **`_resolver.py`** — Template placeholder logic. Small file but critical.
+6. **`_skills.py`** + **`skills/`** — The skill system behind `ralph new`. `_skills.py` handles agent detection, reads bundled skill definitions from `skills/`, installs them into the agent's skill directory, and builds the command to launch the agent.
+
+## Traps and gotchas
+
+### If you change frontmatter fields...
+
+Frontmatter parsing is in `_frontmatter.py:parse_frontmatter()`, which returns a raw dict. Each field is then validated and coerced by a dedicated helper in `cli.py` — e.g. `_validate_agent()`, `_validate_commands()`, `_validate_credit()`. Adding a new frontmatter field means adding a new validator in `cli.py` and wiring it into `_build_run_config()`.
+
+**Field name constants** (`FIELD_AGENT`, `FIELD_COMMANDS`, `FIELD_ARGS`, `FIELD_CREDIT`, `CMD_FIELD_NAME`, `CMD_FIELD_RUN`, `CMD_FIELD_TIMEOUT`) are centralized in `_frontmatter.py`. Always import these constants instead of hardcoding strings like `"agent"` or `"commands"` — this keeps error messages, validation, and placeholder resolution in sync when fields are renamed.
+
+### If you add a new CLI command...
+
+Add it in `cli.py`. The CLI uses Typer. Update `docs/cli.md` to document the new command.
+
+### If you change the event system...
+
+Events are defined in `_events.py:EventType`, with a corresponding TypedDict payload class for each type. Adding a new event type requires a new `EventType` member, a new TypedDict payload class, adding it to the `EventData` union, and handling it in `ConsoleEmitter` (`_console_emitter.py`).
+
+### Credit trailer
+
+When `credit` is `true` (the default), `engine.py:_assemble_prompt()` appends `_CREDIT_INSTRUCTION` to the prompt — a short instruction telling the agent to include a `Co-authored-by: Ralphify` trailer in git commits. Users can opt out with `credit: false` in frontmatter.
+
+### Subprocess result types
+
+`_output.py` defines `ProcessResult`, the base dataclass for subprocess results (provides `returncode`, `timed_out`, and a `success` property). Both `_runner.py:RunResult` (command execution) and `_agent.py:AgentResult` (agent execution) extend it. If you add a new subprocess wrapper, inherit from `ProcessResult` to get consistent success/timeout semantics. The module also provides `ensure_str()` for bytes-to-string decoding, `collect_output()` for combining stdout+stderr, and `SUBPROCESS_TEXT_KWARGS` — the shared kwargs dict used by all `subprocess.Popen` calls to ensure consistent encoding and stream handling.
+
+### If you change shutdown or signal handling...
+
+Agent subprocesses run in their own process group (`start_new_session=True` on POSIX, configured via `_SESSION_KWARGS` in `_agent.py`). This lets `_kill_process_group()` send signals to the agent and all its children at once.
+
+The two-stage Ctrl+C flow:
+
+1. **First Ctrl+C** — the engine's SIGINT handler sets `RunState.stop_requested`, which lets the current iteration finish gracefully.
+2. **Second Ctrl+C** — `KeyboardInterrupt` propagates normally and the agent process is killed.
+
+Timeout and cancellation both use a two-step kill: SIGTERM first, then SIGKILL after `_SIGTERM_GRACE_PERIOD` seconds (3s). If you add a new subprocess wrapper, use `_kill_process_group()` and `_SESSION_KWARGS` to get consistent cleanup behavior.
+
+### Command parsing
+
+Commands in RALPH.md frontmatter are parsed with `shlex.split()` — no shell features. For shell features, users point the `run` field at a script.
+
+## Testing
+
+```bash
+uv run pytest           # Run all tests
+uv run pytest -x        # Stop on first failure
+```
+
+Tests are in `tests/` with one file per module. All tests use temporary directories and don't require any external services.
+
+## Dependencies
+
+Minimal by design:
+
+- **typer** — CLI framework
+- **rich** — Terminal formatting (used via typer's console)
+- **pyyaml** — YAML frontmatter parsing in `_frontmatter.py`
+
+Dev dependencies: pytest, mkdocs, mkdocs-material.

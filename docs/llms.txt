@@ -82,6 +82,9 @@ Embed the loop in automation pipelines. See the API docs for details.
 - [Python API](https://ralphify.co/docs/api/): Programmatic usage
 - [Quick Reference](https://ralphify.co/docs/quick-reference/): Cheat sheet
 - [Troubleshooting](https://ralphify.co/docs/troubleshooting/): Common issues and fixes
+- [Changelog](https://ralphify.co/docs/changelog/): Release history
+- [Contributing](https://ralphify.co/docs/contributing/): How to contribute
+- [Codebase Map](https://ralphify.co/docs/contributing/codebase-map/): Architecture and module guide
 
 ## Source
 
