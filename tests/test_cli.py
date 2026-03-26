@@ -1,7 +1,8 @@
 """Tests for the CLI."""
 
+import signal
 import subprocess
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 import pytest
 import typer
@@ -893,82 +894,56 @@ class TestAdd:
 
 
 class TestTwoStageCtrlC:
-    """Test the two-stage Ctrl+C signal handler installed by the run command."""
+    """Test the two-stage Ctrl+C signal handler installed by the run command.
 
-    def test_first_sigint_calls_request_stop(self):
-        """First Ctrl+C should call state.request_stop() and not raise."""
-        import signal
-        from unittest.mock import MagicMock
-        from ralphify._run_types import RunState, generate_run_id
+    These tests invoke the actual ``run`` CLI command and trigger the real
+    SIGINT handler closure defined inside it (cli.py lines 522-530).
+    """
 
-        state = RunState(run_id=generate_run_id())
-        console = MagicMock()
+    @patch(MOCK_WHICH, return_value="/usr/bin/claude")
+    def test_first_sigint_calls_request_stop(self, mock_which, tmp_path, monkeypatch):
+        """First Ctrl+C should call state.request_stop() and print a message."""
+        monkeypatch.chdir(tmp_path)
+        ralph_dir = make_ralph(tmp_path)
 
-        ctrl_c_count = 0
-        original_handler = signal.getsignal(signal.SIGINT)
+        captured_handler = {}
 
-        def _sigint_handler(signum, frame):
-            nonlocal ctrl_c_count
-            ctrl_c_count += 1
-            if ctrl_c_count == 1:
-                state.request_stop()
-                console.print("\n[yellow]Finishing current iteration… (Ctrl+C again to force stop)[/yellow]")
-            else:
-                signal.signal(signal.SIGINT, original_handler)
-                raise KeyboardInterrupt
-
-        signal.signal(signal.SIGINT, _sigint_handler)
-        try:
-            # Simulate first Ctrl+C
-            _sigint_handler(signal.SIGINT, None)
+        def fake_run_loop(config, state, emitter=None):
+            # Capture the installed SIGINT handler, then invoke it
+            captured_handler["fn"] = signal.getsignal(signal.SIGINT)
+            captured_handler["fn"](signal.SIGINT, None)
+            # After first Ctrl+C the loop should see stop_requested
             assert state.stop_requested is True
-            assert ctrl_c_count == 1
-            console.print.assert_called_once()
-            assert "Finishing current iteration" in console.print.call_args[0][0]
-        finally:
-            signal.signal(signal.SIGINT, original_handler)
 
-    def test_second_sigint_raises_keyboard_interrupt(self):
+        with patch("ralphify.cli.run_loop", side_effect=fake_run_loop):
+            result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
+
+        assert result.exit_code == 0
+        assert "Finishing current iteration" in result.output
+
+    @patch(MOCK_WHICH, return_value="/usr/bin/claude")
+    def test_second_sigint_raises_keyboard_interrupt(self, mock_which, tmp_path, monkeypatch):
         """Second Ctrl+C should raise KeyboardInterrupt."""
-        import signal
-        from unittest.mock import MagicMock
-        from ralphify._run_types import RunState, generate_run_id
+        monkeypatch.chdir(tmp_path)
+        ralph_dir = make_ralph(tmp_path)
 
-        state = RunState(run_id=generate_run_id())
-        console = MagicMock()
+        def fake_run_loop(config, state, emitter=None):
+            handler = signal.getsignal(signal.SIGINT)
+            # First Ctrl+C — graceful stop
+            handler(signal.SIGINT, None)
+            # Second Ctrl+C — force stop
+            handler(signal.SIGINT, None)
 
-        ctrl_c_count = 0
-        original_handler = signal.getsignal(signal.SIGINT)
+        with patch("ralphify.cli.run_loop", side_effect=fake_run_loop):
+            result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
 
-        def _sigint_handler(signum, frame):
-            nonlocal ctrl_c_count
-            ctrl_c_count += 1
-            if ctrl_c_count == 1:
-                state.request_stop()
-                console.print("\n[yellow]Finishing current iteration… (Ctrl+C again to force stop)[/yellow]")
-            else:
-                signal.signal(signal.SIGINT, original_handler)
-                raise KeyboardInterrupt
-
-        signal.signal(signal.SIGINT, _sigint_handler)
-        try:
-            # First Ctrl+C — graceful
-            _sigint_handler(signal.SIGINT, None)
-            assert ctrl_c_count == 1
-
-            # Second Ctrl+C — force
-            with pytest.raises(KeyboardInterrupt):
-                _sigint_handler(signal.SIGINT, None)
-            assert ctrl_c_count == 2
-        finally:
-            signal.signal(signal.SIGINT, original_handler)
+        # KeyboardInterrupt surfaces as exit code 130 (128 + SIGINT)
+        assert result.exit_code != 0
 
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     @patch(MOCK_WHICH, return_value="/usr/bin/claude")
     def test_run_command_restores_original_handler(self, mock_which, mock_run, tmp_path, monkeypatch):
         """Signal handler should be restored after run_loop finishes."""
-        import signal
-
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
         original = signal.getsignal(signal.SIGINT)
