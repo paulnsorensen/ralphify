@@ -34,6 +34,7 @@ theme:
     - navigation.tracking
     - navigation.tabs
     - navigation.tabs.sticky
+    - navigation.indexes
     - navigation.sections
     - navigation.path
     - navigation.top
@@ -120,5 +121,5 @@ nav:
     - Troubleshooting: troubleshooting.md
     - Changelog: changelog.md
   - Contributing:
-    - Overview: contributing/index.md
+    - contributing/index.md
     - Codebase Map: contributing/codebase-map.md
