@@ -6,9 +6,12 @@ keywords: autonomous coding loop lifecycle, how AI coding agents work, self-heal
 
 # How the ralph loop works
 
+!!! tldr "TL;DR"
+    Each iteration: re-read `RALPH.md` from disk → run commands → replace `{{ placeholders }}` with output → pipe the assembled prompt to the agent → agent works and exits → repeat. The prompt body is re-read every iteration (so you can edit it live), but frontmatter is parsed once at startup. Failed commands still capture output — that's what makes the loop self-healing.
+
 What happens inside each iteration of an autonomous coding loop? This page breaks down the lifecycle — from command execution to prompt assembly to agent piping — so you can write better prompts, debug unexpected behavior, and understand the self-healing feedback cycle.
 
-## What happens in each iteration
+## The six steps of each iteration
 
 Every iteration follows the same sequence:
 
@@ -87,7 +90,7 @@ When the agent command starts with `claude`, ralphify automatically adds `--outp
 
 The loop starts the next iteration from step 1. The RALPH.md is re-read, commands run again with fresh output, and the agent gets a new prompt reflecting the current state of the codebase.
 
-## What changes between iterations
+## What gets re-read vs. what stays fixed
 
 | What | When read | Why it matters |
 |---|---|---|
@@ -96,7 +99,7 @@ The loop starts the next iteration from step 1. The RALPH.md is re-read, command
 | Frontmatter (`agent`, `commands`, `args`) | Once at startup | Parsed when the loop starts. Restart to pick up changes. |
 | User arguments | Once at startup | Passed via CLI flags, constant for the run |
 
-## The self-healing feedback loop in action
+## How broken code gets fixed automatically
 
 Here's a concrete example. Given this `RALPH.md`:
 
@@ -167,7 +170,7 @@ If tests are failing, fix them first.
 
 The agent sees the test failure and the instruction to fix it first. This is the **self-healing feedback loop**: the agent breaks something, the command captures the failure, and the agent sees it in the next iteration.
 
-## How commands run in sequence
+## Command execution order and failure handling
 
 Commands run in the order they appear in the `commands` list in the RALPH.md frontmatter. All commands run regardless of whether earlier commands fail.
 
@@ -181,7 +184,7 @@ commands:
     run: git log --oneline -10
 ```
 
-## When does the loop stop
+## How to stop the loop (Ctrl+C, limits, and errors)
 
 The loop continues until one of these happens:
 
