@@ -1,14 +1,14 @@
 ---
-title: How Ralph Loops Work
-description: Understand what happens inside each iteration of a ralph loop — command execution, prompt assembly, agent piping, and the self-healing feedback cycle.
-keywords: ralph loop, iteration lifecycle, self-healing loop, agent feedback cycle, prompt assembly, autonomous coding architecture
+title: How Autonomous AI Coding Loops Work — The Ralph Loop Lifecycle
+description: Step-by-step breakdown of what happens inside each ralph loop iteration — command execution, prompt assembly, agent piping, and the self-healing feedback cycle that auto-fixes broken code.
+keywords: autonomous coding loop lifecycle, how AI coding agents work, self-healing code loop, AI agent feedback cycle, prompt assembly pipeline, ralph loop architecture, agentic coding workflow
 ---
 
-# How it works
+# How the ralph loop works
 
-This page explains what ralphify does under the hood during each iteration. Understanding the lifecycle helps you write better prompts, debug unexpected behavior, and make informed decisions about commands.
+What happens inside each iteration of an autonomous coding loop? This page breaks down the lifecycle — from command execution to prompt assembly to agent piping — so you can write better prompts, debug unexpected behavior, and understand the self-healing feedback cycle.
 
-## The iteration lifecycle
+## What happens in each iteration
 
 Every iteration follows the same sequence:
 
@@ -26,13 +26,13 @@ flowchart TD
 
 Here's what happens at each step.
 
-### 1. Re-read RALPH.md
+### 1. Re-read the prompt from disk
 
 The prompt body (everything below the frontmatter) is read from disk **every iteration**. This means you can edit the prompt text — add rules, change the task, adjust constraints — while the loop is running. Changes take effect on the next cycle.
 
 Frontmatter fields (`agent`, `commands`, `args`) are parsed once at startup. To change those, restart the loop.
 
-### 2. Run commands
+### 2. Run commands and capture output
 
 Each command defined in the `commands` frontmatter runs in order and captures its output (stdout + stderr). Commands run from the **project root** by default. Commands starting with `./` run relative to the **ralph directory** instead — useful for scripts bundled alongside your `RALPH.md`.
 
@@ -47,7 +47,7 @@ commands:
     timeout: 300  # 5 minutes
 ```
 
-### 3. Resolve placeholders
+### 3. Resolve placeholders with command output
 
 Each `{{ commands.<name> }}` placeholder in the prompt body is replaced with the corresponding command's output. **Only commands referenced by a placeholder appear in the prompt** — if you define a command but don't use `{{ commands.<name> }}` for it, the command still runs every iteration but its output is excluded. This forces you to place data deliberately rather than accidentally dumping everything into the prompt.
 
@@ -63,7 +63,7 @@ These are useful for iteration-aware prompts — for example, telling the agent 
 
 Unmatched placeholders resolve to an empty string — you won't see raw `{{ }}` text in the assembled prompt.
 
-### 4. Assemble the prompt
+### 4. Assemble the final prompt
 
 The prompt body (everything below the YAML frontmatter in `RALPH.md`) with all placeholders resolved becomes the fully assembled prompt — a single text string ready for the agent.
 
@@ -71,7 +71,7 @@ HTML comments (`<!-- ... -->`) are stripped during assembly — they never reach
 
 By default, ralphify appends a **co-author trailer instruction** to the end of the prompt, asking the agent to include `Co-authored-by: Ralphify <noreply@ralphify.co>` in its commit messages. This gives visibility into which commits were produced by a ralph loop. To disable it, set `credit: false` in the frontmatter.
 
-### 5. Pipe prompt to agent
+### 5. Pipe the prompt to the AI agent
 
 The assembled prompt is piped to the agent command via stdin:
 
@@ -83,11 +83,11 @@ The agent reads the prompt, does work in the current directory (edits files, run
 
 When the agent command starts with `claude`, ralphify automatically adds `--output-format stream-json --verbose` to enable structured streaming. This lets ralphify track agent activity in real time — you don't need to configure this yourself.
 
-### 6. Repeat
+### 6. Loop back with fresh context
 
 The loop starts the next iteration from step 1. The RALPH.md is re-read, commands run again with fresh output, and the agent gets a new prompt reflecting the current state of the codebase.
 
-## What gets re-read each iteration
+## What changes between iterations
 
 | What | When read | Why it matters |
 |---|---|---|
@@ -96,7 +96,7 @@ The loop starts the next iteration from step 1. The RALPH.md is re-read, command
 | Frontmatter (`agent`, `commands`, `args`) | Once at startup | Parsed when the loop starts. Restart to pick up changes. |
 | User arguments | Once at startup | Passed via CLI flags, constant for the run |
 
-## How prompt assembly looks in practice
+## The self-healing feedback loop in action
 
 Here's a concrete example. Given this `RALPH.md`:
 
@@ -167,7 +167,7 @@ If tests are failing, fix them first.
 
 The agent sees the test failure and the instruction to fix it first. This is the **self-healing feedback loop**: the agent breaks something, the command captures the failure, and the agent sees it in the next iteration.
 
-## Command execution order
+## How commands run in sequence
 
 Commands run in the order they appear in the `commands` list in the RALPH.md frontmatter. All commands run regardless of whether earlier commands fail.
 
@@ -181,7 +181,7 @@ commands:
     run: git log --oneline -10
 ```
 
-## Stop conditions
+## When does the loop stop
 
 The loop continues until one of these happens:
 

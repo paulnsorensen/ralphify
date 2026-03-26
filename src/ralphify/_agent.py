@@ -57,32 +57,52 @@ _SESSION_KWARGS: dict[str, Any] = (
 )
 
 
+def _try_graceful_group_kill(proc: subprocess.Popen[Any]) -> bool:
+    """Attempt to kill the process via its POSIX process group.
+
+    Sends SIGTERM, waits briefly, then escalates to SIGKILL if needed.
+    Only acts when the process is a session leader (pgid == pid) to avoid
+    accidentally killing the caller's group in tests.
+
+    Returns ``True`` if the group kill succeeded, ``False`` if the caller
+    should fall back to ``proc.kill()``.
+    """
+    try:
+        pgid = os.getpgid(proc.pid)
+    except (OSError, ProcessLookupError):
+        return False
+
+    if pgid != proc.pid:
+        return False
+
+    try:
+        os.killpg(pgid, signal.SIGTERM)
+    except (OSError, ProcessLookupError):
+        return False
+
+    try:
+        proc.wait(timeout=_SIGTERM_GRACE_PERIOD)
+        return True
+    except subprocess.TimeoutExpired:
+        pass
+
+    try:
+        os.killpg(pgid, signal.SIGKILL)
+        return True
+    except (OSError, ProcessLookupError):
+        return False
+
+
 def _kill_process_group(proc: subprocess.Popen[Any]) -> None:
     """Kill the agent process and its entire process group.
 
-    On POSIX, sends SIGTERM then SIGKILL to the process group — but only when
-    the process is actually a session leader (its pgid equals its pid).  This
-    guard prevents accidentally killing the *caller's* process group when the
-    child was not started with ``start_new_session=True`` (e.g. in tests).
-    Falls back to ``proc.kill()`` on Windows or if the group kill fails.
+    On POSIX, attempts a graceful group kill (SIGTERM → SIGKILL) via
+    :func:`_try_graceful_group_kill`.  Falls back to ``proc.kill()``
+    on Windows, when the process already exited, or if the group kill fails.
     """
     if not IS_WINDOWS and proc.poll() is None:
-        try:
-            pgid = os.getpgid(proc.pid)
-        except (OSError, ProcessLookupError):
-            pgid = None
-
-        if pgid == proc.pid:
-            try:
-                os.killpg(pgid, signal.SIGTERM)
-                try:
-                    proc.wait(timeout=_SIGTERM_GRACE_PERIOD)
-                    return
-                except subprocess.TimeoutExpired:
-                    os.killpg(pgid, signal.SIGKILL)
-                    return
-            except (OSError, ProcessLookupError):
-                pass
+        if _try_graceful_group_kill(proc):
+            return
     proc.kill()
 
 

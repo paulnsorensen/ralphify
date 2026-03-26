@@ -2721,7 +2721,7 @@ commands:
     run: scripts/run-tests.sh
 ```
 
-Commands without a `./` prefix run from the project root, so `scripts/run-tests.sh` resolves to `/scripts/run-tests.sh`. If you want to bundle the script next to your `RALPH.md`, use the `./` prefix instead — see [Working directory](how-it-works.md#2-run-commands) for details.
+Commands without a `./` prefix run from the project root, so `scripts/run-tests.sh` resolves to `/scripts/run-tests.sh`. If you want to bundle the script next to your `RALPH.md`, use the `./` prefix instead — see [Working directory](how-it-works.md#2-run-commands-and-capture-output) for details.
 
 ### Command always failing
 
