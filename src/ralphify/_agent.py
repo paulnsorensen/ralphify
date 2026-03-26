@@ -45,6 +45,9 @@ _RESULT_FIELD = "result"
 _LOG_TIMESTAMP_FORMAT = "%Y%m%d-%H%M%S"
 _LOG_ITERATION_PAD_WIDTH = 3
 
+# Seconds to wait for graceful shutdown after SIGTERM before escalating to SIGKILL.
+_SIGTERM_GRACE_PERIOD = 3
+
 # Subprocess kwargs that isolate agent processes in their own session/group.
 # On POSIX this uses start_new_session so the agent and all its children
 # form a separate process group that can be killed together.
@@ -73,7 +76,7 @@ def _kill_process_group(proc: subprocess.Popen[Any]) -> None:
             try:
                 os.killpg(pgid, signal.SIGTERM)
                 try:
-                    proc.wait(timeout=3)
+                    proc.wait(timeout=_SIGTERM_GRACE_PERIOD)
                     return
                 except subprocess.TimeoutExpired:
                     os.killpg(pgid, signal.SIGKILL)
