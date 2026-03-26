@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ralphify._frontmatter import RALPH_MARKER
+from ralphify._output import SUBPROCESS_TEXT_KWARGS
 
 
 @dataclass(frozen=True)
@@ -106,7 +107,7 @@ def _shallow_clone(repo_url: str, dest: Path) -> None:
         subprocess.run(
             ["git", "clone", "--depth", "1", repo_url, str(dest)],
             capture_output=True,
-            text=True,
+            **SUBPROCESS_TEXT_KWARGS,
             check=True,
         )
     except FileNotFoundError:
