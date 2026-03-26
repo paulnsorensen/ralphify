@@ -143,6 +143,17 @@ When `credit` is `true` (the default), `engine.py:_assemble_prompt()` appends `_
 
 `_output.py` defines `ProcessResult`, the base dataclass for subprocess results (provides `returncode`, `timed_out`, and a `success` property). Both `_runner.py:RunResult` (command execution) and `_agent.py:AgentResult` (agent execution) extend it. If you add a new subprocess wrapper, inherit from `ProcessResult` to get consistent success/timeout semantics. The module also provides `ensure_str()` for bytes-to-string decoding, `collect_output()` for combining stdout+stderr, and `SUBPROCESS_TEXT_KWARGS` — the shared kwargs dict used by all `subprocess.Popen` calls to ensure consistent encoding and stream handling.
 
+### If you change shutdown or signal handling...
+
+Agent subprocesses run in their own process group (`start_new_session=True` on POSIX, configured via `_SESSION_KWARGS` in `_agent.py`). This lets `_kill_process_group()` send signals to the agent and all its children at once.
+
+The two-stage Ctrl+C flow:
+
+1. **First Ctrl+C** — the engine's SIGINT handler sets `RunState.stop_requested`, which lets the current iteration finish gracefully.
+2. **Second Ctrl+C** — `KeyboardInterrupt` propagates normally and the agent process is killed.
+
+Timeout and cancellation both use a two-step kill: SIGTERM first, then SIGKILL after `_SIGTERM_GRACE_PERIOD` seconds (3s). If you add a new subprocess wrapper, use `_kill_process_group()` and `_SESSION_KWARGS` to get consistent cleanup behavior.
+
 ### Command parsing
 
 Commands in RALPH.md frontmatter are parsed with `shlex.split()` — no shell features. For shell features, users point the `run` field at a script.
