@@ -33,9 +33,9 @@ ls my-ralph/RALPH.md                       # local ralph
 ls .ralphify/ralphs/my-ralph/RALPH.md      # installed ralph
 ```
 
-### "agent field is required"
+### "Missing or empty 'agent' field in RALPH.md frontmatter"
 
-Your `RALPH.md` frontmatter is missing the `agent` field. Add it:
+Your `RALPH.md` frontmatter is missing the `agent` field or it's an empty string. Add it:
 
 ```markdown
 ---
@@ -43,7 +43,7 @@ agent: claude -p --dangerously-skip-permissions
 ---
 ```
 
-### "Command 'claude' not found on PATH"
+### "Agent command 'claude' not found on PATH"
 
 The agent CLI isn't installed or isn't in your shell's PATH. Verify by running `claude --version` directly. If it's installed but not found, check your PATH.
 
