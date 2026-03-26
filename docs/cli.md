@@ -60,7 +60,7 @@ ralph run my-ralph --dir ./src             # Pass user args to the ralph
 
 User arguments are passed as named flags after the ralph path. Use `{{ args.<name> }}` placeholders in your RALPH.md to reference them.
 
-User arguments must be declared in the `args` frontmatter field:
+Named flags (`--name value`) work without any frontmatter declaration. The `args` field is only required when you want to pass **positional** arguments — it tells ralphify which names to map them to:
 
 ```markdown
 ---
@@ -73,7 +73,7 @@ Focus area: {{ args.focus }}
 ```
 
 ```bash
-# Named flags
+# Named flags (work with or without args declared in frontmatter)
 ralph run research --dir ./my-project --focus "performance"
 
 # Equals syntax works too
