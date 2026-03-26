@@ -123,6 +123,17 @@ Done: 3 iteration(s) — 2 succeeded, 1 failed
 
 Edit `RALPH.md` while the loop is running — changes take effect on the next iteration.
 
+## Or grab one from GitHub
+
+Install a pre-built ralph from any GitHub repo and run it immediately:
+
+```bash
+ralph add owner/repo/my-ralph    # Install a ralph from GitHub
+ralph run my-ralph               # Run it
+```
+
+`ralph add` fetches the ralph and installs it locally. You can install a single ralph by name, or all ralphs in a repo at once with `ralph add owner/repo`. See the [CLI reference](cli.md#ralph-add) for details.
+
 ---
 
 ## Why ralph loops?
