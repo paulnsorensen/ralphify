@@ -6,9 +6,10 @@ keywords: RALPH.md prompt, writing AI agent prompts, autonomous loop prompts, pr
 
 # Writing Prompts
 
-Your `RALPH.md` is the single most important file in a ralph loop. It defines the agent, the commands, and the prompt — everything the agent reads each iteration follows from what you write here. A good prompt turns an AI coding agent into a productive autonomous worker. A bad one produces noise.
+!!! tldr "TL;DR"
+    Every good RALPH.md has three parts: **orientation** (tell the agent it's in a loop with no memory), **task source** (point at something concrete like TODO.md), and **rules** (constraints matter more than instructions). Add commands for self-healing feedback. Edit the prompt while the loop runs to steer the agent.
 
-This guide covers the patterns that work, the mistakes that waste iterations, and how to tune your prompt while the loop is running.
+Your `RALPH.md` is the single most important file in a ralph loop. A good prompt turns an AI coding agent into a productive autonomous worker. A bad one produces noise.
 
 ## The anatomy of a good RALPH.md
 
@@ -299,9 +300,9 @@ ralph run my-ralph -n 10
 
 **Why it works:** Without this, the agent treats every iteration identically. With iteration awareness, you can tell it to be more exploratory early on and more conservative as the run winds down — or to write a summary on the final pass so you come back to a clean status report.
 
-## Anti-patterns to avoid
+## Anti-patterns that waste iterations
 
-### Too vague
+### "Improve the codebase" — vague prompts with no task source
 
 ```markdown
 <!-- DON'T -->
@@ -310,7 +311,7 @@ Improve the codebase. Make things better.
 
 The agent doesn't know what "better" means to you. Always point at a concrete task source.
 
-### Too many tasks per iteration
+### "Do five things at once" — overloading a single iteration
 
 ```markdown
 <!-- DON'T -->
@@ -320,7 +321,7 @@ both, update the API docs, and deploy to staging.
 
 One iteration = one task. If the agent tries to do five things, it'll do all of them poorly.
 
-### No validation step
+### "Implement and commit" — no validation before committing
 
 ```markdown
 <!-- DON'T -->
@@ -329,7 +330,7 @@ Read TODO.md, implement the next task, and commit.
 
 Without "run tests before committing" or a test command, the agent will commit broken code. Always include validation, either in the prompt text or via commands.
 
-### No commit instructions
+### "Fix bugs" — no commit instructions
 
 ```markdown
 <!-- DON'T -->
@@ -368,31 +369,30 @@ The most powerful feature of ralph loops is that you can edit `RALPH.md` while t
 - Do not refactor code that isn't directly related to the current task
 ```
 
-### Notes with HTML comments
+### Annotate your prompt with HTML comments
 
-HTML comments in your RALPH.md are automatically stripped before the prompt is assembled. They never reach the agent. Use them to annotate why rules were added, what to change next, or when to remove a temporary constraint:
+??? note "HTML comments are stripped before the prompt reaches the agent"
+    HTML comments in your RALPH.md are automatically stripped during prompt assembly — they never reach the agent and don't waste context window. Use them to annotate why rules were added, what to change next, or when to remove a temporary constraint:
 
-```markdown
-<!-- Added 2025-01-20: agent kept deleting tests, so added the rule below -->
+    ```markdown
+    <!-- Added 2025-01-20: agent kept deleting tests, so added the rule below -->
 
-## Rules
+    ## Rules
 
-- Do NOT delete failing tests — fix the underlying code instead
+    - Do NOT delete failing tests — fix the underlying code instead
 
-<!-- TODO: remove the coverage command once we hit 80% -->
-```
+    <!-- TODO: remove the coverage command once we hit 80% -->
+    ```
 
-You can freely add and edit comments while the loop runs — they're stripped every iteration, so they never waste the agent's context window.
+    You can freely add and edit comments while the loop runs — they're stripped every iteration.
 
-## Prompt size and context windows
+## How long should your prompt be?
 
-Keep your prompt focused. A long prompt with every possible instruction eats into the agent's context window, leaving less room for the actual codebase.
+Keep your prompt focused. A long prompt eats into the agent's context window, leaving less room for the actual codebase.
 
-Rules of thumb:
-
-- **Core prompt:** 20-50 lines is the sweet spot. Enough to be specific, short enough to leave room for work.
-- **Commands:** Pick the 2-3 most useful signals. Don't add commands whose output the agent doesn't need.
-- **Command output:** Can be long. If your commands produce verbose output, consider using scripts that filter to the relevant lines.
+- **Core prompt:** 20-50 lines is the sweet spot
+- **Commands:** 2-3 signals max — don't add commands whose output the agent doesn't need
+- **Command output:** Can be long, but consider scripts that filter to the relevant lines if your commands produce verbose output
 
 ## Next steps
 
