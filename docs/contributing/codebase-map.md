@@ -60,7 +60,7 @@ ralph run my-ralph
        └── Loop:
             ├── Re-read RALPH.md from disk
             ├── Run commands → capture output
-            ├── Resolve {{ commands.* }} and {{ args.* }} placeholders
+            ├── Resolve {{ commands.* }}, {{ args.* }}, and {{ ralph.* }} placeholders
             ├── Pipe assembled prompt to agent command via subprocess
             ├── Emit iteration events (started, completed, failed, timed_out)
             ├── Handle pause/resume/stop requests via RunState
@@ -69,9 +69,9 @@ ralph run my-ralph
 
 ### Placeholder resolution
 
-The resolver (`_resolver.py`) handles `{{ commands.<name> }}` and `{{ args.<name> }}` placeholders. Two functions:
+The resolver (`_resolver.py`) handles three placeholder kinds: `{{ commands.<name> }}`, `{{ args.<name> }}`, and `{{ ralph.<name> }}`. Two functions:
 
-- **`resolve_all()`** — resolves both placeholder kinds in a **single pass** so that a value inserted by one kind (e.g., an arg value containing `{{ commands.foo }}`) is never re-processed as the other kind. Used by the engine for final prompt assembly.
+- **`resolve_all()`** — resolves all three placeholder kinds in a **single pass** so that a value inserted by one kind (e.g., an arg value containing `{{ commands.foo }}`) is never re-processed as the other kind. Used by the engine for final prompt assembly. The `ralph.*` placeholders (`ralph.name`, `ralph.iteration`, `ralph.max_iterations`) provide runtime metadata and require no frontmatter configuration.
 - **`resolve_args()`** — resolves only `{{ args.<name> }}` placeholders. Used by the engine to expand arg references inside command `run` strings before executing them.
 
 Unmatched placeholders resolve to empty string in both functions.
