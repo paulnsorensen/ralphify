@@ -124,7 +124,7 @@ def _shallow_clone(repo_url: str, dest: Path) -> None:
             "git is required for 'ralph add'. Install it from https://git-scm.com/"
         ) from None
     except subprocess.CalledProcessError as exc:
-        stderr = exc.stderr.strip() if exc.stderr else "unknown error"
+        stderr = (exc.stderr.strip() if exc.stderr else "") or "unknown error"
         raise RuntimeError(f"git clone failed: {stderr}") from None
 
 
@@ -134,6 +134,13 @@ class FetchResult:
 
     installed: list[tuple[str, Path]]
     """List of ``(name, dest_path)`` for each installed ralph."""
+
+
+def _install_single_ralph(src: Path, name: str, ralphs_dir: Path) -> FetchResult:
+    """Copy a single ralph from *src* to *ralphs_dir*/*name* and return a FetchResult."""
+    dest = ralphs_dir / name
+    _copy_ralph(src, dest)
+    return FetchResult(installed=[(name, dest)])
 
 
 def fetch_ralphs(parsed: ParsedSource, ralphs_dir: Path) -> FetchResult:
@@ -163,9 +170,7 @@ def _fetch_repo_ralphs(
     """Handle ``owner/repo`` — repo root is a ralph, or install all."""
     root_ralph = clone_dir / RALPH_MARKER
     if root_ralph.is_file():
-        dest = ralphs_dir / parsed.name
-        _copy_ralph(clone_dir, dest)
-        return FetchResult(installed=[(parsed.name, dest)])
+        return _install_single_ralph(clone_dir, parsed.name, ralphs_dir)
 
     # Scan for all ralphs in the repo.
     ralph_dirs = _find_ralphs_in(clone_dir)
@@ -193,20 +198,16 @@ def _fetch_named_ralph(
     # First try exact subpath.
     exact = clone_dir / parsed.subpath
     if exact.is_dir() and (exact / RALPH_MARKER).is_file():
-        dest = ralphs_dir / ralph_name
-        _copy_ralph(exact, dest)
-        return FetchResult(installed=[(ralph_name, dest)])
+        return _install_single_ralph(exact, ralph_name, ralphs_dir)
 
     # Search by name (leaf segment).
     all_ralphs = _find_ralphs_in(clone_dir)
     matches = [rd for rd in all_ralphs if rd.name == ralph_name]
 
     if len(matches) == 1:
-        dest = ralphs_dir / ralph_name
-        _copy_ralph(matches[0], dest)
-        return FetchResult(installed=[(ralph_name, dest)])
+        return _install_single_ralph(matches[0], ralph_name, ralphs_dir)
 
-    if len(matches) > 1:
+    elif len(matches) > 1:
         paths = "\n".join(
             f"  - {m.relative_to(clone_dir)}/{RALPH_MARKER}" for m in matches
         )

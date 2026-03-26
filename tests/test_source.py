@@ -314,6 +314,13 @@ class TestShallowClone:
             with pytest.raises(RuntimeError, match="git clone failed: unknown error"):
                 _shallow_clone("https://github.com/a/b.git", tmp_path / "dest")
 
+    def test_clone_failure_whitespace_only_stderr(self, tmp_path):
+        """Whitespace-only stderr should fall back to 'unknown error', not an empty message."""
+        exc = subprocess.CalledProcessError(128, "git", stderr="  \n")
+        with patch("ralphify._source.subprocess.run", side_effect=exc):
+            with pytest.raises(RuntimeError, match="git clone failed: unknown error"):
+                _shallow_clone("https://github.com/a/b.git", tmp_path / "dest")
+
 
 # ── fetch_ralphs ───────────────────────────────────────────────────
 
