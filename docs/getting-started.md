@@ -213,6 +213,12 @@ Start with a few iterations to verify everything works:
 ralph run my-ralph -n 3 --log-dir ralph_logs
 ```
 
+Add `--stop-on-error` to stop the loop if the agent exits non-zero or times out — useful when you're still tuning the prompt and don't want to waste iterations:
+
+```bash
+ralph run my-ralph -n 3 --log-dir ralph_logs --stop-on-error
+```
+
 Watch the output. Each iteration runs the commands, assembles the prompt with the command output, and pipes it to the agent:
 
 ```text
