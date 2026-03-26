@@ -1,7 +1,7 @@
 ---
-title: Ralph Quick Reference
-description: Condensed reference for ralphify commands, RALPH.md format, placeholder syntax, and common patterns — the page you bookmark and come back to.
-keywords: ralphify quick reference, RALPH.md format, placeholder syntax, commands reference, cheat sheet
+title: "RALPH.md Syntax and CLI Cheat Sheet — Ralphify Quick Reference"
+description: "Cheat sheet for ralphify — RALPH.md frontmatter format, CLI flags for ralph run/init/add/new, placeholder syntax for commands and args, and common loop patterns you can copy-paste."
+keywords: RALPH.md format, RALPH.md frontmatter syntax, ralph run CLI flags, ralphify cheat sheet, AI coding agent loop syntax, ralph commands placeholder, ralph args placeholder, ralph add GitHub, ralph init scaffold, autonomous agent loop reference, ralphify quick reference
 ---
 
 # Quick Reference
