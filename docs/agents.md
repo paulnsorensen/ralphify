@@ -1,7 +1,7 @@
 ---
-title: Using Ralph Loops with Different Agents
-description: Configure ralphify with Claude Code, Aider, Codex CLI, or any custom agent. Includes setup guides, agent comparison table, and wrapper script examples.
-keywords: Claude Code agent, Aider agent, Codex CLI, AI coding agents, agent configuration, ralphify agents, custom agent wrapper
+title: How to Run Claude Code, Aider, or Codex in an Autonomous Loop
+description: Set up Claude Code, Aider, Codex CLI, or any AI coding agent to run autonomously in a loop with ralphify. Copy-pasteable configs, wrapper scripts, and a comparison table.
+keywords: run claude code in loop, aider autonomous mode, codex cli automation, AI coding agent loop, autonomous claude code, aider loop setup, run AI agent automatically, pipe prompt to coding agent, claude code non-interactive, aider no-interactive mode, codex exec stdin, automate AI coding agent
 ---
 
 # Using with Different Agents
