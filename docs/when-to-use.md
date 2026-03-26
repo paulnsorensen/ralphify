@@ -9,11 +9,13 @@ keywords: automate coding tasks with AI, autonomous AI coding agent use cases, A
 !!! tldr "TL;DR"
     Use a ralph loop when the task breaks into small, independent steps with automated validation (tests, linters, builds). Use a single conversation for quick tasks, interactive work, or anything requiring subjective judgment. The key ingredient is a command that can tell the agent "you broke something" — that's what makes the loop self-healing.
 
-ralph loops are powerful but they're not the right tool for everything. This page helps you decide whether a loop fits your task before you invest time setting one up.
+A **ralph loop** is an autonomous coding cycle powered by [ralphify](index.md). Each iteration: run shell commands (tests, lint, git log), inject their output into a prompt template, pipe the assembled prompt to an AI coding agent (like Claude Code), and repeat. The agent starts fresh every cycle with no conversation history — it reads the current codebase state instead. A ralph is defined by a single `RALPH.md` file containing YAML frontmatter (agent command, commands, args) and a prompt body with `{{ placeholders }}`.
 
-## The sweet spot
+Ralph loops are powerful but they're not the right tool for everything. This page helps you decide whether a loop fits your task before you invest time setting one up.
 
-ralph loops work best when a task has these properties:
+## What makes a task good for a ralph loop?
+
+Ralph loops work best when a task has these properties:
 
 **Decomposable into small, independent steps.** The loop does one thing per iteration. Tasks that naturally break into "do this, then this, then this" are ideal — implementing features from a TODO list, writing tests module by module, fixing lint errors one at a time. See the [Cookbook](cookbook.md) for real examples of this pattern.
 
@@ -23,7 +25,7 @@ ralph loops work best when a task has these properties:
 
 **Progress is visible in the codebase.** The agent's work must be observable on disk — files changed, tests added, docs written, commits made. The next iteration reads the codebase to understand what's been done. Tasks that produce output elsewhere (a Slack message, a deployment, an email) need a wrapper that records progress locally.
 
-## What works well
+## What tasks work well in a ralph loop?
 
 | Task | Why it fits |
 |---|---|
@@ -37,7 +39,7 @@ ralph loops work best when a task has these properties:
 | **Security hardening** | Run a scanner each iteration; the agent picks one finding, fixes it, and verifies the fix ([recipe](cookbook.md#security-scan)) |
 | **Research & knowledge building** | Each iteration deepens one area; a report file accumulates findings across iterations ([recipe](cookbook.md#deep-research)) |
 
-## What doesn't work well
+## What tasks don't work well in a ralph loop?
 
 | Task | Why it doesn't fit |
 |---|---|
@@ -48,7 +50,7 @@ ralph loops work best when a task has these properties:
 | **Creative writing** | Prose quality is subjective; no command can validate "is this well-written?" |
 | **Interacting with external services** | API calls, deployments, and messages are hard to undo if the agent makes a mistake |
 
-## Loop vs. single conversation
+## Should I use a ralph loop or a single agent conversation?
 
 Use a **single conversation** when:
 
@@ -65,7 +67,7 @@ Use a **ralph loop** when:
 - The task would fill up a conversation's context window
 - You want to walk away and come back to completed work
 
-## Making a borderline task work
+## How do I adapt a borderline task for a ralph loop?
 
 Some tasks seem like they don't fit but can be adapted:
 
@@ -81,7 +83,7 @@ Some tasks seem like they don't fit but can be adapted:
 ??? note ""I need to review the agent's work before it continues.""
     Use `-n 1` to run single iterations, review, then run again. Or use `--stop-on-error` with a command that checks for your sign-off.
 
-## How many iterations?
+## How many iterations should I run?
 
 - **Start with [`-n 3`](cli.md#ralph-run)** to verify your setup works and the agent produces useful output
 - **Use `-n 10-20`** for bounded tasks (a TODO list with known items)
