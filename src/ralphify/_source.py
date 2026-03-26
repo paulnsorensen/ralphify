@@ -87,8 +87,7 @@ def parse_github_source(source: str) -> ParsedSource:
 
     owner_repo = f"{owner}/{repo}"
     repo_url = f"https://github.com/{owner}/{repo}.git"
-    subpath = rest.strip("/") if rest else None
-    subpath = subpath or None  # normalize empty string to None
+    subpath = (rest.strip("/") or None) if rest else None
     name = Path(subpath).name if subpath else repo
     handle = f"{owner_repo}/{subpath}" if subpath else owner_repo
 
@@ -187,14 +186,8 @@ def _fetch_repo_ralphs(
     duplicates = {name: paths for name, paths in seen.items() if len(paths) > 1}
     if duplicates:
         dup_name = next(iter(duplicates))
-        paths = "\n".join(
-            f"  - {m.relative_to(clone_dir)}/{RALPH_MARKER}" for m in duplicates[dup_name]
-        )
-        raise RuntimeError(
-            f"Found multiple ralphs named '{dup_name}' in {parsed.owner_repo}:\n"
-            f"{paths}\n\n"
-            f"Use the full path to disambiguate, e.g.:\n"
-            f"  ralph add {parsed.owner_repo}/{duplicates[dup_name][0].relative_to(clone_dir)}"
+        raise _duplicate_ralph_error(
+            dup_name, duplicates[dup_name], clone_dir, parsed.owner_repo,
         )
 
     installed: list[tuple[str, Path]] = []
@@ -224,18 +217,28 @@ def _fetch_named_ralph(
         return _install_single_ralph(matches[0], ralph_name, ralphs_dir)
 
     elif len(matches) > 1:
-        paths = "\n".join(
-            f"  - {m.relative_to(clone_dir)}/{RALPH_MARKER}" for m in matches
-        )
-        raise RuntimeError(
-            f"Found multiple ralphs named '{ralph_name}' in {parsed.owner_repo}:\n"
-            f"{paths}\n\n"
-            f"Use the full path to disambiguate, e.g.:\n"
-            f"  ralph add {parsed.owner_repo}/{matches[0].relative_to(clone_dir)}"
+        raise _duplicate_ralph_error(
+            ralph_name, matches, clone_dir, parsed.owner_repo,
         )
 
     raise RuntimeError(
         f"No ralph named '{ralph_name}' found in {parsed.handle}."
+    )
+
+
+def _duplicate_ralph_error(
+    name: str, paths: list[Path], clone_dir: Path, owner_repo: str,
+) -> RuntimeError:
+    """Build a ``RuntimeError`` for duplicate ralph names in a repo."""
+    listing = "\n".join(
+        f"  - {p.relative_to(clone_dir)}/{RALPH_MARKER}" for p in paths
+    )
+    example = f"{owner_repo}/{paths[0].relative_to(clone_dir)}"
+    return RuntimeError(
+        f"Found multiple ralphs named '{name}' in {owner_repo}:\n"
+        f"{listing}\n\n"
+        f"Use the full path to disambiguate, e.g.:\n"
+        f"  ralph add {example}"
     )
 
 
