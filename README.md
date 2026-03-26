@@ -85,6 +85,9 @@ Each iteration:
 ```
 $ ralph run my-ralph -n 3
 
+▶ Running: my-ralph
+  1 command · max 3 iterations
+
 ── Iteration 1 ──
   Commands: 1 ran
 ✓ Iteration 1 completed (52.3s)
@@ -97,7 +100,8 @@ $ ralph run my-ralph -n 3
   Commands: 1 ran
 ✓ Iteration 3 completed (41.7s)
 
-Done: 3 iteration(s) — 2 succeeded, 1 failed
+──────────────────────
+Done: 3 iterations — 2 succeeded, 1 failed
 ```
 
 ## The technique

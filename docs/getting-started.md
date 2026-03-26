@@ -194,22 +194,26 @@ ralph run my-ralph -n 3 --log-dir ralph_logs
 Watch the output. Each iteration runs the commands, assembles the prompt with the command output, and pipes it to the agent:
 
 ```
+▶ Running: my-ralph
+  3 commands · max 3 iterations
+
 ── Iteration 1 ──
   Commands: 3 ran
-✓ Iteration 1 completed (45.2s) →
-ralph_logs/001_20250115-142301.log
+✓ Iteration 1 completed (45.2s)
+  → ralph_logs/001_20250115-142301.log
 
 ── Iteration 2 ──
   Commands: 3 ran
-✗ Iteration 2 failed with exit code 1 (23.1s) →
-ralph_logs/002_20250115-142512.log
+✗ Iteration 2 failed with exit code 1 (23.1s)
+  → ralph_logs/002_20250115-142512.log
 
 ── Iteration 3 ──
   Commands: 3 ran
-✓ Iteration 3 completed (38.5s) →
-ralph_logs/003_20250115-142812.log
+✓ Iteration 3 completed (38.5s)
+  → ralph_logs/003_20250115-142812.log
 
-Done: 3 iteration(s) — 2 succeeded, 1 failed
+──────────────────────
+Done: 3 iterations — 2 succeeded, 1 failed
 ```
 
 If the agent breaks a test, the next iteration sees the failure output via `{{ commands.tests }}` and fixes it automatically.
