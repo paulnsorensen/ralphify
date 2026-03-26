@@ -109,6 +109,16 @@ class TestParseGithubSource:
         with pytest.raises(ValueError, match="Cannot parse"):
             parse_github_source("")
 
+    def test_repo_that_is_only_git_suffix_raises(self):
+        """'owner/.git' should be rejected — after stripping .git the repo name is empty."""
+        with pytest.raises(ValueError, match="Cannot parse"):
+            parse_github_source("owner/.git")
+
+    def test_url_repo_that_is_only_git_suffix_raises(self):
+        """Full URL where repo is just '.git' should be rejected."""
+        with pytest.raises(ValueError, match="Cannot parse"):
+            parse_github_source("https://github.com/owner/.git")
+
 
 # ── _find_ralphs_in ─────────────────────────────────────────────────
 

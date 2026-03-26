@@ -75,15 +75,18 @@ def parse_github_source(source: str) -> ParsedSource:
         if m:
             owner, repo, rest = m.group("owner"), m.group("repo"), m.group("rest")
 
+    # Strip .git suffix — the URL regex handles this via (?:\.git)? in the
+    # pattern, but the shorthand regex captures the full repo segment.
+    # Must happen before the empty check so that a bare ".git" repo name
+    # (e.g. "owner/.git") is correctly rejected as empty.
+    if repo:
+        repo = repo.removesuffix(".git")
+
     if not owner or not repo:
         raise ValueError(
             f"Cannot parse source '{source}'. "
             "Expected owner/repo, owner/repo/ralph-name, or a GitHub URL."
         )
-
-    # Strip .git suffix — the URL regex handles this via (?:\.git)? in the
-    # pattern, but the shorthand regex captures the full repo segment.
-    repo = repo.removesuffix(".git")
 
     owner_repo = f"{owner}/{repo}"
     repo_url = f"https://github.com/{owner}/{repo}.git"
