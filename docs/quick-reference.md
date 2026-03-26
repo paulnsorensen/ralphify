@@ -102,12 +102,13 @@ Your instructions here. Use {{ args.dir }} for user arguments. <!-- (6) -->
 ### Command placeholders
 
 ```markdown
-{{ commands.tests }}              # Replaced with test command output
-{{ commands.git-log }}            # Replaced with git-log command output
+{{ commands.tests }} <!-- (1) -->
+{{ commands.git-log }} <!-- (2) -->
 ```
 
-- Output includes stdout + stderr regardless of exit code
-- Only commands referenced by a placeholder appear in the prompt — unreferenced commands still run but their output is excluded
+1. Replaced with the `tests` command's stdout + stderr, regardless of exit code.
+2. Replaced with the `git-log` command's output. Only commands referenced by a placeholder appear in the assembled prompt — unreferenced commands still run but their output is excluded.
+
 - Unmatched placeholders resolve to empty string
 - Must be `commands` (plural)
 
@@ -116,24 +117,30 @@ For details on writing effective prompts with placeholders, see [Writing Prompts
 ### User argument placeholders
 
 ```markdown
-{{ args.dir }}                   # Replaced with --dir value from CLI
-{{ args.focus }}                 # Replaced with --focus value from CLI
+{{ args.dir }} <!-- (1) -->
+{{ args.focus }} <!-- (2) -->
 ```
+
+1. Replaced with the `--dir` value from the CLI. Missing args resolve to empty string.
+2. Replaced with the `--focus` value from the CLI.
 
 - Pass via `ralph run my-ralph --dir ./src --focus "perf"` or `--dir=./src` (named flags)
 - Or positionally: `ralph run my-ralph ./src "perf"` (requires `args:` in frontmatter)
 - Mixed: `ralph run my-ralph --focus "perf" ./src` — positional args skip names already provided via flags
 - `--` ends flag parsing: `ralph run my-ralph -- --verbose ./src` treats `--verbose` as a positional value
-- Missing args resolve to empty string
 - See [CLI reference → User arguments](cli.md#user-arguments) for full details on flag and positional parsing
 
 ### ralph placeholders
 
 ```markdown
-{{ ralph.name }}               # ralph directory name (e.g. "my-ralph")
-{{ ralph.iteration }}          # Current iteration number (1-based)
-{{ ralph.max_iterations }}     # Total iterations if -n was set, empty otherwise
+{{ ralph.name }} <!-- (1) -->
+{{ ralph.iteration }} <!-- (2) -->
+{{ ralph.max_iterations }} <!-- (3) -->
 ```
+
+1. Ralph directory name (e.g. `my-ralph`).
+2. Current iteration number (1-based).
+3. Total iterations if `-n` was set, empty otherwise.
 
 - Automatically available — no frontmatter configuration needed
 - Useful for progress tracking, naming logs, or adjusting behavior near the end of a run
