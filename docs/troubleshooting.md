@@ -251,6 +251,67 @@ commands:
 
 `args` must be a list of strings (`[focus]` or `- focus`). `commands` must be a list of `{name, run}` mappings.
 
+### "Command '...' has invalid timeout"
+
+The `timeout` field on a command must be a positive number (in seconds). Strings, zero, and negative values are rejected:
+
+```yaml
+# ✗ Wrong
+commands:
+  - name: tests
+    run: uv run pytest -x
+    timeout: "five minutes"
+
+# ✓ Correct
+commands:
+  - name: tests
+    run: uv run pytest -x
+    timeout: 300
+```
+
+## Argument issues
+
+### "Positional argument '...' requires args declared in RALPH.md frontmatter"
+
+You passed a bare value (not a `--name value` flag) to [`ralph run`](cli.md#ralph-run), but your RALPH.md doesn't have an `args` field. Either declare the args or use the `--name value` syntax:
+
+```bash
+# ✗ Fails — no args declared, so positional values aren't allowed
+ralph run my-ralph "error handling"
+
+# ✓ Option A — declare args in RALPH.md, then pass positionally
+# (add `args: [focus]` to frontmatter)
+ralph run my-ralph "error handling"
+
+# ✓ Option B — use flag syntax (works even without args declared)
+ralph run my-ralph --focus "error handling"
+```
+
+### "Too many positional arguments"
+
+You passed more positional values than the `args` field declares:
+
+```bash
+# RALPH.md has: args: [focus]
+# ✗ Fails — only 1 arg declared, but 2 values given
+ralph run my-ralph "error handling" "api module"
+
+# ✓ Correct — one positional value per declared arg
+ralph run my-ralph "error handling"
+```
+
+### "Flag '--...' requires a value"
+
+A `--name` flag was passed without a value:
+
+```bash
+# ✗ Fails — --focus has no value
+ralph run my-ralph --focus
+
+# ✓ Correct
+ralph run my-ralph --focus "error handling"
+```
+
 ## Command issues
 
 ### "Command '...' has invalid syntax"
@@ -331,7 +392,11 @@ Note that command output is included in the prompt **regardless of exit code**. 
 
 ### Command output looks truncated
 
-Each command has a default timeout of **60 seconds** (see [command timeouts](writing-prompts.md#command-timeouts)). If your command takes longer (a large test suite, a slow build), it's killed at the timeout and only the output captured so far is used. The agent sees incomplete output without knowing it was cut short.
+Each command has a default timeout of **60 seconds** (see [command timeouts](writing-prompts.md#command-timeouts)). If your command takes longer (a large test suite, a slow build), it's killed at the timeout and only the output captured so far is used. The agent sees a notice appended to the output:
+
+```text
+[Command 'tests' timed out after 60s — output may be incomplete]
+```
 
 **Fix:** Increase the timeout for slow commands:
 
