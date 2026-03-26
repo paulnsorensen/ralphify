@@ -1,7 +1,7 @@
 ---
 title: Ralph Loop Recipes
-description: Copy-pasteable ralph loop setups for autonomous coding, test coverage, code migration, security scanning, deep research, documentation, bug fixing, and codebase improvement.
-keywords: ralphify cookbook, autonomous coding recipes, RALPH.md examples, documentation loop, bug fixing loop, codebase improvement, deep research agent, code migration loop, security scanning agent, test coverage automation, Python project loop
+description: Copy-pasteable ralph loop setups for autonomous ML research, test coverage, code migration, security scanning, deep research, documentation, bug fixing, and codebase improvement.
+keywords: ralphify cookbook, autonomous coding recipes, RALPH.md examples, documentation loop, bug fixing loop, codebase improvement, deep research agent, code migration loop, security scanning agent, test coverage automation, autoresearch, autonomous ML research
 ---
 
 # Cookbook
@@ -15,19 +15,35 @@ All recipes use **Claude Code** as the agent. To use a different agent, swap the
 
 ---
 
-## Python project
+## Autoresearch
 
-A general-purpose loop for a Python project using pytest and ruff.
+An autonomous ML research loop inspired by [Karpathy's autoresearch](https://github.com/karpathy/autoresearch). The agent runs experiments on a training script to minimize validation loss — modifying code, training for 5 minutes, keeping improvements and reverting failures.
 
-**`python-dev/RALPH.md`**
+**`autoresearch/RALPH.md`**
 
 ```markdown
---8<-- "examples/python-dev/RALPH.md"
+--8<-- "examples/autoresearch/RALPH.md"
+```
+
+The helper scripts surface experiment state each iteration:
+
+**`autoresearch/show-results.sh`**
+
+```bash
+--8<-- "examples/autoresearch/show-results.sh"
+```
+
+**`autoresearch/show-last-run.sh`**
+
+```bash
+--8<-- "examples/autoresearch/show-last-run.sh"
 ```
 
 ```bash
-ralph run python-dev -n 5 --log-dir ralph_logs
+ralph run autoresearch --train_script train.py --prepare_script prepare.py
 ```
+
+The `train_script` and `prepare_script` args let you point the ralph at any autoresearch-style project. The agent handles everything autonomously: establishing a baseline on the first iteration, then running experiments indefinitely. Each iteration is one hypothesis tested — modify the train script, train, evaluate, keep or revert.
 
 ---
 
