@@ -10,6 +10,7 @@ from helpers import MOCK_RUN_COMMAND, MOCK_SUBPROCESS, drain_events, event_types
 
 from ralphify._events import BoundEmitter, EventType, NullEmitter, QueueEmitter
 from ralphify._run_types import Command, RunStatus
+from ralphify._runner import RunResult
 from ralphify.engine import (
     _assemble_prompt,
     _delay_if_needed,
@@ -775,6 +776,22 @@ class TestRunCommands:
         _run_commands(commands, ralph_dir=ralph_dir, project_root=tmp_path, user_args={})
 
         assert mock_run_cmd.call_args.kwargs["cwd"] == ralph_dir
+
+    @patch(MOCK_RUN_COMMAND)
+    def test_timed_out_command_output_includes_notice(self, mock_run_cmd, tmp_path):
+        """When a command times out, the output injected into the prompt
+        should include a notice so the agent knows the data is incomplete."""
+        mock_run_cmd.return_value = RunResult(
+            returncode=None,
+            output="partial output",
+            timed_out=True,
+        )
+        commands = [Command(name="slow", run="sleep 100", timeout=5)]
+
+        result = _run_commands(commands, ralph_dir=tmp_path, project_root=tmp_path, user_args={})
+
+        assert "partial output" in result["slow"]
+        assert "timed out" in result["slow"].lower()
 
     @patch(MOCK_RUN_COMMAND, side_effect=FileNotFoundError("no-such-binary"))
     def test_command_not_found_raises_with_context(self, mock_run_cmd, tmp_path):

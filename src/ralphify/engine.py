@@ -119,7 +119,10 @@ def _run_commands(
                 f"Command '{cmd.name}' has invalid syntax: {run_str!r}. "
                 f"{_field_hint(FIELD_COMMANDS)}"
             ) from exc
-        results[cmd.name] = result.output
+        output = result.output
+        if result.timed_out:
+            output += f"\n\n[Command '{cmd.name}' timed out after {cmd.timeout}s — output may be incomplete]"
+        results[cmd.name] = output
     return results
 
 
