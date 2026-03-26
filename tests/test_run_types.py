@@ -73,7 +73,7 @@ class TestRunState:
         assert state.iteration == 0
         assert state.completed == 0
         assert state.failed == 0
-        assert state.timed_out == 0
+        assert state.timed_out_count == 0
         assert state.started_at is None
 
     def test_total_is_completed_plus_failed(self):
@@ -83,10 +83,10 @@ class TestRunState:
         state.mark_failed()
         assert state.total == 3
 
-    def test_mark_timed_out_increments_both_timed_out_and_failed(self):
+    def test_mark_timed_out_increments_both_timed_out_count_and_failed(self):
         state = RunState(run_id="r1")
         state.mark_timed_out()
-        assert state.timed_out == 1
+        assert state.timed_out_count == 1
         assert state.failed == 1
         assert state.completed == 0
 

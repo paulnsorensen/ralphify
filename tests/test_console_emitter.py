@@ -222,7 +222,7 @@ class TestRunStopped:
         emitter, console = _capture_emitter()
         emitter.emit(_make_event(
             EventType.RUN_STOPPED,
-            reason="completed", total=5, completed=4, failed=1, timed_out=0,
+            reason="completed", total=5, completed=4, failed=1, timed_out_count=0,
         ))
         output = console.export_text()
         assert "5 iterations" in output
@@ -233,7 +233,7 @@ class TestRunStopped:
         emitter, console = _capture_emitter()
         emitter.emit(_make_event(
             EventType.RUN_STOPPED,
-            reason="completed", total=3, completed=3, failed=0, timed_out=0,
+            reason="completed", total=3, completed=3, failed=0, timed_out_count=0,
         ))
         output = console.export_text()
         assert "──" in output
@@ -242,18 +242,18 @@ class TestRunStopped:
         emitter, console = _capture_emitter()
         emitter.emit(_make_event(
             EventType.RUN_STOPPED,
-            reason="completed", total=3, completed=2, failed=1, timed_out=1,
+            reason="completed", total=3, completed=2, failed=1, timed_out_count=1,
         ))
         output = console.export_text()
         assert "1 timed out" in output
-        # timed_out is subset of failed — only non-timeout failures shown as "failed"
+        # timed_out_count is subset of failed — only non-timeout failures shown as "failed"
         assert "failed" not in output
 
     def test_completed_with_mixed_failures_and_timeouts(self):
         emitter, console = _capture_emitter()
         emitter.emit(_make_event(
             EventType.RUN_STOPPED,
-            reason="completed", total=5, completed=3, failed=2, timed_out=1,
+            reason="completed", total=5, completed=3, failed=2, timed_out_count=1,
         ))
         output = console.export_text()
         assert "3 succeeded" in output
@@ -264,7 +264,7 @@ class TestRunStopped:
         emitter, console = _capture_emitter()
         emitter.emit(_make_event(
             EventType.RUN_STOPPED,
-            reason="user_requested", total=2, completed=1, failed=0, timed_out=0,
+            reason="user_requested", total=2, completed=1, failed=0, timed_out_count=0,
         ))
         output = console.export_text()
         # Non-completed runs don't print the summary line
@@ -277,7 +277,7 @@ class TestRunStopped:
         assert emitter._live is not None
         emitter.emit(_make_event(
             EventType.RUN_STOPPED,
-            reason="user_requested", total=1, completed=0, failed=0, timed_out=0,
+            reason="user_requested", total=1, completed=0, failed=0, timed_out_count=0,
         ))
         assert emitter._live is None
 
@@ -285,7 +285,7 @@ class TestRunStopped:
         emitter, console = _capture_emitter()
         emitter.emit(_make_event(
             EventType.RUN_STOPPED,
-            reason="completed", total=3, completed=3, failed=0, timed_out=0,
+            reason="completed", total=3, completed=3, failed=0, timed_out_count=0,
         ))
         output = console.export_text()
         assert "3 succeeded" in output
@@ -296,7 +296,7 @@ class TestRunStopped:
         emitter, console = _capture_emitter()
         emitter.emit(_make_event(
             EventType.RUN_STOPPED,
-            reason="completed", total=1, completed=1, failed=0, timed_out=0,
+            reason="completed", total=1, completed=1, failed=0, timed_out_count=0,
         ))
         output = console.export_text()
         assert "1 iteration" in output
@@ -306,7 +306,7 @@ class TestRunStopped:
         emitter, console = _capture_emitter()
         emitter.emit(_make_event(
             EventType.RUN_STOPPED,
-            reason="completed", total=3, completed=3, failed=0, timed_out=0,
+            reason="completed", total=3, completed=3, failed=0, timed_out_count=0,
         ))
         output = console.export_text()
         assert "3 iterations" in output

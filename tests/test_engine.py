@@ -84,7 +84,7 @@ class TestRunLoop:
 
         run_loop(config, state, NullEmitter())
 
-        assert state.timed_out == 1
+        assert state.timed_out_count == 1
         assert state.failed == 1
 
     @patch(MOCK_SUBPROCESS)

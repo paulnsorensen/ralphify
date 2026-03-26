@@ -332,5 +332,5 @@ def run_loop(
         total=state.total,
         completed=state.completed,
         failed=state.failed,
-        timed_out=state.timed_out,
+        timed_out_count=state.timed_out_count,
     ))

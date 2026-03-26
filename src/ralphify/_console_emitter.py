@@ -149,9 +149,9 @@ class ConsoleEmitter:
         total = data["total"]
         completed = data["completed"]
         failed = data["failed"]
-        timed_out_count = data["timed_out"]
+        timed_out_count = data["timed_out_count"]
 
-        # timed_out is a subset of failed — show non-timeout failures
+        # timed_out_count is a subset of failed — show non-timeout failures
         # and timeouts as separate categories for clarity.
         non_timeout_failures = failed - timed_out_count
         parts = [f"{completed} succeeded"]

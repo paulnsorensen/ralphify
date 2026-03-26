@@ -107,9 +107,9 @@ class RunState:
     :meth:`request_resume`) use :class:`threading.Event` so the run loop
     can react at iteration boundaries without busy-waiting.
 
-    **Counter invariant**: ``timed_out`` is a *subset* of ``failed``, not
-    an independent category.  A timed-out iteration increments both
-    ``timed_out`` and ``failed``.  Therefore
+    **Counter invariant**: ``timed_out_count`` is a *subset* of ``failed``,
+    not an independent category.  A timed-out iteration increments both
+    ``timed_out_count`` and ``failed``.  Therefore
     ``completed + failed == total iterations`` (use :attr:`total`).
     """
 
@@ -118,7 +118,7 @@ class RunState:
     iteration: int = 0
     completed: int = 0
     failed: int = 0
-    timed_out: int = 0
+    timed_out_count: int = 0
     started_at: datetime | None = None
 
     _stop_requested: bool = field(default=False, init=False, repr=False, compare=False)
@@ -172,5 +172,5 @@ class RunState:
 
     def mark_timed_out(self) -> None:
         """Record a timed-out iteration (also counts as failed)."""
-        self.timed_out += 1
+        self.timed_out_count += 1
         self.mark_failed()
