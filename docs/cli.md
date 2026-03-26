@@ -231,7 +231,7 @@ If a command exceeds its timeout, the process is killed and the captured output 
 |---|---|
 | `{{ commands.<name> }}` | Output of the named command |
 | `{{ args.<name> }}` | Value of the named user argument |
-| `{{ ralph.name }}` | Ralph directory name (e.g. `my-ralph`) |
+| `{{ ralph.name }}` | ralph directory name (e.g. `my-ralph`) |
 | `{{ ralph.iteration }}` | Current iteration number (1-based) |
 | `{{ ralph.max_iterations }}` | Total iterations if `-n` was set, empty otherwise |
 

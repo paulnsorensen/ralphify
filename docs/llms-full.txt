@@ -88,7 +88,7 @@ ralph run my-ralph               # Run it
 
 ## Why ralph loops?
 
-A single agent conversation fills up its context window, slows down, and eventually loses the plot. Ralph loops solve this by resetting every iteration — the agent always starts fresh.
+A single agent conversation fills up its context window, slows down, and eventually loses the plot. ralph loops solve this by resetting every iteration — the agent always starts fresh.
 
 - **Fresh context, no decay** — each iteration starts with a clean context window. No conversation bloat, no hallucinated memories.
 - **Commands as feedback** — commands run each iteration and their output feeds into the prompt. When tests fail, the agent sees the failure and fixes it.
@@ -102,13 +102,13 @@ A single agent conversation fills up its context window, slows down, and eventua
 
 ---
 
-# When to Use Ralph Loops
+# When to use ralph loops
 
-Ralph loops are powerful but they're not the right tool for everything. This page helps you decide whether a loop fits your task.
+ralph loops are powerful but they're not the right tool for everything. This page helps you decide whether a loop fits your task.
 
 ## The sweet spot
 
-Ralph loops work best when a task has these properties:
+ralph loops work best when a task has these properties:
 
 **Decomposable into small, independent steps.** The loop does one thing per iteration. Tasks that naturally break into "do this, then this, then this" are ideal.
 
@@ -421,7 +421,7 @@ Focus area: {{ args.focus }}
 ralph run research --dir ./api --focus "error handling"
 ```
 
-### Ralph context placeholders
+### ralph context placeholders
 
 - `{{ ralph.name }}` — ralph directory name
 - `{{ ralph.iteration }}` — current iteration number (1-based)
@@ -1028,7 +1028,7 @@ Use `args` to parameterize values: `ralph run my-ralph --dir ./api --focus "erro
 
 ## 0.2.5 — 2026-03-22
 
-- Ralph placeholders: `{{ ralph.name }}`, `{{ ralph.iteration }}`, `{{ ralph.max_iterations }}`
+- ralph placeholders: `{{ ralph.name }}`, `{{ ralph.iteration }}`, `{{ ralph.max_iterations }}`
 
 ## 0.2.4 — 2026-03-22
 

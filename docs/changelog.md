@@ -26,7 +26,7 @@ All notable changes to ralphify are documented here.
 
 ### Added
 
-- **Ralph placeholders** — ralphs can now access runtime metadata via `{{ ralph.name }}` (ralph directory name), `{{ ralph.iteration }}` (current iteration, 1-based), and `{{ ralph.max_iterations }}` (total iterations if `-n` was set, empty otherwise). No frontmatter configuration needed.
+- **ralph placeholders** — ralphs can now access runtime metadata via `{{ ralph.name }}` (ralph directory name), `{{ ralph.iteration }}` (current iteration, 1-based), and `{{ ralph.max_iterations }}` (total iterations if `-n` was set, empty otherwise). No frontmatter configuration needed.
 
 ---
 
@@ -188,7 +188,7 @@ Tightened the primitive system: global primitives are now opt-in, context placeh
 
 ### Breaking changes
 
-- **Explicit primitive dependencies required** — global checks and contexts are no longer auto-applied to all ralphs. Each ralph must declare which global primitives it uses in its frontmatter (`checks: [lint, tests]`, `contexts: [git-log]`). Unknown names produce a clear error. Ralph-local primitives still auto-apply.
+- **Explicit primitive dependencies required** — global checks and contexts are no longer auto-applied to all ralphs. Each ralph must declare which global primitives it uses in its frontmatter (`checks: [lint, tests]`, `contexts: [git-log]`). Unknown names produce a clear error. ralph-local primitives still auto-apply.
 - **Named placeholders only** — the bulk `{{ contexts }}` placeholder and implicit append behavior have been removed. Each context must be referenced by name (`{{ contexts.git-log }}`). Contexts not referenced by a placeholder are excluded from the prompt.
 - **Removed `ralph status` command** — setup validation has been moved into `ralph run` startup, so a separate status command is no longer needed.
 

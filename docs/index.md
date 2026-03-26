@@ -142,7 +142,7 @@ ralph run my-ralph               # Run it
 
 ## Why ralph loops?
 
-A single agent conversation fills up its context window, slows down, and eventually loses the plot. Ralph loops solve this by resetting every iteration — the agent always starts fresh.
+A single agent conversation fills up its context window, slows down, and eventually loses the plot. ralph loops solve this by resetting every iteration — the agent always starts fresh.
 
 <div class="grid cards" markdown>
 

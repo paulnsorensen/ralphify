@@ -6,11 +6,11 @@ keywords: when to use ralphify, autonomous coding tasks, AI agent use cases, loo
 
 # When to use ralph loops
 
-Ralph loops are powerful but they're not the right tool for everything. This page helps you decide whether a loop fits your task before you invest time setting one up.
+ralph loops are powerful but they're not the right tool for everything. This page helps you decide whether a loop fits your task before you invest time setting one up.
 
 ## The sweet spot
 
-Ralph loops work best when a task has these properties:
+ralph loops work best when a task has these properties:
 
 **Decomposable into small, independent steps.** The loop does one thing per iteration. Tasks that naturally break into "do this, then this, then this" are ideal — implementing features from a TODO list, writing tests module by module, fixing lint errors one at a time.
 

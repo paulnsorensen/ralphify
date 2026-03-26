@@ -112,10 +112,10 @@ Your instructions here. Use {{ args.dir }} for user arguments.
 - `--` ends flag parsing: `ralph run my-ralph -- --verbose ./src` treats `--verbose` as a positional value
 - Missing args resolve to empty string
 
-### Ralph placeholders
+### ralph placeholders
 
 ```markdown
-{{ ralph.name }}               # Ralph directory name (e.g. "my-ralph")
+{{ ralph.name }}               # ralph directory name (e.g. "my-ralph")
 {{ ralph.iteration }}          # Current iteration number (1-based)
 {{ ralph.max_iterations }}     # Total iterations if -n was set, empty otherwise
 ```
