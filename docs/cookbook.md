@@ -15,7 +15,7 @@ All recipes use **Claude Code** as the agent. To use a different agent, swap the
 
 ---
 
-## Autoresearch
+## Run autonomous ML experiments {: #autoresearch }
 
 An autonomous ML research loop inspired by [Karpathy's autoresearch](https://github.com/karpathy/autoresearch). The agent runs experiments on a training script to minimize validation loss — modifying code, training for 5 minutes, keeping improvements and reverting failures.
 
@@ -47,7 +47,7 @@ The `train_script` and `prepare_script` args let you point the ralph at any auto
 
 ---
 
-## Codebase improvement
+## Improve code quality continuously {: #codebase-improvement }
 
 A loop that continuously improves code quality without changing functionality. It runs tests, type checking, and lint each iteration, then picks one improvement to make.
 
@@ -64,7 +64,7 @@ ralph run improve-codebase -n 5 --focus "focus on test coverage"
 
 ---
 
-## Documentation loop
+## Write and improve documentation automatically {: #documentation-loop }
 
 A loop focused on writing and improving documentation.
 
@@ -81,7 +81,7 @@ ralph run docs --focus "focus on the API reference pages"
 
 ---
 
-## Bug hunter
+## Find and fix bugs automatically {: #bug-hunter }
 
 A loop that discovers bugs and fixes them. The agent reads the codebase, finds a real bug (edge case, off-by-one, missing validation), writes a failing test to prove it, then fixes it.
 
@@ -98,7 +98,7 @@ ralph run bug-hunter -n 5 --focus "focus on input validation"
 
 ---
 
-## Deep research
+## Run structured AI research loops {: #deep-research }
 
 A structured research loop that builds up a report over many iterations. Uses shell scripts as commands to track maturity, show the question tree, and even run an editorial review agent that gives feedback between iterations.
 
@@ -120,7 +120,7 @@ This recipe shows several advanced patterns: commands that call scripts relative
 
 ---
 
-## Code migration
+## Migrate code patterns across a codebase {: #code-migration }
 
 A loop for batch code transformations — migrating from one pattern to another across a codebase. The `remaining` command counts how many files still need migration, giving the agent a clear finish line.
 
@@ -145,7 +145,7 @@ The `remaining` command gives the agent a shrinking counter and a list of files 
 
 ---
 
-## Security scan
+## Automate security scanning and fixes {: #security-scan }
 
 An iterative security review loop. The agent runs a scanner each iteration, picks one finding, fixes it, and verifies the fix. Good for systematically hardening a codebase.
 
@@ -163,7 +163,7 @@ Swap `bandit` for your scanner of choice — `semgrep`, `npm audit`, `cargo audi
 
 ---
 
-## Test coverage
+## Increase test coverage automatically {: #test-coverage }
 
 A loop that systematically increases test coverage. The agent sees the current coverage percentage and a list of uncovered functions, then writes tests for one module per iteration.
 
