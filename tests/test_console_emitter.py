@@ -225,7 +225,7 @@ class TestRunStopped:
             reason="completed", total=5, completed=4, failed=1, timed_out=0,
         ))
         output = console.export_text()
-        assert "5 iteration(s)" in output
+        assert "5 iterations" in output
         assert "4 succeeded" in output
         assert "1 failed" in output
 
@@ -268,7 +268,7 @@ class TestRunStopped:
         ))
         output = console.export_text()
         # Non-completed runs don't print the summary line
-        assert "iteration(s)" not in output
+        assert "Done:" not in output
 
     def test_run_stopped_stops_active_live_display(self):
         emitter, console = _capture_emitter()
@@ -291,6 +291,25 @@ class TestRunStopped:
         assert "3 succeeded" in output
         assert "failed" not in output
         assert "timed out" not in output
+
+    def test_completed_singular_iteration(self):
+        emitter, console = _capture_emitter()
+        emitter.emit(_make_event(
+            EventType.RUN_STOPPED,
+            reason="completed", total=1, completed=1, failed=0, timed_out=0,
+        ))
+        output = console.export_text()
+        assert "1 iteration" in output
+        assert "1 iterations" not in output
+
+    def test_completed_plural_iterations(self):
+        emitter, console = _capture_emitter()
+        emitter.emit(_make_event(
+            EventType.RUN_STOPPED,
+            reason="completed", total=3, completed=3, failed=0, timed_out=0,
+        ))
+        output = console.export_text()
+        assert "3 iterations" in output
 
 
 class TestIterationSpinner:

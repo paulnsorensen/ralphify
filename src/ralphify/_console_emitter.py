@@ -161,4 +161,4 @@ class ConsoleEmitter:
             parts.append(f"{timed_out_count} timed out")
         detail = ", ".join(parts)
         self._console.print(f"\n[bold blue]──────────────────────[/bold blue]")
-        self._console.print(f"[bold green]Done:[/bold green] {total} iteration(s) {_ICON_DASH} {detail}")
+        self._console.print(f"[bold green]Done:[/bold green] {total} iteration{'s' if total != 1 else ''} {_ICON_DASH} {detail}")
