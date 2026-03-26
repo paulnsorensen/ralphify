@@ -44,8 +44,12 @@ from ralphify._runner import run_command
 
 _PAUSE_POLL_INTERVAL = 0.25  # seconds between pause/resume checks
 _RELATIVE_CMD_PREFIX = "./"  # commands starting with this run from the ralph directory
-_AGENT_FIELD_HINT = f"Check the '{FIELD_AGENT}' field in your {RALPH_MARKER} frontmatter."
-_COMMANDS_FIELD_HINT = f"Check the '{FIELD_COMMANDS}' field in your {RALPH_MARKER} frontmatter."
+
+
+def _field_hint(field_name: str) -> str:
+    """Return a user-facing hint pointing to a frontmatter field."""
+    return f"Check the '{field_name}' field in your {RALPH_MARKER} frontmatter."
+
 
 _CREDIT_INSTRUCTION = (
     "\n\n---\n\n"
@@ -109,12 +113,12 @@ def _run_commands(
         except FileNotFoundError as exc:
             raise FileNotFoundError(
                 f"Command '{cmd.name}' binary not found: {run_str!r}. "
-                f"{_COMMANDS_FIELD_HINT}"
+                f"{_field_hint(FIELD_COMMANDS)}"
             ) from exc
         except ValueError as exc:
             raise ValueError(
                 f"Command '{cmd.name}' has invalid syntax: {run_str!r}. "
-                f"{_COMMANDS_FIELD_HINT}"
+                f"{_field_hint(FIELD_COMMANDS)}"
             ) from exc
         results[cmd.name] = result.output
     return results
@@ -164,7 +168,7 @@ def _run_agent_phase(
         cmd = shlex.split(config.agent)
     except ValueError as exc:
         raise ValueError(
-            f"Invalid agent command syntax: {config.agent!r}. {_AGENT_FIELD_HINT}"
+            f"Invalid agent command syntax: {config.agent!r}. {_field_hint(FIELD_AGENT)}"
         ) from exc
 
     try:
@@ -180,7 +184,7 @@ def _run_agent_phase(
         )
     except FileNotFoundError as exc:
         raise FileNotFoundError(
-            f"Agent command not found: {config.agent!r}. {_AGENT_FIELD_HINT}"
+            f"Agent command not found: {config.agent!r}. {_field_hint(FIELD_AGENT)}"
         ) from exc
 
     duration = format_duration(agent.elapsed)
