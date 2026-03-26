@@ -138,19 +138,21 @@ The command detects your agent and installs a skill to guide the creation proces
 Add a ralph from a GitHub repository. Installs it to `.ralphify/ralphs/<name>/` so you can run it by name.
 
 ```bash
-ralph add owner/repo                    # Install repo as a ralph (or all ralphs in the repo)
-ralph add owner/repo/ralph-name         # Install a specific ralph by name
-ralph add https://github.com/owner/repo # Full GitHub URL also works
+ralph add owner/repo                                        # Install all ralphs in the repo
+ralph add owner/repo/ralph-name                             # Specific ralph by name
+ralph add https://github.com/owner/repo                     # Full GitHub URL
+ralph add https://github.com/owner/repo/tree/main/my-ralph  # URL copied from GitHub browser
 ```
 
 | Argument | Default | Description |
 |---|---|---|
-| `SOURCE` | required | GitHub source: `owner/repo` or `owner/repo/ralph-name` |
+| `SOURCE` | required | GitHub source — shorthand (`owner/repo`), subpath (`owner/repo/path`), or full GitHub URL |
 
 **How it resolves:**
 
 - `owner/repo` — if the repo root contains `RALPH.md`, installs it as a single ralph named after the repo. Otherwise, finds and installs all ralphs in the repo.
 - `owner/repo/ralph-name` — searches the repo for a directory named `ralph-name` containing `RALPH.md`. If multiple matches are found, prints the paths and asks you to use the full subpath to disambiguate.
+- `https://github.com/owner/repo/tree/branch/path` — extracts the path from the URL. This is the format you get when you copy a URL from the GitHub web UI while browsing a directory. The branch name is used only to locate the path — `ralph add` always clones the default branch.
 
 After adding, run the ralph by name:
 

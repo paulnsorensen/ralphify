@@ -28,6 +28,7 @@ ralph new docs                     # AI-guided creation with name pre-filled
 
 ralph add owner/repo               # Install ralph(s) from a GitHub repo
 ralph add owner/repo/my-ralph      # Install a specific ralph by name
+ralph add https://github.com/owner/repo/tree/main/my-ralph  # URL from GitHub
 
 ralph --version                    # Show version
 ```

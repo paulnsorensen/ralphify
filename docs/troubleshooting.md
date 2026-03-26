@@ -46,10 +46,13 @@ The agent CLI isn't installed or isn't in your shell's PATH. Verify by running `
 The source format wasn't recognized. `ralph add` accepts these formats:
 
 ```bash
-ralph add owner/repo                         # shorthand
-ralph add owner/repo/ralph-name              # specific ralph
-ralph add https://github.com/owner/repo      # full URL
+ralph add owner/repo                                        # shorthand
+ralph add owner/repo/ralph-name                             # specific ralph
+ralph add https://github.com/owner/repo                     # full URL
+ralph add https://github.com/owner/repo/tree/main/my-ralph  # URL copied from GitHub
 ```
+
+The easiest way to add a ralph from GitHub is to navigate to the directory in your browser and copy the URL — it works directly with `ralph add`.
 
 ### "git clone failed"
 
