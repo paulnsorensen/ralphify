@@ -26,6 +26,7 @@ from ralphify._source import (
 class TestParseGithubSource:
     def test_owner_repo(self):
         p = parse_github_source("acme/tools")
+        assert p.owner_repo == "acme/tools"
         assert p.repo_url == "https://github.com/acme/tools.git"
         assert p.subpath is None
         assert p.handle == "acme/tools"
@@ -33,6 +34,7 @@ class TestParseGithubSource:
 
     def test_owner_repo_with_ralph_name(self):
         p = parse_github_source("acme/tools/linter")
+        assert p.owner_repo == "acme/tools"
         assert p.repo_url == "https://github.com/acme/tools.git"
         assert p.subpath == "linter"
         assert p.handle == "acme/tools/linter"
@@ -144,6 +146,7 @@ class TestFetchRepoRalphs:
         dest_dir.mkdir()
 
         parsed = ParsedSource(
+            owner_repo="a/b",
             repo_url="https://github.com/a/b.git",
             subpath=None, handle="a/b", name="b",
         )
@@ -163,6 +166,7 @@ class TestFetchRepoRalphs:
         dest_dir.mkdir()
 
         parsed = ParsedSource(
+            owner_repo="a/b",
             repo_url="https://github.com/a/b.git",
             subpath=None, handle="a/b", name="b",
         )
@@ -180,6 +184,7 @@ class TestFetchRepoRalphs:
         dest_dir.mkdir()
 
         parsed = ParsedSource(
+            owner_repo="a/b",
             repo_url="https://github.com/a/b.git",
             subpath=None, handle="a/b", name="b",
         )
@@ -201,6 +206,7 @@ class TestFetchNamedRalph:
         dest_dir.mkdir()
 
         parsed = ParsedSource(
+            owner_repo="a/b",
             repo_url="https://github.com/a/b.git",
             subpath="cookbooks/lint", handle="a/b/cookbooks/lint", name="lint",
         )
@@ -219,6 +225,7 @@ class TestFetchNamedRalph:
 
         # subpath is just "lint" — not the full path
         parsed = ParsedSource(
+            owner_repo="a/b",
             repo_url="https://github.com/a/b.git",
             subpath="lint", handle="a/b/lint", name="lint",
         )
@@ -236,6 +243,7 @@ class TestFetchNamedRalph:
         dest_dir.mkdir()
 
         parsed = ParsedSource(
+            owner_repo="x/y",
             repo_url="https://github.com/x/y.git",
             subpath="lint", handle="x/y/lint", name="lint",
         )
@@ -250,6 +258,7 @@ class TestFetchNamedRalph:
         dest_dir.mkdir()
 
         parsed = ParsedSource(
+            owner_repo="a/b",
             repo_url="https://github.com/a/b.git",
             subpath="nope", handle="a/b/nope", name="nope",
         )
@@ -268,6 +277,7 @@ class TestFetchNamedRalph:
         (old / RALPH_MARKER).write_text("old prompt")
 
         parsed = ParsedSource(
+            owner_repo="a/b",
             repo_url="https://github.com/a/b.git",
             subpath="lint", handle="a/b/lint", name="lint",
         )
@@ -326,6 +336,7 @@ class TestFetchRalphs:
         ralphs_dir.mkdir()
 
         parsed = ParsedSource(
+            owner_repo="a/b",
             repo_url="https://github.com/a/b.git",
             subpath=None, handle="a/b", name="b",
         )
@@ -347,6 +358,7 @@ class TestFetchRalphs:
         ralphs_dir.mkdir()
 
         parsed = ParsedSource(
+            owner_repo="a/b",
             repo_url="https://github.com/a/b.git",
             subpath="my-ralph", handle="a/b/my-ralph", name="my-ralph",
         )
@@ -370,6 +382,7 @@ class TestFetchRalphs:
         ralphs_dir.mkdir()
 
         parsed = ParsedSource(
+            owner_repo="a/b",
             repo_url="https://github.com/a/b.git",
             subpath=None, handle="a/b", name="b",
         )

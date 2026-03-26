@@ -816,6 +816,7 @@ class TestAdd:
         monkeypatch.chdir(tmp_path)
         from ralphify._source import ParsedSource, FetchResult
         parsed = ParsedSource(
+            owner_repo="owner/repo",
             repo_url="https://github.com/owner/repo.git",
             subpath="my-ralph",
             handle="owner/repo/my-ralph",
@@ -837,6 +838,7 @@ class TestAdd:
         monkeypatch.chdir(tmp_path)
         from ralphify._source import ParsedSource, FetchResult
         parsed = ParsedSource(
+            owner_repo="owner/repo",
             repo_url="https://github.com/owner/repo.git",
             subpath=None,
             handle="owner/repo",
@@ -868,6 +870,7 @@ class TestAdd:
         monkeypatch.chdir(tmp_path)
         from ralphify._source import ParsedSource
         mock_parse.return_value = ParsedSource(
+            owner_repo="owner/repo",
             repo_url="https://github.com/owner/repo.git",
             subpath=None,
             handle="owner/repo",
@@ -883,6 +886,7 @@ class TestAdd:
         monkeypatch.chdir(tmp_path)
         from ralphify._source import ParsedSource, FetchResult
         mock_parse.return_value = ParsedSource(
+            owner_repo="owner/repo",
             repo_url="https://github.com/owner/repo.git",
             subpath="x",
             handle="owner/repo/x",

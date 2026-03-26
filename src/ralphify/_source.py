@@ -22,6 +22,9 @@ from ralphify._output import SUBPROCESS_TEXT_KWARGS
 class ParsedSource:
     """Normalised representation of a GitHub ralph source."""
 
+    owner_repo: str
+    """Owner and repo slug, e.g. ``owner/repo``."""
+
     repo_url: str
     """Clone URL, e.g. ``https://github.com/owner/repo.git``."""
 
@@ -82,13 +85,14 @@ def parse_github_source(source: str) -> ParsedSource:
     # pattern, but the shorthand regex captures the full repo segment.
     repo = repo.removesuffix(".git")
 
+    owner_repo = f"{owner}/{repo}"
     repo_url = f"https://github.com/{owner}/{repo}.git"
     subpath = rest.strip("/") if rest else None
     subpath = subpath or None  # normalize empty string to None
     name = subpath.rsplit("/", 1)[-1] if subpath else repo
-    handle = f"{owner}/{repo}/{subpath}" if subpath else f"{owner}/{repo}"
+    handle = f"{owner_repo}/{subpath}" if subpath else owner_repo
 
-    return ParsedSource(repo_url=repo_url, subpath=subpath, handle=handle, name=name)
+    return ParsedSource(owner_repo=owner_repo, repo_url=repo_url, subpath=subpath, handle=handle, name=name)
 
 
 # ---------------------------------------------------------------------------
@@ -206,12 +210,11 @@ def _fetch_named_ralph(
         paths = "\n".join(
             f"  - {m.relative_to(clone_dir)}/{RALPH_MARKER}" for m in matches
         )
-        owner_repo = "/".join(parsed.handle.split("/")[:2])
         raise RuntimeError(
-            f"Found multiple ralphs named '{ralph_name}' in {owner_repo}:\n"
+            f"Found multiple ralphs named '{ralph_name}' in {parsed.owner_repo}:\n"
             f"{paths}\n\n"
             f"Use the full path to disambiguate, e.g.:\n"
-            f"  ralph add {owner_repo}/{matches[0].relative_to(clone_dir)}"
+            f"  ralph add {parsed.owner_repo}/{matches[0].relative_to(clone_dir)}"
         )
 
     raise RuntimeError(
