@@ -11,7 +11,7 @@ keywords: Claude Code agent, Aider agent, Codex CLI, AI coding agents, agent con
 
 Ralphify works with **any CLI that reads a prompt from stdin and exits when done**. Claude Code is the default, but you can use any tool that follows this contract.
 
-This page shows how to configure the `agent` field in your RALPH.md for popular agents and how to write your own wrapper.
+This page shows how to configure the [`agent` frontmatter field](quick-reference.md#frontmatter-fields) in your RALPH.md for popular agents and how to write your own wrapper.
 
 ## Agent comparison
 
@@ -62,7 +62,7 @@ npm install -g @anthropic-ai/claude-code
 ```
 
 !!! info "Why `--dangerously-skip-permissions`?"
-    Without this flag, Claude Code pauses to ask for approval before editing files, running commands, or making commits. In an autonomous loop, nobody is there to approve — so the agent would hang forever. Commands in your RALPH.md act as your guardrails instead.
+    Without this flag, Claude Code pauses to ask for approval before editing files, running commands, or making commits. In an autonomous loop, nobody is there to approve — so the agent would hang forever. [Commands](writing-prompts.md#using-commands-for-dynamic-data) in your RALPH.md act as your guardrails instead.
 
 ### Automatic streaming mode
 
@@ -176,18 +176,18 @@ Verify the agent works outside of ralphify first. The command depends on which a
 
 If the agent prints a response and exits, your setup is working. If it hangs or errors, fix the agent installation before continuing.
 
-Then test through ralphify with a single iteration:
+Then test through ralphify with a single iteration using [`ralph run`](cli.md#ralph-run):
 
 ```bash
 ralph run my-ralph -n 1 --log-dir ralph_logs
 ```
 
 !!! tip "Non-Claude-Code agents"
-    Disable auto-commits if your prompt handles commits — most agents have this feature, and it conflicts with prompt-driven commit instructions. Use `--timeout` as a safety net in case the agent enters an unexpected interactive mode.
+    Disable auto-commits if your prompt handles commits — most agents have this feature, and it conflicts with prompt-driven commit instructions. Use [`--timeout`](cli.md#ralph-run) as a safety net in case the agent enters an unexpected interactive mode.
 
 ## How agent output works
 
-Ralphify uses two different execution modes depending on the agent:
+Ralphify uses two different execution modes depending on the agent (see [how the loop works](how-it-works.md) for the full lifecycle):
 
 ### Streaming mode (Claude Code)
 
@@ -195,7 +195,7 @@ When the agent command starts with `claude`, ralphify spawns the process with `P
 
 - **Live activity tracking** — the terminal shows what the agent is doing in real time
 - **Result text extraction** — the agent's final response is captured
-- **Verbose logging** — with `--log-dir`, logs include the agent's internal tool calls and reasoning
+- **Verbose logging** — with [`--log-dir`](cli.md#ralph-run), logs include the agent's internal tool calls and reasoning
 
 ### Blocking mode (all other agents)
 
