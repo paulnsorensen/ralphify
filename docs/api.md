@@ -202,8 +202,11 @@ class MyEmitter:
 
 
 config = RunConfig(
-    agent="claude -p", ralph_dir=Path("my-ralph"),
-    ralph_file=Path("my-ralph/RALPH.md"), commands=[], max_iterations=3,
+    agent="claude -p --dangerously-skip-permissions",
+    ralph_dir=Path("my-ralph"),
+    ralph_file=Path("my-ralph/RALPH.md"),
+    commands=[],
+    max_iterations=3,
 )
 state = RunState(run_id="observed-run")
 run_loop(config, state, emitter=MyEmitter())
@@ -305,13 +308,15 @@ from ralphify import RunManager, RunConfig, Command
 manager = RunManager()
 
 docs_config = RunConfig(
-    agent="claude -p", ralph_dir=Path("docs-ralph"),
+    agent="claude -p --dangerously-skip-permissions",
+    ralph_dir=Path("docs-ralph"),
     ralph_file=Path("docs-ralph/RALPH.md"),
     commands=[Command(name="build", run="mkdocs build --strict")],
     max_iterations=5,
 )
 tests_config = RunConfig(
-    agent="claude -p", ralph_dir=Path("tests-ralph"),
+    agent="claude -p --dangerously-skip-permissions",
+    ralph_dir=Path("tests-ralph"),
     ralph_file=Path("tests-ralph/RALPH.md"),
     commands=[Command(name="tests", run="uv run pytest -x")],
     max_iterations=3,
