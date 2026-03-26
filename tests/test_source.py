@@ -175,6 +175,26 @@ class TestFetchRepoRalphs:
         names = sorted(n for n, _ in result.installed)
         assert names == ["alpha", "beta"]
 
+    def test_duplicate_names_raises(self, tmp_path):
+        """When a repo contains multiple ralphs with the same leaf directory
+        name, _fetch_repo_ralphs should raise instead of silently overwriting."""
+        clone_dir = tmp_path / "repo"
+        for path in ("tasks/lint", "tools/lint"):
+            d = clone_dir / path
+            d.mkdir(parents=True)
+            (d / RALPH_MARKER).write_text(f"prompt from {path}")
+
+        dest_dir = tmp_path / "installed"
+        dest_dir.mkdir()
+
+        parsed = ParsedSource(
+            owner_repo="a/b",
+            repo_url="https://github.com/a/b.git",
+            subpath=None, handle="a/b", name="b",
+        )
+        with pytest.raises(RuntimeError, match="Found multiple ralphs named 'lint'"):
+            _fetch_repo_ralphs(clone_dir, parsed, dest_dir)
+
     def test_no_ralphs_raises(self, tmp_path):
         clone_dir = tmp_path / "repo"
         clone_dir.mkdir()

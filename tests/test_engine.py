@@ -652,7 +652,7 @@ class TestHandleControlSignals:
 
         def set_stop_flag():
             time.sleep(0.01)
-            state._stop_requested = True
+            state._stop_event.set()
 
         threading.Thread(target=set_stop_flag, daemon=True).start()
 

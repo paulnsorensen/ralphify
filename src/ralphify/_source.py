@@ -179,6 +179,24 @@ def _fetch_repo_ralphs(
             f"No {RALPH_MARKER} found in {parsed.handle}."
         )
 
+    # Detect duplicate leaf names — installing two ralphs with the same
+    # directory name would silently overwrite the first.
+    seen: dict[str, list[Path]] = {}
+    for rd in ralph_dirs:
+        seen.setdefault(rd.name, []).append(rd)
+    duplicates = {name: paths for name, paths in seen.items() if len(paths) > 1}
+    if duplicates:
+        dup_name = next(iter(duplicates))
+        paths = "\n".join(
+            f"  - {m.relative_to(clone_dir)}/{RALPH_MARKER}" for m in duplicates[dup_name]
+        )
+        raise RuntimeError(
+            f"Found multiple ralphs named '{dup_name}' in {parsed.owner_repo}:\n"
+            f"{paths}\n\n"
+            f"Use the full path to disambiguate, e.g.:\n"
+            f"  ralph add {parsed.owner_repo}/{duplicates[dup_name][0].relative_to(clone_dir)}"
+        )
+
     installed: list[tuple[str, Path]] = []
     for rd in ralph_dirs:
         result = _install_single_ralph(rd, rd.name, ralphs_dir)
