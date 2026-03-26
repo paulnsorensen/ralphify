@@ -34,10 +34,11 @@ from ralphify._frontmatter import (
     VALID_NAME_CHARS_MSG,
     parse_frontmatter,
 )
+from ralphify._output import IS_WINDOWS
 from ralphify._run_types import Command, DEFAULT_COMMAND_TIMEOUT, RunConfig, RunState, generate_run_id
 from ralphify.engine import run_loop
 
-if sys.platform == "win32":
+if IS_WINDOWS:
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
 

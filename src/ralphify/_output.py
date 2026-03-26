@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 from typing import Any
+
+# Platform flag used by _agent.py and cli.py to guard Windows-specific code
+# paths (process-group handling, console encoding).  Centralised here next to
+# SUBPROCESS_TEXT_KWARGS so platform-aware modules import from one place.
+IS_WINDOWS = sys.platform == "win32"
 
 # Shared subprocess kwargs for text-mode execution with UTF-8 decoding.
 # Every subprocess.run / subprocess.Popen call that reads text output should

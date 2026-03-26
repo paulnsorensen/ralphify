@@ -1000,8 +1000,14 @@ class TestWin32Reconfigure:
         with patch("sys.platform", "win32"), \
              patch("sys.stdout", mock_stdout), \
              patch("sys.stderr", mock_stderr):
+            # Reload _output first so IS_WINDOWS picks up the patched platform.
+            import ralphify._output as _output_mod
+            importlib.reload(_output_mod)
             import ralphify.cli as cli_mod
             importlib.reload(cli_mod)
+
+        # Restore IS_WINDOWS to its real value so other tests are unaffected.
+        importlib.reload(_output_mod)
 
         mock_stdout.reconfigure.assert_called_once_with(encoding="utf-8")
         mock_stderr.reconfigure.assert_called_once_with(encoding="utf-8")

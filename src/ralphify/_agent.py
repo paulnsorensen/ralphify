@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import IO, Any
 
-from ralphify._output import SUBPROCESS_TEXT_KWARGS, ProcessResult, collect_output, ensure_str
+from ralphify._output import IS_WINDOWS, SUBPROCESS_TEXT_KWARGS, ProcessResult, collect_output, ensure_str
 
 # Agent binary name that supports --output-format stream-json.
 _CLAUDE_BINARY = "claude"
@@ -52,7 +52,7 @@ _SIGTERM_GRACE_PERIOD = 3
 # On POSIX this uses start_new_session so the agent and all its children
 # form a separate process group that can be killed together.
 _SESSION_KWARGS: dict[str, Any] = (
-    {} if sys.platform == "win32"
+    {} if IS_WINDOWS
     else {"start_new_session": True}
 )
 
@@ -66,7 +66,7 @@ def _kill_process_group(proc: subprocess.Popen[Any]) -> None:
     child was not started with ``start_new_session=True`` (e.g. in tests).
     Falls back to ``proc.kill()`` on Windows or if the group kill fails.
     """
-    if sys.platform != "win32" and proc.poll() is None:
+    if not IS_WINDOWS and proc.poll() is None:
         try:
             pgid = os.getpgid(proc.pid)
         except (OSError, ProcessLookupError):
