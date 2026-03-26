@@ -38,6 +38,15 @@ This creates `my-ralph/RALPH.md` with a ready-to-customize template including an
 
 Alternatively, use `ralph new` for AI-guided setup, or create the file manually as shown below.
 
+!!! tip "Installing an existing ralph?"
+    If someone has shared a ralph on GitHub, skip the manual setup and install it directly:
+
+    ```bash
+    ralph add owner/repo
+    ```
+
+    This installs to `.ralphify/ralphs/` so you can run it by name with `ralph run <name>`. See the [CLI reference](cli.md#ralph-add) for all source formats.
+
 ### Manual setup
 
 Create a ralph directory and `RALPH.md` with the agent field — this is the only required frontmatter:
