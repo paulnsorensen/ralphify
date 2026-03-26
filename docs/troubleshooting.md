@@ -6,6 +6,12 @@ keywords: ralphify troubleshooting, agent hangs, command failures, setup errors,
 
 # Troubleshooting
 
+!!! tldr "Quick checklist"
+    1. Run `ralph run my-ralph -n 1` — it validates your setup and shows clear errors
+    2. Test the agent outside ralphify: `echo "Say hello" | claude -p`
+    3. Use `--log-dir ralph_logs` to capture output for debugging
+    4. Commands don't support shell features (pipes, `&&`) — use a wrapper script instead
+
 Common issues and how to fix them. If your problem isn't listed here, run `ralph run my-ralph -n 1` — it validates your setup and shows clear errors.
 
 ## Setup issues
@@ -300,50 +306,46 @@ If a `{{ commands.my-command }}` placeholder produces nothing in the prompt:
 2. Verify the command produces output by running it manually
 3. Must be `commands` (plural) — `{{ command.name }}` won't resolve
 
-## Output issues
+??? note "No output visible during iteration"
+    By default, agent output goes directly to the terminal. If you're using `--log-dir`, output is captured and then replayed — you'll still see it, but only after the iteration completes.
 
-### No output visible during iteration
+??? note "CLI flag validation errors"
+    ### "'-n' must be a positive integer"
 
-By default, agent output goes directly to the terminal. If you're using `--log-dir`, output is captured and then replayed — you'll still see it, but only after the iteration completes.
+    The `-n` flag sets how many iterations to run. It must be at least 1:
 
-## CLI flag issues
+    ```bash
+    # ✗ Wrong
+    ralph run my-ralph -n 0
 
-### "'-n' must be a positive integer"
+    # ✓ Correct
+    ralph run my-ralph -n 1
+    ```
 
-The `-n` flag sets how many iterations to run. It must be at least 1:
+    ### "'--delay' must be non-negative"
 
-```bash
-# ✗ Wrong
-ralph run my-ralph -n 0
+    The `--delay` flag sets seconds to wait between iterations. It can be zero but not negative:
 
-# ✓ Correct
-ralph run my-ralph -n 1
-```
+    ```bash
+    # ✗ Wrong
+    ralph run my-ralph --delay -5
 
-### "'--delay' must be non-negative"
+    # ✓ Correct
+    ralph run my-ralph --delay 0
+    ralph run my-ralph --delay 30
+    ```
 
-The `--delay` flag sets seconds to wait between iterations. It can be zero but not negative:
+    ### "'--timeout' must be a positive number"
 
-```bash
-# ✗ Wrong
-ralph run my-ralph --delay -5
+    The `--timeout` flag sets the per-iteration time limit in seconds. It must be greater than zero:
 
-# ✓ Correct
-ralph run my-ralph --delay 0
-ralph run my-ralph --delay 30
-```
+    ```bash
+    # ✗ Wrong
+    ralph run my-ralph --timeout 0
 
-### "'--timeout' must be a positive number"
-
-The `--timeout` flag sets the per-iteration time limit in seconds. It must be greater than zero:
-
-```bash
-# ✗ Wrong
-ralph run my-ralph --timeout 0
-
-# ✓ Correct
-ralph run my-ralph --timeout 300
-```
+    # ✓ Correct
+    ralph run my-ralph --timeout 300
+    ```
 
 ## Common questions
 
