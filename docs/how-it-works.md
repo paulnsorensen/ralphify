@@ -49,7 +49,9 @@ commands:
 
 ### 3. Resolve placeholders
 
-Each `{{ commands.<name> }}` placeholder in the prompt body is replaced with the corresponding command's output. Placeholders for `{{ args.<name> }}` are replaced with user argument values from the CLI — both in the prompt body and in command `run` strings.
+Each `{{ commands.<name> }}` placeholder in the prompt body is replaced with the corresponding command's output. **Only commands referenced by a placeholder appear in the prompt** — if you define a command but don't use `{{ commands.<name> }}` for it, the command still runs every iteration but its output is excluded. This forces you to place data deliberately rather than accidentally dumping everything into the prompt.
+
+Placeholders for `{{ args.<name> }}` are replaced with user argument values from the CLI — both in the prompt body and in command `run` strings.
 
 `{{ ralph.* }}` placeholders provide runtime metadata — no frontmatter configuration needed:
 
