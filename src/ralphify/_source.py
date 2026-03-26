@@ -17,6 +17,11 @@ from pathlib import Path
 from ralphify._frontmatter import RALPH_MARKER
 from ralphify._output import SUBPROCESS_TEXT_KWARGS
 
+# The ".git" suffix used in clone URLs and as the directory name to exclude
+# when copying.  Repeated across URL construction, repo-name stripping, and
+# copytree ignore patterns — a single constant keeps them in sync.
+_GIT_SUFFIX = ".git"
+
 
 @dataclass(frozen=True)
 class ParsedSource:
@@ -77,7 +82,7 @@ def parse_github_source(source: str) -> ParsedSource:
     # Must happen before the empty check so that a bare ".git" repo name
     # (e.g. "owner/.git") is correctly rejected as empty.
     if repo:
-        repo = repo.removesuffix(".git")
+        repo = repo.removesuffix(_GIT_SUFFIX)
 
     if not owner or not repo:
         raise ValueError(
@@ -86,7 +91,7 @@ def parse_github_source(source: str) -> ParsedSource:
         )
 
     owner_repo = f"{owner}/{repo}"
-    repo_url = f"https://github.com/{owner}/{repo}.git"
+    repo_url = f"https://github.com/{owner}/{repo}{_GIT_SUFFIX}"
     subpath = (raw_subpath.strip("/") or None) if raw_subpath else None
     name = Path(subpath).name if subpath else repo
     handle = f"{owner_repo}/{subpath}" if subpath else owner_repo
@@ -243,4 +248,4 @@ def _copy_ralph(src: Path, dest: Path) -> None:
     """Copy a ralph directory to *dest*, overwriting if it exists."""
     if dest.exists():
         shutil.rmtree(dest)
-    shutil.copytree(src, dest, ignore=shutil.ignore_patterns(".git"))
+    shutil.copytree(src, dest, ignore=shutil.ignore_patterns(_GIT_SUFFIX))
