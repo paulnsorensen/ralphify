@@ -43,6 +43,19 @@ The helper scripts surface experiment state each iteration:
 ralph run autoresearch --train_script train.py --prepare_script prepare.py
 ```
 
+```text
+▶ Running: autoresearch
+  2 commands · unlimited iterations
+
+── Iteration 1 ──
+  Commands: 2 ran
+✓ Iteration 1 completed (312.4s)
+
+── Iteration 2 ──
+  Commands: 2 ran
+✓ Iteration 2 completed (287.1s)
+```
+
 The `train_script` and `prepare_script` args let you point the ralph at any autoresearch-style project. The agent handles everything autonomously: establishing a baseline on the first iteration, then running experiments indefinitely. Each iteration is one hypothesis tested — modify the train script, train, evaluate, keep or revert.
 
 ---
@@ -58,8 +71,22 @@ A loop that continuously improves code quality without changing functionality. I
 ```
 
 ```bash
-ralph run improve-codebase -n 10 --log-dir ralph_logs
-ralph run improve-codebase -n 5 --focus "focus on test coverage"
+ralph run improve-codebase -n 5 --focus "focus on test coverage" --log-dir ralph_logs
+```
+
+```text
+▶ Running: improve-codebase
+  3 commands · max 5 iterations
+
+── Iteration 1 ──
+  Commands: 3 ran
+✓ Iteration 1 completed (48.2s)
+  → ralph_logs/001_20250115-142301.log
+
+── Iteration 2 ──
+  Commands: 3 ran
+✓ Iteration 2 completed (55.7s)
+  → ralph_logs/002_20250115-143112.log
 ```
 
 ---
@@ -75,8 +102,17 @@ A loop focused on writing and improving documentation.
 ```
 
 ```bash
-ralph run docs --log-dir ralph_logs
-ralph run docs --focus "focus on the API reference pages"
+ralph run docs --focus "focus on the API reference pages" --log-dir ralph_logs
+```
+
+```text
+▶ Running: docs
+  1 command · unlimited iterations
+
+── Iteration 1 ──
+  Commands: 1 ran
+✓ Iteration 1 completed (63.5s)
+  → ralph_logs/001_20250120-091502.log
 ```
 
 ---
@@ -92,8 +128,17 @@ A loop that discovers bugs and fixes them. The agent reads the codebase, finds a
 ```
 
 ```bash
-ralph run bug-hunter -n 10 --log-dir ralph_logs
-ralph run bug-hunter -n 5 --focus "focus on input validation"
+ralph run bug-hunter -n 5 --focus "focus on input validation" --log-dir ralph_logs
+```
+
+```text
+▶ Running: bug-hunter
+  1 command · max 5 iterations
+
+── Iteration 1 ──
+  Commands: 1 ran
+✓ Iteration 1 completed (71.3s)
+  → ralph_logs/001_20250118-103045.log
 ```
 
 ---
@@ -114,6 +159,15 @@ The helper scripts (`show-focus.sh`, `show-questions.sh`, etc.) read from the wo
 
 ```bash
 ralph run research --workspace ai-safety --focus "current approaches to AI alignment"
+```
+
+```text
+▶ Running: research
+  4 commands · unlimited iterations
+
+── Iteration 1 ──
+  Commands: 4 ran
+✓ Iteration 1 completed (185.6s)
 ```
 
 This recipe shows several advanced patterns: commands that call scripts relative to the ralph directory (`./show-focus.sh`), a command with a `timeout`, a command that itself calls an AI agent (`review.sh` pipes to `claude -p`), and `args` used in the prompt body via `{{ args.workspace }}` placeholders.
@@ -141,6 +195,15 @@ ralph run migrate --old_pattern "from utils import legacy_helper" \
                   --new_pattern "from core.helpers import modern_helper"
 ```
 
+```text
+▶ Running: migrate
+  1 command · unlimited iterations
+
+── Iteration 1 ──
+  Commands: 1 ran
+✓ Iteration 1 completed (34.8s)
+```
+
 The `remaining` command gives the agent a shrinking counter and a list of files still needing attention, so it always knows where to focus next.
 
 ---
@@ -159,6 +222,16 @@ An iterative security review loop. The agent runs a scanner each iteration, pick
 ralph run security -n 10 --log-dir ralph_logs
 ```
 
+```text
+▶ Running: security
+  1 command · max 10 iterations
+
+── Iteration 1 ──
+  Commands: 1 ran
+✓ Iteration 1 completed (42.9s)
+  → ralph_logs/001_20250122-160830.log
+```
+
 Swap `bandit` for your scanner of choice — `semgrep`, `npm audit`, `cargo audit`, etc. The pattern works the same: scan, pick a finding, fix it, log it.
 
 ---
@@ -174,8 +247,17 @@ A loop that systematically increases test coverage. The agent sees the current c
 ```
 
 ```bash
-ralph run test-coverage -n 10 --log-dir ralph_logs
-ralph run test-coverage -n 5 --target "focus on error handling paths"
+ralph run test-coverage -n 5 --target "focus on error handling paths" --log-dir ralph_logs
+```
+
+```text
+▶ Running: test-coverage
+  2 commands · max 5 iterations
+
+── Iteration 1 ──
+  Commands: 2 ran
+✓ Iteration 1 completed (56.1s)
+  → ralph_logs/001_20250125-140210.log
 ```
 
 The coverage report gives the agent a clear metric to improve and shows exactly which lines are missing, so it always knows where to focus.
