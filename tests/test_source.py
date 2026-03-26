@@ -119,6 +119,28 @@ class TestParseGithubSource:
         with pytest.raises(ValueError, match="Cannot parse"):
             parse_github_source("https://github.com/owner/.git")
 
+    def test_url_with_query_string_stripped(self):
+        """URLs copied from a browser may include ?tab=code — the query
+        string must be stripped so it doesn't pollute the repo name."""
+        p = parse_github_source("https://github.com/acme/tools?tab=code")
+        assert p.owner_repo == "acme/tools"
+        assert p.repo_url == "https://github.com/acme/tools.git"
+        assert p.subpath is None
+
+    def test_url_with_fragment_stripped(self):
+        """URLs may include #readme — the fragment must be stripped."""
+        p = parse_github_source("https://github.com/acme/tools#readme")
+        assert p.owner_repo == "acme/tools"
+        assert p.repo_url == "https://github.com/acme/tools.git"
+        assert p.subpath is None
+
+    def test_url_with_tree_path_and_query_string(self):
+        """Query string after a tree path should be stripped."""
+        p = parse_github_source("https://github.com/acme/tools/tree/main/my-ralph?tab=code")
+        assert p.owner_repo == "acme/tools"
+        assert p.subpath == "my-ralph"
+        assert p.name == "my-ralph"
+
 
 # ── _find_ralphs_in ─────────────────────────────────────────────────
 

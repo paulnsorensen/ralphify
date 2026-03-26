@@ -65,8 +65,15 @@ def parse_github_source(source: str) -> ParsedSource:
         https://github.com/owner/repo
         https://github.com/owner/repo/tree/main/path
 
+    Query strings (``?tab=code``) and fragments (``#readme``) are
+    stripped so that URLs copied from a browser work transparently.
+
     Raises ``ValueError`` for unrecognised formats.
     """
+    # Strip query string and fragment — users often copy URLs from
+    # their browser that include these (e.g. ?tab=code, #readme).
+    source = source.split("?", 1)[0].split("#", 1)[0]
+
     owner: str | None = None
     repo: str | None = None
     raw_subpath: str | None = None
