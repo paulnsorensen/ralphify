@@ -143,6 +143,52 @@ Common causes:
 
 ## Frontmatter issues
 
+### "Invalid YAML in frontmatter"
+
+Your YAML frontmatter has a syntax error — usually a missing colon, bad indentation, or an unquoted special character. The error message includes the YAML parser's details:
+
+```text
+Invalid YAML in frontmatter: while parsing a block mapping ...
+```
+
+Common fixes:
+
+```yaml
+# ✗ Wrong — missing colon, bad indentation
+agent claude -p
+commands:
+- name: tests
+run: uv run pytest
+
+# ✓ Correct
+agent: claude -p
+commands:
+  - name: tests
+    run: uv run pytest
+```
+
+If your value contains special YAML characters (`:`, `#`, `{`, `[`), wrap it in quotes:
+
+```yaml
+agent: "claude -p --dangerously-skip-permissions"
+```
+
+### "Frontmatter must be a YAML mapping"
+
+The frontmatter parsed as valid YAML but isn't a key-value mapping. This usually happens when the frontmatter is a plain string or a list instead of a mapping:
+
+```yaml
+# ✗ Wrong — this is a plain string, not a mapping
+---
+claude -p --dangerously-skip-permissions
+---
+
+# ✓ Correct — key: value pairs
+---
+agent: claude -p --dangerously-skip-permissions
+---
+```
+
 ### "Command name contains invalid characters" / "Arg name contains invalid characters"
 
 Command names and arg names may only contain letters, digits, hyphens, and underscores (`a-z`, `A-Z`, `0-9`, `-`, `_`). Names with dots, spaces, or special characters are rejected because they can't be used in [`{{ commands.<name> }}` or `{{ args.<name> }}` placeholders](writing-prompts.md#ralph-context-placeholders).
