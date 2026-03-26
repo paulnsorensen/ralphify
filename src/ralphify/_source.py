@@ -183,12 +183,9 @@ def _fetch_repo_ralphs(
     seen: dict[str, list[Path]] = {}
     for rd in ralph_dirs:
         seen.setdefault(rd.name, []).append(rd)
-    duplicates = {name: paths for name, paths in seen.items() if len(paths) > 1}
-    if duplicates:
-        dup_name = next(iter(duplicates))
-        raise _duplicate_ralph_error(
-            dup_name, duplicates[dup_name], clone_dir, parsed.owner_repo,
-        )
+    for name, paths in seen.items():
+        if len(paths) > 1:
+            raise _duplicate_ralph_error(name, paths, clone_dir, parsed.owner_repo)
 
     installed: list[tuple[str, Path]] = []
     for rd in ralph_dirs:
