@@ -1,5 +1,6 @@
 """Tests for the CLI."""
 
+import importlib
 import signal
 import subprocess
 from unittest.mock import patch, MagicMock
@@ -989,3 +990,18 @@ class TestInstalledRalphResolution:
         result = runner.invoke(app, ["run", "nonexistent"])
         assert result.exit_code == 1
         assert "installed ralph" in result.output.lower()
+
+
+class TestWin32Reconfigure:
+    def test_reconfigures_stdout_and_stderr_on_win32(self):
+        """On Windows, cli module reconfigures stdout/stderr to UTF-8 at import time."""
+        mock_stdout = MagicMock()
+        mock_stderr = MagicMock()
+        with patch("sys.platform", "win32"), \
+             patch("sys.stdout", mock_stdout), \
+             patch("sys.stderr", mock_stderr):
+            import ralphify.cli as cli_mod
+            importlib.reload(cli_mod)
+
+        mock_stdout.reconfigure.assert_called_once_with(encoding="utf-8")
+        mock_stderr.reconfigure.assert_called_once_with(encoding="utf-8")
