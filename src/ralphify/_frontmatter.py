@@ -42,6 +42,9 @@ CMD_NAME_RE = re.compile(r"[a-zA-Z0-9_-]+")
 # Human-readable description of allowed name characters, paired with CMD_NAME_RE.
 VALID_NAME_CHARS_MSG = "Names may only contain letters, digits, hyphens, and underscores."
 
+# UTF-8 BOM character — files saved on Windows may start with this.
+_UTF8_BOM = "\ufeff"
+
 # Pre-compiled pattern to strip HTML comments from body text.
 _HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 
@@ -77,8 +80,8 @@ def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
 
     Returns ``(frontmatter_dict, body_text)``.
     """
-    if text.startswith("\ufeff"):
-        text = text[1:]
+    if text.startswith(_UTF8_BOM):
+        text = text.removeprefix(_UTF8_BOM)
     fm_raw, body = _extract_frontmatter_block(text)
     if fm_raw:
         try:

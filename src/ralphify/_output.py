@@ -64,6 +64,10 @@ def collect_output(
     return "".join(parts)
 
 
+_SECONDS_PER_MINUTE = 60
+_MINUTES_PER_HOUR = 60
+
+
 def format_duration(seconds: float) -> str:
     """Format *seconds* as a compact human-readable duration string.
 
@@ -71,14 +75,14 @@ def format_duration(seconds: float) -> str:
     and ``"1h 15m"`` for longer durations.  Used in CLI output and
     event data for iteration timing.
     """
-    if round(seconds, 1) < 60:
+    if round(seconds, 1) < _SECONDS_PER_MINUTE:
         return f"{seconds:.1f}s"
     # Use rounded total to avoid edge cases like 59.95 → "0m 60s"
     total = round(seconds)
-    minutes = total // 60
-    secs = total % 60
-    if minutes < 60:
+    minutes = total // _SECONDS_PER_MINUTE
+    secs = total % _SECONDS_PER_MINUTE
+    if minutes < _MINUTES_PER_HOUR:
         return f"{minutes}m {secs}s"
-    hours = minutes // 60
-    mins = minutes % 60
+    hours = minutes // _MINUTES_PER_HOUR
+    mins = minutes % _MINUTES_PER_HOUR
     return f"{hours}h {mins}m"
