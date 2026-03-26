@@ -75,7 +75,7 @@ By default, ralphify appends a **co-author trailer instruction** to the end of t
 
 The assembled prompt is piped to the agent command via stdin:
 
-```
+```bash
 echo "<assembled prompt>" | claude -p --dangerously-skip-permissions
 ```
 

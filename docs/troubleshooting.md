@@ -211,7 +211,7 @@ commands:
 
 A command's `run` string has malformed shell syntax — usually an unmatched quote. The error message tells you which command failed:
 
-```
+```text
 Command 'tests' has invalid syntax: 'uv run pytest -x "unclosed'. Check the 'commands' field in your RALPH.md frontmatter.
 ```
 
@@ -221,7 +221,7 @@ Fix the quoting in the `run` value. If your command needs complex quoting, point
 
 A command in your `commands` field references a binary that isn't installed or isn't on your PATH. The error message tells you which command failed:
 
-```
+```text
 Command 'lint' binary not found: 'mypy src/'. Check the 'commands' field in your RALPH.md frontmatter.
 ```
 

@@ -104,7 +104,7 @@ just website-preview      # Build + serve at http://127.0.0.1:8080
 
 The project uses descriptive commit messages that explain the user benefit:
 
-```
+```text
 docs: explain X for users who want to Y
 feat: add X so users can Y
 fix: resolve X that caused Y

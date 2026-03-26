@@ -100,7 +100,7 @@ ralph run my-ralph -n 3    # Run 3 iterations
 
 ### What it looks like
 
-```
+```text
 $ ralph run my-ralph -n 3 --log-dir ralph_logs
 
 ▶ Running: my-ralph

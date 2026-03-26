@@ -35,7 +35,7 @@ ralph --version                    # Show version
 
 ## Directory structure
 
-```
+```text
 my-ralph/
 └── RALPH.md              # Prompt + configuration (required)
 ```

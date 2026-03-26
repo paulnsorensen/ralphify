@@ -25,7 +25,7 @@ If you're not sure which to pick: **start with Claude Code.** It has the deepest
 
 Every iteration, ralphify runs your agent like this:
 
-```
+```bash
 echo "<assembled prompt>" | <agent command>
 ```
 

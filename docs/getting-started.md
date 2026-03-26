@@ -193,7 +193,7 @@ ralph run my-ralph -n 3 --log-dir ralph_logs
 
 Watch the output. Each iteration runs the commands, assembles the prompt with the command output, and pipes it to the agent:
 
-```
+```text
 ▶ Running: my-ralph
   3 commands · max 3 iterations
 
