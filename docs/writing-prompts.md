@@ -112,6 +112,18 @@ commands:
 
 Pick the 2-3 most useful signals. Don't dump everything — each command's output eats into the agent's context window.
 
+### Shell features in commands
+
+Commands are run directly, not through a shell — pipes (`|`), redirections (`2>&1`), and chaining (`&&`) don't work in the `run` field. If you need shell features, point the command at a script:
+
+```yaml
+commands:
+  - name: status
+    run: ./check-status.sh
+```
+
+Commands starting with `./` run relative to the ralph directory, so you can keep scripts alongside the `RALPH.md`. Other commands run from the project root. See [Troubleshooting](troubleshooting.md#command-with-pipes-or-redirections-not-working) if you hit quoting issues.
+
 ## Patterns that work
 
 ### The TODO-driven loop
