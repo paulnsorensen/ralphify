@@ -149,6 +149,27 @@ class TestReadAgentStream:
         assert len(result.stdout_lines) >= 1
         assert result.stdout_lines[0] == "line1\n"
 
+    def test_timeout_still_processes_last_line(self):
+        """When timeout fires on a line containing a result event, the result
+        text must still be extracted — the deadline check should not skip
+        processing of the already-read line."""
+        stream = io.StringIO('{"type": "result", "result": "Done"}\n')
+        result = _read_agent_stream(stream, deadline=0.001, on_activity=None)
+
+        assert result.timed_out is True
+        assert result.result_text == "Done"
+
+    def test_timeout_still_calls_on_activity_for_last_line(self):
+        """When timeout fires on a line, on_activity must still be called
+        for that line so the last event is not silently swallowed."""
+        activities = []
+        stream = io.StringIO('{"type": "status", "msg": "working"}\n')
+        result = _read_agent_stream(stream, deadline=0.001, on_activity=activities.append)
+
+        assert result.timed_out is True
+        assert len(activities) == 1
+        assert activities[0]["type"] == "status"
+
     def test_result_type_without_result_field_ignored(self):
         stream = io.StringIO('{"type": "result"}\n')
         result = _read_agent_stream(stream, deadline=None, on_activity=None)

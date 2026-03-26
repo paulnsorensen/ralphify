@@ -174,21 +174,20 @@ def _read_agent_stream(
     for line in stdout:
         stdout_lines.append(line)
 
+        stripped = line.strip()
+        if stripped:
+            try:
+                parsed = json.loads(stripped)
+            except json.JSONDecodeError:
+                parsed = None
+            if isinstance(parsed, dict):
+                if parsed.get("type") == _RESULT_EVENT_TYPE and isinstance(parsed.get(_RESULT_FIELD), str):
+                    result_text = parsed[_RESULT_FIELD]
+                if on_activity is not None:
+                    on_activity(parsed)
+
         if deadline is not None and time.monotonic() > deadline:
             return _StreamResult(stdout_lines=stdout_lines, result_text=result_text, timed_out=True)
-        stripped = line.strip()
-        if not stripped:
-            continue
-        try:
-            parsed = json.loads(stripped)
-        except json.JSONDecodeError:
-            continue
-        if not isinstance(parsed, dict):
-            continue
-        if parsed.get("type") == _RESULT_EVENT_TYPE and isinstance(parsed.get(_RESULT_FIELD), str):
-            result_text = parsed[_RESULT_FIELD]
-        if on_activity is not None:
-            on_activity(parsed)
 
     return _StreamResult(stdout_lines=stdout_lines, result_text=result_text, timed_out=False)
 
