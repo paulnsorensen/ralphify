@@ -85,6 +85,7 @@ def parse_github_source(source: str) -> ParsedSource:
 
     repo_url = f"https://github.com/{owner}/{repo}.git"
     subpath = rest.strip("/") if rest else None
+    subpath = subpath or None  # normalize empty string to None
     name = subpath.rsplit("/", 1)[-1] if subpath else repo
     handle = f"{owner}/{repo}/{subpath}" if subpath else f"{owner}/{repo}"
 

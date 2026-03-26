@@ -75,6 +75,14 @@ class TestParseGithubSource:
         assert p.handle == "acme/tools"
         assert p.name == "tools"
 
+    def test_shorthand_double_trailing_slash(self):
+        """Double trailing slash 'owner/repo//' should be treated same as 'owner/repo'."""
+        p = parse_github_source("acme/tools//")
+        assert p.repo_url == "https://github.com/acme/tools.git"
+        assert p.subpath is None
+        assert p.handle == "acme/tools"
+        assert p.name == "tools"
+
     def test_shorthand_with_git_suffix(self):
         """Shorthand 'owner/repo.git' should strip .git, matching full URL behavior."""
         p = parse_github_source("acme/tools.git")
