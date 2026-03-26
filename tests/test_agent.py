@@ -476,3 +476,65 @@ class TestProcessGroupCleanup:
             ["claude", "-p"], "prompt", timeout=None, log_path_dir=None, iteration=1,
         )
         assert mock_popen.call_args[1].get("start_new_session") is True
+
+    @patch("ralphify._agent.os.killpg")
+    @patch("ralphify._agent.os.getpgid")
+    def test_killpg_oserror_falls_back_to_proc_kill(self, mock_getpgid, mock_killpg):
+        """When os.killpg raises OSError (e.g. process already gone), fall back to proc.kill()."""
+        proc = MagicMock(pid=42, poll=MagicMock(return_value=None))
+        mock_getpgid.return_value = 42  # session leader
+        mock_killpg.side_effect = OSError("No such process")
+
+        _kill_process_group(proc)
+
+        mock_killpg.assert_called_once_with(42, signal.SIGTERM)
+        proc.kill.assert_called_once()
+
+    @patch("ralphify._agent.os.killpg")
+    @patch("ralphify._agent.os.getpgid")
+    def test_killpg_process_lookup_error_falls_back_to_proc_kill(self, mock_getpgid, mock_killpg):
+        """When os.killpg raises ProcessLookupError, fall back to proc.kill()."""
+        proc = MagicMock(pid=42, poll=MagicMock(return_value=None))
+        mock_getpgid.return_value = 42
+        mock_killpg.side_effect = ProcessLookupError("No such process")
+
+        _kill_process_group(proc)
+
+        proc.kill.assert_called_once()
+
+
+class TestRunAgentStreamingPipeGuard:
+    """Test the defensive RuntimeError when Popen fails to create PIPE streams."""
+
+    @patch(MOCK_SUBPROCESS)
+    def test_raises_when_stdin_is_none(self, mock_popen):
+        proc = make_mock_popen(returncode=0)
+        proc.stdin = None
+        proc.poll.return_value = None  # process still running for finally cleanup
+        mock_popen.return_value = proc
+
+        with pytest.raises(RuntimeError, match="PIPE streams"):
+            _run_agent_streaming(
+                ["claude", "-p"], "prompt", timeout=None, log_path_dir=None, iteration=1,
+            )
+
+
+class TestRunAgentBlockingKeyboardInterrupt:
+    """Test that KeyboardInterrupt during blocking execution kills the process and re-raises."""
+
+    @patch(MOCK_SUBPROCESS)
+    def test_keyboard_interrupt_kills_and_reraises(self, mock_popen):
+        proc = MagicMock()
+        proc.pid = 12345
+        proc.communicate.side_effect = KeyboardInterrupt
+        proc.poll.return_value = None  # process still running
+        proc.wait.return_value = -2
+        mock_popen.return_value = proc
+
+        with pytest.raises(KeyboardInterrupt):
+            execute_agent(
+                ["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1,
+            )
+
+        proc.kill.assert_called()
+        proc.wait.assert_called()
