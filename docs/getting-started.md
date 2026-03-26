@@ -20,10 +20,20 @@ This tutorial walks through setting up ralphify, creating a ralph with commands,
 uv tool install ralphify
 ```
 
+??? note "Alternative install methods"
+    ```bash
+    pip install ralphify   # pip works too
+    pipx install ralphify  # or pipx
+    ```
+
 Verify it's working:
 
 ```bash
 ralph --version
+```
+
+```text
+ralphify 0.3.0
 ```
 
 ## Step 2: Create a ralph
@@ -32,6 +42,11 @@ The fastest way to scaffold a ralph is `ralph init`:
 
 ```bash
 ralph init my-ralph
+```
+
+```text
+Created my-ralph/RALPH.md
+Edit the file, then run: ralph run my-ralph
 ```
 
 This creates `my-ralph/RALPH.md` with a ready-to-customize template including an example command, arg, and prompt. Edit the task section, [test it](#step-3-do-a-test-run), then follow [Step 4](#step-4-add-a-test-command) to add a test command — test feedback is what makes the loop self-healing.
@@ -86,6 +101,13 @@ This runs a single iteration and saves the output to `ralph_logs/`. Review the l
 
 ```bash
 ls ralph_logs/
+```
+
+```text
+001_20250115-142301.log
+```
+
+```bash
 cat ralph_logs/001_*.log
 ```
 
