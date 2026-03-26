@@ -44,6 +44,7 @@ theme:
     - navigation.footer
     - search.suggest
     - search.highlight
+    - search.share
     - toc.follow
   favicon: assets/favicon.svg
   icon:
