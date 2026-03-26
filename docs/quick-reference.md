@@ -48,27 +48,34 @@ That's it. A ralph is a directory with a `RALPH.md` file. See [Getting Started](
 
 ```markdown
 ---
-agent: claude -p --dangerously-skip-permissions    # Required: agent command
-commands:                                           # Optional: run each iteration
+agent: claude -p --dangerously-skip-permissions # (1)!
+commands: # (2)!
   - name: tests
     run: uv run pytest -x
   - name: lint
     run: uv run ruff check .
   - name: git-log
     run: git log --oneline -10
-args: [dir, focus]                                  # Optional: declared user arguments
+args: [dir, focus] # (3)!
 ---
 
-# Prompt body
+# Prompt body  <!-- (4) -->
 
-{{ commands.git-log }}
+{{ commands.git-log }} <!-- (5) -->
 
 {{ commands.tests }}
 
 {{ commands.lint }}
 
-Your instructions here. Use {{ args.dir }} for user arguments.
+Your instructions here. Use {{ args.dir }} for user arguments. <!-- (6) -->
 ```
+
+1. **Required.** The full shell command to pipe the prompt to. `-p` enables non-interactive mode, `--dangerously-skip-permissions` lets the agent work autonomously.
+2. **Optional.** Each command runs every iteration and its output fills the matching `{{ commands.<name> }}` placeholder.
+3. **Optional.** Declares positional argument names. Named flags (`--dir`, `--focus`) work without this — `args` is only needed for positional usage.
+4. Everything below the `---` frontmatter is the prompt body. It's re-read from disk every iteration, so you can edit it while the loop runs.
+5. Replaced with the command's stdout + stderr. Only commands with a matching placeholder appear in the assembled prompt.
+6. Replaced with the `--dir` value from the CLI. Missing args resolve to an empty string.
 
 ### Frontmatter fields
 
