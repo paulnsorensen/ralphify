@@ -15,9 +15,9 @@ ralph loops are powerful but they're not the right tool for everything. This pag
 
 ralph loops work best when a task has these properties:
 
-**Decomposable into small, independent steps.** The loop does one thing per iteration. Tasks that naturally break into "do this, then this, then this" are ideal — implementing features from a TODO list, writing tests module by module, fixing lint errors one at a time.
+**Decomposable into small, independent steps.** The loop does one thing per iteration. Tasks that naturally break into "do this, then this, then this" are ideal — implementing features from a TODO list, writing tests module by module, fixing lint errors one at a time. See the [Cookbook](cookbook.md) for real examples of this pattern.
 
-**Has a clear definition of "done" for each step.** Commands need something to validate. If you can express "this iteration succeeded" as a command that exits 0 or non-zero (tests pass, build succeeds, lint is clean), the self-healing loop works. If success requires human judgment ("does this look good?"), a loop can't self-correct.
+**Has a clear definition of "done" for each step.** [Commands](quick-reference.md#command-fields) need something to validate. If you can express "this iteration succeeded" as a command that exits 0 or non-zero (tests pass, build succeeds, lint is clean), the self-healing loop works. If success requires human judgment ("does this look good?"), a loop can't self-correct.
 
 **Benefits from fresh context.** Long conversations degrade — the agent loses track of earlier instructions, fills up the context window, and starts making mistakes. If your task will take more than 15-20 minutes of agent work, a loop outperforms a single conversation because each iteration starts clean with the current state of the codebase.
 
@@ -28,14 +28,14 @@ ralph loops work best when a task has these properties:
 | Task | Why it fits |
 |---|---|
 | **Implementing features from a spec** | Each feature is one iteration; test commands validate correctness |
-| **Writing tests** | Each module is one iteration; coverage commands guide prioritization |
+| **Writing tests** | Each module is one iteration; coverage commands guide prioritization ([recipe](cookbook.md#test-coverage)) |
 | **Fixing lint / type errors** | Each fix is small and independently verifiable |
-| **Documentation improvements** | Each page is one iteration; build commands validate |
-| **Codebase migrations** (JS to TS, Python 2 to 3) | Each file is one iteration; the compiler validates |
+| **Documentation improvements** | Each page is one iteration; build commands validate ([recipe](cookbook.md#documentation-loop)) |
+| **Codebase migrations** (JS to TS, Python 2 to 3) | Each file is one iteration; the compiler validates ([recipe](cookbook.md#code-migration)) |
 | **Bug triage** | Each bug is one iteration; regression tests verify the fix |
 | **Refactoring** | Each extraction/rename is one iteration; tests catch regressions |
-| **Security hardening** | Run a scanner each iteration; the agent picks one finding, fixes it, and verifies the fix |
-| **Research & knowledge building** | Each iteration deepens one area; a report file accumulates findings across iterations |
+| **Security hardening** | Run a scanner each iteration; the agent picks one finding, fixes it, and verifies the fix ([recipe](cookbook.md#security-scan)) |
+| **Research & knowledge building** | Each iteration deepens one area; a report file accumulates findings across iterations ([recipe](cookbook.md#deep-research)) |
 
 ## What doesn't work well
 
@@ -70,7 +70,7 @@ Use a **ralph loop** when:
 Some tasks seem like they don't fit but can be adapted:
 
 ??? note ""There's no automated validation for this.""
-    Write a command for it. Even a simple script that checks for obvious problems (file exists, no syntax errors, word count above threshold) catches the worst failures. Add it to your `commands` list and reference it in the prompt.
+    Write a command for it. Even a simple script that checks for obvious problems (file exists, no syntax errors, word count above threshold) catches the worst failures. Add it to your [`commands` list](quick-reference.md#command-fields) and reference it in the prompt.
 
 ??? note ""The task requires multi-step reasoning.""
     Use a `PLAN.md` or `TODO.md` file as the coordination mechanism. The agent reads the plan each iteration, marks steps done, and the next iteration continues from there. The plan file IS the agent's memory.
@@ -83,11 +83,11 @@ Some tasks seem like they don't fit but can be adapted:
 
 ## How many iterations?
 
-- **Start with `-n 3`** to verify your setup works and the agent produces useful output
+- **Start with [`-n 3`](cli.md#ralph-run)** to verify your setup works and the agent produces useful output
 - **Use `-n 10-20`** for bounded tasks (a TODO list with known items)
 - **Run unlimited** (`ralph run my-ralph` without `-n`) for open-ended improvement tasks with good command feedback — the commands prevent the agent from going off the rails
-- **Use `--stop-on-error`** when each iteration must succeed before the next one makes sense
-- **Set `--timeout`** as a safety net for unattended runs — if the agent enters an unexpected state (interactive prompt, infinite loop), the timeout kills it instead of blocking the loop forever
+- **Use [`--stop-on-error`](cli.md#ralph-run)** when each iteration must succeed before the next one makes sense
+- **Set [`--timeout`](cli.md#ralph-run)** as a safety net for unattended runs — if the agent enters an unexpected state (interactive prompt, infinite loop), the timeout kills it instead of blocking the loop forever
 
 ## Next steps
 
