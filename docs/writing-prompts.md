@@ -125,6 +125,22 @@ commands:
 
 Commands starting with `./` run relative to the ralph directory, so you can keep scripts alongside the `RALPH.md`. Other commands run from the project root. See [Troubleshooting](troubleshooting.md#command-with-pipes-or-redirections-not-working) if you hit quoting issues.
 
+### Command timeouts
+
+Each command has a 60-second timeout by default. If a command takes longer (slow test suites, builds, review agents), it gets killed and the output so far is used. Override it per command:
+
+```yaml
+commands:
+  - name: tests
+    run: uv run pytest
+    timeout: 300  # 5 minutes
+  - name: review
+    run: ./review.sh
+    timeout: 120
+```
+
+Set timeouts generously — a killed command means the agent sees truncated output. See the [command fields reference](quick-reference.md#command-fields) for all options.
+
 ## Patterns that work
 
 ### The TODO-driven loop
