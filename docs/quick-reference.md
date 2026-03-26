@@ -94,6 +94,9 @@ Your instructions here. Use {{ args.dir }} for user arguments. <!-- (6) -->
 | `run` | string | (required) | Shell command to execute (supports `{{ args.<name> }}` placeholders). Commands starting with `./` run from the ralph directory; others run from the project root. |
 | `timeout` | number | `60` | Max seconds before the command is killed |
 
+!!! warning "No shell features in commands"
+    Commands are run directly, not through a shell — pipes (`|`), redirections (`>`), and chaining (`&&`) won't work in the `run` field. Use a script instead: `run: ./my-script.sh` (scripts starting with `./` run from the ralph directory). See [Writing Prompts → Shell features](writing-prompts.md#shell-features-in-commands) for details.
+
 ## Placeholders
 
 ### Command placeholders
