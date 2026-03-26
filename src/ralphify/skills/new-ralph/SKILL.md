@@ -136,4 +136,5 @@ Ralphs can accept CLI arguments, making them reusable:
    - Show the file tree of what you created
    - Briefly explain what the ralph will do in each iteration
    - Mention what commands will run and what they validate
-   - Suggest running: `ralph run <name> -n 1`
+   - Suggest a test run with log capture: `ralph run <name> -n 1 --log-dir ralph_logs`
+   - Mention `--stop-on-error` for unattended runs: `ralph run <name> --stop-on-error`
