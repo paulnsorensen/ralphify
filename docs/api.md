@@ -9,7 +9,7 @@ keywords: run AI agent from Python, programmatic coding agent loop, Python AI au
 !!! tldr "TL;DR"
     `run_loop(config, state)` runs the same loop as `ralph run` but from Python. Build a `RunConfig` with your agent, commands, and options. Pass a `RunState` to inspect progress and control the loop (pause, resume, stop). Add an `EventEmitter` to react to events. Use `RunManager` for concurrent runs.
 
-All public API is available from the top-level `ralphify` package.
+All public API is available from the top-level `ralphify` package. The API runs the same [core loop](how-it-works.md) as the [CLI](cli.md), so everything you can do with `ralph run` you can do from Python.
 
 ## Quick start
 
@@ -28,13 +28,13 @@ state = RunState(run_id="my-run")
 run_loop(config, state)
 ```
 
-This runs the same loop as `ralph run my-ralph -n 3`. When the loop finishes, `state` contains the results.
+This runs the same loop as [`ralph run my-ralph -n 3`](cli.md#ralph-run). When the loop finishes, `state` contains the results.
 
 ---
 
 ## `run_loop(config, state, emitter=None)`
 
-The main loop. Reads RALPH.md, runs commands, assembles prompts, pipes them to the agent, and repeats. **Blocks until the loop finishes.**
+The main loop. Reads [RALPH.md](quick-reference.md), runs commands, assembles prompts, pipes them to the agent, and repeats. **Blocks until the loop finishes.**
 
 | Parameter | Type | Description |
 |---|---|---|
@@ -46,7 +46,7 @@ The main loop. Reads RALPH.md, runs commands, assembles prompts, pipes them to t
 
 ## `RunConfig`
 
-All settings for a single run. Fields match the CLI options.
+All settings for a single run. Fields match the [CLI options](cli.md#ralph-run).
 
 ```python
 from pathlib import Path
@@ -102,7 +102,7 @@ cmd_slow = Command(name="integration", run="uv run pytest tests/integration", ti
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `name` | `str` | (required) | Identifier used in `{{ commands.<name> }}` placeholders. Letters, digits, hyphens, and underscores only. |
+| `name` | `str` | (required) | Identifier used in [`{{ commands.<name> }}`](writing-prompts.md#using-commands-for-dynamic-data) placeholders. Letters, digits, hyphens, and underscores only. |
 | `run` | `str` | (required) | Shell command to execute |
 | `timeout` | `float` | `60` | Max seconds before the command is killed |
 
@@ -379,3 +379,11 @@ When extra listeners are registered, events are broadcast to both the built-in q
 | `resume_run(run_id)` | Resume a paused run. |
 | `list_runs()` | Return a snapshot of all registered runs. |
 | `get_run(run_id)` | Look up a run by ID. |
+
+---
+
+## Next steps
+
+- [**How the loop works**](how-it-works.md) — understand the iteration cycle that `run_loop` executes
+- [**Writing prompts**](writing-prompts.md) — learn how to write RALPH.md files with commands and placeholders
+- [**Cookbook**](cookbook.md) — real-world ralph examples you can adapt for your own projects
