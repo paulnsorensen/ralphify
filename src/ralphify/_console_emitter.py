@@ -116,7 +116,7 @@ class ConsoleEmitter:
 
     def _on_iteration_started(self, data: IterationStartedData) -> None:
         iteration = data["iteration"]
-        self._console.print(f"\n[bold blue]── Iteration {iteration} ──[/bold blue]")
+        self._console.print(f"\n[bold {_brand.BLUE}]── Iteration {iteration} ──[/bold {_brand.BLUE}]")
         self._start_live()
 
     def _on_iteration_ended(self, data: IterationEndedData, color: str, icon: str) -> None:
@@ -166,5 +166,5 @@ class ConsoleEmitter:
         if timed_out_count:
             parts.append(f"{timed_out_count} timed out")
         detail = ", ".join(parts)
-        self._console.print(f"\n[bold blue]──────────────────────[/bold blue]")
-        self._console.print(f"[bold green]Done:[/bold green] {_plural(total, 'iteration')} {_ICON_DASH} {detail}")
+        self._console.print(f"\n[bold {_brand.BLUE}]──────────────────────[/bold {_brand.BLUE}]")
+        self._console.print(f"[bold {_brand.GREEN}]Done:[/bold {_brand.GREEN}] {_plural(total, 'iteration')} {_ICON_DASH} {detail}")
