@@ -48,10 +48,28 @@ class ParsedSource:
 # ---------------------------------------------------------------------------
 
 _GITHUB_URL_RE = re.compile(
-    r"^https?://github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?(?:/tree/[^/]+(?:/(?P<subpath>.+))?)?/?$"
+    r"""
+    ^https?://github\.com/       # scheme + host
+    (?P<owner>[^/]+)/            # owner segment
+    (?P<repo>[^/]+?)             # repo segment (non-greedy)
+    (?:\.git)?                   # optional .git suffix
+    (?:/tree/[^/]+               # optional /tree/<branch>
+        (?:/(?P<subpath>.+))?    #   optional sub-path after branch
+    )?
+    /?$                          # optional trailing slash
+    """,
+    re.VERBOSE,
 )
 
-_SHORTHAND_RE = re.compile(r"^(?P<owner>[^/]+)/(?P<repo>[^/]+)(?:/(?P<subpath>.+))?/?$")
+_SHORTHAND_RE = re.compile(
+    r"""
+    ^(?P<owner>[^/]+)/           # owner segment
+    (?P<repo>[^/]+)              # repo segment
+    (?:/(?P<subpath>.+))?        # optional sub-path
+    /?$                          # optional trailing slash
+    """,
+    re.VERBOSE,
+)
 
 
 def parse_github_source(source: str) -> ParsedSource:
