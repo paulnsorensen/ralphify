@@ -1,7 +1,7 @@
 ---
-title: Getting Started with Ralph Loops
-description: Install ralphify, create your first ralph with commands and placeholders, and run a productive autonomous AI coding loop in 10 minutes.
-keywords: install ralphify, getting started, ralph new, ralph run, autonomous coding setup, AI agent quickstart
+title: How to Set Up an Autonomous AI Coding Agent Loop — Ralphify Tutorial
+description: Install ralphify, create your first ralph, add test commands for self-healing feedback, and run an autonomous AI coding loop — step-by-step in 10 minutes.
+keywords: set up autonomous AI coding agent, install ralphify, AI coding loop tutorial, self-healing coding agent, run AI agent in loop, automate coding agent prompts, ralph loop setup, claude code autonomous
 ---
 
 # Getting Started
