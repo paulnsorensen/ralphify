@@ -246,6 +246,39 @@ ralph run research --dir ./frontend --focus "state management"
 
 The `git-log` command uses `{{ args.dir }}` to show only commits touching the target directory — the same arg value is resolved in both command `run` strings and the prompt body.
 
+### Iteration-aware prompts
+
+Use `{{ ralph.iteration }}` and `{{ ralph.max_iterations }}` to change the agent's behavior based on where it is in the run. These placeholders are available automatically — no frontmatter needed.
+
+```markdown
+---
+agent: claude -p --dangerously-skip-permissions
+commands:
+  - name: tests
+    run: uv run pytest -x
+---
+
+{{ commands.tests }}
+
+This is iteration {{ ralph.iteration }} of {{ ralph.max_iterations }}.
+
+If this is the last iteration, wrap up: clean up TODOs, run a final
+check, and write a short summary of what was accomplished in PROGRESS.md.
+Otherwise, read TODO.md and implement the next task.
+
+## Rules
+
+- One task per iteration
+- Fix failing tests before starting new work
+- Commit with a descriptive message
+```
+
+```bash
+ralph run my-ralph -n 10
+```
+
+**Why it works:** Without this, the agent treats every iteration identically. With iteration awareness, you can tell it to be more exploratory early on and more conservative as the run winds down — or to write a summary on the final pass so you come back to a clean status report.
+
 ## Anti-patterns to avoid
 
 ### Too vague
