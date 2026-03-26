@@ -5,6 +5,7 @@ categories:
 authors:
   - kasper
 description: Introducing the Ralphify blog — where we'll share insights on ralph loops, autonomous agents, and harness engineering.
+keywords: ralphify blog, ralph loops, autonomous coding, harness engineering, AI agent workflows
 ---
 
 # Welcome to the Ralphify Blog

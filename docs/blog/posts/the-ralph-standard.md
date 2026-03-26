@@ -5,6 +5,7 @@ categories:
 authors:
   - kasper
 description: I've been obsessing over how to define autonomous agent loops in a single directory. Here's what I landed on.
+keywords: RALPH.md format, agent loop standard, autonomous coding format, ralph loop specification, YAML frontmatter prompt, AI agent harness design
 ---
 
 # An agent skill-like standard for autonomous agent loops
