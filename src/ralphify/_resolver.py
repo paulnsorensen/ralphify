@@ -14,10 +14,22 @@ import re
 
 from ralphify._frontmatter import NAME_RE, FIELD_ARGS, FIELD_COMMANDS, FIELD_RALPH
 
+_NAME = NAME_RE.pattern  # inlined for readability inside verbose regexes
 
 # Pattern matching ``{{ args.<name> }}`` placeholders — used by resolve_args
 # to resolve arg placeholders in command run strings independently of commands.
-_ARGS_PATTERN = re.compile(rf"\{{\{{\s*{FIELD_ARGS}\.({NAME_RE.pattern})\s*\}}\}}")
+_ARGS_PATTERN = re.compile(
+    rf"""
+    \{{\{{              # opening literal {{{{
+    \s*                 # optional whitespace
+    {FIELD_ARGS}        # "args"
+    \.                  # dot separator
+    ({_NAME})           # capture: placeholder name
+    \s*                 # optional whitespace
+    \}}\}}              # closing literal }}}}
+    """,
+    re.VERBOSE,
+)
 
 
 def resolve_args(prompt: str, user_args: dict[str, str]) -> str:
@@ -37,7 +49,20 @@ def resolve_args(prompt: str, user_args: dict[str, str]) -> str:
 
 # Single pattern matching all placeholder kinds for single-pass resolution.
 _ALL_PATTERN = re.compile(
-    rf"\{{\{{\s*({FIELD_COMMANDS}|{FIELD_ARGS}|{FIELD_RALPH})\.({NAME_RE.pattern})\s*\}}\}}"
+    rf"""
+    \{{\{{              # opening literal {{{{
+    \s*                 # optional whitespace
+    (                   # group 1: placeholder kind
+        {FIELD_COMMANDS}
+      | {FIELD_ARGS}
+      | {FIELD_RALPH}
+    )
+    \.                  # dot separator
+    ({_NAME})           # group 2: placeholder name
+    \s*                 # optional whitespace
+    \}}\}}              # closing literal }}}}
+    """,
+    re.VERBOSE,
 )
 
 
