@@ -47,6 +47,20 @@ agent: claude -p --dangerously-skip-permissions
 
 The agent CLI isn't installed or isn't in your shell's PATH. Verify by running `claude --version` directly. If it's installed but not found, check your PATH. See [supported agents](agents.md) for setup instructions.
 
+### "RALPH.md already exists"
+
+You ran [`ralph new`](cli.md#ralph-new) in a directory that already contains a `RALPH.md`. Either use a different directory name or edit the existing file:
+
+```bash
+# ✗ Fails — RALPH.md already exists in my-ralph/
+ralph new my-ralph
+
+# ✓ Option A — use a different name
+ralph new my-other-ralph
+
+# ✓ Option B — edit the existing file directly
+```
+
 ## `ralph add` issues
 
 ### "Cannot parse source"
@@ -61,6 +75,14 @@ ralph add https://github.com/owner/repo/tree/main/my-ralph  # URL copied from Gi
 ```
 
 The easiest way to add a ralph from GitHub is to navigate to the directory in your browser and copy the URL — it works directly with `ralph add`.
+
+### "git is required for 'ralph add'"
+
+`ralph add` uses `git clone` under the hood. Install git from [git-scm.com](https://git-scm.com/) and make sure it's on your PATH:
+
+```bash
+git --version
+```
 
 ### "git clone failed"
 
@@ -187,6 +209,53 @@ claude -p --dangerously-skip-permissions
 ---
 agent: claude -p --dangerously-skip-permissions
 ---
+```
+
+### "Each command must have 'name' and 'run' fields"
+
+A command entry in `commands` is missing a required key. Every command needs both `name` and `run`:
+
+```yaml
+# ✗ Wrong — missing 'run'
+commands:
+  - name: tests
+
+# ✗ Wrong — missing 'name'
+commands:
+  - run: uv run pytest -x
+
+# ✓ Correct
+commands:
+  - name: tests
+    run: uv run pytest -x
+```
+
+The related error **"Command '...' must be a non-empty string"** means a `name` or `run` value is empty or not a string.
+
+### "Malformed 'agent' field in RALPH.md frontmatter"
+
+The `agent` value couldn't be parsed as a shell command — usually an unmatched quote:
+
+```yaml
+# ✗ Wrong — unclosed quote
+agent: claude -p "dangerously-skip-permissions
+
+# ✓ Correct
+agent: claude -p --dangerously-skip-permissions
+```
+
+### "'credit' must be true or false"
+
+The `credit` field only accepts boolean values. YAML bare words `true`/`false` work, but quoted strings don't:
+
+```yaml
+# ✗ Wrong
+credit: "yes"
+credit: 0
+
+# ✓ Correct
+credit: false
+credit: true
 ```
 
 ### "Command name contains invalid characters" / "Arg name contains invalid characters"
