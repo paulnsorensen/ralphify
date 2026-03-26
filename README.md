@@ -138,7 +138,7 @@ my-ralph/
 
 **Commands** run before each iteration. Their output replaces `{{ commands.<name> }}` placeholders in the prompt. Use them for test results, git history, lint output — anything that changes between iterations.
 
-**No project-level configuration.** No `ralph.toml`. No `.ralphify/` directory. A ralph is fully self-contained.
+**No project-level configuration.** No `ralph.toml`. No config files. A ralph is fully self-contained.
 
 ## AI-guided setup
 
