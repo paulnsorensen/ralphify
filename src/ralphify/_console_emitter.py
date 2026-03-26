@@ -42,6 +42,11 @@ _ICON_DASH = "—"
 _LIVE_REFRESH_RATE = 4  # Hz — how often the spinner redraws
 
 
+def _plural(count: int, word: str) -> str:
+    """Return *count* followed by *word*, pluralised when count is not 1."""
+    return f"{count} {word}{'s' if count != 1 else ''}"
+
+
 class _IterationSpinner:
     """Rich renderable that shows a spinner with elapsed time."""
 
@@ -88,10 +93,10 @@ class ConsoleEmitter:
             info_parts.append(f"timeout {format_duration(timeout)}")
         command_count = data["commands"]
         if command_count > 0:
-            info_parts.append(f"{command_count} command{'s' if command_count != 1 else ''}")
+            info_parts.append(_plural(command_count, "command"))
         max_iter = data.get("max_iterations")
         if max_iter is not None:
-            info_parts.append(f"max {max_iter} iteration{'s' if max_iter != 1 else ''}")
+            info_parts.append(f"max {_plural(max_iter, 'iteration')}")
         if info_parts:
             self._console.print(f"  [dim]{' · '.join(info_parts)}[/dim]")
 
@@ -163,4 +168,4 @@ class ConsoleEmitter:
             parts.append(f"{timed_out_count} timed out")
         detail = ", ".join(parts)
         self._console.print(f"\n[bold blue]──────────────────────[/bold blue]")
-        self._console.print(f"[bold green]Done:[/bold green] {total} iteration{'s' if total != 1 else ''} {_ICON_DASH} {detail}")
+        self._console.print(f"[bold green]Done:[/bold green] {_plural(total, 'iteration')} {_ICON_DASH} {detail}")
