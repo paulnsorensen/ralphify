@@ -51,6 +51,14 @@ commands:
 
 Each `{{ commands.<name> }}` placeholder in the prompt body is replaced with the corresponding command's output. Placeholders for `{{ args.<name> }}` are replaced with user argument values from the CLI — both in the prompt body and in command `run` strings.
 
+`{{ ralph.* }}` placeholders provide runtime metadata — no frontmatter configuration needed:
+
+- `{{ ralph.name }}` — the ralph's directory name (e.g. `my-ralph`)
+- `{{ ralph.iteration }}` — current iteration number (1-based)
+- `{{ ralph.max_iterations }}` — total iterations if `-n` was set, empty otherwise
+
+These are useful for iteration-aware prompts — for example, telling the agent to wrap up on the last iteration, or including the ralph name in commit messages.
+
 Unmatched placeholders resolve to an empty string — you won't see raw `{{ }}` text in the assembled prompt.
 
 ### 4. Assemble the prompt
