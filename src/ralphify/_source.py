@@ -43,10 +43,10 @@ class ParsedSource:
 # ---------------------------------------------------------------------------
 
 _GITHUB_URL_RE = re.compile(
-    r"^https?://github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?(?:/tree/[^/]+(?:/(?P<path>.+))?)?/?$"
+    r"^https?://github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?(?:/tree/[^/]+(?:/(?P<subpath>.+))?)?/?$"
 )
 
-_SHORTHAND_RE = re.compile(r"^(?P<owner>[^/]+)/(?P<repo>[^/]+)(?:/(?P<rest>.+))?/?$")
+_SHORTHAND_RE = re.compile(r"^(?P<owner>[^/]+)/(?P<repo>[^/]+)(?:/(?P<subpath>.+))?/?$")
 
 
 def parse_github_source(source: str) -> ParsedSource:
@@ -64,16 +64,13 @@ def parse_github_source(source: str) -> ParsedSource:
     """
     owner: str | None = None
     repo: str | None = None
-    rest: str | None = None
+    raw_subpath: str | None = None
 
-    # Try full URL first.
-    m = _GITHUB_URL_RE.match(source)
+    # Try full URL first, then shorthand. Both regexes use the same named
+    # groups (owner, repo, subpath) so extraction is uniform.
+    m = _GITHUB_URL_RE.match(source) or _SHORTHAND_RE.match(source)
     if m:
-        owner, repo, rest = m.group("owner"), m.group("repo"), m.group("path")
-    else:
-        m = _SHORTHAND_RE.match(source)
-        if m:
-            owner, repo, rest = m.group("owner"), m.group("repo"), m.group("rest")
+        owner, repo, raw_subpath = m.group("owner"), m.group("repo"), m.group("subpath")
 
     # Strip .git suffix — the URL regex handles this via (?:\.git)? in the
     # pattern, but the shorthand regex captures the full repo segment.
@@ -90,7 +87,7 @@ def parse_github_source(source: str) -> ParsedSource:
 
     owner_repo = f"{owner}/{repo}"
     repo_url = f"https://github.com/{owner}/{repo}.git"
-    subpath = (rest.strip("/") or None) if rest else None
+    subpath = (raw_subpath.strip("/") or None) if raw_subpath else None
     name = Path(subpath).name if subpath else repo
     handle = f"{owner_repo}/{subpath}" if subpath else owner_repo
 
