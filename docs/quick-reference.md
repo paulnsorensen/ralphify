@@ -134,6 +134,15 @@ Each iteration:
 5. Wait for agent to exit
 6. Repeat
 
+### Stopping the loop
+
+| Action | What happens |
+|---|---|
+| `Ctrl+C` (once) | Finishes the current iteration gracefully, then stops |
+| `Ctrl+C` (twice) | Force-kills the agent process and exits immediately |
+| `-n` limit reached | Stops after the specified number of iterations |
+| `--stop-on-error` | Stops if agent exits non-zero or times out |
+
 ## Live editing
 
 - The prompt body is re-read from disk every iteration — edit the prompt while the loop runs (frontmatter is parsed once at startup)
