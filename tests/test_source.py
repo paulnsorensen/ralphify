@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import subprocess
+from unittest.mock import patch
+
 import pytest
 
 from ralphify._frontmatter import RALPH_MARKER
@@ -11,6 +14,8 @@ from ralphify._source import (
     _find_ralphs_in,
     _fetch_named_ralph,
     _fetch_repo_ralphs,
+    _shallow_clone,
+    fetch_ralphs,
     parse_github_source,
 )
 
@@ -236,3 +241,110 @@ class TestFetchNamedRalph:
         )
         _fetch_named_ralph(clone_dir, parsed, dest_dir)
         assert (dest_dir / "lint" / RALPH_MARKER).read_text() == "new prompt"
+
+
+# ── _shallow_clone ─────────────────────────────────────────────────
+
+
+class TestShallowClone:
+    def test_git_not_installed_raises(self, tmp_path):
+        with patch(
+            "ralphify._source.subprocess.run", side_effect=FileNotFoundError
+        ):
+            with pytest.raises(RuntimeError, match="git is required"):
+                _shallow_clone("https://github.com/a/b.git", tmp_path / "dest")
+
+    def test_clone_failure_raises_with_stderr(self, tmp_path):
+        exc = subprocess.CalledProcessError(128, "git", stderr="repo not found")
+        with patch("ralphify._source.subprocess.run", side_effect=exc):
+            with pytest.raises(RuntimeError, match="git clone failed: repo not found"):
+                _shallow_clone("https://github.com/a/b.git", tmp_path / "dest")
+
+    def test_clone_failure_empty_stderr(self, tmp_path):
+        exc = subprocess.CalledProcessError(128, "git", stderr="")
+        with patch("ralphify._source.subprocess.run", side_effect=exc):
+            with pytest.raises(RuntimeError, match="git clone failed: unknown error"):
+                _shallow_clone("https://github.com/a/b.git", tmp_path / "dest")
+
+    def test_clone_failure_none_stderr(self, tmp_path):
+        exc = subprocess.CalledProcessError(128, "git", stderr=None)
+        with patch("ralphify._source.subprocess.run", side_effect=exc):
+            with pytest.raises(RuntimeError, match="git clone failed: unknown error"):
+                _shallow_clone("https://github.com/a/b.git", tmp_path / "dest")
+
+
+# ── fetch_ralphs ───────────────────────────────────────────────────
+
+
+class TestFetchRalphs:
+    def _make_clone_dir(self, tmp_path, ralphs: dict[str, str] | None = None):
+        """Helper: build a fake clone directory with ralph files."""
+        clone_dir = tmp_path / "repo"
+        clone_dir.mkdir(parents=True, exist_ok=True)
+        if ralphs:
+            for path, content in ralphs.items():
+                d = clone_dir / path
+                d.mkdir(parents=True, exist_ok=True)
+                (d / RALPH_MARKER).write_text(content)
+        return clone_dir
+
+    def test_fetch_without_subpath_delegates_to_repo_ralphs(self, tmp_path):
+        """fetch_ralphs with subpath=None installs repo-root ralph."""
+        ralphs_dir = tmp_path / "installed"
+        ralphs_dir.mkdir()
+
+        parsed = ParsedSource(
+            repo_url="https://github.com/a/b.git",
+            subpath=None, handle="a/b", name="b",
+        )
+
+        def fake_clone(repo_url, dest):
+            dest.mkdir(parents=True, exist_ok=True)
+            (dest / RALPH_MARKER).write_text("root prompt")
+
+        with patch("ralphify._source._shallow_clone", side_effect=fake_clone):
+            result = fetch_ralphs(parsed, ralphs_dir)
+
+        assert len(result.installed) == 1
+        assert result.installed[0][0] == "b"
+        assert (ralphs_dir / "b" / RALPH_MARKER).read_text() == "root prompt"
+
+    def test_fetch_with_subpath_delegates_to_named_ralph(self, tmp_path):
+        """fetch_ralphs with subpath set installs the named ralph."""
+        ralphs_dir = tmp_path / "installed"
+        ralphs_dir.mkdir()
+
+        parsed = ParsedSource(
+            repo_url="https://github.com/a/b.git",
+            subpath="my-ralph", handle="a/b/my-ralph", name="my-ralph",
+        )
+
+        def fake_clone(repo_url, dest):
+            dest.mkdir(parents=True, exist_ok=True)
+            rd = dest / "my-ralph"
+            rd.mkdir()
+            (rd / RALPH_MARKER).write_text("named prompt")
+
+        with patch("ralphify._source._shallow_clone", side_effect=fake_clone):
+            result = fetch_ralphs(parsed, ralphs_dir)
+
+        assert len(result.installed) == 1
+        assert result.installed[0][0] == "my-ralph"
+        assert (ralphs_dir / "my-ralph" / RALPH_MARKER).read_text() == "named prompt"
+
+    def test_fetch_clone_failure_propagates(self, tmp_path):
+        """fetch_ralphs propagates RuntimeError from _shallow_clone."""
+        ralphs_dir = tmp_path / "installed"
+        ralphs_dir.mkdir()
+
+        parsed = ParsedSource(
+            repo_url="https://github.com/a/b.git",
+            subpath=None, handle="a/b", name="b",
+        )
+
+        with patch(
+            "ralphify._source._shallow_clone",
+            side_effect=RuntimeError("git clone failed: not found"),
+        ):
+            with pytest.raises(RuntimeError, match="git clone failed"):
+                fetch_ralphs(parsed, ralphs_dir)
