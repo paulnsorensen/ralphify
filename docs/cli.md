@@ -35,7 +35,7 @@ Restart your shell after installing. Use `--show-completion` to print the script
 
 ## `ralph run`
 
-Start the autonomous coding loop.
+Start the [autonomous coding loop](how-it-works.md).
 
 ```bash
 ralph run my-ralph                         # Run forever (Ctrl+C to stop)
@@ -58,7 +58,7 @@ ralph run my-ralph --dir ./src             # Pass user args to the ralph
 
 ### User arguments
 
-User arguments are passed as named flags after the ralph path. Use `{{ args.<name> }}` placeholders in your RALPH.md to reference them.
+User arguments are passed as named flags after the ralph path. Use `{{ args.<name> }}` [placeholders](writing-prompts.md#ralph-context-placeholders) in your RALPH.md to reference them.
 
 Named flags (`--name value`) work without any frontmatter declaration. The `args` field is only required when you want to pass **positional** arguments — it tells ralphify which names to map them to:
 
@@ -115,7 +115,7 @@ The loop also stops automatically when:
 
 ## `ralph init`
 
-Scaffold a new ralph with a ready-to-customize template. No AI agent required.
+Scaffold a new ralph with a ready-to-customize template. No AI agent required. For a guided setup, see [`ralph new`](#ralph-new) instead.
 
 ```bash
 ralph init my-task      # Creates my-task/RALPH.md with a generic template
@@ -126,7 +126,7 @@ ralph init              # Creates RALPH.md in the current directory
 |---|---|---|
 | `[NAME]` | none | Directory name. If omitted, creates RALPH.md in the current directory |
 
-The generated template includes an example command (`git-log`), an example arg (`focus`), and a prompt body with placeholders for both. Edit it, then run `ralph run`.
+The generated template includes an example command (`git-log`), an example arg (`focus`), and a prompt body with placeholders for both. Edit it, then run [`ralph run`](#ralph-run). See [Getting Started](getting-started.md) for a full walkthrough.
 
 Errors if `RALPH.md` already exists at the target location.
 
@@ -145,7 +145,7 @@ ralph new my-task      # Start with a name already chosen
 |---|---|---|
 | `[NAME]` | none | Name for the new ralph. If omitted, the agent will help you choose |
 
-The command detects your agent and installs a skill to guide the creation process.
+The command detects your [agent](agents.md) and installs a skill to guide the creation process.
 
 ---
 
@@ -180,7 +180,7 @@ ralph run ralph-name
 
 ## RALPH.md format
 
-The `RALPH.md` file is the single configuration and prompt file for a ralph. It uses YAML frontmatter for settings and the body for the prompt text.
+The `RALPH.md` file is the single configuration and prompt file for a ralph. It uses YAML frontmatter for settings and the body for the prompt text. See [Writing Prompts](writing-prompts.md) for detailed guidance on crafting effective prompts.
 
 ```markdown
 ---
@@ -221,7 +221,7 @@ Each command has these fields:
 | `run` | string | (required) | Shell command to execute each iteration (supports `{{ args.<name> }}` placeholders). Commands starting with `./` run from the ralph directory; others run from the project root. |
 | `timeout` | number | `60` | Max seconds before the command is killed |
 
-Commands run in order. Output (stdout + stderr) is captured regardless of exit code. Commands are parsed with `shlex.split()` — no shell features (pipes, redirections, `&&`). For shell features, point the `run` field at a script.
+Commands run in order. Output (stdout + stderr) is captured regardless of exit code. Commands are parsed with `shlex.split()` — no shell features (pipes, redirections, `&&`). For shell features, point the `run` field at a script. See the [Cookbook](cookbook.md) for real-world command patterns.
 
 If a command exceeds its timeout, the process is killed and the captured output up to that point is used.
 
@@ -238,3 +238,11 @@ If a command exceeds its timeout, the process is killed and the captured output 
 `ralph.*` placeholders are automatically available — no frontmatter configuration needed.
 
 Unmatched placeholders resolve to an empty string.
+
+---
+
+## Next steps
+
+- [Writing Prompts](writing-prompts.md) — learn how to craft effective RALPH.md prompts
+- [Quick Reference](quick-reference.md) — condensed cheat sheet for daily use
+- [Python API](api.md) — run loops programmatically instead of via the CLI
