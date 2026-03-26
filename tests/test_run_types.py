@@ -147,6 +147,30 @@ class TestRunState:
         result = state.wait_for_unpause(timeout=0.01)
         assert result is False
 
+    def test_wait_for_stop_returns_immediately_when_stopped(self):
+        state = RunState(run_id="r1")
+        state.request_stop()
+        assert state.wait_for_stop(timeout=0.01) is True
+
+    def test_wait_for_stop_times_out_when_not_stopped(self):
+        state = RunState(run_id="r1")
+        assert state.wait_for_stop(timeout=0.01) is False
+
+    def test_wait_for_stop_unblocks_on_stop_request(self):
+        state = RunState(run_id="r1")
+        stopped = threading.Event()
+
+        def stop_later():
+            state.request_stop()
+            stopped.set()
+
+        timer = threading.Timer(0.05, stop_later)
+        timer.start()
+
+        result = state.wait_for_stop(timeout=1.0)
+        assert result is True
+        stopped.wait(timeout=1.0)
+
 
 class TestRunStatus:
     @pytest.mark.parametrize(

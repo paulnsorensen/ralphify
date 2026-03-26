@@ -32,8 +32,8 @@ MOCK_WHICH = "ralphify.cli.shutil.which"
 MOCK_RUN_COMMAND = "ralphify.engine.run_command"
 """Patch target for run_command inside the engine module."""
 
-MOCK_ENGINE_SLEEP = "ralphify.engine.time.sleep"
-"""Patch target for time.sleep inside the engine module."""
+MOCK_WAIT_FOR_STOP = "ralphify._run_types.RunState.wait_for_stop"
+"""Patch target for RunState.wait_for_stop used by the engine delay logic."""
 
 MOCK_SKILLS_WHICH = "ralphify._skills.shutil.which"
 """Patch target for shutil.which inside the skills module."""

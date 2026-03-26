@@ -9,7 +9,7 @@ import pytest
 import typer
 from typer.testing import CliRunner
 
-from helpers import MOCK_ENGINE_SLEEP, MOCK_SKILLS_WHICH, MOCK_SUBPROCESS, MOCK_WHICH, ok_proc, fail_proc, make_ralph, timeout_proc
+from helpers import MOCK_WAIT_FOR_STOP, MOCK_SKILLS_WHICH, MOCK_SUBPROCESS, MOCK_WHICH, ok_proc, fail_proc, make_ralph, timeout_proc
 from ralphify import __version__
 from ralphify._frontmatter import RALPH_MARKER
 from ralphify.cli import app, _parse_command_items, _parse_user_args
@@ -312,27 +312,28 @@ class TestRun:
         assert "2 succeeded" in result.output
         assert "1 failed" in result.output
 
-    @patch(MOCK_ENGINE_SLEEP)
+    @patch(MOCK_WAIT_FOR_STOP, return_value=False)
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
-    def test_delay_between_iterations(self, mock_run, mock_sleep, mock_which, tmp_path, monkeypatch):
+    def test_delay_between_iterations(self, mock_run, mock_wait, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "3", "--delay", "5"])
         assert result.exit_code == 0
-        # Delay is split into small chunks for stop-responsiveness;
-        # verify total requested sleep time sums to 2 × 5s (delays
-        # after iterations 1 and 2, none after the last).
-        total_sleep = sum(call.args[0] for call in mock_sleep.call_args_list)
-        assert abs(total_sleep - 10.0) < 0.01
+        # wait_for_stop is called with the delay timeout between
+        # iterations 1→2 and 2→3, but not after the last iteration.
+        delay_calls = [c for c in mock_wait.call_args_list if c.kwargs.get("timeout") == 5]
+        assert len(delay_calls) == 2
 
-    @patch(MOCK_ENGINE_SLEEP)
+    @patch(MOCK_WAIT_FOR_STOP, return_value=False)
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
-    def test_no_delay_with_single_iteration(self, mock_run, mock_sleep, mock_which, tmp_path, monkeypatch):
+    def test_no_delay_with_single_iteration(self, mock_run, mock_wait, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1", "--delay", "5"])
         assert result.exit_code == 0
-        mock_sleep.assert_not_called()
+        # No delay after the last (only) iteration.
+        delay_calls = [c for c in mock_wait.call_args_list if c.kwargs.get("timeout") == 5]
+        assert len(delay_calls) == 0
 
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_accepts_ralph_md_file_path(self, mock_run, mock_which, tmp_path, monkeypatch):

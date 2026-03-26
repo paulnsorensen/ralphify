@@ -121,7 +121,7 @@ class RunState:
     timed_out_count: int = 0
     started_at: datetime | None = None
 
-    _stop_requested: bool = field(default=False, init=False, repr=False, compare=False)
+    _stop_event: threading.Event = field(default_factory=threading.Event, init=False, repr=False, compare=False)
     _resume_event: threading.Event = field(default_factory=threading.Event, init=False, repr=False, compare=False)
 
     @property
@@ -135,7 +135,7 @@ class RunState:
 
     def request_stop(self) -> None:
         """Signal the loop to stop after the current iteration."""
-        self._stop_requested = True
+        self._stop_event.set()
         self._resume_event.set()
 
     def request_pause(self) -> None:
@@ -151,7 +151,11 @@ class RunState:
     @property
     def stop_requested(self) -> bool:
         """Whether a stop has been requested."""
-        return self._stop_requested
+        return self._stop_event.is_set()
+
+    def wait_for_stop(self, timeout: float | None = None) -> bool:
+        """Block until a stop is requested or timeout. Returns True if stopped."""
+        return self._stop_event.wait(timeout=timeout)
 
     @property
     def paused(self) -> bool:

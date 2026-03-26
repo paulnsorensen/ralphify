@@ -10,7 +10,6 @@ The loop: run commands → assemble prompt → pipe to agent → repeat.
 from __future__ import annotations
 
 import shlex
-import time
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
@@ -264,18 +263,14 @@ def _run_iteration(
 def _delay_if_needed(config: RunConfig, state: RunState, emit: BoundEmitter) -> None:
     """Sleep between iterations when a delay is configured.
 
-    The sleep is broken into small chunks so that stop requests are
-    respected promptly rather than blocking for the full delay.
+    Uses :meth:`RunState.wait_for_stop` so that stop requests break the
+    delay immediately rather than polling.
     """
     if config.delay > 0 and (
         config.max_iterations is None or state.iteration < config.max_iterations
     ):
         emit.log_info(f"Waiting {config.delay}s...")
-        remaining = config.delay
-        while remaining > 0 and not state.stop_requested:
-            chunk = min(remaining, _PAUSE_POLL_INTERVAL)
-            time.sleep(chunk)
-            remaining -= chunk
+        state.wait_for_stop(timeout=config.delay)
 
 
 def run_loop(
