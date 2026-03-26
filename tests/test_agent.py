@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from helpers import MOCK_POPEN, MOCK_SUBPROCESS, fail_proc, make_mock_popen, ok_proc, timeout_proc
+from helpers import MOCK_SUBPROCESS, fail_proc, make_mock_popen, ok_proc, timeout_proc
 
 from ralphify._agent import (
     AgentResult,
@@ -172,7 +172,7 @@ class TestReadAgentStream:
 
 
 class TestExecuteAgentBlocking:
-    @patch(MOCK_POPEN, side_effect=ok_proc)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_success(self, mock_popen):
         result = execute_agent(["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1)
 
@@ -181,21 +181,21 @@ class TestExecuteAgentBlocking:
         assert result.log_file is None
         assert result.elapsed >= 0
 
-    @patch(MOCK_POPEN, side_effect=fail_proc)
+    @patch(MOCK_SUBPROCESS, side_effect=fail_proc)
     def test_failure(self, mock_popen):
         result = execute_agent(["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1)
 
         assert result.returncode == 1
         assert result.timed_out is False
 
-    @patch(MOCK_POPEN, side_effect=timeout_proc)
+    @patch(MOCK_SUBPROCESS, side_effect=timeout_proc)
     def test_timeout(self, mock_popen):
         result = execute_agent(["echo"], "prompt", timeout=5, log_path_dir=None, iteration=1)
 
         assert result.returncode is None
         assert result.timed_out is True
 
-    @patch(MOCK_POPEN)
+    @patch(MOCK_SUBPROCESS)
     def test_writes_log_on_success(self, mock_popen, tmp_path):
         mock_popen.return_value = ok_proc(stdout="agent output\n")
         result = execute_agent(
@@ -207,7 +207,7 @@ class TestExecuteAgentBlocking:
         assert result.log_file.name.startswith("003_")
         assert "agent output" in result.log_file.read_text()
 
-    @patch(MOCK_POPEN)
+    @patch(MOCK_SUBPROCESS)
     def test_writes_log_on_timeout(self, mock_popen, tmp_path):
         mock_popen.return_value = timeout_proc(stdout="partial", stderr="err")
         result = execute_agent(
@@ -217,7 +217,7 @@ class TestExecuteAgentBlocking:
         assert result.log_file is not None
         assert result.log_file.exists()
 
-    @patch(MOCK_POPEN)
+    @patch(MOCK_SUBPROCESS)
     def test_timeout_echoes_captured_output(self, mock_popen, tmp_path, capsys):
         """When logging is enabled and the agent times out, partial output
         should be echoed to the terminal — same as on normal completion."""
@@ -230,13 +230,13 @@ class TestExecuteAgentBlocking:
         assert "partial stdout" in captured.out
         assert "partial stderr" in captured.err
 
-    @patch(MOCK_POPEN, side_effect=ok_proc)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_no_log_when_dir_not_set(self, mock_popen):
         result = execute_agent(["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1)
 
         assert result.log_file is None
 
-    @patch(MOCK_POPEN)
+    @patch(MOCK_SUBPROCESS)
     def test_file_not_found_propagates(self, mock_popen):
         mock_popen.side_effect = FileNotFoundError("not found")
 
@@ -273,7 +273,7 @@ class TestAgentResult:
 class TestExecuteAgentDispatch:
     """Tests for execute_agent routing to streaming vs blocking mode."""
 
-    @patch(MOCK_POPEN)
+    @patch(MOCK_SUBPROCESS)
     def test_dispatches_to_streaming_for_claude(self, mock_popen, monkeypatch):
         """execute_agent uses the streaming path when the agent supports it."""
         monkeypatch.setattr("ralphify._agent._supports_stream_json", lambda cmd: True)
@@ -293,7 +293,7 @@ class TestExecuteAgentDispatch:
 class TestExecuteAgentStreaming:
     """Tests for the streaming execution path (_run_agent_streaming)."""
 
-    @patch(MOCK_POPEN)
+    @patch(MOCK_SUBPROCESS)
     def test_success(self, mock_popen):
         mock_popen.return_value = make_mock_popen(
             stdout_lines='{"type": "status", "msg": "working"}\n',
@@ -307,7 +307,7 @@ class TestExecuteAgentStreaming:
         assert result.timed_out is False
         assert result.elapsed >= 0
 
-    @patch(MOCK_POPEN)
+    @patch(MOCK_SUBPROCESS)
     def test_failure(self, mock_popen):
         mock_popen.return_value = make_mock_popen(returncode=1)
         result = _run_agent_streaming(
@@ -318,7 +318,7 @@ class TestExecuteAgentStreaming:
         assert result.timed_out is False
         assert result.success is False
 
-    @patch(MOCK_POPEN)
+    @patch(MOCK_SUBPROCESS)
     def test_captures_result_text(self, mock_popen):
         mock_popen.return_value = make_mock_popen(
             stdout_lines='{"type": "result", "result": "All tests passed"}\n',
@@ -330,7 +330,7 @@ class TestExecuteAgentStreaming:
 
         assert result.result_text == "All tests passed"
 
-    @patch(MOCK_POPEN)
+    @patch(MOCK_SUBPROCESS)
     def test_sends_prompt_to_stdin(self, mock_popen):
         proc = make_mock_popen(returncode=0)
         mock_popen.return_value = proc
@@ -341,7 +341,7 @@ class TestExecuteAgentStreaming:
         proc.stdin.write.assert_called_once_with("my prompt text")
         proc.stdin.close.assert_called_once()
 
-    @patch(MOCK_POPEN)
+    @patch(MOCK_SUBPROCESS)
     def test_adds_stream_json_flags(self, mock_popen):
         mock_popen.return_value = make_mock_popen(returncode=0)
         _run_agent_streaming(
@@ -354,7 +354,7 @@ class TestExecuteAgentStreaming:
         assert "stream-json" in cmd
         assert "--verbose" in cmd
 
-    @patch(MOCK_POPEN)
+    @patch(MOCK_SUBPROCESS)
     def test_writes_log_on_success(self, mock_popen, tmp_path):
         mock_popen.return_value = make_mock_popen(
             stdout_lines="agent output\n",
@@ -372,7 +372,7 @@ class TestExecuteAgentStreaming:
         assert "agent output" in content
         assert "some stderr" in content
 
-    @patch(MOCK_POPEN)
+    @patch(MOCK_SUBPROCESS)
     def test_no_log_when_dir_not_set(self, mock_popen):
         mock_popen.return_value = make_mock_popen(returncode=0)
         result = _run_agent_streaming(
@@ -381,7 +381,7 @@ class TestExecuteAgentStreaming:
 
         assert result.log_file is None
 
-    @patch(MOCK_POPEN)
+    @patch(MOCK_SUBPROCESS)
     def test_on_activity_callback_invoked(self, mock_popen):
         mock_popen.return_value = make_mock_popen(
             stdout_lines='{"type": "status", "msg": "working"}\n{"type": "progress"}\n',
@@ -398,7 +398,7 @@ class TestExecuteAgentStreaming:
         assert activities[1]["type"] == "progress"
 
     @patch("ralphify._agent.time.monotonic")
-    @patch(MOCK_POPEN)
+    @patch(MOCK_SUBPROCESS)
     def test_timeout_kills_process(self, mock_popen, mock_time):
         # Simulate: start=0, deadline check after reading first line = 100 (past deadline)
         mock_time.side_effect = [0.0, 100.0, 100.0]
@@ -464,12 +464,12 @@ class TestProcessGroupCleanup:
 
         proc.kill.assert_called_once()
 
-    @patch(MOCK_POPEN, side_effect=ok_proc)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_blocking_uses_start_new_session(self, mock_popen):
         execute_agent(["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1)
         assert mock_popen.call_args[1].get("start_new_session") is True
 
-    @patch(MOCK_POPEN)
+    @patch(MOCK_SUBPROCESS)
     def test_streaming_uses_start_new_session(self, mock_popen):
         mock_popen.return_value = make_mock_popen(returncode=0)
         _run_agent_streaming(

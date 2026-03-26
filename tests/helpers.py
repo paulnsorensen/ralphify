@@ -21,10 +21,7 @@ from ralphify._runner import RunResult
 # ── Patch targets ─────────────────────────────────────────────────────
 
 MOCK_SUBPROCESS = "ralphify._agent.subprocess.Popen"
-"""Patch target for subprocess.Popen inside the agent module (blocking path)."""
-
-MOCK_POPEN = "ralphify._agent.subprocess.Popen"
-"""Patch target for subprocess.Popen inside the agent module (streaming path)."""
+"""Patch target for subprocess.Popen inside the agent module."""
 
 MOCK_RUNNER_SUBPROCESS = "ralphify._runner.subprocess.run"
 """Patch target for subprocess.run inside the runner module."""
