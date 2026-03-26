@@ -28,12 +28,26 @@ Verify the setup by running the CLI from source:
 uv run ralph --version
 ```
 
+```text
+ralphify 0.3.0
+```
+
 ## Running tests
 
 The test suite uses pytest with one test file per source module:
 
 ```bash
-uv run pytest           # Run all tests
+uv run pytest
+```
+
+```text
+......................................................... [100%]
+522 passed in 11.86s
+```
+
+Use `-x` to stop on the first failure, or `-v` for verbose output:
+
+```bash
 uv run pytest -x        # Stop on first failure
 uv run pytest -v        # Verbose output
 ```
@@ -52,12 +66,23 @@ The docs site uses [MkDocs](https://www.mkdocs.org/) with the [Material](https:/
 uv run mkdocs serve
 ```
 
-This starts a local server at `http://127.0.0.1:8000` with live reload — edits to docs files appear instantly in the browser.
+```text
+INFO    -  Building documentation...
+INFO    -  Serving on http://127.0.0.1:8000/
+```
+
+Edits to docs files appear instantly in the browser via live reload.
 
 ### Build check
 
 ```bash
 uv run mkdocs build --strict
+```
+
+```text
+INFO    -  Cleaning site directory
+INFO    -  Building documentation to directory: site
+INFO    -  Documentation built in 1.91 seconds
 ```
 
 The `--strict` flag treats warnings as errors. The CI pipeline uses this flag, so make sure your changes build cleanly before submitting. For guidance on what each docs page should cover, see [Keeping docs surfaces in sync](../quick-reference.md) and the existing page structure.
