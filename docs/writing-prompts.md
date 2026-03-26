@@ -62,19 +62,24 @@ Commands are what make the loop self-healing. Instead of static instructions, yo
 
 ```markdown
 ---
-agent: claude -p --dangerously-skip-permissions
+agent: claude -p --dangerously-skip-permissions # (1)!
 commands:
-  - name: tests
-    run: uv run pytest -x
+  - name: tests # (2)!
+    run: uv run pytest -x # (3)!
 ---
 
 ## Test results
 
-{{ commands.tests }}
+{{ commands.tests }} <!-- (4) -->
 
 Fix any failing tests before starting new work.
 Then read TODO.md and implement the next task.
 ```
+
+1. The agent command — piped the assembled prompt via stdin every iteration.
+2. Each command gets a `name` used in `{{ commands.<name> }}` placeholders.
+3. The `run` field is the shell command to execute. Its output (stdout + stderr) is captured regardless of exit code.
+4. Replaced with the test command's output. If tests fail, the failure output appears here — the agent sees exactly what broke.
 
 The agent sees the current test results every iteration. If it broke something in the last iteration, the failure output is right there in the prompt.
 
@@ -90,7 +95,7 @@ commands:
     run: uv run ruff check .
   - name: git-log
     run: git log --oneline -10
-  - name: coverage
+  - name: coverage # (1)!
     run: uv run pytest --cov=src --cov-report=term-missing -q
 ---
 
@@ -110,6 +115,8 @@ commands:
 
 {{ commands.coverage }}
 ```
+
+1. Each command runs every iteration in order. Only commands referenced by a `{{ commands.<name> }}` placeholder appear in the assembled prompt — unreferenced commands still run but their output is excluded.
 
 Pick the 2-3 most useful signals. Don't dump everything — each command's output eats into the agent's context window.
 
