@@ -95,6 +95,22 @@ Use `--` when a positional value starts with `--` and would otherwise be parsed 
 
 Missing args resolve to an empty string.
 
+### Stopping the loop
+
+Press `Ctrl+C` to stop the loop. Ralphify uses two-stage signal handling:
+
+| Action | Behavior |
+|---|---|
+| `Ctrl+C` (first) | Finishes the current iteration gracefully, then stops the loop |
+| `Ctrl+C` (second) | Force-kills the agent process and exits immediately |
+
+The first press lets the agent complete its current work (e.g. finish a commit). If you don't want to wait, press `Ctrl+C` again to terminate immediately.
+
+The loop also stops automatically when:
+
+- All `-n` iterations have completed
+- `--stop-on-error` is set and the agent exits non-zero or times out
+
 ---
 
 ## `ralph init`
