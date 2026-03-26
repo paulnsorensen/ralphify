@@ -75,6 +75,22 @@ class TestParseGithubSource:
         assert p.handle == "acme/tools"
         assert p.name == "tools"
 
+    def test_shorthand_with_git_suffix(self):
+        """Shorthand 'owner/repo.git' should strip .git, matching full URL behavior."""
+        p = parse_github_source("acme/tools.git")
+        assert p.repo_url == "https://github.com/acme/tools.git"
+        assert p.subpath is None
+        assert p.handle == "acme/tools"
+        assert p.name == "tools"
+
+    def test_shorthand_with_git_suffix_and_subpath(self):
+        """Shorthand 'owner/repo.git/ralph' should strip .git from the repo name."""
+        p = parse_github_source("acme/tools.git/linter")
+        assert p.repo_url == "https://github.com/acme/tools.git"
+        assert p.subpath == "linter"
+        assert p.handle == "acme/tools/linter"
+        assert p.name == "linter"
+
     def test_invalid_source_raises(self):
         with pytest.raises(ValueError, match="Cannot parse"):
             parse_github_source("just-one-segment")
