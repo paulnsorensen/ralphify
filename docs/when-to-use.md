@@ -1,7 +1,7 @@
 ---
-title: When to Use Ralph Loops
-description: When ralph loops are the right tool — what kinds of tasks work well, what doesn't, and how to tell if your task fits the pattern.
-keywords: when to use ralphify, autonomous coding tasks, AI agent use cases, loop vs single run, task suitability
+title: What Tasks Can You Automate with an AI Coding Agent Loop?
+description: Which coding tasks work well in an autonomous AI agent loop and which don't. Covers ideal task properties, good and bad fits, loop vs single conversation, and how to adapt borderline tasks.
+keywords: automate coding tasks with AI, autonomous AI coding agent use cases, AI agent loop tasks, when to use coding agent, loop vs single conversation, AI coding automation, agentic coding tasks, what to automate with AI, ralphify use cases
 ---
 
 # When to use ralph loops
