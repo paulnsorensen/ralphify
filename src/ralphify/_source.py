@@ -80,7 +80,7 @@ def parse_github_source(source: str) -> ParsedSource:
 
     repo_url = f"https://github.com/{owner}/{repo}.git"
     subpath = rest.strip("/") if rest else None
-    name = subpath.rstrip("/").rsplit("/", 1)[-1] if subpath else repo
+    name = subpath.rsplit("/", 1)[-1] if subpath else repo
     handle = f"{owner}/{repo}/{subpath}" if subpath else f"{owner}/{repo}"
 
     return ParsedSource(repo_url=repo_url, subpath=subpath, handle=handle, name=name)
@@ -179,16 +179,16 @@ def _fetch_named_ralph(
 ) -> FetchResult:
     """Handle ``owner/repo/ralph-name`` — search or exact subpath."""
     assert parsed.subpath is not None
+    ralph_name = parsed.name
 
     # First try exact subpath.
     exact = clone_dir / parsed.subpath
     if exact.is_dir() and (exact / RALPH_MARKER).is_file():
-        dest = ralphs_dir / parsed.name
+        dest = ralphs_dir / ralph_name
         _copy_ralph(exact, dest)
-        return FetchResult(installed=[(parsed.name, dest)])
+        return FetchResult(installed=[(ralph_name, dest)])
 
     # Search by name (leaf segment).
-    ralph_name = parsed.name
     all_ralphs = _find_ralphs_in(clone_dir)
     matches = [rd for rd in all_ralphs if rd.name == ralph_name]
 
