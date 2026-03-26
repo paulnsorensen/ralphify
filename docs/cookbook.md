@@ -6,6 +6,9 @@ keywords: ralphify cookbook, autonomous coding recipes, RALPH.md examples, docum
 
 # Cookbook
 
+!!! tldr "TL;DR"
+    8 copy-pasteable ralph loops: [autoresearch](#autoresearch), [codebase improvement](#codebase-improvement), [documentation](#documentation-loop), [bug hunting](#bug-hunter), [deep research](#deep-research), [code migration](#code-migration), [security scanning](#security-scan), and [test coverage](#test-coverage). Each is a real, runnable example from the `examples/` directory.
+
 Copy-pasteable setups for common autonomous workflows. Each recipe is a real, runnable ralph from the [`examples/`](https://github.com/computerlovetech/ralphify/tree/main/examples) directory.
 
 All recipes use **Claude Code** as the agent. To use a different agent, swap the `agent` field — see [Using with Different Agents](agents.md).
@@ -25,19 +28,19 @@ An autonomous ML research loop inspired by [Karpathy's autoresearch](https://git
 --8<-- "examples/autoresearch/RALPH.md"
 ```
 
-The helper scripts surface experiment state each iteration:
+??? note "Helper scripts that surface experiment state each iteration"
 
-**`autoresearch/show-results.sh`**
+    **`autoresearch/show-results.sh`**
 
-```bash
---8<-- "examples/autoresearch/show-results.sh"
-```
+    ```bash
+    --8<-- "examples/autoresearch/show-results.sh"
+    ```
 
-**`autoresearch/show-last-run.sh`**
+    **`autoresearch/show-last-run.sh`**
 
-```bash
---8<-- "examples/autoresearch/show-last-run.sh"
-```
+    ```bash
+    --8<-- "examples/autoresearch/show-last-run.sh"
+    ```
 
 ```bash
 ralph run autoresearch --train_script train.py --prepare_script prepare.py
@@ -155,7 +158,8 @@ This is a more advanced ralph — it uses `args` for the research topic, helper 
 --8<-- "examples/research/RALPH.md"
 ```
 
-The helper scripts (`show-focus.sh`, `show-questions.sh`, etc.) read from the workspace files and surface key state. The `review.sh` script pipes the full workspace to a separate Claude call that acts as an editorial reviewer — giving the research agent targeted feedback each iteration.
+??? note "Helper scripts — `show-focus.sh`, `show-questions.sh`, `review.sh`"
+    The helper scripts read from the workspace files and surface key state. The `review.sh` script pipes the full workspace to a separate Claude call that acts as an editorial reviewer — giving the research agent targeted feedback each iteration.
 
 ```bash
 ralph run research --workspace ai-safety --focus "current approaches to AI alignment"
@@ -184,11 +188,12 @@ A loop for batch code transformations — migrating from one pattern to another 
 --8<-- "examples/migrate/RALPH.md"
 ```
 
-The `count-remaining.sh` script receives the pattern as an argument (resolved from `{{ args.old_pattern }}` in the `run` field) to find files that still need migration:
+??? note "`count-remaining.sh` — tracks migration progress"
+    The script receives the pattern as an argument (resolved from `{{ args.old_pattern }}` in the `run` field) to find files that still need migration:
 
-```bash
---8<-- "examples/migrate/count-remaining.sh"
-```
+    ```bash
+    --8<-- "examples/migrate/count-remaining.sh"
+    ```
 
 ```bash
 ralph run migrate --old_pattern "from utils import legacy_helper" \
