@@ -90,6 +90,9 @@ BANNER = [
 
 TAGLINE = "Stop stressing over not having an agent running. Ralph is always running"
 
+_RALPHIFY_RALPHS_DIR = Path(".ralphify") / "ralphs"
+"""Project-local directory for installed ralphs."""
+
 _INIT_TEMPLATE = """\
 ---
 agent: claude -p --dangerously-skip-permissions
@@ -350,10 +353,6 @@ def _validate_commands(raw_commands: Any) -> list[Command]:
     if not isinstance(raw_commands, list):
         _exit_error(f"'{FIELD_COMMANDS}' must be a list of {{name, run}} mappings.")
     return _parse_command_items(raw_commands)
-
-
-_RALPHIFY_RALPHS_DIR = Path(".ralphify") / "ralphs"
-"""Project-local directory for installed ralphs."""
 
 
 def _installed_ralph_path(name: str) -> Path | None:

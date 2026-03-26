@@ -792,6 +792,106 @@ class TestCreditFrontmatter:
         assert "true or false" in result.output.lower()
 
 
+class TestMainCallback:
+    def test_no_subcommand_prints_banner_and_help(self):
+        result = runner.invoke(app, [])
+        assert result.exit_code == 0
+        # Banner contains the ASCII art — check a recognizable fragment
+        assert "RALPHIFY" in result.output.upper() or "ralph" in result.output.lower()
+        # Help text should be present
+        assert "run" in result.output.lower()
+
+    def test_no_subcommand_shows_tagline(self):
+        result = runner.invoke(app, [])
+        assert result.exit_code == 0
+        assert "Ralph is always running" in result.output
+
+
+class TestAdd:
+    @patch("ralphify._source.fetch_ralphs")
+    @patch("ralphify._source.parse_github_source")
+    def test_add_single_ralph(self, mock_parse, mock_fetch, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        from ralphify._source import ParsedSource, FetchResult
+        parsed = ParsedSource(
+            repo_url="https://github.com/owner/repo.git",
+            subpath="my-ralph",
+            handle="owner/repo/my-ralph",
+            name="my-ralph",
+        )
+        mock_parse.return_value = parsed
+        dest = tmp_path / ".ralphify" / "ralphs" / "my-ralph"
+        mock_fetch.return_value = FetchResult(installed=[("my-ralph", dest)])
+
+        result = runner.invoke(app, ["add", "owner/repo/my-ralph"])
+        assert result.exit_code == 0
+        assert "Added" in result.output
+        assert "my-ralph" in result.output
+        assert "ralph run my-ralph" in result.output
+
+    @patch("ralphify._source.fetch_ralphs")
+    @patch("ralphify._source.parse_github_source")
+    def test_add_multiple_ralphs(self, mock_parse, mock_fetch, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        from ralphify._source import ParsedSource, FetchResult
+        parsed = ParsedSource(
+            repo_url="https://github.com/owner/repo.git",
+            subpath=None,
+            handle="owner/repo",
+            name="repo",
+        )
+        mock_parse.return_value = parsed
+        mock_fetch.return_value = FetchResult(installed=[
+            ("ralph-a", tmp_path / "a"),
+            ("ralph-b", tmp_path / "b"),
+        ])
+
+        result = runner.invoke(app, ["add", "owner/repo"])
+        assert result.exit_code == 0
+        assert "Added 2 ralphs" in result.output
+        assert "ralph-a" in result.output
+        assert "ralph-b" in result.output
+        assert "ralph run <name>" in result.output
+
+    @patch("ralphify._source.parse_github_source", side_effect=ValueError("Cannot parse source 'bad'"))
+    def test_add_invalid_source_errors(self, mock_parse, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        result = runner.invoke(app, ["add", "bad"])
+        assert result.exit_code == 1
+        assert "Cannot parse source" in result.output
+
+    @patch("ralphify._source.fetch_ralphs", side_effect=RuntimeError("git clone failed"))
+    @patch("ralphify._source.parse_github_source")
+    def test_add_fetch_failure_errors(self, mock_parse, mock_fetch, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        from ralphify._source import ParsedSource
+        mock_parse.return_value = ParsedSource(
+            repo_url="https://github.com/owner/repo.git",
+            subpath=None,
+            handle="owner/repo",
+            name="repo",
+        )
+        result = runner.invoke(app, ["add", "owner/repo"])
+        assert result.exit_code == 1
+        assert "git clone failed" in result.output
+
+    @patch("ralphify._source.fetch_ralphs")
+    @patch("ralphify._source.parse_github_source")
+    def test_add_creates_ralphs_dir(self, mock_parse, mock_fetch, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        from ralphify._source import ParsedSource, FetchResult
+        mock_parse.return_value = ParsedSource(
+            repo_url="https://github.com/owner/repo.git",
+            subpath="x",
+            handle="owner/repo/x",
+            name="x",
+        )
+        mock_fetch.return_value = FetchResult(installed=[("x", tmp_path / "x")])
+        result = runner.invoke(app, ["add", "owner/repo/x"])
+        assert result.exit_code == 0
+        assert (tmp_path / ".ralphify" / "ralphs").is_dir()
+
+
 class TestTwoStageCtrlC:
     """Test the two-stage Ctrl+C signal handler installed by the run command."""
 
