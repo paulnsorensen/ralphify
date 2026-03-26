@@ -147,11 +147,31 @@ Your prompt here.
 
 ## Testing your setup
 
-Verify the agent works outside of ralphify first:
+Verify the agent works outside of ralphify first. The command depends on which agent you're using:
 
-```bash
-echo "Say hello" | <your-agent-command>
-```
+=== "Claude Code"
+
+    ```bash
+    echo "Say hello and nothing else" | claude -p --dangerously-skip-permissions
+    ```
+
+    ```text
+    Hello!
+    ```
+
+=== "Aider"
+
+    ```bash
+    echo "Say hello and nothing else" | bash -c 'aider --yes-always --no-auto-commits --message "$(cat -)"'
+    ```
+
+=== "Codex CLI"
+
+    ```bash
+    echo "Say hello and nothing else" | codex exec --sandbox danger-full-access -
+    ```
+
+If the agent prints a response and exits, your setup is working. If it hangs or errors, fix the agent installation before continuing.
 
 Then test through ralphify with a single iteration:
 
