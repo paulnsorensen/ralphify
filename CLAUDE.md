@@ -29,6 +29,7 @@ Key modules:
 - `_events.py` — Event types, emitter protocol (NullEmitter, QueueEmitter, FanoutEmitter), and BoundEmitter convenience wrapper
 - `_console_emitter.py` — Rich terminal rendering of events
 - `_output.py` — `ProcessResult` base class, combine stdout+stderr, format durations
+- `_brand.py` — Brand color constants shared across CLI and console rendering
 - `_source.py` — GitHub source parsing and git-based ralph fetching for `ralph add`
 - `_skills.py` — Skill installation, agent detection, and command building for `ralph new`
 - `skills/new-ralph/SKILL.md` — AI-guided ralph creation skill (bundled, installed into agent skill dir)

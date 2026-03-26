@@ -32,6 +32,7 @@ src/ralphify/           # All source code
 ├── _console_emitter.py # Rich console renderer for run-loop events (ConsoleEmitter)
 ├── _events.py          # Event types, emitter protocol, and BoundEmitter convenience wrapper
 ├── _output.py          # ProcessResult base class, combine stdout+stderr, format durations
+├── _brand.py           # Brand color constants shared across CLI and console rendering
 └── skills/             # Bundled skill definitions (installed into agent skill dirs)
     └── new-ralph/      # AI-guided ralph creation skill for `ralph new`
 
