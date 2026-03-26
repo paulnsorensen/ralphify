@@ -118,7 +118,7 @@ run_loop(config, state)
 print(state.status)      # RunStatus.COMPLETED
 print(state.completed)   # 4
 print(state.failed)      # 1
-print(state.timed_out)   # 0  (subset of failed)
+print(state.timed_out_count)  # 0  (subset of failed)
 print(state.total)       # 5  (completed + failed)
 print(state.iteration)   # 5  (current iteration number)
 print(state.started_at)  # datetime or None
@@ -131,14 +131,14 @@ print(state.started_at)  # datetime or None
 | `iteration` | `int` | Current iteration number (starts at 0) |
 | `completed` | `int` | Number of successful iterations |
 | `failed` | `int` | Number of failed iterations (includes timed out) |
-| `timed_out` | `int` | Number of timed-out iterations (subset of `failed`) |
+| `timed_out_count` | `int` | Number of timed-out iterations (subset of `failed`) |
 | `total` | `int` | `completed + failed` |
 | `started_at` | `datetime | None` | When the run started |
 | `paused` | `bool` | Whether the run is currently paused |
 | `stop_requested` | `bool` | Whether a stop has been requested |
 
 !!! note "Counter invariant"
-    `timed_out` is a **subset** of `failed`, not an independent category. A timed-out iteration increments both `timed_out` and `failed`. Therefore `completed + failed == total`.
+    `timed_out_count` is a **subset** of `failed`, not an independent category. A timed-out iteration increments both `timed_out_count` and `failed`. Therefore `completed + failed == total`.
 
 ### Control methods
 
@@ -227,8 +227,8 @@ Use `event.to_dict()` to serialize to a JSON-compatible dict.
 
 | Event | Data fields |
 |---|---|
-| `RUN_STARTED` | `commands` (int count), `max_iterations`, `timeout`, `delay` |
-| `RUN_STOPPED` | `reason` (`StopReason`), `total`, `completed`, `failed`, `timed_out` |
+| `RUN_STARTED` | `ralph_name`, `commands` (int count), `max_iterations`, `timeout`, `delay` |
+| `RUN_STOPPED` | `reason` (`StopReason`), `total`, `completed`, `failed`, `timed_out_count` |
 | `RUN_PAUSED` | -- |
 | `RUN_RESUMED` | -- |
 
