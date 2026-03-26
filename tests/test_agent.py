@@ -469,6 +469,22 @@ class TestProcessGroupCleanup:
 
     @patch("ralphify._agent.os.killpg")
     @patch("ralphify._agent.os.getpgid")
+    def test_sigkill_failure_falls_back_to_proc_kill(self, mock_getpgid, mock_killpg):
+        """When SIGTERM times out and SIGKILL also fails, fall back to proc.kill()."""
+        proc = MagicMock(pid=42, poll=MagicMock(return_value=None))
+        proc.wait.side_effect = subprocess.TimeoutExpired(cmd="agent", timeout=3)
+        mock_getpgid.return_value = 42
+        # SIGTERM succeeds but SIGKILL fails (process vanished between attempts)
+        mock_killpg.side_effect = [None, ProcessLookupError("No such process")]
+
+        _kill_process_group(proc)
+
+        mock_killpg.assert_any_call(42, signal.SIGTERM)
+        mock_killpg.assert_any_call(42, signal.SIGKILL)
+        proc.kill.assert_called_once()
+
+    @patch("ralphify._agent.os.killpg")
+    @patch("ralphify._agent.os.getpgid")
     def test_not_session_leader_falls_back_to_kill(self, mock_getpgid, mock_killpg):
         proc = MagicMock(pid=42, poll=MagicMock(return_value=None))
         mock_getpgid.return_value = 1
