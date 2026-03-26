@@ -33,6 +33,8 @@ ralph add https://github.com/owner/repo/tree/main/my-ralph  # URL from GitHub
 ralph --version                    # Show version
 ```
 
+Full flag descriptions and examples → [CLI reference](cli.md)
+
 ## Directory structure
 
 ```text
@@ -40,7 +42,7 @@ my-ralph/
 └── RALPH.md              # Prompt + configuration (required)
 ```
 
-That's it. A ralph is a directory with a `RALPH.md` file.
+That's it. A ralph is a directory with a `RALPH.md` file. See [Getting Started](getting-started.md) to create your first one.
 
 ## RALPH.md format
 
@@ -72,7 +74,7 @@ Your instructions here. Use {{ args.dir }} for user arguments.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `agent` | string | yes | Full agent command (piped via stdin) |
+| `agent` | string | yes | Full agent command (piped via stdin). See [agent configuration](agents.md) for supported agents. |
 | `commands` | list | no | Commands to run each iteration |
 | `args` | list | no | User argument names. Letters, digits, hyphens, and underscores only. |
 | `credit` | bool | no | Append co-author trailer instruction to prompt (default: `true`) |
@@ -99,6 +101,8 @@ Your instructions here. Use {{ args.dir }} for user arguments.
 - Unmatched placeholders resolve to empty string
 - Must be `commands` (plural)
 
+For details on writing effective prompts with placeholders, see [Writing Prompts](writing-prompts.md).
+
 ### User argument placeholders
 
 ```markdown
@@ -111,6 +115,7 @@ Your instructions here. Use {{ args.dir }} for user arguments.
 - Mixed: `ralph run my-ralph --focus "perf" ./src` — positional args skip names already provided via flags
 - `--` ends flag parsing: `ralph run my-ralph -- --verbose ./src` treats `--verbose` as a positional value
 - Missing args resolve to empty string
+- See [CLI reference → User arguments](cli.md#user-arguments) for full details on flag and positional parsing
 
 ### ralph placeholders
 
@@ -122,6 +127,7 @@ Your instructions here. Use {{ args.dir }} for user arguments.
 
 - Automatically available — no frontmatter configuration needed
 - Useful for progress tracking, naming logs, or adjusting behavior near the end of a run
+- See [How it Works](how-it-works.md) for more on the loop lifecycle
 
 ## The loop
 
@@ -148,6 +154,8 @@ Each iteration:
 - The prompt body is re-read from disk every iteration — edit the prompt while the loop runs (frontmatter is parsed once at startup)
 - HTML comments (`<!-- ... -->`) are stripped from the prompt — use them for notes to yourself
 
+Tips on structuring prompts for different tasks → [Writing Prompts](writing-prompts.md)
+
 ## `ralph add` source formats
 
 | Format | Example | What it does |
@@ -157,7 +165,7 @@ Each iteration:
 | Full URL | `https://github.com/owner/repo` | Same as shorthand |
 | GitHub tree URL | `https://github.com/owner/repo/tree/main/my-ralph` | Extracts the path from the URL — works when you copy a URL from the GitHub browser UI |
 
-Installed ralphs go to `.ralphify/ralphs/<name>/`. Re-running `ralph add` overwrites without warning (that's how you update).
+Installed ralphs go to `.ralphify/ralphs/<name>/`. Re-running `ralph add` overwrites without warning (that's how you update). See the [CLI reference](cli.md) for full `ralph add` options.
 
 ## Common patterns
 
@@ -215,3 +223,12 @@ cat ralph_logs/001_*.log
 ```bash
 git checkout -b feature && ralph run my-ralph
 ```
+
+More patterns and real-world examples → [Cookbook](cookbook.md)
+
+## Next steps
+
+- [Getting Started](getting-started.md) — set up your first ralph end-to-end
+- [Writing Prompts](writing-prompts.md) — prompt structure, shell limitations, and advanced patterns
+- [Cookbook](cookbook.md) — copy-pasteable ralphs for common tasks
+- [Troubleshooting](troubleshooting.md) — common issues and how to fix them
