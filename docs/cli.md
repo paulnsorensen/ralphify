@@ -1,7 +1,7 @@
 ---
-title: Ralph CLI Reference
-description: Full CLI reference for ralphify — ralph run, ralph init, ralph new, ralph add, all options, user arguments, and RALPH.md frontmatter format.
-keywords: ralph CLI, ralph run, ralph init, ralph new, ralph add, CLI reference, RALPH.md format, frontmatter options, agent arguments
+title: "CLI Reference: Run AI Coding Agents in Autonomous Loops"
+description: "Complete CLI reference for the ralph command — run autonomous AI coding loops, scaffold new agent prompts, install shared ralphs from GitHub, and configure RALPH.md frontmatter options."
+keywords: run AI agent in loop CLI, autonomous coding agent command line, ralph run command, ralph init, ralph add GitHub, RALPH.md frontmatter format, AI coding loop options, agent timeout iterations, user arguments CLI, ralphify CLI reference
 ---
 
 # CLI Reference
