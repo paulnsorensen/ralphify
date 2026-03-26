@@ -1,7 +1,7 @@
 ---
 title: Troubleshooting Ralph Loops
-description: Fix common ralphify issues — setup errors, agent hangs, command failures, and permission problems.
-keywords: ralphify troubleshooting, agent hangs, command failures, setup errors, debug ralph loop
+description: Fix common ralphify issues — setup errors, agent hangs, command failures, ralph add problems, and permission issues.
+keywords: ralphify troubleshooting, agent hangs, command failures, setup errors, debug ralph loop, ralph add issues
 ---
 
 # Troubleshooting
@@ -38,6 +38,33 @@ agent: claude -p --dangerously-skip-permissions
 ### "Command 'claude' not found on PATH"
 
 The agent CLI isn't installed or isn't in your shell's PATH. Verify by running `claude --version` directly. If it's installed but not found, check your PATH.
+
+## `ralph add` issues
+
+### "Cannot parse source"
+
+The source format wasn't recognized. `ralph add` accepts these formats:
+
+```bash
+ralph add owner/repo                         # shorthand
+ralph add owner/repo/ralph-name              # specific ralph
+ralph add https://github.com/owner/repo      # full URL
+```
+
+### "git clone failed"
+
+The repository couldn't be cloned. Common causes:
+
+- The repository doesn't exist or has a typo in the owner/repo name
+- The repository is **private** — `ralph add` uses `git clone` under the hood, so your local git credentials must have access. If you can `git clone https://github.com/owner/repo.git` manually, `ralph add` will work too.
+
+### "No RALPH.md found" / "No ralph named '...' found"
+
+The repository was cloned successfully but no ralphs were found. Either the repo doesn't contain any `RALPH.md` files, or the ralph name you specified doesn't match any directory in the repo.
+
+### Re-running `ralph add` overwrites without warning
+
+If you `ralph add` a ralph that's already installed in `.ralphify/ralphs/`, the existing copy is replaced silently. This is by design — it's how you update an installed ralph to the latest version. If you've made local edits to an installed ralph, copy them elsewhere before re-adding.
 
 ## Loop issues
 
