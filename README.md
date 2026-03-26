@@ -144,6 +144,15 @@ ralph new my-task
 
 Launches an interactive agent conversation to scaffold a new ralph with the right commands and prompt for your project.
 
+## Install ralphs from GitHub
+
+```bash
+ralph add owner/repo              # Install all ralphs from a repo
+ralph add owner/repo/my-ralph     # Install a specific ralph by name
+```
+
+Installs ralphs to `.ralphify/ralphs/` so you can run them by name with `ralph run`.
+
 ## Documentation
 
 Full documentation at **[ralphify.co/docs](https://ralphify.co/docs/)** — getting started tutorial, prompt writing guide, cookbook, and troubleshooting.
