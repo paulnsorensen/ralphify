@@ -8,7 +8,7 @@ keywords: ralphify contributing, development setup, pull requests, open source, 
 
 Ralphify is open source (MIT) and welcomes contributions. This page covers everything you need to set up a development environment, run tests, and submit changes.
 
-For architecture details and codebase orientation, see the [Codebase Map](codebase-map.md).
+For architecture details and codebase orientation, see the [Codebase Map](codebase-map.md). If you're new to the project, the [Getting Started](../getting-started.md) tutorial gives a quick sense of how the tool works from a user's perspective.
 
 ## Development setup
 
@@ -40,7 +40,7 @@ uv run pytest -v        # Verbose output
 
 Tests use temporary directories and have no external dependencies — no API keys, no network access, no Docker.
 
-When adding a new feature, add tests in the corresponding file. If you're adding a new module, create a matching `test_<module>.py` file.
+When adding a new feature, add tests in the corresponding file. If you're adding a new module, create a matching `test_<module>.py` file. See the [Codebase Map](codebase-map.md) for the full list of modules and their test files.
 
 ## Working on documentation
 
@@ -60,7 +60,7 @@ This starts a local server at `http://127.0.0.1:8000` with live reload — edits
 uv run mkdocs build --strict
 ```
 
-The `--strict` flag treats warnings as errors. The CI pipeline uses this flag, so make sure your changes build cleanly before submitting.
+The `--strict` flag treats warnings as errors. The CI pipeline uses this flag, so make sure your changes build cleanly before submitting. For guidance on what each docs page should cover, see [Keeping docs surfaces in sync](../quick-reference.md) and the existing page structure.
 
 ## Working on the website
 
@@ -130,3 +130,10 @@ Releases are published to PyPI automatically when a GitHub release is created:
 3. The `publish.yml` workflow runs tests, builds the package, verifies the version matches the tag, and publishes to PyPI
 
 Docs deploy automatically to GitHub Pages on every push to `main` that changes files in `docs/` or `mkdocs.yml`.
+
+## Next steps
+
+- [Codebase Map](codebase-map.md) — architecture overview and module-by-module guide
+- [CLI Reference](../cli.md) — understand the commands you'll be extending
+- [Python API](../api.md) — the public API surface that contributors maintain
+- [Changelog](../changelog.md) — see what's been released and what's in progress
