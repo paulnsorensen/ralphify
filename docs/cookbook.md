@@ -20,7 +20,7 @@ All recipes use **Claude Code** as the agent. To use a different agent, swap the
 
 ## Run autonomous ML experiments {: #autoresearch }
 
-An autonomous ML research loop inspired by [Karpathy's autoresearch](https://github.com/karpathy/autoresearch). The agent runs experiments on a training script to minimize validation loss — modifying code, training for 5 minutes, keeping improvements and reverting failures.
+An autonomous ML research loop inspired by [Karpathy's autoresearch](https://github.com/karpathy/autoresearch). The agent runs experiments on a training script to minimize validation loss — modifying code, training for 5 minutes, keeping improvements and reverting failures. This recipe uses [helper scripts](writing-prompts.md#shell-features-in-commands) as commands to surface experiment state each iteration.
 
 **`autoresearch/RALPH.md`**
 
@@ -65,7 +65,7 @@ The `train_script` and `prepare_script` args let you point the ralph at any auto
 
 ## Improve code quality continuously {: #codebase-improvement }
 
-A loop that continuously improves code quality without changing functionality. It runs tests, type checking, and lint each iteration, then picks one improvement to make.
+A loop that continuously improves code quality without changing functionality. It runs [commands](quick-reference.md#command-fields) (tests, type checking, lint) each iteration to give the agent a [self-healing feedback loop](how-it-works.md#how-broken-code-gets-fixed-automatically), then picks one improvement to make.
 
 **`improve-codebase/RALPH.md`**
 
@@ -150,7 +150,7 @@ ralph run bug-hunter -n 5 --focus "focus on input validation" --log-dir ralph_lo
 
 A structured research loop that builds up a report over many iterations. Uses shell scripts as commands to track maturity, show the question tree, and even run an editorial review agent that gives feedback between iterations.
 
-This is a more advanced ralph — it uses `args` for the research topic, helper scripts (run with `./` relative to the ralph directory), and a `timeout` on the review command.
+This is a more advanced ralph — it uses [`args`](writing-prompts.md#parameterized-ralphs) for the research topic, helper scripts (run with `./` [relative to the ralph directory](how-it-works.md#2-run-commands-and-capture-output)), and a [`timeout`](writing-prompts.md#command-timeouts) on the review command.
 
 **`research/RALPH.md`**
 
@@ -174,13 +174,13 @@ ralph run research --workspace ai-safety --focus "current approaches to AI align
 ✓ Iteration 1 completed (185.6s)
 ```
 
-This recipe shows several advanced patterns: commands that call scripts relative to the ralph directory (`./show-focus.sh`), a command with a `timeout`, a command that itself calls an AI agent (`review.sh` pipes to `claude -p`), and `args` used in the prompt body via `{{ args.workspace }}` placeholders.
+This recipe shows several advanced patterns: commands that call scripts relative to the ralph directory (`./show-focus.sh`), a command with a `timeout`, a command that itself calls an AI agent (`review.sh` pipes to `claude -p`), and `args` used in the prompt body via [`{{ args.workspace }}` placeholders](writing-prompts.md#ralph-context-placeholders).
 
 ---
 
 ## Migrate code patterns across a codebase {: #code-migration }
 
-A loop for batch code transformations — migrating from one pattern to another across a codebase. The `remaining` command counts how many files still need migration, giving the agent a clear finish line.
+A loop for batch code transformations — migrating from one pattern to another across a codebase. The `remaining` command counts how many files still need migration, giving the agent a clear finish line. Use [`--stop-on-error`](cli.md#ralph-run) to halt the loop once all files are migrated.
 
 **`migrate/RALPH.md`**
 
@@ -215,7 +215,7 @@ The `remaining` command gives the agent a shrinking counter and a list of files 
 
 ## Automate security scanning and fixes {: #security-scan }
 
-An iterative security review loop. The agent runs a scanner each iteration, picks one finding, fixes it, and verifies the fix. Good for systematically hardening a codebase.
+An iterative security review loop. The agent runs a scanner each iteration, picks one finding, fixes it, and verifies the fix. Good for systematically hardening a codebase. Use [`-n`](cli.md#ralph-run) to limit iterations and [`--log-dir`](cli.md#ralph-run) to keep an audit trail.
 
 **`security/RALPH.md`**
 
@@ -243,7 +243,7 @@ Swap `bandit` for your scanner of choice — `semgrep`, `npm audit`, `cargo audi
 
 ## Increase test coverage automatically {: #test-coverage }
 
-A loop that systematically increases test coverage. The agent sees the current coverage percentage and a list of uncovered functions, then writes tests for one module per iteration.
+A loop that systematically increases test coverage. The agent sees the current coverage percentage and a list of uncovered functions, then writes tests for one module per iteration. The coverage command output feeds into the prompt via [`{{ commands.coverage }}`](writing-prompts.md#using-commands-for-dynamic-data) so the agent always knows where to focus.
 
 **`test-coverage/RALPH.md`**
 
