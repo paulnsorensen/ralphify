@@ -6,7 +6,8 @@ keywords: run AI agent from Python, programmatic coding agent loop, Python AI au
 
 # Python API
 
-Ralphify can be used as a Python library. This is useful when you want to embed the loop in a larger automation pipeline, react to events programmatically, manage concurrent runs, or script runs with more control than the CLI provides.
+!!! tldr "TL;DR"
+    `run_loop(config, state)` runs the same loop as `ralph run` but from Python. Build a `RunConfig` with your agent, commands, and options. Pass a `RunState` to inspect progress and control the loop (pause, resume, stop). Add an `EventEmitter` to react to events. Use `RunManager` for concurrent runs.
 
 All public API is available from the top-level `ralphify` package.
 
