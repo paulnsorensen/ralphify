@@ -26,7 +26,7 @@ from ralphify._frontmatter import (
     CMD_FIELD_NAME,
     CMD_FIELD_RUN,
     CMD_FIELD_TIMEOUT,
-    CMD_NAME_RE,
+    NAME_RE,
     FIELD_AGENT,
     FIELD_ARGS,
     FIELD_COMMANDS,
@@ -74,7 +74,7 @@ def _validate_name(name: str, context: str) -> None:
     *context* labels the kind of name for the error message (e.g.
     ``"Arg"`` or ``"Command"``).
     """
-    if not CMD_NAME_RE.fullmatch(name):
+    if not NAME_RE.fullmatch(name):
         _exit_error(
             f"{context} name '{name}' contains invalid characters. "
             f"{VALID_NAME_CHARS_MSG}"
@@ -267,7 +267,7 @@ def _parse_user_args(
                     value = next(it)
                 except StopIteration:
                     raise typer.BadParameter(f"Flag '--{name}' requires a value.") from None
-            if not CMD_NAME_RE.fullmatch(name):
+            if not NAME_RE.fullmatch(name):
                 raise typer.BadParameter(
                     f"Arg name '{name}' contains invalid characters. "
                     f"{VALID_NAME_CHARS_MSG}"

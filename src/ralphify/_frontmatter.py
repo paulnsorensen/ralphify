@@ -35,11 +35,12 @@ CMD_FIELD_TIMEOUT = "timeout"
 # YAML frontmatter delimiter line.
 _FRONTMATTER_DELIMITER = "---"
 
-# Valid characters for command and arg names — letters, digits, hyphens,
-# underscores.  Used by cli.py (validation) and _resolver.py (placeholders).
-CMD_NAME_RE = re.compile(r"[a-zA-Z0-9_-]+")
+# Valid characters for identifier names (commands, args, ralph context) —
+# letters, digits, hyphens, underscores.  Used by cli.py (validation) and
+# _resolver.py (placeholders).
+NAME_RE = re.compile(r"[a-zA-Z0-9_-]+")
 
-# Human-readable description of allowed name characters, paired with CMD_NAME_RE.
+# Human-readable description of allowed name characters, paired with NAME_RE.
 VALID_NAME_CHARS_MSG = "Names may only contain letters, digits, hyphens, and underscores."
 
 # UTF-8 BOM character — files saved on Windows may start with this.

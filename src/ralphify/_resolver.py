@@ -12,12 +12,12 @@ from __future__ import annotations
 
 import re
 
-from ralphify._frontmatter import CMD_NAME_RE, FIELD_ARGS, FIELD_COMMANDS, FIELD_RALPH
+from ralphify._frontmatter import NAME_RE, FIELD_ARGS, FIELD_COMMANDS, FIELD_RALPH
 
 
 # Pattern matching ``{{ args.<name> }}`` placeholders — used by resolve_args
 # to resolve arg placeholders in command run strings independently of commands.
-_ARGS_PATTERN = re.compile(rf"\{{\{{\s*{FIELD_ARGS}\.({CMD_NAME_RE.pattern})\s*\}}\}}")
+_ARGS_PATTERN = re.compile(rf"\{{\{{\s*{FIELD_ARGS}\.({NAME_RE.pattern})\s*\}}\}}")
 
 
 def resolve_args(prompt: str, user_args: dict[str, str]) -> str:
@@ -37,7 +37,7 @@ def resolve_args(prompt: str, user_args: dict[str, str]) -> str:
 
 # Single pattern matching all placeholder kinds for single-pass resolution.
 _ALL_PATTERN = re.compile(
-    rf"\{{\{{\s*({FIELD_COMMANDS}|{FIELD_ARGS}|{FIELD_RALPH})\.({CMD_NAME_RE.pattern})\s*\}}\}}"
+    rf"\{{\{{\s*({FIELD_COMMANDS}|{FIELD_ARGS}|{FIELD_RALPH})\.({NAME_RE.pattern})\s*\}}\}}"
 )
 
 
