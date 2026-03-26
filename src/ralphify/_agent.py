@@ -319,7 +319,7 @@ def _run_agent_blocking(
         raise
 
     log_file = _write_log(log_path_dir, iteration, stdout, stderr)
-    if log_path_dir:
+    if capture:
         _echo_output(stdout, stderr)
 
     return AgentResult(
