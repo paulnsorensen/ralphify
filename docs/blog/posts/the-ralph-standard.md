@@ -8,13 +8,32 @@ description: I've been obsessing over how to define autonomous agent loops in a 
 keywords: RALPH.md format, agent loop standard, autonomous coding format, ralph loop specification, YAML frontmatter prompt, AI agent harness design
 ---
 
-# An agent skill-like standard for autonomous agent loops
+# RALPH.md – a markdown format for autonomous agent loops
 
-I've spent the last few weeks messing around with [ralph loops](https://ghuntley.com/ralph/) - running an agent against a prompt in a while loop. The more I used them, the more I wanted a reusable format: deterministic scripts between iterations, their output optionally injected into the prompt, and a way to parametrize the whole thing so one loop definition works across projects.
-
-So I designed one.
+I keep setting up the same thing: an agent in a [while loop](https://ghuntley.com/ralph/), a few shell commands that run between iterations to check what changed, their output piped back into the prompt. Every time I set one up I rewrite the same scaffolding. So I made a format for it — a skill-like format with a single markdown file that defines what happens in the outer loop — run commands, assemble a prompt, pipe it to an agent — so the agent can focus on the inner loop.
 
 <!-- more -->
+
+AGENTS.md and Agent Skills are for the inner loop — they guide the agent during a session. RALPH.md is for the outer loop — it defines what runs *between* sessions.
+
+The simplest ralph looks like this:
+
+```markdown
+---
+agent: claude -p
+commands:
+  - name: tests
+    run: uv run pytest -x
+args:
+  - module
+---
+
+Fix the failing tests in {{ args.module }}.
+
+{{ commands.tests }}
+```
+
+That's it. Run the tests, inject the output, pipe the prompt to the agent, repeat. The `module` arg becomes a `--module` flag on the CLI so you can point the same ralph at different parts of a codebase.
 
 ## The format
 
@@ -28,7 +47,7 @@ bug-hunter/
 └── test-data.json        # whatever else the loop needs (optional)
 ```
 
-The `RALPH.md` itself has YAML frontmatter that steers the loop, and a prompt body that gets assembled and piped to the agent each iteration:
+Here's a real one I use — a bug hunter with multiple commands and a focus arg:
 
 ```markdown
 ---
@@ -110,7 +129,7 @@ Each iteration: run the commands, optionally inject their output into the prompt
 
 **Why a directory, not just a file?** Same reason the [Agent Skills](https://agentskills.io/) format uses a directory. A `RALPH.md` on its own is enough for simple loops, but ralph loops often benefit from being bundled with shell scripts for custom checks and context injection and reference docs for progressive disclosure (`coding-guidelines.md`, `architecture.md`). Commands starting with `./` run relative to the ralph directory, so bundled scripts just work. The directory then is the unit of sharing.
 
-**Why not just make it a skill?** They look similar on the surface - both are directories with a markdown file and optional bundled resources. That similarity is intentional - the skill format has become familiar to a lot of people, and borrowing its shape makes ralphs easy to understand at a glance. But they serve different layers. A skill provides knowledge about reusable processes in the inner loop - the agent's session. A ralph steers the outer loop by running code between iterations to deterministically control the environment and optionally inject context into the inner loop before kicking off the next iteration. 
+**Why not just make it a skill?** They look similar on the surface - both are directories with a markdown file and optional bundled resources. That similarity is intentional - the skill format has become familiar to a lot of people, and borrowing its shape makes ralphs easy to understand at a glance. But they serve different layers. A skill provides knowledge about reusable processes in the inner loop - the agent's session. A ralph steers the outer loop by running code between iterations to deterministically control the environment and optionally inject context into the inner loop before kicking off the next iteration.
 
 ## Try it
 
@@ -142,8 +161,6 @@ ralph add owner/repo
 ```
 
 The [ralphify examples](https://github.com/computerlovetech/ralphify/tree/main/examples) are a good place to start — and the [cookbook](https://ralphify.co/docs/cookbook/) has more.
-
-Ralphify is just one implementation though. The format itself is what I care about most - it's just YAML frontmatter and markdown. Any tool could read it and run the loop. I can't predict what will end up being useful here. But I built this, and maybe someone else finds the format interesting enough to build on or take in a direction I haven't thought of.
 
 ## I'd love feedback
 
