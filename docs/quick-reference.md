@@ -148,6 +148,17 @@ Each iteration:
 - The prompt body is re-read from disk every iteration — edit the prompt while the loop runs (frontmatter is parsed once at startup)
 - HTML comments (`<!-- ... -->`) are stripped from the prompt — use them for notes to yourself
 
+## `ralph add` source formats
+
+| Format | Example | What it does |
+|---|---|---|
+| Shorthand | `owner/repo` | Installs all ralphs in the repo (or the repo itself if root has `RALPH.md`) |
+| Subpath | `owner/repo/my-ralph` | Installs the ralph named `my-ralph` from the repo |
+| Full URL | `https://github.com/owner/repo` | Same as shorthand |
+| GitHub tree URL | `https://github.com/owner/repo/tree/main/my-ralph` | Extracts the path from the URL — works when you copy a URL from the GitHub browser UI |
+
+Installed ralphs go to `.ralphify/ralphs/<name>/`. Re-running `ralph add` overwrites without warning (that's how you update).
+
 ## Common patterns
 
 ### Minimal ralph
