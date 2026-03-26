@@ -246,9 +246,17 @@ ralph run research --dir ./frontend --focus "state management"
 
 The `git-log` command uses `{{ args.dir }}` to show only commits touching the target directory — the same arg value is resolved in both command `run` strings and the prompt body.
 
-### Iteration-aware prompts
+### Ralph context placeholders
 
-Use `{{ ralph.iteration }}` and `{{ ralph.max_iterations }}` to change the agent's behavior based on where it is in the run. These placeholders are available automatically — no frontmatter needed.
+Three `{{ ralph.* }}` placeholders are available automatically — no frontmatter needed:
+
+| Placeholder | Value |
+|---|---|
+| `{{ ralph.name }}` | Ralph directory name (e.g. `my-ralph`) |
+| `{{ ralph.iteration }}` | Current iteration number (1-based) |
+| `{{ ralph.max_iterations }}` | Total iterations if `-n` was set, empty otherwise |
+
+Use these to change the agent's behavior based on where it is in the run, or to include the ralph name in output files and commit messages.
 
 ```markdown
 ---
