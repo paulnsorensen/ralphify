@@ -20,15 +20,15 @@ import typer
 from rich.console import Console
 
 from ralphify import __version__
-from ralphify._console_emitter import (
-    _BRAND_DEEP_ORANGE,
-    _BRAND_LAVENDER,
-    _BRAND_ORANGE,
-    _BRAND_PEACH,
-    _BRAND_PURPLE,
-    _BRAND_VIOLET,
-    ConsoleEmitter,
+from ralphify._brand import (
+    DEEP_ORANGE as _BRAND_DEEP_ORANGE,
+    LAVENDER as _BRAND_LAVENDER,
+    ORANGE as _BRAND_ORANGE,
+    PEACH as _BRAND_PEACH,
+    PURPLE as _BRAND_PURPLE,
+    VIOLET as _BRAND_VIOLET,
 )
+from ralphify._console_emitter import ConsoleEmitter
 from ralphify._frontmatter import (
     CMD_FIELD_NAME,
     CMD_FIELD_RUN,

@@ -29,14 +29,8 @@ from ralphify._events import (
     RunStartedData,
     RunStoppedData,
 )
+from ralphify._brand import PURPLE as _BRAND_PURPLE
 from ralphify._output import format_duration
-
-_BRAND_PURPLE = "#A78BF5"
-_BRAND_VIOLET = "#8B6CF0"
-_BRAND_LAVENDER = "#D4A0E0"
-_BRAND_PEACH = "#E8956B"
-_BRAND_ORANGE = "#E87B4A"
-_BRAND_DEEP_ORANGE = "#E06030"
 
 _ICON_SUCCESS = "✓"
 _ICON_FAILURE = "✗"
