@@ -12,13 +12,13 @@ keywords: ralphify troubleshooting, agent hangs, command failures, setup errors,
     3. Use `--log-dir ralph_logs` to capture output for debugging
     4. Commands don't support shell features (pipes, `&&`) — use a wrapper script instead
 
-Common issues and how to fix them. If your problem isn't listed here, run `ralph run my-ralph -n 1` — it validates your setup and shows clear errors.
+Common issues and how to fix them. If your problem isn't listed here, run [`ralph run`](cli.md#ralph-run) with `-n 1` — it validates your setup and shows clear errors.
 
 ## Setup issues
 
 ### "is not a directory, RALPH.md file, or installed ralph"
 
-The path you passed to `ralph run` doesn't resolve to a valid ralph. The command accepts a **directory** containing `RALPH.md`, a **direct path** to a `RALPH.md` file, or the **name of an installed ralph** (from `ralph add`):
+The path you passed to [`ralph run`](cli.md#ralph-run) doesn't resolve to a valid ralph. The command accepts a **directory** containing `RALPH.md`, a **direct path** to a `RALPH.md` file, or the **name of an installed ralph** (from [`ralph add`](cli.md#ralph-add)):
 
 ```bash
 ralph run my-ralph              # directory containing RALPH.md
@@ -35,7 +35,7 @@ ls .ralphify/ralphs/my-ralph/RALPH.md      # installed ralph
 
 ### "Missing or empty 'agent' field in RALPH.md frontmatter"
 
-Your `RALPH.md` frontmatter is missing the `agent` field or it's an empty string. Add it:
+Your `RALPH.md` [frontmatter](writing-prompts.md#the-anatomy-of-a-good-ralphmd) is missing the `agent` field or it's an empty string. Add it:
 
 ```markdown
 ---
@@ -45,13 +45,13 @@ agent: claude -p --dangerously-skip-permissions
 
 ### "Agent command 'claude' not found on PATH"
 
-The agent CLI isn't installed or isn't in your shell's PATH. Verify by running `claude --version` directly. If it's installed but not found, check your PATH.
+The agent CLI isn't installed or isn't in your shell's PATH. Verify by running `claude --version` directly. If it's installed but not found, check your PATH. See [supported agents](agents.md) for setup instructions.
 
 ## `ralph add` issues
 
 ### "Cannot parse source"
 
-The source format wasn't recognized. `ralph add` accepts these formats:
+The source format wasn't recognized. [`ralph add`](cli.md#ralph-add) accepts these formats:
 
 ```bash
 ralph add owner/repo                                        # shorthand
@@ -81,7 +81,7 @@ If you `ralph add` a ralph that's already installed in `.ralphify/ralphs/`, the 
 
 ### Agent produces no output or seems to hang
 
-Try running the agent command directly to see if it works outside of ralphify:
+Try running the [agent command](agents.md) directly to see if it works outside of ralphify:
 
 ```bash
 echo "Say hello" | claude -p
@@ -128,7 +128,7 @@ Also ensure the agent has permission to run git commands. With Claude Code, the 
 
 ### Loop runs too fast / agent not doing anything useful
 
-If iterations finish in seconds with no meaningful work, the agent may be exiting without taking action. Check the logs:
+If iterations finish in seconds with no meaningful work, the agent may be exiting without taking action. Check the logs with [`--log-dir`](cli.md#ralph-run):
 
 ```bash
 ralph run my-ralph -n 1 --log-dir ralph_logs
@@ -137,15 +137,15 @@ cat ralph_logs/001_*.log
 
 Common causes:
 
-- The prompt is too vague ("improve the code" instead of "read TODO.md and implement the next task")
-- There's no concrete task source (no TODO.md, PLAN.md, or failing tests to fix)
+- The prompt is too vague — see [anti-patterns that waste iterations](writing-prompts.md#anti-patterns-that-waste-iterations)
+- There's no concrete task source (no TODO.md, PLAN.md, or failing tests to fix) — see [the TODO-driven loop](writing-prompts.md#the-todo-driven-loop)
 - The agent can't find what it's supposed to work on
 
 ## Frontmatter issues
 
 ### "Command name contains invalid characters" / "Arg name contains invalid characters"
 
-Command names and arg names may only contain letters, digits, hyphens, and underscores (`a-z`, `A-Z`, `0-9`, `-`, `_`). Names with dots, spaces, or special characters are rejected because they can't be used in `{{ commands.<name> }}` or `{{ args.<name> }}` placeholders.
+Command names and arg names may only contain letters, digits, hyphens, and underscores (`a-z`, `A-Z`, `0-9`, `-`, `_`). Names with dots, spaces, or special characters are rejected because they can't be used in [`{{ commands.<name> }}` or `{{ args.<name> }}` placeholders](writing-prompts.md#ralph-context-placeholders).
 
 ```yaml
 # ✗ Wrong — dots and spaces aren't allowed
@@ -241,7 +241,7 @@ commands:
 
 ### Command with pipes or redirections not working
 
-Commands in the `run` field are parsed with `shlex` and run **directly** — not through a shell. Shell features like pipes (`|`), redirections (`2>&1`), chaining (`&&`), and variable expansion (`$VAR`) silently fail or produce unexpected results.
+Commands in the `run` field are parsed with `shlex` and run **directly** — not through a shell. Shell features like pipes (`|`), redirections (`2>&1`), chaining (`&&`), and variable expansion (`$VAR`) silently fail or produce unexpected results. See [shell features in commands](writing-prompts.md#shell-features-in-commands) for background.
 
 **Won't work:**
 
@@ -285,7 +285,7 @@ Note that command output is included in the prompt **regardless of exit code**. 
 
 ### Command output looks truncated
 
-Each command has a default timeout of **60 seconds**. If your command takes longer (a large test suite, a slow build), it's killed at the timeout and only the output captured so far is used. The agent sees incomplete output without knowing it was cut short.
+Each command has a default timeout of **60 seconds** (see [command timeouts](writing-prompts.md#command-timeouts)). If your command takes longer (a large test suite, a slow build), it's killed at the timeout and only the output captured so far is used. The agent sees incomplete output without knowing it was cut short.
 
 **Fix:** Increase the timeout for slow commands:
 
@@ -413,5 +413,11 @@ See [Parameterized ralphs](writing-prompts.md#parameterized-ralphs) for more pat
 
 1. Run `ralph run my-ralph -n 1` to validate your setup — it shows clear errors
 2. Use `ralph run my-ralph -n 1 --log-dir ralph_logs` to capture a single iteration for debugging
-3. Check the [CLI Reference](cli.md) for all available options
+3. Check the [CLI reference](cli.md) for all available options
 4. File an issue at [github.com/computerlovetech/ralphify](https://github.com/computerlovetech/ralphify/issues)
+
+## Next steps
+
+- [How it works](how-it-works.md) — understand the iteration lifecycle to debug more effectively
+- [Writing prompts](writing-prompts.md) — improve your RALPH.md to avoid common loop issues
+- [Cookbook](cookbook.md) — working examples you can adapt for your project
