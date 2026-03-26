@@ -20,14 +20,7 @@ import typer
 from rich.console import Console
 
 from ralphify import __version__
-from ralphify._brand import (
-    DEEP_ORANGE as _BRAND_DEEP_ORANGE,
-    LAVENDER as _BRAND_LAVENDER,
-    ORANGE as _BRAND_ORANGE,
-    PEACH as _BRAND_PEACH,
-    PURPLE as _BRAND_PURPLE,
-    VIOLET as _BRAND_VIOLET,
-)
+from ralphify import _brand
 from ralphify._console_emitter import ConsoleEmitter
 from ralphify._frontmatter import (
     CMD_FIELD_NAME,
@@ -89,12 +82,12 @@ def _validate_name(name: str, context: str) -> None:
 
 
 BANNER = [
-    ("██████╗░░█████╗░██╗░░░░░██████╗░██╗░░██╗██╗███████╗██╗░░░██╗", _BRAND_VIOLET),
-    ("██╔══██╗██╔══██╗██║░░░░░██╔══██╗██║░░██║██║██╔════╝╚██╗░██╔╝", _BRAND_PURPLE),
-    ("██████╔╝███████║██║░░░░░██████╔╝███████║██║█████╗░░░╚████╔╝░", _BRAND_LAVENDER),
-    ("██╔══██╗██╔══██║██║░░░░░██╔═══╝░██╔══██║██║██╔══╝░░░░╚██╔╝░░", _BRAND_PEACH),
-    ("██║░░██║██║░░██║███████╗██║░░░░░██║░░██║██║██║░░░░░░░░██║░░░", _BRAND_ORANGE),
-    ("╚═╝░░╚═╝╚═╝░░╚═╝╚══════╝╚═╝░░░░░╚═╝░░╚═╝╚═╝╚═╝░░░░░░░░╚═╝░░░", _BRAND_DEEP_ORANGE),
+    ("██████╗░░█████╗░██╗░░░░░██████╗░██╗░░██╗██╗███████╗██╗░░░██╗", _brand.VIOLET),
+    ("██╔══██╗██╔══██╗██║░░░░░██╔══██╗██║░░██║██║██╔════╝╚██╗░██╔╝", _brand.PURPLE),
+    ("██████╔╝███████║██║░░░░░██████╔╝███████║██║█████╗░░░╚████╔╝░", _brand.LAVENDER),
+    ("██╔══██╗██╔══██║██║░░░░░██╔═══╝░██╔══██║██║██╔══╝░░░░╚██╔╝░░", _brand.PEACH),
+    ("██║░░██║██║░░██║███████╗██║░░░░░██║░░██║██║██║░░░░░░░░██║░░░", _brand.ORANGE),
+    ("╚═╝░░╚═╝╚═╝░░╚═╝╚══════╝╚═╝░░░░░╚═╝░░╚═╝╚═╝╚═╝░░░░░░░░╚═╝░░░", _brand.DEEP_ORANGE),
 ]
 
 TAGLINE = "Stop stressing over not having an agent running. Ralph is always running"
@@ -143,7 +136,7 @@ def _print_banner() -> None:
     for line, color in BANNER:
         _console.print(f"[bold {color}]{prefix}{line}[/bold {color}]")
     _console.print()
-    _console.print(f"[italic {_BRAND_PURPLE}]{TAGLINE:^{width}}[/italic {_BRAND_PURPLE}]")
+    _console.print(f"[italic {_brand.PURPLE}]{TAGLINE:^{width}}[/italic {_brand.PURPLE}]")
     _console.print()
     help_text = "Run 'ralph --help' for usage information"
     _console.print(f"[dim]{help_text:^{width}}[/dim]")

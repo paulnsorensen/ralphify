@@ -29,7 +29,7 @@ from ralphify._events import (
     RunStartedData,
     RunStoppedData,
 )
-from ralphify._brand import PURPLE as _BRAND_PURPLE
+from ralphify import _brand
 from ralphify._output import format_duration
 
 _ICON_SUCCESS = "✓"
@@ -84,7 +84,7 @@ class ConsoleEmitter:
 
     def _on_run_started(self, data: RunStartedData) -> None:
         ralph_name = data["ralph_name"]
-        self._console.print(f"\n[bold {_BRAND_PURPLE}]▶ Running:[/bold {_BRAND_PURPLE}] [bold]{escape_markup(ralph_name)}[/bold]")
+        self._console.print(f"\n[bold {_brand.PURPLE}]▶ Running:[/bold {_brand.PURPLE}] [bold]{escape_markup(ralph_name)}[/bold]")
 
         info_parts: list[str] = []
         timeout = data["timeout"]
