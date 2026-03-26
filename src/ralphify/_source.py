@@ -80,8 +80,7 @@ def parse_github_source(source: str) -> ParsedSource:
 
     # Strip .git suffix — the URL regex handles this via (?:\.git)? in the
     # pattern, but the shorthand regex captures the full repo segment.
-    if repo.endswith(".git"):
-        repo = repo[:-4]
+    repo = repo.removesuffix(".git")
 
     repo_url = f"https://github.com/{owner}/{repo}.git"
     subpath = rest.strip("/") if rest else None
