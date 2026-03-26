@@ -67,6 +67,14 @@ class TestParseGithubSource:
         assert p.repo_url == "https://github.com/acme/tools.git"
         assert p.subpath is None
 
+    def test_shorthand_trailing_slash(self):
+        """Trailing slash on shorthand format should be ignored, just like full URLs."""
+        p = parse_github_source("acme/tools/")
+        assert p.repo_url == "https://github.com/acme/tools.git"
+        assert p.subpath is None
+        assert p.handle == "acme/tools"
+        assert p.name == "tools"
+
     def test_invalid_source_raises(self):
         with pytest.raises(ValueError, match="Cannot parse"):
             parse_github_source("just-one-segment")

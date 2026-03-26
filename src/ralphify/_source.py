@@ -42,7 +42,7 @@ _GITHUB_URL_RE = re.compile(
     r"^https?://github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?(?:/tree/[^/]+(?:/(?P<path>.+))?)?/?$"
 )
 
-_SHORTHAND_RE = re.compile(r"^(?P<owner>[^/]+)/(?P<repo>[^/]+)(?:/(?P<rest>.+))?$")
+_SHORTHAND_RE = re.compile(r"^(?P<owner>[^/]+)/(?P<repo>[^/]+)(?:/(?P<rest>.+))?/?$")
 
 
 def parse_github_source(source: str) -> ParsedSource:
