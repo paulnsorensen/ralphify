@@ -61,6 +61,20 @@ ralph new my-ralph
 ralph new my_ralph
 ```
 
+### "No agent found. Install Claude Code or Codex"
+
+[`ralph new`](cli.md#ralph-new) auto-detects which agent to use by checking your PATH for `claude` and `codex` (in that order). If neither is found, you get this error. Install one of the [supported agents](agents.md) and make sure it's on your PATH:
+
+```bash
+# Check if an agent is available
+claude --version   # Claude Code
+codex --version    # Codex
+```
+
+### "Unknown agent: '...'. Supported: claude, codex"
+
+`ralph new` detected an agent on your PATH but couldn't match it to a supported agent name. The supported agents are `claude` and `codex`. If you want to use a different agent CLI, skip `ralph new` and create the `RALPH.md` manually — see [getting started](getting-started.md).
+
 ### "RALPH.md already exists"
 
 You ran [`ralph new`](cli.md#ralph-new) in a directory that already contains a `RALPH.md`. Either use a different directory name or edit the existing file:
