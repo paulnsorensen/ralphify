@@ -6,6 +6,9 @@ keywords: set up autonomous AI coding agent, install ralphify, AI coding loop tu
 
 # Getting Started
 
+!!! tldr "TL;DR"
+    `uv tool install ralphify` → `ralph init my-ralph` → edit the RALPH.md → `ralph run my-ralph -n 1 --log-dir ralph_logs` to test → add a `commands` entry for your test suite → `ralph run my-ralph` to loop. The agent sees fresh test output each iteration and fixes what it breaks.
+
 This tutorial walks through setting up ralphify, creating a ralph with commands, and running a productive autonomous loop. By the end, you'll have a self-healing coding loop that validates its own work.
 
 ## Prerequisites
