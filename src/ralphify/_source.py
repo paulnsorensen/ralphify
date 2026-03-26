@@ -181,10 +181,8 @@ def _fetch_repo_ralphs(
 
     installed: list[tuple[str, Path]] = []
     for rd in ralph_dirs:
-        name = rd.name
-        dest = ralphs_dir / name
-        _copy_ralph(rd, dest)
-        installed.append((name, dest))
+        result = _install_single_ralph(rd, rd.name, ralphs_dir)
+        installed.extend(result.installed)
     return FetchResult(installed=installed)
 
 
