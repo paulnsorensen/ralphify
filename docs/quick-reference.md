@@ -26,6 +26,9 @@ ralph init                         # Scaffold in current directory
 ralph new                          # AI-guided ralph creation
 ralph new docs                     # AI-guided creation with name pre-filled
 
+ralph add owner/repo               # Install ralph(s) from a GitHub repo
+ralph add owner/repo/my-ralph      # Install a specific ralph by name
+
 ralph --version                    # Show version
 ```
 
