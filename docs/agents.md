@@ -6,6 +6,9 @@ keywords: Claude Code agent, Aider agent, Codex CLI, AI coding agents, agent con
 
 # Using with Different Agents
 
+!!! tldr "TL;DR"
+    Set the `agent` field in your RALPH.md to any CLI that reads a prompt from stdin and exits when done. **Claude Code** (`claude -p --dangerously-skip-permissions`) is the default with the deepest integration. **Aider** needs a `bash -c` wrapper to pass stdin as `--message`. **Codex CLI** works natively with `codex exec`. For anything else, write a short wrapper script.
+
 Ralphify works with **any CLI that reads a prompt from stdin and exits when done**. Claude Code is the default, but you can use any tool that follows this contract.
 
 This page shows how to configure the `agent` field in your RALPH.md for popular agents and how to write your own wrapper.
