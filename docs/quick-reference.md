@@ -95,6 +95,7 @@ Your instructions here. Use {{ args.dir }} for user arguments.
 ```
 
 - Output includes stdout + stderr regardless of exit code
+- Only commands referenced by a placeholder appear in the prompt — unreferenced commands still run but their output is excluded
 - Unmatched placeholders resolve to empty string
 - Must be `commands` (plural)
 
