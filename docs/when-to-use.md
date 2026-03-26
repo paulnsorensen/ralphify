@@ -6,6 +6,9 @@ keywords: automate coding tasks with AI, autonomous AI coding agent use cases, A
 
 # When to use ralph loops
 
+!!! tldr "TL;DR"
+    Use a ralph loop when the task breaks into small, independent steps with automated validation (tests, linters, builds). Use a single conversation for quick tasks, interactive work, or anything requiring subjective judgment. The key ingredient is a command that can tell the agent "you broke something" — that's what makes the loop self-healing.
+
 ralph loops are powerful but they're not the right tool for everything. This page helps you decide whether a loop fits your task before you invest time setting one up.
 
 ## The sweet spot
@@ -66,13 +69,17 @@ Use a **ralph loop** when:
 
 Some tasks seem like they don't fit but can be adapted:
 
-**"There's no automated validation for this."** Write a command for it. Even a simple script that checks for obvious problems (file exists, no syntax errors, word count above threshold) catches the worst failures. Add it to your `commands` list and reference it in the prompt.
+??? note ""There's no automated validation for this.""
+    Write a command for it. Even a simple script that checks for obvious problems (file exists, no syntax errors, word count above threshold) catches the worst failures. Add it to your `commands` list and reference it in the prompt.
 
-**"The task requires multi-step reasoning."** Use a `PLAN.md` or `TODO.md` file as the coordination mechanism. The agent reads the plan each iteration, marks steps done, and the next iteration continues from there. The plan file IS the agent's memory.
+??? note ""The task requires multi-step reasoning.""
+    Use a `PLAN.md` or `TODO.md` file as the coordination mechanism. The agent reads the plan each iteration, marks steps done, and the next iteration continues from there. The plan file IS the agent's memory.
 
-**"Each iteration depends on the previous one."** That's fine — the agent reads the codebase, which includes all previous iterations' commits. As long as progress is visible on disk, the fresh context model works. The agent doesn't need conversation memory when the code tells the story.
+??? note ""Each iteration depends on the previous one.""
+    That's fine — the agent reads the codebase, which includes all previous iterations' commits. As long as progress is visible on disk, the fresh context model works. The agent doesn't need conversation memory when the code tells the story.
 
-**"I need to review the agent's work before it continues."** Use `-n 1` to run single iterations, review, then run again. Or use `--stop-on-error` with a command that checks for your sign-off.
+??? note ""I need to review the agent's work before it continues.""
+    Use `-n 1` to run single iterations, review, then run again. Or use `--stop-on-error` with a command that checks for your sign-off.
 
 ## How many iterations?
 
