@@ -6,6 +6,9 @@ keywords: run AI agent in loop CLI, autonomous coding agent command line, ralph 
 
 # CLI Reference
 
+!!! tldr "TL;DR"
+    **`ralph run <path> -n 5`** runs the loop. **`ralph init <name>`** scaffolds a ralph from a template. **`ralph new`** creates one with AI guidance. **`ralph add owner/repo`** installs from GitHub. Pass user args as `--name value` flags. Everything is configured in a single [`RALPH.md`](#ralphmd-format) file with YAML frontmatter.
+
 ## `ralph`
 
 With no subcommand, prints the banner and help text.
