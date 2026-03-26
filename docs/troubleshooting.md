@@ -47,6 +47,20 @@ agent: claude -p --dangerously-skip-permissions
 
 The agent CLI isn't installed or isn't in your shell's PATH. Verify by running `claude --version` directly. If it's installed but not found, check your PATH. See [supported agents](agents.md) for setup instructions.
 
+### "Ralph name '...' contains invalid characters"
+
+The ralph directory name you passed to [`ralph new`](cli.md#ralph-new) contains characters that aren't allowed. Names may only contain letters, digits, hyphens, and underscores:
+
+```bash
+# ✗ Wrong — dots and spaces aren't allowed
+ralph new my.ralph
+ralph new "my ralph"
+
+# ✓ Correct — use hyphens or underscores
+ralph new my-ralph
+ralph new my_ralph
+```
+
 ### "RALPH.md already exists"
 
 You ran [`ralph new`](cli.md#ralph-new) in a directory that already contains a `RALPH.md`. Either use a different directory name or edit the existing file:
@@ -94,6 +108,18 @@ The repository couldn't be cloned. Common causes:
 ### "No RALPH.md found" / "No ralph named '...' found"
 
 The repository was cloned successfully but no ralphs were found. Either the repo doesn't contain any `RALPH.md` files, or the ralph name you specified doesn't match any directory in the repo.
+
+### "Found multiple ralphs named '...'"
+
+The repository contains more than one ralph directory with the same name (in different subdirectories). Use the full path to tell `ralph add` which one you want:
+
+```bash
+# ✗ Fails — ambiguous name
+ralph add owner/repo/my-ralph
+
+# ✓ Correct — use the full path shown in the error message
+ralph add owner/repo/examples/my-ralph
+```
 
 ### Re-running `ralph add` overwrites without warning
 
@@ -319,6 +345,18 @@ commands:
 ```
 
 `args` must be a list of strings (`[focus]` or `- focus`). `commands` must be a list of `{name, run}` mappings.
+
+### "'args' items must be strings, got non-string value"
+
+Every item in the `args` list must be a string. YAML can silently coerce bare values into numbers or booleans:
+
+```yaml
+# ✗ Wrong — YAML reads 42 as an integer, true as a boolean
+args: [focus, 42, true]
+
+# ✓ Correct — quote non-string-looking values, or just use plain names
+args: [focus, count, enabled]
+```
 
 ### "Command '...' has invalid timeout"
 
