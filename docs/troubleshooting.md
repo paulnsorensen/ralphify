@@ -10,19 +10,21 @@ Common issues and how to fix them. If your problem isn't listed here, run `ralph
 
 ## Setup issues
 
-### "is not a directory or RALPH.md file" / "RALPH.md not found"
+### "is not a directory, RALPH.md file, or installed ralph"
 
-The path you passed to `ralph run` doesn't resolve to a valid ralph. The command accepts either a **directory** containing `RALPH.md` or a **direct path** to a `RALPH.md` file:
+The path you passed to `ralph run` doesn't resolve to a valid ralph. The command accepts a **directory** containing `RALPH.md`, a **direct path** to a `RALPH.md` file, or the **name of an installed ralph** (from `ralph add`):
 
 ```bash
 ralph run my-ralph              # directory containing RALPH.md
 ralph run my-ralph/RALPH.md     # direct path to the file
+ralph run my-ralph              # installed ralph in .ralphify/ralphs/my-ralph/
 ```
 
 If you're getting this error, check that the path exists and points to the right place:
 
 ```bash
-ls my-ralph/RALPH.md
+ls my-ralph/RALPH.md                       # local ralph
+ls .ralphify/ralphs/my-ralph/RALPH.md      # installed ralph
 ```
 
 ### "agent field is required"

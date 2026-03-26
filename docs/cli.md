@@ -49,7 +49,7 @@ ralph run my-ralph --dir ./src             # Pass user args to the ralph
 
 | Argument / Option | Short | Default | Description |
 |---|---|---|---|
-| `PATH` | | (required) | Path to a ralph directory containing `RALPH.md`, or a direct path to a `RALPH.md` file |
+| `PATH` | | (required) | Path to a ralph directory containing `RALPH.md`, a direct path to a `RALPH.md` file, or the name of an installed ralph (from `ralph add`) |
 | `-n` | | unlimited | Max number of iterations |
 | `--stop-on-error` | `-s` | off | Stop loop if agent exits non-zero or times out |
 | `--delay` | `-d` | `0` | Seconds to wait between iterations |
