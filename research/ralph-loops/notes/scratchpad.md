@@ -930,3 +930,9 @@ After 25 iterations, the research is mature (25 chapters, 22 insights, 210+ sour
 - Refine cycle (iteration 30): 23 insights, 27 chapters — trim insights back to ~22, update Ch06 with memory engineering and event-driven loop findings
 - Or: research the TDD+agent authority hierarchy — the remaining high-priority open question
 - Or: final polish pass — 27 chapters is high, consider consolidation
+
+## Iteration 31 — 2026-03-22
+
+**Decision: RESEARCH**
+
+**Focus area:** The "loop compiler" pattern and latest practitioner innovations (late March 2026) — how practitioners are automating loop configuration generation, the newest autonomous agent frameworks and patterns, and any major shifts in best practices not yet captured. Also: search for what's happening with background/cloud agents (Cursor Cloud, Codex background, Claude background tasks) as this is the fastest-moving area and directly impacts ralph loop design.
