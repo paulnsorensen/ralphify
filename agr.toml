@@ -3,6 +3,8 @@ dependencies = [
     {path = "skills/brand-guidelines", type = "skill"},
     {handle = "microsoft/playwright-cli/playwright-cli", type = "skill"},
     {path = "skills/release", type = "skill"},
+    {handle = "computerlovetech/docs-audit", type = "skill"},
+    {handle = "computerlovetech/setup-agent-workspace", type = "skill"},
 ]
 
 [[source]]

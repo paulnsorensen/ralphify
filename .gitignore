@@ -13,3 +13,4 @@ node_modules/
 mess/
 .ralphify/
 .DS_Store
+.coverage
