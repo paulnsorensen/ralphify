@@ -29,7 +29,12 @@ from ralphify._events import (
     RunStartedData,
     RunStoppedData,
 )
-from ralphify._frontmatter import FIELD_AGENT, FIELD_COMMANDS, RALPH_MARKER, parse_frontmatter
+from ralphify._frontmatter import (
+    FIELD_AGENT,
+    FIELD_COMMANDS,
+    RALPH_MARKER,
+    parse_frontmatter,
+)
 from ralphify._output import format_duration
 from ralphify._run_types import (
     Command,
@@ -175,7 +180,8 @@ def _run_agent_phase(
 
     try:
         agent = execute_agent(
-            cmd, prompt,
+            cmd,
+            prompt,
             timeout=config.timeout,
             log_path_dir=config.log_dir,
             iteration=state.iteration,
@@ -204,15 +210,18 @@ def _run_agent_phase(
         event_type = EventType.ITERATION_FAILED
         state_detail = f"failed with exit code {agent.returncode} ({duration})"
 
-    emit(event_type, IterationEndedData(
-        iteration=state.iteration,
-        returncode=agent.returncode,
-        duration=agent.elapsed,
-        duration_formatted=duration,
-        detail=state_detail,
-        log_file=str(agent.log_file) if agent.log_file else None,
-        result_text=agent.result_text,
-    ))
+    emit(
+        event_type,
+        IterationEndedData(
+            iteration=state.iteration,
+            returncode=agent.returncode,
+            duration=agent.elapsed,
+            duration_formatted=duration,
+            detail=state_detail,
+            log_file=str(agent.log_file) if agent.log_file else None,
+            result_text=agent.result_text,
+        ),
+    )
     return agent.success
 
 
@@ -238,12 +247,18 @@ def _run_iteration(
             CommandsStartedData(iteration=iteration, count=len(config.commands)),
         )
         command_outputs = _run_commands(
-            config.commands, config.ralph_dir, config.project_root, config.args,
+            config.commands,
+            config.ralph_dir,
+            config.project_root,
+            config.args,
         )
-        emit(EventType.COMMANDS_COMPLETED, CommandsCompletedData(
-            iteration=iteration,
-            count=len(command_outputs),
-        ))
+        emit(
+            EventType.COMMANDS_COMPLETED,
+            CommandsCompletedData(
+                iteration=iteration,
+                count=len(command_outputs),
+            ),
+        )
 
     # Assemble prompt
     prompt = _assemble_prompt(config, state, command_outputs)
@@ -295,13 +310,16 @@ def run_loop(
     if config.log_dir:
         config.log_dir.mkdir(parents=True, exist_ok=True)
 
-    emit(EventType.RUN_STARTED, RunStartedData(
-        ralph_name=config.ralph_dir.name,
-        commands=len(config.commands),
-        max_iterations=config.max_iterations,
-        timeout=config.timeout,
-        delay=config.delay,
-    ))
+    emit(
+        EventType.RUN_STARTED,
+        RunStartedData(
+            ralph_name=config.ralph_dir.name,
+            commands=len(config.commands),
+            max_iterations=config.max_iterations,
+            timeout=config.timeout,
+            delay=config.delay,
+        ),
+    )
 
     try:
         while True:
@@ -309,7 +327,10 @@ def run_loop(
                 break
 
             state.iteration += 1
-            if config.max_iterations is not None and state.iteration > config.max_iterations:
+            if (
+                config.max_iterations is not None
+                and state.iteration > config.max_iterations
+            ):
                 break
 
             should_continue = _run_iteration(config, state, emit)
@@ -329,10 +350,13 @@ def run_loop(
         state.status = RunStatus.COMPLETED
 
     reason = state.status.reason
-    emit(EventType.RUN_STOPPED, RunStoppedData(
-        reason=reason,
-        total=state.total,
-        completed=state.completed,
-        failed=state.failed,
-        timed_out_count=state.timed_out_count,
-    ))
+    emit(
+        EventType.RUN_STOPPED,
+        RunStoppedData(
+            reason=reason,
+            total=state.total,
+            completed=state.completed,
+            failed=state.failed,
+            timed_out_count=state.timed_out_count,
+        ),
+    )

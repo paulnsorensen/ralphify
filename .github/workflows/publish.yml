@@ -1,32 +1,51 @@
 name: Publish to PyPI
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (build but do not publish)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
-  test:
-    name: Run tests
+  quality:
+    name: Quality Checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
       - uses: astral-sh/setup-uv@v5
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.13"
       - run: uv sync --group dev
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run ty check
       - run: uv run pytest
 
   build:
-    name: Build package
-    needs: test
+    name: Build Package
+    needs: quality
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
       - uses: astral-sh/setup-uv@v5
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.13"
       - run: uv build
       - name: Verify package version matches tag
         run: |
@@ -49,7 +68,10 @@ jobs:
     name: Publish to PyPI
     needs: build
     runs-on: ubuntu-latest
-    environment: pypi
+    if: github.event_name == 'push' || !inputs.dry_run
+    environment:
+      name: pypi
+      url: https://pypi.org/project/ralphify/
     permissions:
       id-token: write
     steps:
@@ -58,3 +80,74 @@ jobs:
           name: dist
           path: dist/
       - uses: pypa/gh-action-pypi-publish@release/v1
+
+  release:
+    name: Create GitHub Release
+    needs: publish
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || !inputs.dry_run
+    permissions:
+      contents: write
+    env:
+      TAG_NAME: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Validate tag format
+        run: |
+          if [[ ! "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Invalid tag format '$TAG_NAME'"
+            echo "Expected format: vX.Y.Z (e.g., v0.3.0)"
+            exit 1
+          fi
+
+      - name: Extract release notes from CHANGELOG
+        run: |
+          if [ ! -f CHANGELOG.md ]; then
+            echo "Error: CHANGELOG.md not found"
+            exit 1
+          fi
+
+          VERSION_NUM="${TAG_NAME#v}"
+
+          NOTES=$(awk -v ver="$VERSION_NUM" '
+            /^## / {
+              if (found) exit
+              if ($0 ~ ver) found=1
+              next
+            }
+            found { print }
+          ' CHANGELOG.md)
+
+          if [ -z "$NOTES" ]; then
+            echo "Error: Version $VERSION_NUM not found in CHANGELOG.md"
+            echo "Make sure CHANGELOG.md has a section like: ## $VERSION_NUM — YYYY-MM-DD"
+            exit 1
+          fi
+
+          {
+            echo "## What's New in $TAG_NAME"
+            echo ""
+            echo "$NOTES"
+            echo ""
+            echo "---"
+            echo ""
+            echo "**Full changelog**: ${{ github.server_url }}/${{ github.repository }}/blob/main/CHANGELOG.md"
+          } > "${RUNNER_TEMP}/release_notes.md"
+
+          echo "Release notes extracted successfully"
+          cat "${RUNNER_TEMP}/release_notes.md"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG_NAME" > /dev/null 2>&1; then
+            echo "::warning::Release $TAG_NAME already exists, skipping creation"
+          else
+            gh release create "$TAG_NAME" \
+              --title "$TAG_NAME" \
+              --notes-file "${RUNNER_TEMP}/release_notes.md"
+          fi

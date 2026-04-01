@@ -45,7 +45,9 @@ def run_command(
     """
     cmd = shlex.split(command)
     if not cmd:
-        raise ValueError(f"Command string produced no tokens after parsing: {command!r}")
+        raise ValueError(
+            f"Command string produced no tokens after parsing: {command!r}"
+        )
 
     merged_env = {**os.environ, **env} if env else None
 

@@ -84,7 +84,10 @@ class TestCollectOutput:
     def test_stdout_without_trailing_newline_gets_separator(self):
         """When stdout doesn't end with a newline and stderr follows,
         a newline separator must be inserted to prevent garbled output."""
-        assert collect_output("test passed", "warning: dep\n") == "test passed\nwarning: dep\n"
+        assert (
+            collect_output("test passed", "warning: dep\n")
+            == "test passed\nwarning: dep\n"
+        )
 
     def test_bytes_stdout_without_trailing_newline_gets_separator(self):
         """Same as above but with bytes input."""

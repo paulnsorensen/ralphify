@@ -66,7 +66,9 @@ def make_ralph(
     return ralph_dir
 
 
-def make_config(tmp_path: Path, ralph_content: str = "test prompt", **overrides) -> RunConfig:
+def make_config(
+    tmp_path: Path, ralph_content: str = "test prompt", **overrides
+) -> RunConfig:
     """Create a RunConfig pointing at a temp ralph directory.
 
     *ralph_content* is written to the ``RALPH.md`` file every time, so
@@ -95,14 +97,21 @@ def make_state() -> RunState:
 
 
 def _make_completed_process(
-    returncode: int = 0, stdout: str = "", stderr: str = "",
+    returncode: int = 0,
+    stdout: str = "",
+    stderr: str = "",
 ) -> subprocess.CompletedProcess[str]:
     """Build a CompletedProcess with the given values."""
-    return subprocess.CompletedProcess(args=[], returncode=returncode, stdout=stdout, stderr=stderr)
+    return subprocess.CompletedProcess(
+        args=[], returncode=returncode, stdout=stdout, stderr=stderr
+    )
 
 
 def ok_result(
-    *_args: Any, stdout: str = "", stderr: str = "", **_kwargs: Any,
+    *_args: Any,
+    stdout: str = "",
+    stderr: str = "",
+    **_kwargs: Any,
 ) -> subprocess.CompletedProcess[str]:
     """Subprocess result with exit code 0.
 
@@ -114,7 +123,10 @@ def ok_result(
 
 
 def fail_result(
-    *_args: Any, stdout: str = "", stderr: str = "", **_kwargs: Any,
+    *_args: Any,
+    stdout: str = "",
+    stderr: str = "",
+    **_kwargs: Any,
 ) -> subprocess.CompletedProcess[str]:
     """Subprocess result with exit code 1.
 
@@ -124,7 +136,9 @@ def fail_result(
     return _make_completed_process(returncode=1, stdout=stdout, stderr=stderr)
 
 
-def _make_mock_proc(returncode: int = 0, stdout: str = "", stderr: str = "") -> MagicMock:
+def _make_mock_proc(
+    returncode: int = 0, stdout: str = "", stderr: str = ""
+) -> MagicMock:
     """Build a MagicMock that mimics Popen for the agent blocking path."""
     proc = MagicMock()
     proc.returncode = returncode
@@ -135,18 +149,26 @@ def _make_mock_proc(returncode: int = 0, stdout: str = "", stderr: str = "") -> 
     return proc
 
 
-def ok_proc(*_args: Any, stdout: str = "", stderr: str = "", **_kwargs: Any) -> MagicMock:
+def ok_proc(
+    *_args: Any, stdout: str = "", stderr: str = "", **_kwargs: Any
+) -> MagicMock:
     """Popen mock with exit code 0.  Works as a factory and ``side_effect``."""
     return _make_mock_proc(returncode=0, stdout=stdout, stderr=stderr)
 
 
-def fail_proc(*_args: Any, stdout: str = "", stderr: str = "", **_kwargs: Any) -> MagicMock:
+def fail_proc(
+    *_args: Any, stdout: str = "", stderr: str = "", **_kwargs: Any
+) -> MagicMock:
     """Popen mock with exit code 1."""
     return _make_mock_proc(returncode=1, stdout=stdout, stderr=stderr)
 
 
 def timeout_proc(
-    *_args: Any, timeout: float = 5, stdout: str = "", stderr: str = "", **_kwargs: Any,
+    *_args: Any,
+    timeout: float = 5,
+    stdout: str = "",
+    stderr: str = "",
+    **_kwargs: Any,
 ) -> MagicMock:
     """Popen mock whose communicate() raises TimeoutExpired."""
     proc = _make_mock_proc(returncode=0)
@@ -169,7 +191,9 @@ def ok_run_result(
 
 
 def make_mock_popen(
-    stdout_lines: str = "", stderr_text: str = "", returncode: int = 0,
+    stdout_lines: str = "",
+    stderr_text: str = "",
+    returncode: int = 0,
 ) -> MagicMock:
     """Create a MagicMock that mimics subprocess.Popen for the streaming path."""
     proc = MagicMock()

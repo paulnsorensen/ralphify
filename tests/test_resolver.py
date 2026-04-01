@@ -16,7 +16,8 @@ class TestResolveAll:
     def test_multiple_commands(self):
         result = resolve_all(
             "{{ commands.a }} and {{ commands.b }}",
-            {"a": "alpha", "b": "beta"}, {},
+            {"a": "alpha", "b": "beta"},
+            {},
         )
         assert result == "alpha and beta"
 
@@ -27,7 +28,8 @@ class TestResolveAll:
     def test_unknown_command_resolves_to_empty(self):
         result = resolve_all(
             "{{ commands.known }} {{ commands.unknown }}",
-            {"known": "value"}, {},
+            {"known": "value"},
+            {},
         )
         assert result == "value "
 
@@ -38,35 +40,40 @@ class TestResolveAll:
     def test_hyphenated_command_name(self):
         result = resolve_all(
             "{{ commands.git-log }}",
-            {"git-log": "commits here"}, {},
+            {"git-log": "commits here"},
+            {},
         )
         assert result == "commits here"
 
     def test_underscored_command_name(self):
         result = resolve_all(
             "{{ commands.test_status }}",
-            {"test_status": "all green"}, {},
+            {"test_status": "all green"},
+            {},
         )
         assert result == "all green"
 
     def test_regex_special_chars_in_command_content(self):
         result = resolve_all(
             "{{ commands.re }}",
-            {"re": r"match \d+ and \1 groups"}, {},
+            {"re": r"match \d+ and \1 groups"},
+            {},
         )
         assert result == r"match \d+ and \1 groups"
 
     def test_unreferenced_commands_not_appended(self):
         result = resolve_all(
             "Base prompt.",
-            {"style": "Use black formatting."}, {},
+            {"style": "Use black formatting."},
+            {},
         )
         assert result == "Base prompt."
 
     def test_only_referenced_commands_included(self):
         result = resolve_all(
             "{{ commands.used }}",
-            {"used": "placed", "unused": "should not appear"}, {},
+            {"used": "placed", "unused": "should not appear"},
+            {},
         )
         assert "placed" in result
         assert "should not appear" not in result
@@ -74,7 +81,8 @@ class TestResolveAll:
     def test_resolves_both_kinds(self):
         result = resolve_all(
             "{{ commands.tests }} and {{ args.dir }}",
-            {"tests": "ok"}, {"dir": "./src"},
+            {"tests": "ok"},
+            {"dir": "./src"},
         )
         assert result == "ok and ./src"
 
@@ -101,14 +109,16 @@ class TestResolveAll:
     def test_clears_unknown_placeholders(self):
         result = resolve_all(
             "{{ commands.missing }} {{ args.missing }}",
-            {"other": "val"}, {"other": "val"},
+            {"other": "val"},
+            {"other": "val"},
         )
         assert result == " "
 
     def test_empty_dicts_clear_all(self):
         result = resolve_all(
             "{{ commands.a }} {{ args.b }}",
-            {}, {},
+            {},
+            {},
         )
         assert result == " "
 
@@ -167,7 +177,10 @@ class TestResolveRalphContext:
 
     def test_resolves_ralph_max_iterations(self):
         result = resolve_all(
-            "Max: {{ ralph.max_iterations }}", {}, {}, {"max_iterations": "10"},
+            "Max: {{ ralph.max_iterations }}",
+            {},
+            {},
+            {"max_iterations": "10"},
         )
         assert result == "Max: 10"
 
@@ -182,7 +195,9 @@ class TestResolveRalphContext:
     def test_ralph_with_commands_and_args(self):
         result = resolve_all(
             "{{ commands.tests }} {{ args.dir }} {{ ralph.iteration }}",
-            {"tests": "ok"}, {"dir": "./src"}, {"iteration": "2"},
+            {"tests": "ok"},
+            {"dir": "./src"},
+            {"iteration": "2"},
         )
         assert result == "ok ./src 2"
 

@@ -53,7 +53,9 @@ class _IterationSpinner:
         self._spinner = Spinner("dots")
         self._start = time.monotonic()
 
-    def __rich_console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
+    def __rich_console__(
+        self, console: Console, options: ConsoleOptions
+    ) -> RenderResult:
         elapsed = time.monotonic() - self._start
         text = Text(f" {format_duration(elapsed)}", style="dim")
         yield self._spinner
@@ -69,9 +71,15 @@ class ConsoleEmitter:
         self._handlers: dict[EventType, Callable[..., None]] = {
             EventType.RUN_STARTED: self._on_run_started,
             EventType.ITERATION_STARTED: self._on_iteration_started,
-            EventType.ITERATION_COMPLETED: partial(self._on_iteration_ended, color="green", icon=_ICON_SUCCESS),
-            EventType.ITERATION_FAILED: partial(self._on_iteration_ended, color="red", icon=_ICON_FAILURE),
-            EventType.ITERATION_TIMED_OUT: partial(self._on_iteration_ended, color="yellow", icon=_ICON_TIMEOUT),
+            EventType.ITERATION_COMPLETED: partial(
+                self._on_iteration_ended, color="green", icon=_ICON_SUCCESS
+            ),
+            EventType.ITERATION_FAILED: partial(
+                self._on_iteration_ended, color="red", icon=_ICON_FAILURE
+            ),
+            EventType.ITERATION_TIMED_OUT: partial(
+                self._on_iteration_ended, color="yellow", icon=_ICON_TIMEOUT
+            ),
             EventType.COMMANDS_COMPLETED: self._on_commands_completed,
             EventType.LOG_MESSAGE: self._on_log_message,
             EventType.RUN_STOPPED: self._on_run_stopped,
@@ -84,7 +92,9 @@ class ConsoleEmitter:
 
     def _on_run_started(self, data: RunStartedData) -> None:
         ralph_name = data["ralph_name"]
-        self._console.print(f"\n[bold {_brand.PURPLE}]▶ Running:[/bold {_brand.PURPLE}] [bold]{escape_markup(ralph_name)}[/bold]")
+        self._console.print(
+            f"\n[bold {_brand.PURPLE}]▶ Running:[/bold {_brand.PURPLE}] [bold]{escape_markup(ralph_name)}[/bold]"
+        )
 
         info_parts: list[str] = []
         timeout = data["timeout"]
@@ -116,10 +126,14 @@ class ConsoleEmitter:
 
     def _on_iteration_started(self, data: IterationStartedData) -> None:
         iteration = data["iteration"]
-        self._console.print(f"\n[bold {_brand.BLUE}]── Iteration {iteration} ──[/bold {_brand.BLUE}]")
+        self._console.print(
+            f"\n[bold {_brand.BLUE}]── Iteration {iteration} ──[/bold {_brand.BLUE}]"
+        )
         self._start_live()
 
-    def _on_iteration_ended(self, data: IterationEndedData, color: str, icon: str) -> None:
+    def _on_iteration_ended(
+        self, data: IterationEndedData, color: str, icon: str
+    ) -> None:
         self._stop_live()
         iteration = data["iteration"]
         detail = data["detail"]
@@ -166,5 +180,9 @@ class ConsoleEmitter:
         if timed_out_count:
             parts.append(f"{timed_out_count} timed out")
         detail = ", ".join(parts)
-        self._console.print(f"\n[bold {_brand.BLUE}]──────────────────────[/bold {_brand.BLUE}]")
-        self._console.print(f"[bold {_brand.GREEN}]Done:[/bold {_brand.GREEN}] {_plural(total, 'iteration')} {_ICON_DASH} {detail}")
+        self._console.print(
+            f"\n[bold {_brand.BLUE}]──────────────────────[/bold {_brand.BLUE}]"
+        )
+        self._console.print(
+            f"[bold {_brand.GREEN}]Done:[/bold {_brand.GREEN}] {_plural(total, 'iteration')} {_ICON_DASH} {detail}"
+        )

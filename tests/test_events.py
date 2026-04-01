@@ -60,7 +60,9 @@ class TestNullEmitter:
 class TestQueueEmitter:
     def test_emit_pushes_to_queue(self):
         emitter = QueueEmitter()
-        event = Event(type=EventType.ITERATION_STARTED, run_id="r1", data={"iteration": 1})
+        event = Event(
+            type=EventType.ITERATION_STARTED, run_id="r1", data={"iteration": 1}
+        )
 
         emitter.emit(event)
 
@@ -155,7 +157,9 @@ class TestBoundEmitter:
         assert len(events) == 1
         assert events[0].data["message"] == "Crashed"
         assert events[0].data["level"] == LOG_ERROR
-        assert events[0].data["traceback"] == "Traceback (most recent call last):\n  ..."
+        assert (
+            events[0].data["traceback"] == "Traceback (most recent call last):\n  ..."
+        )
 
 
 class TestFanoutEmitter:

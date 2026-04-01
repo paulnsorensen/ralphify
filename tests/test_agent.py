@@ -4,7 +4,6 @@ import io
 import signal
 import subprocess
 import sys
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -105,18 +104,24 @@ class TestReadAgentStream:
     def test_ignores_non_json_lines(self):
         activities = []
         stream = io.StringIO("not json\n")
-        result = _read_agent_stream(stream, deadline=None, on_activity=activities.append)
+        result = _read_agent_stream(
+            stream, deadline=None, on_activity=activities.append
+        )
 
         assert len(result.stdout_lines) == 1
         assert len(activities) == 0
 
-    @pytest.mark.parametrize("line", ["42\n", '"hello"\n', "[1,2,3]\n", "true\n", "null\n"])
+    @pytest.mark.parametrize(
+        "line", ["42\n", '"hello"\n', "[1,2,3]\n", "true\n", "null\n"]
+    )
     def test_ignores_valid_json_non_object_lines(self, line):
         """Valid JSON that is not a JSON object (e.g. number, string, array)
         should be silently skipped, not crash with AttributeError."""
         activities = []
         stream = io.StringIO(line)
-        result = _read_agent_stream(stream, deadline=None, on_activity=activities.append)
+        result = _read_agent_stream(
+            stream, deadline=None, on_activity=activities.append
+        )
 
         assert len(result.stdout_lines) == 1
         assert len(activities) == 0
@@ -125,7 +130,9 @@ class TestReadAgentStream:
     def test_skips_empty_lines(self):
         activities = []
         stream = io.StringIO("\n\n")
-        result = _read_agent_stream(stream, deadline=None, on_activity=activities.append)
+        result = _read_agent_stream(
+            stream, deadline=None, on_activity=activities.append
+        )
 
         assert len(result.stdout_lines) == 2
         assert len(activities) == 0
@@ -164,7 +171,9 @@ class TestReadAgentStream:
         for that line so the last event is not silently swallowed."""
         activities = []
         stream = io.StringIO('{"type": "status", "msg": "working"}\n')
-        result = _read_agent_stream(stream, deadline=0.001, on_activity=activities.append)
+        result = _read_agent_stream(
+            stream, deadline=0.001, on_activity=activities.append
+        )
 
         assert result.timed_out is True
         assert len(activities) == 1
@@ -195,7 +204,9 @@ class TestReadAgentStream:
 class TestExecuteAgentBlocking:
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_success(self, mock_popen):
-        result = execute_agent(["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1)
+        result = execute_agent(
+            ["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1
+        )
 
         assert result.returncode == 0
         assert result.timed_out is False
@@ -204,14 +215,18 @@ class TestExecuteAgentBlocking:
 
     @patch(MOCK_SUBPROCESS, side_effect=fail_proc)
     def test_failure(self, mock_popen):
-        result = execute_agent(["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1)
+        result = execute_agent(
+            ["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1
+        )
 
         assert result.returncode == 1
         assert result.timed_out is False
 
     @patch(MOCK_SUBPROCESS, side_effect=timeout_proc)
     def test_timeout(self, mock_popen):
-        result = execute_agent(["echo"], "prompt", timeout=5, log_path_dir=None, iteration=1)
+        result = execute_agent(
+            ["echo"], "prompt", timeout=5, log_path_dir=None, iteration=1
+        )
 
         assert result.returncode is None
         assert result.timed_out is True
@@ -220,7 +235,11 @@ class TestExecuteAgentBlocking:
     def test_writes_log_on_success(self, mock_popen, tmp_path):
         mock_popen.return_value = ok_proc(stdout="agent output\n")
         result = execute_agent(
-            ["echo"], "prompt", timeout=None, log_path_dir=tmp_path, iteration=3,
+            ["echo"],
+            "prompt",
+            timeout=None,
+            log_path_dir=tmp_path,
+            iteration=3,
         )
 
         assert result.log_file is not None
@@ -232,7 +251,11 @@ class TestExecuteAgentBlocking:
     def test_writes_log_on_timeout(self, mock_popen, tmp_path):
         mock_popen.return_value = timeout_proc(stdout="partial", stderr="err")
         result = execute_agent(
-            ["echo"], "prompt", timeout=5, log_path_dir=tmp_path, iteration=1,
+            ["echo"],
+            "prompt",
+            timeout=5,
+            log_path_dir=tmp_path,
+            iteration=1,
         )
 
         assert result.log_file is not None
@@ -242,9 +265,15 @@ class TestExecuteAgentBlocking:
     def test_timeout_echoes_captured_output(self, mock_popen, tmp_path, capsys):
         """When logging is enabled and the agent times out, partial output
         should be echoed to the terminal — same as on normal completion."""
-        mock_popen.return_value = timeout_proc(stdout="partial stdout", stderr="partial stderr")
+        mock_popen.return_value = timeout_proc(
+            stdout="partial stdout", stderr="partial stderr"
+        )
         execute_agent(
-            ["echo"], "prompt", timeout=5, log_path_dir=tmp_path, iteration=1,
+            ["echo"],
+            "prompt",
+            timeout=5,
+            log_path_dir=tmp_path,
+            iteration=1,
         )
 
         captured = capsys.readouterr()
@@ -253,7 +282,9 @@ class TestExecuteAgentBlocking:
 
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_no_log_when_dir_not_set(self, mock_popen):
-        result = execute_agent(["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1)
+        result = execute_agent(
+            ["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1
+        )
 
         assert result.log_file is None
 
@@ -263,7 +294,11 @@ class TestExecuteAgentBlocking:
 
         with pytest.raises(FileNotFoundError):
             execute_agent(
-                ["nonexistent"], "prompt", timeout=None, log_path_dir=None, iteration=1,
+                ["nonexistent"],
+                "prompt",
+                timeout=None,
+                log_path_dir=None,
+                iteration=1,
             )
 
 
@@ -274,7 +309,9 @@ class TestAgentResult:
         assert result.timed_out is False
 
     def test_timed_out(self):
-        result = AgentResult(returncode=None, elapsed=5.0, log_file=None, timed_out=True)
+        result = AgentResult(
+            returncode=None, elapsed=5.0, log_file=None, timed_out=True
+        )
         assert result.timed_out is True
         assert result.returncode is None
 
@@ -287,7 +324,9 @@ class TestAgentResult:
         assert result.success is False
 
     def test_not_success_when_timed_out(self):
-        result = AgentResult(returncode=None, elapsed=5.0, log_file=None, timed_out=True)
+        result = AgentResult(
+            returncode=None, elapsed=5.0, log_file=None, timed_out=True
+        )
         assert result.success is False
 
 
@@ -303,7 +342,11 @@ class TestExecuteAgentDispatch:
             returncode=0,
         )
         result = execute_agent(
-            ["claude", "-p"], "prompt", timeout=None, log_path_dir=None, iteration=1,
+            ["claude", "-p"],
+            "prompt",
+            timeout=None,
+            log_path_dir=None,
+            iteration=1,
         )
 
         assert result.returncode == 0
@@ -321,7 +364,11 @@ class TestExecuteAgentStreaming:
             returncode=0,
         )
         result = _run_agent_streaming(
-            ["claude", "-p"], "prompt", timeout=None, log_path_dir=None, iteration=1,
+            ["claude", "-p"],
+            "prompt",
+            timeout=None,
+            log_path_dir=None,
+            iteration=1,
         )
 
         assert result.returncode == 0
@@ -332,7 +379,11 @@ class TestExecuteAgentStreaming:
     def test_failure(self, mock_popen):
         mock_popen.return_value = make_mock_popen(returncode=1)
         result = _run_agent_streaming(
-            ["claude", "-p"], "prompt", timeout=None, log_path_dir=None, iteration=1,
+            ["claude", "-p"],
+            "prompt",
+            timeout=None,
+            log_path_dir=None,
+            iteration=1,
         )
 
         assert result.returncode == 1
@@ -346,7 +397,11 @@ class TestExecuteAgentStreaming:
             returncode=0,
         )
         result = _run_agent_streaming(
-            ["claude", "-p"], "prompt", timeout=None, log_path_dir=None, iteration=1,
+            ["claude", "-p"],
+            "prompt",
+            timeout=None,
+            log_path_dir=None,
+            iteration=1,
         )
 
         assert result.result_text == "All tests passed"
@@ -356,7 +411,11 @@ class TestExecuteAgentStreaming:
         proc = make_mock_popen(returncode=0)
         mock_popen.return_value = proc
         _run_agent_streaming(
-            ["claude", "-p"], "my prompt text", timeout=None, log_path_dir=None, iteration=1,
+            ["claude", "-p"],
+            "my prompt text",
+            timeout=None,
+            log_path_dir=None,
+            iteration=1,
         )
 
         proc.stdin.write.assert_called_once_with("my prompt text")
@@ -366,7 +425,11 @@ class TestExecuteAgentStreaming:
     def test_adds_stream_json_flags(self, mock_popen):
         mock_popen.return_value = make_mock_popen(returncode=0)
         _run_agent_streaming(
-            ["claude", "-p"], "prompt", timeout=None, log_path_dir=None, iteration=1,
+            ["claude", "-p"],
+            "prompt",
+            timeout=None,
+            log_path_dir=None,
+            iteration=1,
         )
 
         call_args = mock_popen.call_args
@@ -383,7 +446,11 @@ class TestExecuteAgentStreaming:
             returncode=0,
         )
         result = _run_agent_streaming(
-            ["claude", "-p"], "prompt", timeout=None, log_path_dir=tmp_path, iteration=3,
+            ["claude", "-p"],
+            "prompt",
+            timeout=None,
+            log_path_dir=tmp_path,
+            iteration=3,
         )
 
         assert result.log_file is not None
@@ -397,7 +464,11 @@ class TestExecuteAgentStreaming:
     def test_no_log_when_dir_not_set(self, mock_popen):
         mock_popen.return_value = make_mock_popen(returncode=0)
         result = _run_agent_streaming(
-            ["claude", "-p"], "prompt", timeout=None, log_path_dir=None, iteration=1,
+            ["claude", "-p"],
+            "prompt",
+            timeout=None,
+            log_path_dir=None,
+            iteration=1,
         )
 
         assert result.log_file is None
@@ -410,7 +481,11 @@ class TestExecuteAgentStreaming:
         )
         activities = []
         _run_agent_streaming(
-            ["claude", "-p"], "prompt", timeout=None, log_path_dir=None, iteration=1,
+            ["claude", "-p"],
+            "prompt",
+            timeout=None,
+            log_path_dir=None,
+            iteration=1,
             on_activity=activities.append,
         )
 
@@ -431,7 +506,11 @@ class TestExecuteAgentStreaming:
         mock_popen.return_value = proc
 
         result = _run_agent_streaming(
-            ["claude", "-p"], "prompt", timeout=5, log_path_dir=None, iteration=1,
+            ["claude", "-p"],
+            "prompt",
+            timeout=5,
+            log_path_dir=None,
+            iteration=1,
         )
 
         assert result.timed_out is True
@@ -442,7 +521,9 @@ class TestExecuteAgentStreaming:
 class TestProcessGroupCleanup:
     """Process group cleanup, isolation, and _kill_process_group tests."""
 
-    pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only behavior")
+    pytestmark = pytest.mark.skipif(
+        sys.platform == "win32", reason="POSIX-only behavior"
+    )
 
     @patch("ralphify._agent.os.killpg")
     @patch("ralphify._agent.os.getpgid")
@@ -510,7 +591,11 @@ class TestProcessGroupCleanup:
     def test_streaming_uses_start_new_session(self, mock_popen):
         mock_popen.return_value = make_mock_popen(returncode=0)
         _run_agent_streaming(
-            ["claude", "-p"], "prompt", timeout=None, log_path_dir=None, iteration=1,
+            ["claude", "-p"],
+            "prompt",
+            timeout=None,
+            log_path_dir=None,
+            iteration=1,
         )
         assert mock_popen.call_args[1].get("start_new_session") is True
 
@@ -529,7 +614,9 @@ class TestProcessGroupCleanup:
 
     @patch("ralphify._agent.os.killpg")
     @patch("ralphify._agent.os.getpgid")
-    def test_killpg_process_lookup_error_falls_back_to_proc_kill(self, mock_getpgid, mock_killpg):
+    def test_killpg_process_lookup_error_falls_back_to_proc_kill(
+        self, mock_getpgid, mock_killpg
+    ):
         """When os.killpg raises ProcessLookupError, fall back to proc.kill()."""
         proc = MagicMock(pid=42, poll=MagicMock(return_value=None))
         mock_getpgid.return_value = 42
@@ -552,7 +639,11 @@ class TestRunAgentStreamingPipeGuard:
 
         with pytest.raises(RuntimeError, match="PIPE streams"):
             _run_agent_streaming(
-                ["claude", "-p"], "prompt", timeout=None, log_path_dir=None, iteration=1,
+                ["claude", "-p"],
+                "prompt",
+                timeout=None,
+                log_path_dir=None,
+                iteration=1,
             )
 
 
@@ -570,7 +661,11 @@ class TestRunAgentBlockingKeyboardInterrupt:
 
         with pytest.raises(KeyboardInterrupt):
             execute_agent(
-                ["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1,
+                ["echo"],
+                "prompt",
+                timeout=None,
+                log_path_dir=None,
+                iteration=1,
             )
 
         proc.kill.assert_called()

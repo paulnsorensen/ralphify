@@ -31,6 +31,8 @@ dev = [
     "mkdocs-git-revision-date-localized-plugin>=1.2",
     "pytest>=8.0",
     "pytest-cov>=6.0",
+    "ruff>=0.6",
+    "ty>=0.0.14",
 ]
 
 [project.urls]
@@ -44,6 +46,9 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ralphify"]
+
+[tool.ty.src]
+exclude = ["tests"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

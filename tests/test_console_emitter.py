@@ -26,26 +26,38 @@ class TestEmitDispatch:
 
     def test_run_started_shows_ralph_name(self):
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(EventType.RUN_STARTED, ralph_name="my-ralph", timeout=0, commands=0))
+        emitter.emit(
+            _make_event(
+                EventType.RUN_STARTED, ralph_name="my-ralph", timeout=0, commands=0
+            )
+        )
         output = console.export_text()
         assert "my-ralph" in output
         assert "Running:" in output
 
     def test_run_started_shows_timeout(self):
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(EventType.RUN_STARTED, ralph_name="test", timeout=120, commands=0))
+        emitter.emit(
+            _make_event(
+                EventType.RUN_STARTED, ralph_name="test", timeout=120, commands=0
+            )
+        )
         output = console.export_text()
         assert "2m 0s" in output
 
     def test_run_started_shows_command_count(self):
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(EventType.RUN_STARTED, ralph_name="test", timeout=0, commands=3))
+        emitter.emit(
+            _make_event(EventType.RUN_STARTED, ralph_name="test", timeout=0, commands=3)
+        )
         output = console.export_text()
         assert "3 commands" in output
 
     def test_run_started_singular_command(self):
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(EventType.RUN_STARTED, ralph_name="test", timeout=0, commands=1))
+        emitter.emit(
+            _make_event(EventType.RUN_STARTED, ralph_name="test", timeout=0, commands=1)
+        )
         output = console.export_text()
         assert "1 command" in output
         # Should not say "1 commands"
@@ -53,13 +65,23 @@ class TestEmitDispatch:
 
     def test_run_started_shows_max_iterations(self):
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(EventType.RUN_STARTED, ralph_name="test", timeout=0, commands=0, max_iterations=5))
+        emitter.emit(
+            _make_event(
+                EventType.RUN_STARTED,
+                ralph_name="test",
+                timeout=0,
+                commands=0,
+                max_iterations=5,
+            )
+        )
         output = console.export_text()
         assert "max 5 iterations" in output
 
     def test_run_started_no_info_line_when_no_config(self):
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(EventType.RUN_STARTED, ralph_name="test", timeout=0, commands=0))
+        emitter.emit(
+            _make_event(EventType.RUN_STARTED, ralph_name="test", timeout=0, commands=0)
+        )
         output = console.export_text()
         # Should still show the ralph name header
         assert "Running:" in output
@@ -68,7 +90,15 @@ class TestEmitDispatch:
 
     def test_run_started_combines_info(self):
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(EventType.RUN_STARTED, ralph_name="test", timeout=60, commands=2, max_iterations=3))
+        emitter.emit(
+            _make_event(
+                EventType.RUN_STARTED,
+                ralph_name="test",
+                timeout=60,
+                commands=2,
+                max_iterations=3,
+            )
+        )
         output = console.export_text()
         assert "timeout 1m 0s" in output
         assert "2 commands" in output
@@ -84,26 +114,43 @@ class TestIterationLifecycle:
         output = console.export_text()
         assert "Iteration 1" in output
 
-    @pytest.mark.parametrize("event_type,detail,expected", [
-        (EventType.ITERATION_COMPLETED, "completed (5s)", "completed (5s)"),
-        (EventType.ITERATION_FAILED, "failed with exit code 1 (3s)", "failed with exit code 1"),
-        (EventType.ITERATION_TIMED_OUT, "timed out after 2m 0s", "timed out"),
-    ])
+    @pytest.mark.parametrize(
+        "event_type,detail,expected",
+        [
+            (EventType.ITERATION_COMPLETED, "completed (5s)", "completed (5s)"),
+            (
+                EventType.ITERATION_FAILED,
+                "failed with exit code 1 (3s)",
+                "failed with exit code 1",
+            ),
+            (EventType.ITERATION_TIMED_OUT, "timed out after 2m 0s", "timed out"),
+        ],
+    )
     def test_iteration_ended_shows_detail(self, event_type, detail, expected):
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(
-            event_type,
-            iteration=1, detail=detail, log_file=None, result_text=None,
-        ))
+        emitter.emit(
+            _make_event(
+                event_type,
+                iteration=1,
+                detail=detail,
+                log_file=None,
+                result_text=None,
+            )
+        )
         output = console.export_text()
         assert expected in output
 
     def test_iteration_ended_shows_log_file(self):
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(
-            EventType.ITERATION_COMPLETED,
-            iteration=1, detail="completed (1s)", log_file="/tmp/log.txt", result_text=None,
-        ))
+        emitter.emit(
+            _make_event(
+                EventType.ITERATION_COMPLETED,
+                iteration=1,
+                detail="completed (1s)",
+                log_file="/tmp/log.txt",
+                result_text=None,
+            )
+        )
         output = console.export_text()
         assert "/tmp/log.txt" in output
 
@@ -111,20 +158,29 @@ class TestIterationLifecycle:
         """Log file paths containing bracket patterns must not be
         swallowed by Rich markup interpretation."""
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(
-            EventType.ITERATION_COMPLETED,
-            iteration=1, detail="completed (1s)",
-            log_file="/tmp/[2024-01-01]/001.log", result_text=None,
-        ))
+        emitter.emit(
+            _make_event(
+                EventType.ITERATION_COMPLETED,
+                iteration=1,
+                detail="completed (1s)",
+                log_file="/tmp/[2024-01-01]/001.log",
+                result_text=None,
+            )
+        )
         output = console.export_text()
         assert "[2024-01-01]" in output
 
     def test_iteration_ended_shows_result_text(self):
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(
-            EventType.ITERATION_COMPLETED,
-            iteration=1, detail="completed (1s)", log_file=None, result_text="All tests passed",
-        ))
+        emitter.emit(
+            _make_event(
+                EventType.ITERATION_COMPLETED,
+                iteration=1,
+                detail="completed (1s)",
+                log_file=None,
+                result_text="All tests passed",
+            )
+        )
         output = console.export_text()
         assert "All tests passed" in output
 
@@ -132,11 +188,15 @@ class TestIterationLifecycle:
         """Agent result text should be rendered as markdown, preserving
         structure like headers and lists."""
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(
-            EventType.ITERATION_COMPLETED,
-            iteration=1, detail="completed (1s)", log_file=None,
-            result_text="# Summary\n\n- Item one\n- Item two",
-        ))
+        emitter.emit(
+            _make_event(
+                EventType.ITERATION_COMPLETED,
+                iteration=1,
+                detail="completed (1s)",
+                log_file=None,
+                result_text="# Summary\n\n- Item one\n- Item two",
+            )
+        )
         output = console.export_text()
         assert "Summary" in output
         assert "Item one" in output
@@ -160,22 +220,30 @@ class TestCommandsCompleted:
 class TestLogMessage:
     def test_info_message(self):
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(EventType.LOG_MESSAGE, message="Waiting 5s...", level="info"))
+        emitter.emit(
+            _make_event(EventType.LOG_MESSAGE, message="Waiting 5s...", level="info")
+        )
         output = console.export_text()
         assert "Waiting 5s..." in output
 
     def test_error_message(self):
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(EventType.LOG_MESSAGE, message="Run crashed", level="error"))
+        emitter.emit(
+            _make_event(EventType.LOG_MESSAGE, message="Run crashed", level="error")
+        )
         output = console.export_text()
         assert "Run crashed" in output
 
     def test_error_with_traceback(self):
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(
-            EventType.LOG_MESSAGE,
-            message="Run crashed", level="error", traceback="Traceback:\n  File ...",
-        ))
+        emitter.emit(
+            _make_event(
+                EventType.LOG_MESSAGE,
+                message="Run crashed",
+                level="error",
+                traceback="Traceback:\n  File ...",
+            )
+        )
         output = console.export_text()
         assert "Traceback:" in output
 
@@ -183,11 +251,13 @@ class TestLogMessage:
         """Error messages containing bracket patterns must not be
         swallowed by Rich markup interpretation."""
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(
-            EventType.LOG_MESSAGE,
-            message="Run crashed: KeyError('[bold]')",
-            level="error",
-        ))
+        emitter.emit(
+            _make_event(
+                EventType.LOG_MESSAGE,
+                message="Run crashed: KeyError('[bold]')",
+                level="error",
+            )
+        )
         output = console.export_text()
         assert "[bold]" in output
 
@@ -195,11 +265,13 @@ class TestLogMessage:
         """Info messages containing bracket patterns must not be
         swallowed by Rich markup interpretation."""
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(
-            EventType.LOG_MESSAGE,
-            message="Processing [section] data",
-            level="info",
-        ))
+        emitter.emit(
+            _make_event(
+                EventType.LOG_MESSAGE,
+                message="Processing [section] data",
+                level="info",
+            )
+        )
         output = console.export_text()
         assert "[section]" in output
 
@@ -207,12 +279,14 @@ class TestLogMessage:
         """Traceback text containing bracket patterns must not be
         swallowed by Rich markup interpretation."""
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(
-            EventType.LOG_MESSAGE,
-            message="Run crashed",
-            level="error",
-            traceback="KeyError: '[red]missing[/red]'",
-        ))
+        emitter.emit(
+            _make_event(
+                EventType.LOG_MESSAGE,
+                message="Run crashed",
+                level="error",
+                traceback="KeyError: '[red]missing[/red]'",
+            )
+        )
         output = console.export_text()
         assert "[red]missing[/red]" in output
 
@@ -220,10 +294,16 @@ class TestLogMessage:
 class TestRunStopped:
     def test_completed_shows_summary(self):
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(
-            EventType.RUN_STOPPED,
-            reason="completed", total=5, completed=4, failed=1, timed_out_count=0,
-        ))
+        emitter.emit(
+            _make_event(
+                EventType.RUN_STOPPED,
+                reason="completed",
+                total=5,
+                completed=4,
+                failed=1,
+                timed_out_count=0,
+            )
+        )
         output = console.export_text()
         assert "5 iterations" in output
         assert "4 succeeded" in output
@@ -231,19 +311,31 @@ class TestRunStopped:
 
     def test_completed_shows_separator(self):
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(
-            EventType.RUN_STOPPED,
-            reason="completed", total=3, completed=3, failed=0, timed_out_count=0,
-        ))
+        emitter.emit(
+            _make_event(
+                EventType.RUN_STOPPED,
+                reason="completed",
+                total=3,
+                completed=3,
+                failed=0,
+                timed_out_count=0,
+            )
+        )
         output = console.export_text()
         assert "──" in output
 
     def test_completed_with_timeouts(self):
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(
-            EventType.RUN_STOPPED,
-            reason="completed", total=3, completed=2, failed=1, timed_out_count=1,
-        ))
+        emitter.emit(
+            _make_event(
+                EventType.RUN_STOPPED,
+                reason="completed",
+                total=3,
+                completed=2,
+                failed=1,
+                timed_out_count=1,
+            )
+        )
         output = console.export_text()
         assert "1 timed out" in output
         # timed_out_count is subset of failed — only non-timeout failures shown as "failed"
@@ -251,10 +343,16 @@ class TestRunStopped:
 
     def test_completed_with_mixed_failures_and_timeouts(self):
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(
-            EventType.RUN_STOPPED,
-            reason="completed", total=5, completed=3, failed=2, timed_out_count=1,
-        ))
+        emitter.emit(
+            _make_event(
+                EventType.RUN_STOPPED,
+                reason="completed",
+                total=5,
+                completed=3,
+                failed=2,
+                timed_out_count=1,
+            )
+        )
         output = console.export_text()
         assert "3 succeeded" in output
         assert "1 failed" in output
@@ -262,10 +360,16 @@ class TestRunStopped:
 
     def test_non_completed_reason_skips_summary(self):
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(
-            EventType.RUN_STOPPED,
-            reason="user_requested", total=2, completed=1, failed=0, timed_out_count=0,
-        ))
+        emitter.emit(
+            _make_event(
+                EventType.RUN_STOPPED,
+                reason="user_requested",
+                total=2,
+                completed=1,
+                failed=0,
+                timed_out_count=0,
+            )
+        )
         output = console.export_text()
         # Non-completed runs don't print the summary line
         assert "Done:" not in output
@@ -275,18 +379,30 @@ class TestRunStopped:
         # Start a live display via iteration_started, then stop via run_stopped
         emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
         assert emitter._live is not None
-        emitter.emit(_make_event(
-            EventType.RUN_STOPPED,
-            reason="user_requested", total=1, completed=0, failed=0, timed_out_count=0,
-        ))
+        emitter.emit(
+            _make_event(
+                EventType.RUN_STOPPED,
+                reason="user_requested",
+                total=1,
+                completed=0,
+                failed=0,
+                timed_out_count=0,
+            )
+        )
         assert emitter._live is None
 
     def test_completed_all_succeeded(self):
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(
-            EventType.RUN_STOPPED,
-            reason="completed", total=3, completed=3, failed=0, timed_out_count=0,
-        ))
+        emitter.emit(
+            _make_event(
+                EventType.RUN_STOPPED,
+                reason="completed",
+                total=3,
+                completed=3,
+                failed=0,
+                timed_out_count=0,
+            )
+        )
         output = console.export_text()
         assert "3 succeeded" in output
         assert "failed" not in output
@@ -294,20 +410,32 @@ class TestRunStopped:
 
     def test_completed_singular_iteration(self):
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(
-            EventType.RUN_STOPPED,
-            reason="completed", total=1, completed=1, failed=0, timed_out_count=0,
-        ))
+        emitter.emit(
+            _make_event(
+                EventType.RUN_STOPPED,
+                reason="completed",
+                total=1,
+                completed=1,
+                failed=0,
+                timed_out_count=0,
+            )
+        )
         output = console.export_text()
         assert "1 iteration" in output
         assert "1 iterations" not in output
 
     def test_completed_plural_iterations(self):
         emitter, console = _capture_emitter()
-        emitter.emit(_make_event(
-            EventType.RUN_STOPPED,
-            reason="completed", total=3, completed=3, failed=0, timed_out_count=0,
-        ))
+        emitter.emit(
+            _make_event(
+                EventType.RUN_STOPPED,
+                reason="completed",
+                total=3,
+                completed=3,
+                failed=0,
+                timed_out_count=0,
+            )
+        )
         output = console.export_text()
         assert "3 iterations" in output
 
@@ -332,8 +460,13 @@ class TestIterationSpinner:
         emitter, console = _capture_emitter()
         emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
         assert emitter._live is not None
-        emitter.emit(_make_event(
-            EventType.ITERATION_COMPLETED,
-            iteration=1, detail="completed (1s)", log_file=None, result_text=None,
-        ))
+        emitter.emit(
+            _make_event(
+                EventType.ITERATION_COMPLETED,
+                iteration=1,
+                detail="completed (1s)",
+                log_file=None,
+                result_text=None,
+            )
+        )
         assert emitter._live is None

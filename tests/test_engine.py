@@ -1,12 +1,23 @@
 """Tests for the run engine."""
 
-import subprocess
 import threading
 import time
 from unittest.mock import patch
 
 import pytest
-from helpers import MOCK_RUN_COMMAND, MOCK_SUBPROCESS, drain_events, event_types, events_of_type, fail_proc, make_config, make_state, ok_proc, ok_run_result, timeout_proc
+from helpers import (
+    MOCK_RUN_COMMAND,
+    MOCK_SUBPROCESS,
+    drain_events,
+    event_types,
+    events_of_type,
+    fail_proc,
+    make_config,
+    make_state,
+    ok_proc,
+    ok_run_result,
+    timeout_proc,
+)
 
 from ralphify._events import BoundEmitter, EventType, NullEmitter, QueueEmitter
 from ralphify._run_types import Command, RunStatus
@@ -96,7 +107,10 @@ class TestRunLoop:
 
         run_loop(config, state, NullEmitter())
 
-        assert mock_run.return_value.communicate.call_args.kwargs["input"] == "my prompt text"
+        assert (
+            mock_run.return_value.communicate.call_args.kwargs["input"]
+            == "my prompt text"
+        )
 
     @patch(MOCK_SUBPROCESS)
     def test_log_dir_creates_files(self, mock_run, tmp_path):
@@ -140,9 +154,15 @@ class TestRunLoopEvents:
         assert types[0] == EventType.RUN_STARTED
         assert types[-1] == EventType.RUN_STOPPED
         # Verify lifecycle ordering within the iteration
-        assert types.index(EventType.ITERATION_STARTED) < types.index(EventType.PROMPT_ASSEMBLED)
-        assert types.index(EventType.PROMPT_ASSEMBLED) < types.index(EventType.ITERATION_COMPLETED)
-        assert types.index(EventType.ITERATION_COMPLETED) < types.index(EventType.RUN_STOPPED)
+        assert types.index(EventType.ITERATION_STARTED) < types.index(
+            EventType.PROMPT_ASSEMBLED
+        )
+        assert types.index(EventType.PROMPT_ASSEMBLED) < types.index(
+            EventType.ITERATION_COMPLETED
+        )
+        assert types.index(EventType.ITERATION_COMPLETED) < types.index(
+            EventType.RUN_STOPPED
+        )
 
     @patch(MOCK_SUBPROCESS, side_effect=fail_proc)
     def test_failure_event_emitted(self, mock_run, tmp_path):
@@ -279,7 +299,13 @@ class TestRalphArgs:
     @patch(MOCK_SUBPROCESS)
     def test_empty_args_clears_placeholders(self, mock_run, tmp_path):
         mock_run.return_value = ok_proc()
-        config = make_config(tmp_path, "Before {{ args.opt }} after", max_iterations=1, args={}, credit=False)
+        config = make_config(
+            tmp_path,
+            "Before {{ args.opt }} after",
+            max_iterations=1,
+            args={},
+            credit=False,
+        )
         state = make_state()
         run_loop(config, state, NullEmitter())
 
@@ -341,7 +367,9 @@ class TestCommandExecution:
 
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     @patch(MOCK_RUN_COMMAND)
-    def test_dotslash_command_uses_ralph_dir_as_cwd(self, mock_run_cmd, mock_agent, tmp_path):
+    def test_dotslash_command_uses_ralph_dir_as_cwd(
+        self, mock_run_cmd, mock_agent, tmp_path
+    ):
         """Commands starting with ./ run relative to the ralph directory."""
         mock_run_cmd.return_value = ok_run_result(output="ok")
 
@@ -360,7 +388,9 @@ class TestCommandExecution:
 
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     @patch(MOCK_RUN_COMMAND)
-    def test_regular_command_uses_project_root_as_cwd(self, mock_run_cmd, mock_agent, tmp_path):
+    def test_regular_command_uses_project_root_as_cwd(
+        self, mock_run_cmd, mock_agent, tmp_path
+    ):
         """Commands without ./ prefix run from the project root."""
         mock_run_cmd.return_value = ok_run_result(output="ok")
 
@@ -411,12 +441,16 @@ class TestAgentCommandParsing:
         assert state.status == RunStatus.FAILED
         events = drain_events(q)
         log_events = events_of_type(events, EventType.LOG_MESSAGE)
-        assert any("Invalid agent command syntax" in e.data["message"] for e in log_events)
+        assert any(
+            "Invalid agent command syntax" in e.data["message"] for e in log_events
+        )
 
     @patch(MOCK_SUBPROCESS)
     def test_agent_not_found_raises_file_not_found_error(self, mock_run, tmp_path):
         """FileNotFoundError from the agent subprocess is re-raised with a helpful message."""
-        mock_run.side_effect = FileNotFoundError("No such file or directory: 'nonexistent'")
+        mock_run.side_effect = FileNotFoundError(
+            "No such file or directory: 'nonexistent'"
+        )
         config = make_config(tmp_path, max_iterations=1, agent="nonexistent")
         state = make_state()
         q = QueueEmitter()
@@ -563,6 +597,7 @@ class TestDelayIfNeeded:
         def stop_soon():
             time.sleep(0.1)
             state.request_stop()
+
         threading.Thread(target=stop_soon, daemon=True).start()
 
         start = time.monotonic()
@@ -671,7 +706,9 @@ class TestRunCommands:
         mock_run_cmd.return_value = ok_run_result(output="test output")
         commands = [Command(name="tests", run="pytest")]
 
-        result = _run_commands(commands, ralph_dir=tmp_path / "ralph", project_root=tmp_path, user_args={})
+        result = _run_commands(
+            commands, ralph_dir=tmp_path / "ralph", project_root=tmp_path, user_args={}
+        )
 
         assert result == {"tests": "test output"}
 
@@ -690,7 +727,9 @@ class TestRunCommands:
             Command(name="b", run="cmd-b"),
         ]
 
-        result = _run_commands(commands, ralph_dir=tmp_path / "ralph", project_root=tmp_path, user_args={})
+        result = _run_commands(
+            commands, ralph_dir=tmp_path / "ralph", project_root=tmp_path, user_args={}
+        )
 
         assert len(result) == 2
         assert result["a"] == "out-1"
@@ -702,7 +741,9 @@ class TestRunCommands:
         ralph_dir = tmp_path / "my-ralph"
         commands = [Command(name="local", run="./check.sh")]
 
-        _run_commands(commands, ralph_dir=ralph_dir, project_root=tmp_path, user_args={})
+        _run_commands(
+            commands, ralph_dir=ralph_dir, project_root=tmp_path, user_args={}
+        )
 
         assert mock_run_cmd.call_args.kwargs["cwd"] == ralph_dir
 
@@ -712,7 +753,9 @@ class TestRunCommands:
         ralph_dir = tmp_path / "my-ralph"
         commands = [Command(name="tests", run="pytest")]
 
-        _run_commands(commands, ralph_dir=ralph_dir, project_root=tmp_path, user_args={})
+        _run_commands(
+            commands, ralph_dir=ralph_dir, project_root=tmp_path, user_args={}
+        )
 
         assert mock_run_cmd.call_args.kwargs["cwd"] == tmp_path
 
@@ -726,18 +769,29 @@ class TestRunCommands:
         assert mock_run_cmd.call_args.kwargs["timeout"] == 300
 
     def test_empty_commands_returns_empty_dict(self, tmp_path):
-        result = _run_commands([], ralph_dir=tmp_path, project_root=tmp_path, user_args={})
+        result = _run_commands(
+            [], ralph_dir=tmp_path, project_root=tmp_path, user_args={}
+        )
 
         assert result == {}
 
     @patch(MOCK_RUN_COMMAND)
     def test_resolves_args_in_command_run_string(self, mock_run_cmd, tmp_path):
         mock_run_cmd.return_value = ok_run_result(output="issue content")
-        commands = [Command(name="issue", run="gh issue view {{ args.issue }} --json title")]
+        commands = [
+            Command(name="issue", run="gh issue view {{ args.issue }} --json title")
+        ]
 
-        _run_commands(commands, ralph_dir=tmp_path, project_root=tmp_path, user_args={"issue": "42"})
+        _run_commands(
+            commands,
+            ralph_dir=tmp_path,
+            project_root=tmp_path,
+            user_args={"issue": "42"},
+        )
 
-        assert mock_run_cmd.call_args.kwargs["command"] == "gh issue view 42 --json title"
+        assert (
+            mock_run_cmd.call_args.kwargs["command"] == "gh issue view 42 --json title"
+        )
 
     @patch(MOCK_RUN_COMMAND)
     def test_dotslash_detection_after_args_resolution(self, mock_run_cmd, tmp_path):
@@ -745,35 +799,52 @@ class TestRunCommands:
         ralph_dir = tmp_path / "my-ralph"
         commands = [Command(name="check", run="./{{ args.script }}")]
 
-        _run_commands(commands, ralph_dir=ralph_dir, project_root=tmp_path, user_args={"script": "check.sh"})
+        _run_commands(
+            commands,
+            ralph_dir=ralph_dir,
+            project_root=tmp_path,
+            user_args={"script": "check.sh"},
+        )
 
         assert mock_run_cmd.call_args.kwargs["cwd"] == ralph_dir
         assert mock_run_cmd.call_args.kwargs["command"] == "./check.sh"
 
     @patch(MOCK_RUN_COMMAND)
-    def test_arg_values_with_spaces_are_shell_quoted_in_commands(self, mock_run_cmd, tmp_path):
+    def test_arg_values_with_spaces_are_shell_quoted_in_commands(
+        self, mock_run_cmd, tmp_path
+    ):
         """Arg values containing spaces must be shell-quoted when substituted
         into command run strings so shlex.split treats them as single tokens."""
         mock_run_cmd.return_value = ok_run_result(output="found it")
         commands = [Command(name="search", run="grep {{ args.pattern }} src/")]
 
-        _run_commands(commands, ralph_dir=tmp_path, project_root=tmp_path, user_args={"pattern": "hello world"})
+        _run_commands(
+            commands,
+            ralph_dir=tmp_path,
+            project_root=tmp_path,
+            user_args={"pattern": "hello world"},
+        )
 
         resolved_cmd = mock_run_cmd.call_args.kwargs["command"]
         # The value must be quoted so shlex.split produces a single token
         import shlex
+
         tokens = shlex.split(resolved_cmd)
         assert tokens == ["grep", "hello world", "src/"]
 
     @patch(MOCK_RUN_COMMAND)
-    def test_dotslash_detected_after_leading_whitespace_from_empty_arg(self, mock_run_cmd, tmp_path):
+    def test_dotslash_detected_after_leading_whitespace_from_empty_arg(
+        self, mock_run_cmd, tmp_path
+    ):
         """When an optional arg placeholder before ./ resolves to empty,
         the leading whitespace must not prevent ./  detection for cwd."""
         mock_run_cmd.return_value = ok_run_result(output="ok")
         ralph_dir = tmp_path / "my-ralph"
         commands = [Command(name="check", run="{{ args.flag }} ./check.sh")]
 
-        _run_commands(commands, ralph_dir=ralph_dir, project_root=tmp_path, user_args={})
+        _run_commands(
+            commands, ralph_dir=ralph_dir, project_root=tmp_path, user_args={}
+        )
 
         assert mock_run_cmd.call_args.kwargs["cwd"] == ralph_dir
 
@@ -788,7 +859,9 @@ class TestRunCommands:
         )
         commands = [Command(name="slow", run="sleep 100", timeout=5)]
 
-        result = _run_commands(commands, ralph_dir=tmp_path, project_root=tmp_path, user_args={})
+        result = _run_commands(
+            commands, ralph_dir=tmp_path, project_root=tmp_path, user_args={}
+        )
 
         assert "partial output" in result["slow"]
         assert "timed out" in result["slow"].lower()
@@ -797,8 +870,12 @@ class TestRunCommands:
     def test_command_not_found_raises_with_context(self, mock_run_cmd, tmp_path):
         commands = [Command(name="missing", run="no-such-binary --flag")]
 
-        with pytest.raises(FileNotFoundError, match="Command 'missing' binary not found"):
-            _run_commands(commands, ralph_dir=tmp_path, project_root=tmp_path, user_args={})
+        with pytest.raises(
+            FileNotFoundError, match="Command 'missing' binary not found"
+        ):
+            _run_commands(
+                commands, ralph_dir=tmp_path, project_root=tmp_path, user_args={}
+            )
 
     @patch(MOCK_RUN_COMMAND, side_effect=ValueError("No closing quotation"))
     def test_command_invalid_syntax_raises_with_context(self, mock_run_cmd, tmp_path):
@@ -807,7 +884,9 @@ class TestRunCommands:
         commands = [Command(name="broken", run="echo 'unterminated")]
 
         with pytest.raises(ValueError, match="Command 'broken' has invalid syntax"):
-            _run_commands(commands, ralph_dir=tmp_path, project_root=tmp_path, user_args={})
+            _run_commands(
+                commands, ralph_dir=tmp_path, project_root=tmp_path, user_args={}
+            )
 
 
 class TestAssemblePrompt:
@@ -853,7 +932,13 @@ class TestAssemblePrompt:
         assert result == "Search ./src"
 
     def test_clears_unresolved_placeholders(self, tmp_path):
-        config = make_config(tmp_path, "Before {{ args.missing }} after", max_iterations=1, args={}, credit=False)
+        config = make_config(
+            tmp_path,
+            "Before {{ args.missing }} after",
+            max_iterations=1,
+            args={},
+            credit=False,
+        )
         state = make_state()
         state.iteration = 1
 
@@ -862,7 +947,9 @@ class TestAssemblePrompt:
         assert result == "Before  after"
 
     def test_strips_html_comments(self, tmp_path):
-        config = make_config(tmp_path, "Before <!-- hidden --> after", max_iterations=1, credit=False)
+        config = make_config(
+            tmp_path, "Before <!-- hidden --> after", max_iterations=1, credit=False
+        )
         state = make_state()
         state.iteration = 1
 

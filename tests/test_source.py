@@ -9,7 +9,6 @@ import pytest
 
 from ralphify._frontmatter import RALPH_MARKER
 from ralphify._source import (
-    FetchResult,
     ParsedSource,
     _find_ralphs_in,
     _fetch_named_ralph,
@@ -136,7 +135,9 @@ class TestParseGithubSource:
 
     def test_url_with_tree_path_and_query_string(self):
         """Query string after a tree path should be stripped."""
-        p = parse_github_source("https://github.com/acme/tools/tree/main/my-ralph?tab=code")
+        p = parse_github_source(
+            "https://github.com/acme/tools/tree/main/my-ralph?tab=code"
+        )
         assert p.owner_repo == "acme/tools"
         assert p.subpath == "my-ralph"
         assert p.name == "my-ralph"
@@ -180,7 +181,9 @@ class TestFetchRepoRalphs:
         parsed = ParsedSource(
             owner_repo="a/b",
             repo_url="https://github.com/a/b.git",
-            subpath=None, handle="a/b", name="b",
+            subpath=None,
+            handle="a/b",
+            name="b",
         )
         result = _fetch_repo_ralphs(clone_dir, parsed, dest_dir)
         assert len(result.installed) == 1
@@ -200,7 +203,9 @@ class TestFetchRepoRalphs:
         parsed = ParsedSource(
             owner_repo="a/b",
             repo_url="https://github.com/a/b.git",
-            subpath=None, handle="a/b", name="b",
+            subpath=None,
+            handle="a/b",
+            name="b",
         )
         result = _fetch_repo_ralphs(clone_dir, parsed, dest_dir)
         assert len(result.installed) == 2
@@ -222,7 +227,9 @@ class TestFetchRepoRalphs:
         parsed = ParsedSource(
             owner_repo="a/b",
             repo_url="https://github.com/a/b.git",
-            subpath=None, handle="a/b", name="b",
+            subpath=None,
+            handle="a/b",
+            name="b",
         )
         with pytest.raises(RuntimeError, match="Found multiple ralphs named 'lint'"):
             _fetch_repo_ralphs(clone_dir, parsed, dest_dir)
@@ -238,7 +245,9 @@ class TestFetchRepoRalphs:
         parsed = ParsedSource(
             owner_repo="a/b",
             repo_url="https://github.com/a/b.git",
-            subpath=None, handle="a/b", name="b",
+            subpath=None,
+            handle="a/b",
+            name="b",
         )
         with pytest.raises(RuntimeError, match="No RALPH.md found"):
             _fetch_repo_ralphs(clone_dir, parsed, dest_dir)
@@ -260,7 +269,9 @@ class TestFetchNamedRalph:
         parsed = ParsedSource(
             owner_repo="a/b",
             repo_url="https://github.com/a/b.git",
-            subpath="cookbooks/lint", handle="a/b/cookbooks/lint", name="lint",
+            subpath="cookbooks/lint",
+            handle="a/b/cookbooks/lint",
+            name="lint",
         )
         result = _fetch_named_ralph(clone_dir, parsed, dest_dir)
         assert result.installed[0][0] == "lint"
@@ -279,7 +290,9 @@ class TestFetchNamedRalph:
         parsed = ParsedSource(
             owner_repo="a/b",
             repo_url="https://github.com/a/b.git",
-            subpath="lint", handle="a/b/lint", name="lint",
+            subpath="lint",
+            handle="a/b/lint",
+            name="lint",
         )
         result = _fetch_named_ralph(clone_dir, parsed, dest_dir)
         assert result.installed[0][0] == "lint"
@@ -297,7 +310,9 @@ class TestFetchNamedRalph:
         parsed = ParsedSource(
             owner_repo="x/y",
             repo_url="https://github.com/x/y.git",
-            subpath="lint", handle="x/y/lint", name="lint",
+            subpath="lint",
+            handle="x/y/lint",
+            name="lint",
         )
         with pytest.raises(RuntimeError, match="Found multiple ralphs named 'lint'"):
             _fetch_named_ralph(clone_dir, parsed, dest_dir)
@@ -312,7 +327,9 @@ class TestFetchNamedRalph:
         parsed = ParsedSource(
             owner_repo="a/b",
             repo_url="https://github.com/a/b.git",
-            subpath="nope", handle="a/b/nope", name="nope",
+            subpath="nope",
+            handle="a/b/nope",
+            name="nope",
         )
         with pytest.raises(RuntimeError, match="No ralph named 'nope'"):
             _fetch_named_ralph(clone_dir, parsed, dest_dir)
@@ -331,7 +348,9 @@ class TestFetchNamedRalph:
         parsed = ParsedSource(
             owner_repo="a/b",
             repo_url="https://github.com/a/b.git",
-            subpath="lint", handle="a/b/lint", name="lint",
+            subpath="lint",
+            handle="a/b/lint",
+            name="lint",
         )
         _fetch_named_ralph(clone_dir, parsed, dest_dir)
         assert (dest_dir / "lint" / RALPH_MARKER).read_text() == "new prompt"
@@ -342,9 +361,7 @@ class TestFetchNamedRalph:
 
 class TestShallowClone:
     def test_git_not_installed_raises(self, tmp_path):
-        with patch(
-            "ralphify._source.subprocess.run", side_effect=FileNotFoundError
-        ):
+        with patch("ralphify._source.subprocess.run", side_effect=FileNotFoundError):
             with pytest.raises(RuntimeError, match="git is required"):
                 _shallow_clone("https://github.com/a/b.git", tmp_path / "dest")
 
@@ -397,7 +414,9 @@ class TestFetchRalphs:
         parsed = ParsedSource(
             owner_repo="a/b",
             repo_url="https://github.com/a/b.git",
-            subpath=None, handle="a/b", name="b",
+            subpath=None,
+            handle="a/b",
+            name="b",
         )
 
         def fake_clone(repo_url, dest):
@@ -419,7 +438,9 @@ class TestFetchRalphs:
         parsed = ParsedSource(
             owner_repo="a/b",
             repo_url="https://github.com/a/b.git",
-            subpath="my-ralph", handle="a/b/my-ralph", name="my-ralph",
+            subpath="my-ralph",
+            handle="a/b/my-ralph",
+            name="my-ralph",
         )
 
         def fake_clone(repo_url, dest):
@@ -443,7 +464,9 @@ class TestFetchRalphs:
         parsed = ParsedSource(
             owner_repo="a/b",
             repo_url="https://github.com/a/b.git",
-            subpath=None, handle="a/b", name="b",
+            subpath=None,
+            handle="a/b",
+            name="b",
         )
 
         with patch(

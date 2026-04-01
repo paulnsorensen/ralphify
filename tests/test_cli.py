@@ -2,14 +2,22 @@
 
 import importlib
 import signal
-import subprocess
 from unittest.mock import patch, MagicMock
 
 import pytest
 import typer
 from typer.testing import CliRunner
 
-from helpers import MOCK_WAIT_FOR_STOP, MOCK_SKILLS_WHICH, MOCK_SUBPROCESS, MOCK_WHICH, ok_proc, fail_proc, make_ralph, timeout_proc
+from helpers import (
+    MOCK_WAIT_FOR_STOP,
+    MOCK_SKILLS_WHICH,
+    MOCK_SUBPROCESS,
+    MOCK_WHICH,
+    ok_proc,
+    fail_proc,
+    make_ralph,
+    timeout_proc,
+)
 from ralphify import __version__
 from ralphify._frontmatter import RALPH_MARKER
 from ralphify.cli import app, _parse_command_items, _parse_user_args
@@ -54,7 +62,7 @@ class TestRun:
         monkeypatch.chdir(tmp_path)
         ralph_dir = tmp_path / "my-ralph"
         ralph_dir.mkdir()
-        (ralph_dir / RALPH_MARKER).write_text("---\nagent: \"  \"\n---\ngo")
+        (ralph_dir / RALPH_MARKER).write_text('---\nagent: "  "\n---\ngo')
         result = runner.invoke(app, ["run", str(ralph_dir)])
         assert result.exit_code == 1
         assert "agent" in result.output.lower()
@@ -82,26 +90,38 @@ class TestRun:
         ralph_dir.mkdir()
         # Valid YAML but shlex.split raises ValueError on unmatched quotes
         (ralph_dir / RALPH_MARKER).write_text(
-            '---\nagent: \'claude "unclosed\'\n---\ngo'
+            "---\nagent: 'claude \"unclosed'\n---\ngo"
         )
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
         assert result.exit_code == 1
         assert "malformed" in result.output.lower()
 
-    @pytest.mark.parametrize("frontmatter, expected_error", [
-        ("commands:\n  - name: \"\"\n    run: echo hi", "name"),
-        ("commands:\n  - name: status\n    run: \"\"", "run"),
-        ("commands: not-a-list", "must be a list"),
-        ("commands: 0", "must be a list"),
-        ("commands: false", "must be a list"),
-        (
-            "commands:\n  - name: status\n    run: git status\n"
-            "  - name: status\n    run: echo hi",
-            "duplicate",
-        ),
-    ], ids=["empty-name", "empty-run", "not-a-list", "falsy-int", "falsy-bool", "duplicate-names"])
-    def test_errors_with_invalid_commands(self, mock_which, tmp_path, monkeypatch,
-                                          frontmatter, expected_error):
+    @pytest.mark.parametrize(
+        "frontmatter, expected_error",
+        [
+            ('commands:\n  - name: ""\n    run: echo hi', "name"),
+            ('commands:\n  - name: status\n    run: ""', "run"),
+            ("commands: not-a-list", "must be a list"),
+            ("commands: 0", "must be a list"),
+            ("commands: false", "must be a list"),
+            (
+                "commands:\n  - name: status\n    run: git status\n"
+                "  - name: status\n    run: echo hi",
+                "duplicate",
+            ),
+        ],
+        ids=[
+            "empty-name",
+            "empty-run",
+            "not-a-list",
+            "falsy-int",
+            "falsy-bool",
+            "duplicate-names",
+        ],
+    )
+    def test_errors_with_invalid_commands(
+        self, mock_which, tmp_path, monkeypatch, frontmatter, expected_error
+    ):
         monkeypatch.chdir(tmp_path)
         ralph_dir = tmp_path / "my-ralph"
         ralph_dir.mkdir()
@@ -112,10 +132,15 @@ class TestRun:
         assert result.exit_code == 1
         assert expected_error in result.output.lower()
 
-    @pytest.mark.parametrize("yaml_value", ["commands:", "commands: null"],
-                             ids=["empty-value", "explicit-null"])
+    @pytest.mark.parametrize(
+        "yaml_value",
+        ["commands:", "commands: null"],
+        ids=["empty-value", "explicit-null"],
+    )
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
-    def test_null_commands_treated_as_empty(self, mock_run, mock_which, tmp_path, monkeypatch, yaml_value):
+    def test_null_commands_treated_as_empty(
+        self, mock_run, mock_which, tmp_path, monkeypatch, yaml_value
+    ):
         """YAML `commands:` (no value) and `commands: null` should be treated as no commands."""
         monkeypatch.chdir(tmp_path)
         ralph_dir = tmp_path / "my-ralph"
@@ -126,9 +151,12 @@ class TestRun:
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
         assert result.exit_code == 0
 
-    @pytest.mark.parametrize("args_value", ["true", "42", "not-a-list"],
-                             ids=["bool", "int", "string"])
-    def test_errors_with_invalid_args_type(self, mock_which, tmp_path, monkeypatch, args_value):
+    @pytest.mark.parametrize(
+        "args_value", ["true", "42", "not-a-list"], ids=["bool", "int", "string"]
+    )
+    def test_errors_with_invalid_args_type(
+        self, mock_which, tmp_path, monkeypatch, args_value
+    ):
         monkeypatch.chdir(tmp_path)
         ralph_dir = tmp_path / "my-ralph"
         ralph_dir.mkdir()
@@ -139,14 +167,20 @@ class TestRun:
         assert result.exit_code == 1
         assert "must be a list" in result.output.lower()
 
-    @pytest.mark.parametrize("name", [
-        "my.arg",
-        "has space",
-        "arg@home",
-        "name!",
-        "a/b",
-    ], ids=["dot", "space", "at-sign", "exclamation", "slash"])
-    def test_errors_with_invalid_arg_name_chars(self, mock_which, tmp_path, monkeypatch, name):
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "my.arg",
+            "has space",
+            "arg@home",
+            "name!",
+            "a/b",
+        ],
+        ids=["dot", "space", "at-sign", "exclamation", "slash"],
+    )
+    def test_errors_with_invalid_arg_name_chars(
+        self, mock_which, tmp_path, monkeypatch, name
+    ):
         """Arg names with chars outside [a-zA-Z0-9_-] can never be
         referenced by placeholders and must be rejected early."""
         monkeypatch.chdir(tmp_path)
@@ -159,12 +193,18 @@ class TestRun:
         assert result.exit_code == 1
         assert "invalid" in result.output.lower()
 
-    @pytest.mark.parametrize("args_yaml,id_label", [
-        ("[1, 2]", "integers"),
-        ("[true, false]", "booleans"),
-        ("[1.5]", "floats"),
-    ], ids=lambda x: x if isinstance(x, str) else None)
-    def test_errors_with_non_string_args_items(self, mock_which, tmp_path, monkeypatch, args_yaml, id_label):
+    @pytest.mark.parametrize(
+        "args_yaml,id_label",
+        [
+            ("[1, 2]", "integers"),
+            ("[true, false]", "booleans"),
+            ("[1.5]", "floats"),
+        ],
+        ids=lambda x: x if isinstance(x, str) else None,
+    )
+    def test_errors_with_non_string_args_items(
+        self, mock_which, tmp_path, monkeypatch, args_yaml, id_label
+    ):
         """args list items that aren't strings (e.g. YAML integers) must be rejected."""
         monkeypatch.chdir(tmp_path)
         ralph_dir = tmp_path / "my-ralph"
@@ -177,7 +217,9 @@ class TestRun:
         assert "string" in result.output.lower()
 
     @pytest.mark.parametrize("n_value", ["-1", "0", "-100"])
-    def test_errors_with_non_positive_n(self, mock_which, tmp_path, monkeypatch, n_value):
+    def test_errors_with_non_positive_n(
+        self, mock_which, tmp_path, monkeypatch, n_value
+    ):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", n_value])
@@ -194,28 +236,36 @@ class TestRun:
     def test_errors_with_non_positive_timeout(self, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
-        result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1", "--timeout", "-10"])
+        result = runner.invoke(
+            app, ["run", str(ralph_dir), "-n", "1", "--timeout", "-10"]
+        )
         assert result.exit_code == 1
         assert "positive number" in result.output.lower()
 
     def test_errors_with_zero_timeout(self, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
-        result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1", "--timeout", "0"])
+        result = runner.invoke(
+            app, ["run", str(ralph_dir), "-n", "1", "--timeout", "0"]
+        )
         assert result.exit_code == 1
         assert "positive number" in result.output.lower()
 
     def test_errors_with_nan_timeout(self, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
-        result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1", "--timeout", "nan"])
+        result = runner.invoke(
+            app, ["run", str(ralph_dir), "-n", "1", "--timeout", "nan"]
+        )
         assert result.exit_code == 1
         assert "positive number" in result.output.lower()
 
     def test_errors_with_nan_delay(self, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
-        result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1", "--delay", "nan"])
+        result = runner.invoke(
+            app, ["run", str(ralph_dir), "-n", "1", "--delay", "nan"]
+        )
         assert result.exit_code == 1
         assert "non-negative" in result.output.lower()
 
@@ -246,7 +296,9 @@ class TestRun:
             assert proc.communicate.call_args.kwargs["input"].startswith("test prompt")
 
     @patch(MOCK_SUBPROCESS)
-    def test_reads_prompt_each_iteration(self, mock_run, mock_which, tmp_path, monkeypatch):
+    def test_reads_prompt_each_iteration(
+        self, mock_run, mock_which, tmp_path, monkeypatch
+    ):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path, prompt="v1")
         ralph_file = ralph_dir / RALPH_MARKER
@@ -274,7 +326,9 @@ class TestRun:
         assert procs[1].communicate.call_args.kwargs["input"].startswith("v2")
 
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
-    def test_shows_success_per_iteration(self, mock_run, mock_which, tmp_path, monkeypatch):
+    def test_shows_success_per_iteration(
+        self, mock_run, mock_which, tmp_path, monkeypatch
+    ):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "2"])
@@ -284,7 +338,9 @@ class TestRun:
         assert "2 succeeded" in result.output
 
     @patch(MOCK_SUBPROCESS, side_effect=fail_proc)
-    def test_continues_on_error_by_default(self, mock_run, mock_which, tmp_path, monkeypatch):
+    def test_continues_on_error_by_default(
+        self, mock_run, mock_which, tmp_path, monkeypatch
+    ):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "3"])
@@ -296,14 +352,18 @@ class TestRun:
     def test_stop_on_error(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
-        result = runner.invoke(app, ["run", str(ralph_dir), "-n", "5", "--stop-on-error"])
+        result = runner.invoke(
+            app, ["run", str(ralph_dir), "-n", "5", "--stop-on-error"]
+        )
         assert result.exit_code == 0
         assert mock_run.call_count == 1
         assert "Stopping due to --stop-on-error" in result.output
         assert "1 failed" in result.output
 
     @patch(MOCK_SUBPROCESS)
-    def test_mixed_success_and_failure(self, mock_run, mock_which, tmp_path, monkeypatch):
+    def test_mixed_success_and_failure(
+        self, mock_run, mock_which, tmp_path, monkeypatch
+    ):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
         mock_run.side_effect = [ok_proc(), fail_proc(), ok_proc()]
@@ -314,29 +374,39 @@ class TestRun:
 
     @patch(MOCK_WAIT_FOR_STOP, return_value=False)
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
-    def test_delay_between_iterations(self, mock_run, mock_wait, mock_which, tmp_path, monkeypatch):
+    def test_delay_between_iterations(
+        self, mock_run, mock_wait, mock_which, tmp_path, monkeypatch
+    ):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "3", "--delay", "5"])
         assert result.exit_code == 0
         # wait_for_stop is called with the delay timeout between
         # iterations 1→2 and 2→3, but not after the last iteration.
-        delay_calls = [c for c in mock_wait.call_args_list if c.kwargs.get("timeout") == 5]
+        delay_calls = [
+            c for c in mock_wait.call_args_list if c.kwargs.get("timeout") == 5
+        ]
         assert len(delay_calls) == 2
 
     @patch(MOCK_WAIT_FOR_STOP, return_value=False)
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
-    def test_no_delay_with_single_iteration(self, mock_run, mock_wait, mock_which, tmp_path, monkeypatch):
+    def test_no_delay_with_single_iteration(
+        self, mock_run, mock_wait, mock_which, tmp_path, monkeypatch
+    ):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1", "--delay", "5"])
         assert result.exit_code == 0
         # No delay after the last (only) iteration.
-        delay_calls = [c for c in mock_wait.call_args_list if c.kwargs.get("timeout") == 5]
+        delay_calls = [
+            c for c in mock_wait.call_args_list if c.kwargs.get("timeout") == 5
+        ]
         assert len(delay_calls) == 0
 
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
-    def test_accepts_ralph_md_file_path(self, mock_run, mock_which, tmp_path, monkeypatch):
+    def test_accepts_ralph_md_file_path(
+        self, mock_run, mock_which, tmp_path, monkeypatch
+    ):
         """Can pass path to RALPH.md file directly."""
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
@@ -352,7 +422,9 @@ class TestRunLogging:
         ralph_dir = make_ralph(tmp_path)
         log_dir = tmp_path / "logs"
         mock_run.return_value = ok_proc(stdout="agent output\n")
-        result = runner.invoke(app, ["run", str(ralph_dir), "-n", "2", "--log-dir", str(log_dir)])
+        result = runner.invoke(
+            app, ["run", str(ralph_dir), "-n", "2", "--log-dir", str(log_dir)]
+        )
         assert result.exit_code == 0
         log_files = sorted(log_dir.iterdir())
         assert len(log_files) == 2
@@ -360,12 +432,16 @@ class TestRunLogging:
         assert log_files[1].name.startswith("002_")
 
     @patch(MOCK_SUBPROCESS)
-    def test_log_file_contains_output(self, mock_run, mock_which, tmp_path, monkeypatch):
+    def test_log_file_contains_output(
+        self, mock_run, mock_which, tmp_path, monkeypatch
+    ):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
         log_dir = tmp_path / "logs"
         mock_run.return_value = ok_proc(stdout="hello from agent\n", stderr="warning\n")
-        result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1", "--log-dir", str(log_dir)])
+        result = runner.invoke(
+            app, ["run", str(ralph_dir), "-n", "1", "--log-dir", str(log_dir)]
+        )
         assert result.exit_code == 0
         log_files = list(log_dir.iterdir())
         content = log_files[0].read_text()
@@ -373,7 +449,9 @@ class TestRunLogging:
         assert "warning" in content
 
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
-    def test_no_log_files_without_flag(self, mock_run, mock_which, tmp_path, monkeypatch):
+    def test_no_log_files_without_flag(
+        self, mock_run, mock_which, tmp_path, monkeypatch
+    ):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
@@ -384,11 +462,15 @@ class TestRunLogging:
 @patch(MOCK_WHICH, return_value="/usr/bin/claude")
 class TestRunTimeout:
     @patch(MOCK_SUBPROCESS)
-    def test_timeout_passed_to_subprocess(self, mock_run, mock_which, tmp_path, monkeypatch):
+    def test_timeout_passed_to_subprocess(
+        self, mock_run, mock_which, tmp_path, monkeypatch
+    ):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
         mock_run.return_value = ok_proc()
-        result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1", "--timeout", "30"])
+        result = runner.invoke(
+            app, ["run", str(ralph_dir), "-n", "1", "--timeout", "30"]
+        )
         assert result.exit_code == 0
         assert mock_run.return_value.communicate.call_args.kwargs["timeout"] == 30
 
@@ -402,10 +484,14 @@ class TestRunTimeout:
         assert mock_run.return_value.communicate.call_args.kwargs["timeout"] is None
 
     @patch(MOCK_SUBPROCESS, side_effect=timeout_proc)
-    def test_timeout_counts_as_failure(self, mock_run, mock_which, tmp_path, monkeypatch):
+    def test_timeout_counts_as_failure(
+        self, mock_run, mock_which, tmp_path, monkeypatch
+    ):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
-        result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1", "--timeout", "10"])
+        result = runner.invoke(
+            app, ["run", str(ralph_dir), "-n", "1", "--timeout", "10"]
+        )
         assert result.exit_code == 0
         assert "timed out" in result.output
         assert "1 timed out" in result.output
@@ -414,7 +500,9 @@ class TestRunTimeout:
     def test_timeout_shows_in_header(self, mock_run, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
-        result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1", "--timeout", "300"])
+        result = runner.invoke(
+            app, ["run", str(ralph_dir), "-n", "1", "--timeout", "300"]
+        )
         assert result.exit_code == 0
         assert "timeout 5m 0s" in result.output
 
@@ -422,14 +510,18 @@ class TestRunTimeout:
 class TestNew:
     @patch("ralphify.cli.os.execvp")
     @patch(MOCK_SKILLS_WHICH, return_value="/usr/bin/claude")
-    def test_installs_skill_and_launches_agent(self, mock_which, mock_execvp, tmp_path, monkeypatch):
+    def test_installs_skill_and_launches_agent(
+        self, mock_which, mock_execvp, tmp_path, monkeypatch
+    ):
         monkeypatch.chdir(tmp_path)
         result = runner.invoke(app, ["new", "my-task"])
         assert result.exit_code == 0
         skill_file = tmp_path / ".claude" / "skills" / "new-ralph" / "SKILL.md"
         assert skill_file.exists()
         assert "new-ralph" in skill_file.read_text()
-        mock_execvp.assert_called_once_with("claude", ["claude", "--dangerously-skip-permissions", "/new-ralph my-task"])
+        mock_execvp.assert_called_once_with(
+            "claude", ["claude", "--dangerously-skip-permissions", "/new-ralph my-task"]
+        )
 
     @patch("ralphify.cli.os.execvp")
     @patch(MOCK_SKILLS_WHICH, return_value="/usr/bin/claude")
@@ -437,7 +529,9 @@ class TestNew:
         monkeypatch.chdir(tmp_path)
         result = runner.invoke(app, ["new"])
         assert result.exit_code == 0
-        mock_execvp.assert_called_once_with("claude", ["claude", "--dangerously-skip-permissions", "/new-ralph"])
+        mock_execvp.assert_called_once_with(
+            "claude", ["claude", "--dangerously-skip-permissions", "/new-ralph"]
+        )
 
     @patch(MOCK_SKILLS_WHICH, return_value=None)
     def test_errors_when_no_agent_found(self, mock_which, tmp_path, monkeypatch):
@@ -446,9 +540,13 @@ class TestNew:
         assert result.exit_code == 1
         assert "No agent found" in result.output
 
-    @patch("ralphify._skills.install_skill", side_effect=RuntimeError("permission denied"))
+    @patch(
+        "ralphify._skills.install_skill", side_effect=RuntimeError("permission denied")
+    )
     @patch(MOCK_SKILLS_WHICH, return_value="/usr/bin/claude")
-    def test_errors_when_install_skill_fails(self, mock_which, mock_install, tmp_path, monkeypatch):
+    def test_errors_when_install_skill_fails(
+        self, mock_which, mock_install, tmp_path, monkeypatch
+    ):
         monkeypatch.chdir(tmp_path)
         result = runner.invoke(app, ["new"])
         assert result.exit_code == 1
@@ -456,7 +554,9 @@ class TestNew:
 
     @patch("ralphify.cli.os.execvp", side_effect=FileNotFoundError("not found"))
     @patch(MOCK_SKILLS_WHICH, return_value="/usr/bin/claude")
-    def test_errors_when_agent_binary_not_found(self, mock_which, mock_execvp, tmp_path, monkeypatch):
+    def test_errors_when_agent_binary_not_found(
+        self, mock_which, mock_execvp, tmp_path, monkeypatch
+    ):
         monkeypatch.chdir(tmp_path)
         result = runner.invoke(app, ["new", "my-task"])
         assert result.exit_code == 1
@@ -500,6 +600,7 @@ class TestInit:
 
     def test_template_has_valid_frontmatter(self, tmp_path, monkeypatch):
         from ralphify._frontmatter import parse_frontmatter
+
         monkeypatch.chdir(tmp_path)
         runner.invoke(app, ["init", "my-task"])
         content = (tmp_path / "my-task" / RALPH_MARKER).read_text()
@@ -581,7 +682,9 @@ class TestParseUserArgs:
 
     def test_double_dash_ends_flag_parsing(self):
         """-- should end flag parsing; remaining tokens are positional."""
-        result = _parse_user_args(["--dir", "./src", "--", "remaining"], ["dir", "extra"])
+        result = _parse_user_args(
+            ["--dir", "./src", "--", "remaining"], ["dir", "extra"]
+        )
         assert result == {"dir": "./src", "extra": "remaining"}
 
     def test_double_dash_allows_flag_like_positional(self):
@@ -597,7 +700,9 @@ class TestParseUserArgs:
 
 @patch(MOCK_WHICH, return_value="/usr/bin/claude")
 class TestDuplicateArgNamesRejected:
-    def test_duplicate_declared_arg_names_rejected(self, mock_which, tmp_path, monkeypatch):
+    def test_duplicate_declared_arg_names_rejected(
+        self, mock_which, tmp_path, monkeypatch
+    ):
         """args: [foo, foo] should be rejected — duplicate names cause silent overwrites."""
         monkeypatch.chdir(tmp_path)
         ralph_dir = tmp_path / "my-ralph"
@@ -613,16 +718,24 @@ class TestDuplicateArgNamesRejected:
 @patch(MOCK_WHICH, return_value="/usr/bin/claude")
 class TestRunWithUserArgs:
     @patch(MOCK_SUBPROCESS)
-    def test_named_args_resolved_in_prompt(self, mock_run, mock_which, tmp_path, monkeypatch):
+    def test_named_args_resolved_in_prompt(
+        self, mock_run, mock_which, tmp_path, monkeypatch
+    ):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path, prompt="Research {{ args.dir }}")
         mock_run.return_value = ok_proc()
-        result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1", "--dir", "./my-project"])
+        result = runner.invoke(
+            app, ["run", str(ralph_dir), "-n", "1", "--dir", "./my-project"]
+        )
         assert result.exit_code == 0
-        assert mock_run.return_value.communicate.call_args.kwargs["input"].startswith("Research ./my-project")
+        assert mock_run.return_value.communicate.call_args.kwargs["input"].startswith(
+            "Research ./my-project"
+        )
 
     @patch(MOCK_SUBPROCESS)
-    def test_positional_args_with_declared_names(self, mock_run, mock_which, tmp_path, monkeypatch):
+    def test_positional_args_with_declared_names(
+        self, mock_run, mock_which, tmp_path, monkeypatch
+    ):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(
             tmp_path,
@@ -630,18 +743,26 @@ class TestRunWithUserArgs:
             args=["dir", "focus"],
         )
         mock_run.return_value = ok_proc()
-        result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1", "./my-project", "performance"])
+        result = runner.invoke(
+            app, ["run", str(ralph_dir), "-n", "1", "./my-project", "performance"]
+        )
         assert result.exit_code == 0
-        assert mock_run.return_value.communicate.call_args.kwargs["input"].startswith("Research ./my-project with focus on performance")
+        assert mock_run.return_value.communicate.call_args.kwargs["input"].startswith(
+            "Research ./my-project with focus on performance"
+        )
 
     @patch(MOCK_SUBPROCESS)
-    def test_unused_arg_placeholders_cleared(self, mock_run, mock_which, tmp_path, monkeypatch):
+    def test_unused_arg_placeholders_cleared(
+        self, mock_run, mock_which, tmp_path, monkeypatch
+    ):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path, prompt="Before {{ args.opt }} after")
         mock_run.return_value = ok_proc()
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
         assert result.exit_code == 0
-        assert mock_run.return_value.communicate.call_args.kwargs["input"].startswith("Before  after")
+        assert mock_run.return_value.communicate.call_args.kwargs["input"].startswith(
+            "Before  after"
+        )
 
 
 class TestParseCommands:
@@ -666,6 +787,7 @@ class TestParseCommands:
 
     def test_default_timeout(self):
         from ralphify._run_types import DEFAULT_COMMAND_TIMEOUT
+
         raw = [{"name": "fast", "run": "echo hi"}]
         commands = _parse_command_items(raw)
         assert commands[0].timeout == DEFAULT_COMMAND_TIMEOUT
@@ -688,10 +810,12 @@ class TestParseCommands:
 
     def test_duplicate_names_errors(self):
         with pytest.raises(typer.Exit):
-            _parse_command_items([
-                {"name": "test", "run": "echo 1"},
-                {"name": "test", "run": "echo 2"},
-            ])
+            _parse_command_items(
+                [
+                    {"name": "test", "run": "echo 1"},
+                    {"name": "test", "run": "echo 2"},
+                ]
+            )
 
     def test_whitespace_only_name_errors(self):
         with pytest.raises(typer.Exit):
@@ -715,7 +839,9 @@ class TestParseCommands:
 
     def test_non_numeric_timeout_errors(self):
         with pytest.raises(typer.Exit):
-            _parse_command_items([{"name": "test", "run": "echo hi", "timeout": "fast"}])
+            _parse_command_items(
+                [{"name": "test", "run": "echo hi", "timeout": "fast"}]
+            )
 
     def test_negative_timeout_errors(self):
         with pytest.raises(typer.Exit):
@@ -737,20 +863,28 @@ class TestParseCommands:
     def test_nan_timeout_errors(self):
         """timeout: .nan in YAML produces float('nan'); must be rejected."""
         with pytest.raises(typer.Exit):
-            _parse_command_items([{"name": "test", "run": "echo hi", "timeout": float("nan")}])
+            _parse_command_items(
+                [{"name": "test", "run": "echo hi", "timeout": float("nan")}]
+            )
 
     def test_inf_timeout_errors(self):
         """timeout: .inf in YAML produces float('inf'); must be rejected."""
         with pytest.raises(typer.Exit):
-            _parse_command_items([{"name": "test", "run": "echo hi", "timeout": float("inf")}])
+            _parse_command_items(
+                [{"name": "test", "run": "echo hi", "timeout": float("inf")}]
+            )
 
-    @pytest.mark.parametrize("name", [
-        "git.status",
-        "my command",
-        "test@home",
-        "name!",
-        "a/b",
-    ], ids=["dot", "space", "at-sign", "exclamation", "slash"])
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "git.status",
+            "my command",
+            "test@home",
+            "name!",
+            "a/b",
+        ],
+        ids=["dot", "space", "at-sign", "exclamation", "slash"],
+    )
     def test_name_with_invalid_chars_errors(self, name):
         """Command names with chars outside [a-zA-Z0-9_-] can never be
         referenced by placeholders and must be rejected early."""
@@ -767,10 +901,15 @@ class TestCreditFrontmatter:
         mock_run.return_value = ok_proc()
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
         assert result.exit_code == 0
-        assert "Co-authored-by: Ralphify" in mock_run.return_value.communicate.call_args.kwargs["input"]
+        assert (
+            "Co-authored-by: Ralphify"
+            in mock_run.return_value.communicate.call_args.kwargs["input"]
+        )
 
     @patch(MOCK_SUBPROCESS)
-    def test_credit_false_omits_trailer(self, mock_run, mock_which, tmp_path, monkeypatch):
+    def test_credit_false_omits_trailer(
+        self, mock_run, mock_which, tmp_path, monkeypatch
+    ):
         monkeypatch.chdir(tmp_path)
         ralph_dir = tmp_path / "my-ralph"
         ralph_dir.mkdir(exist_ok=True)
@@ -780,7 +919,10 @@ class TestCreditFrontmatter:
         mock_run.return_value = ok_proc()
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
         assert result.exit_code == 0
-        assert "Co-authored-by" not in mock_run.return_value.communicate.call_args.kwargs["input"]
+        assert (
+            "Co-authored-by"
+            not in mock_run.return_value.communicate.call_args.kwargs["input"]
+        )
 
     def test_credit_invalid_value_errors(self, mock_which, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -816,6 +958,7 @@ class TestAdd:
     def test_add_single_ralph(self, mock_parse, mock_fetch, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         from ralphify._source import ParsedSource, FetchResult
+
         parsed = ParsedSource(
             owner_repo="owner/repo",
             repo_url="https://github.com/owner/repo.git",
@@ -838,6 +981,7 @@ class TestAdd:
     def test_add_multiple_ralphs(self, mock_parse, mock_fetch, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         from ralphify._source import ParsedSource, FetchResult
+
         parsed = ParsedSource(
             owner_repo="owner/repo",
             repo_url="https://github.com/owner/repo.git",
@@ -846,10 +990,12 @@ class TestAdd:
             name="repo",
         )
         mock_parse.return_value = parsed
-        mock_fetch.return_value = FetchResult(installed=[
-            ("ralph-a", tmp_path / "a"),
-            ("ralph-b", tmp_path / "b"),
-        ])
+        mock_fetch.return_value = FetchResult(
+            installed=[
+                ("ralph-a", tmp_path / "a"),
+                ("ralph-b", tmp_path / "b"),
+            ]
+        )
 
         result = runner.invoke(app, ["add", "owner/repo"])
         assert result.exit_code == 0
@@ -858,18 +1004,26 @@ class TestAdd:
         assert "ralph-b" in result.output
         assert "ralph run <name>" in result.output
 
-    @patch("ralphify._source.parse_github_source", side_effect=ValueError("Cannot parse source 'bad'"))
+    @patch(
+        "ralphify._source.parse_github_source",
+        side_effect=ValueError("Cannot parse source 'bad'"),
+    )
     def test_add_invalid_source_errors(self, mock_parse, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         result = runner.invoke(app, ["add", "bad"])
         assert result.exit_code == 1
         assert "Cannot parse source" in result.output
 
-    @patch("ralphify._source.fetch_ralphs", side_effect=RuntimeError("git clone failed"))
+    @patch(
+        "ralphify._source.fetch_ralphs", side_effect=RuntimeError("git clone failed")
+    )
     @patch("ralphify._source.parse_github_source")
-    def test_add_fetch_failure_errors(self, mock_parse, mock_fetch, tmp_path, monkeypatch):
+    def test_add_fetch_failure_errors(
+        self, mock_parse, mock_fetch, tmp_path, monkeypatch
+    ):
         monkeypatch.chdir(tmp_path)
         from ralphify._source import ParsedSource
+
         mock_parse.return_value = ParsedSource(
             owner_repo="owner/repo",
             repo_url="https://github.com/owner/repo.git",
@@ -883,9 +1037,12 @@ class TestAdd:
 
     @patch("ralphify._source.fetch_ralphs")
     @patch("ralphify._source.parse_github_source")
-    def test_add_creates_ralphs_dir(self, mock_parse, mock_fetch, tmp_path, monkeypatch):
+    def test_add_creates_ralphs_dir(
+        self, mock_parse, mock_fetch, tmp_path, monkeypatch
+    ):
         monkeypatch.chdir(tmp_path)
         from ralphify._source import ParsedSource, FetchResult
+
         mock_parse.return_value = ParsedSource(
             owner_repo="owner/repo",
             repo_url="https://github.com/owner/repo.git",
@@ -928,7 +1085,9 @@ class TestTwoStageCtrlC:
         assert "Finishing current iteration" in result.output
 
     @patch(MOCK_WHICH, return_value="/usr/bin/claude")
-    def test_second_sigint_raises_keyboard_interrupt(self, mock_which, tmp_path, monkeypatch):
+    def test_second_sigint_raises_keyboard_interrupt(
+        self, mock_which, tmp_path, monkeypatch
+    ):
         """Second Ctrl+C should raise KeyboardInterrupt."""
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
@@ -948,7 +1107,9 @@ class TestTwoStageCtrlC:
 
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     @patch(MOCK_WHICH, return_value="/usr/bin/claude")
-    def test_run_command_restores_original_handler(self, mock_which, mock_run, tmp_path, monkeypatch):
+    def test_run_command_restores_original_handler(
+        self, mock_which, mock_run, tmp_path, monkeypatch
+    ):
         """Signal handler should be restored after run_loop finishes."""
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
@@ -963,7 +1124,9 @@ class TestTwoStageCtrlC:
 
 @patch(MOCK_WHICH, return_value="/usr/bin/claude")
 class TestInstalledRalphResolution:
-    def test_run_resolves_installed_ralph_by_name(self, mock_which, tmp_path, monkeypatch):
+    def test_run_resolves_installed_ralph_by_name(
+        self, mock_which, tmp_path, monkeypatch
+    ):
         monkeypatch.chdir(tmp_path)
         installed = tmp_path / ".ralphify" / "ralphs" / "my-tool"
         installed.mkdir(parents=True)
@@ -982,11 +1145,14 @@ class TestInstalledRalphResolution:
 
         installed = tmp_path / ".ralphify" / "ralphs" / "my-tool"
         installed.mkdir(parents=True)
-        (installed / RALPH_MARKER).write_text("---\nagent: claude -p\n---\ninstalled prompt")
+        (installed / RALPH_MARKER).write_text(
+            "---\nagent: claude -p\n---\ninstalled prompt"
+        )
 
         # Run should use the local path, not the installed one
         # We verify by checking the config reads the local prompt
         from ralphify.cli import _resolve_ralph_paths
+
         ralph_dir, ralph_file = _resolve_ralph_paths("my-tool")
         assert "local prompt" in ralph_file.read_text()
 
@@ -1002,13 +1168,17 @@ class TestWin32Reconfigure:
         """On Windows, cli module reconfigures stdout/stderr to UTF-8 at import time."""
         mock_stdout = MagicMock()
         mock_stderr = MagicMock()
-        with patch("sys.platform", "win32"), \
-             patch("sys.stdout", mock_stdout), \
-             patch("sys.stderr", mock_stderr):
+        with (
+            patch("sys.platform", "win32"),
+            patch("sys.stdout", mock_stdout),
+            patch("sys.stderr", mock_stderr),
+        ):
             # Reload _output first so IS_WINDOWS picks up the patched platform.
             import ralphify._output as _output_mod
+
             importlib.reload(_output_mod)
             import ralphify.cli as cli_mod
+
             importlib.reload(cli_mod)
 
         # Restore IS_WINDOWS to its real value so other tests are unaffected.

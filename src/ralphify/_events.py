@@ -10,7 +10,7 @@ import queue
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Literal, NotRequired, Protocol, TypedDict, runtime_checkable
+from typing import Any, Literal, NotRequired, Protocol, TypedDict, cast, runtime_checkable
 
 
 LogLevel = Literal["info", "error"]
@@ -218,11 +218,17 @@ class BoundEmitter:
         self._run_id = run_id
 
     def __call__(
-        self, event_type: EventType, data: EventData | None = None,
+        self,
+        event_type: EventType,
+        data: EventData | None = None,
     ) -> None:
-        self._emitter.emit(Event(
-            type=event_type, run_id=self._run_id, data=data if data is not None else {},
-        ))
+        self._emitter.emit(
+            Event(
+                type=event_type,
+                run_id=self._run_id,
+                data=cast(dict[str, Any], data) if data is not None else {},
+            )
+        )
 
     def log_info(self, message: str) -> None:
         """Emit a ``LOG_MESSAGE`` event at info level."""

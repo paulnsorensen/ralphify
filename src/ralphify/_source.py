@@ -121,7 +121,13 @@ def parse_github_source(source: str) -> ParsedSource:
     name = Path(subpath).name if subpath else repo
     handle = f"{owner_repo}/{subpath}" if subpath else owner_repo
 
-    return ParsedSource(owner_repo=owner_repo, repo_url=repo_url, subpath=subpath, handle=handle, name=name)
+    return ParsedSource(
+        owner_repo=owner_repo,
+        repo_url=repo_url,
+        subpath=subpath,
+        handle=handle,
+        name=name,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -131,9 +137,7 @@ def parse_github_source(source: str) -> ParsedSource:
 
 def _find_ralphs_in(root: Path) -> list[Path]:
     """Return all directories under *root* that contain a RALPH.md."""
-    return sorted(
-        p.parent for p in root.rglob(RALPH_MARKER) if p.is_file()
-    )
+    return sorted(p.parent for p in root.rglob(RALPH_MARKER) if p.is_file())
 
 
 def _shallow_clone(repo_url: str, dest: Path) -> None:
@@ -194,7 +198,9 @@ def fetch_ralphs(parsed: ParsedSource, ralphs_dir: Path) -> FetchResult:
 
 
 def _fetch_repo_ralphs(
-    clone_dir: Path, parsed: ParsedSource, ralphs_dir: Path,
+    clone_dir: Path,
+    parsed: ParsedSource,
+    ralphs_dir: Path,
 ) -> FetchResult:
     """Handle ``owner/repo`` — repo root is a ralph, or install all."""
     root_ralph = clone_dir / RALPH_MARKER
@@ -204,9 +210,7 @@ def _fetch_repo_ralphs(
     # Scan for all ralphs in the repo.
     ralph_dirs = _find_ralphs_in(clone_dir)
     if not ralph_dirs:
-        raise RuntimeError(
-            f"No {RALPH_MARKER} found in {parsed.handle}."
-        )
+        raise RuntimeError(f"No {RALPH_MARKER} found in {parsed.handle}.")
 
     # Detect duplicate leaf names — installing two ralphs with the same
     # directory name would silently overwrite the first.
@@ -225,7 +229,9 @@ def _fetch_repo_ralphs(
 
 
 def _fetch_named_ralph(
-    clone_dir: Path, parsed: ParsedSource, ralphs_dir: Path,
+    clone_dir: Path,
+    parsed: ParsedSource,
+    ralphs_dir: Path,
 ) -> FetchResult:
     """Handle ``owner/repo/ralph-name`` — search or exact subpath."""
     assert parsed.subpath is not None
@@ -245,21 +251,23 @@ def _fetch_named_ralph(
 
     elif len(matches) > 1:
         raise _duplicate_ralph_error(
-            ralph_name, matches, clone_dir, parsed.owner_repo,
+            ralph_name,
+            matches,
+            clone_dir,
+            parsed.owner_repo,
         )
 
-    raise RuntimeError(
-        f"No ralph named '{ralph_name}' found in {parsed.handle}."
-    )
+    raise RuntimeError(f"No ralph named '{ralph_name}' found in {parsed.handle}.")
 
 
 def _duplicate_ralph_error(
-    name: str, paths: list[Path], clone_dir: Path, owner_repo: str,
+    name: str,
+    paths: list[Path],
+    clone_dir: Path,
+    owner_repo: str,
 ) -> RuntimeError:
     """Build a ``RuntimeError`` for duplicate ralph names in a repo."""
-    listing = "\n".join(
-        f"  - {p.relative_to(clone_dir)}/{RALPH_MARKER}" for p in paths
-    )
+    listing = "\n".join(f"  - {p.relative_to(clone_dir)}/{RALPH_MARKER}" for p in paths)
     example = f"{owner_repo}/{paths[0].relative_to(clone_dir)}"
     return RuntimeError(
         f"Found multiple ralphs named '{name}' in {owner_repo}:\n"

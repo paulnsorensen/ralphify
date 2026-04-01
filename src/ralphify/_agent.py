@@ -27,7 +27,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import IO, Any
 
-from ralphify._output import IS_WINDOWS, SUBPROCESS_TEXT_KWARGS, ProcessResult, collect_output, ensure_str
+from ralphify._output import (
+    IS_WINDOWS,
+    SUBPROCESS_TEXT_KWARGS,
+    ProcessResult,
+    collect_output,
+    ensure_str,
+)
 
 # Agent binary name that supports --output-format stream-json.
 _CLAUDE_BINARY = "claude"
@@ -51,10 +57,7 @@ _SIGTERM_GRACE_PERIOD = 3
 # Subprocess kwargs that isolate agent processes in their own session/group.
 # On POSIX this uses start_new_session so the agent and all its children
 # form a separate process group that can be killed together.
-_SESSION_KWARGS: dict[str, Any] = (
-    {} if IS_WINDOWS
-    else {"start_new_session": True}
-)
+_SESSION_KWARGS: dict[str, Any] = {} if IS_WINDOWS else {"start_new_session": True}
 
 
 def _try_graceful_group_kill(proc: subprocess.Popen[Any]) -> bool:
@@ -137,7 +140,9 @@ def _write_log(
     if log_path_dir is None:
         return None
     timestamp = datetime.now(timezone.utc).strftime(_LOG_TIMESTAMP_FORMAT)
-    log_file = log_path_dir / f"{iteration:0{_LOG_ITERATION_PAD_WIDTH}d}_{timestamp}.log"
+    log_file = (
+        log_path_dir / f"{iteration:0{_LOG_ITERATION_PAD_WIDTH}d}_{timestamp}.log"
+    )
     log_file.write_text(collect_output(stdout, stderr), encoding="utf-8")
     return log_file
 
@@ -201,15 +206,21 @@ def _read_agent_stream(
             except json.JSONDecodeError:
                 parsed = None
             if isinstance(parsed, dict):
-                if parsed.get("type") == _RESULT_EVENT_TYPE and isinstance(parsed.get(_RESULT_FIELD), str):
+                if parsed.get("type") == _RESULT_EVENT_TYPE and isinstance(
+                    parsed.get(_RESULT_FIELD), str
+                ):
                     result_text = parsed[_RESULT_FIELD]
                 if on_activity is not None:
                     on_activity(parsed)
 
         if deadline is not None and time.monotonic() > deadline:
-            return _StreamResult(stdout_lines=stdout_lines, result_text=result_text, timed_out=True)
+            return _StreamResult(
+                stdout_lines=stdout_lines, result_text=result_text, timed_out=True
+            )
 
-    return _StreamResult(stdout_lines=stdout_lines, result_text=result_text, timed_out=False)
+    return _StreamResult(
+        stdout_lines=stdout_lines, result_text=result_text, timed_out=False
+    )
 
 
 def _run_agent_streaming(
@@ -260,7 +271,9 @@ def _run_agent_streaming(
             _kill_process_group(proc)
             proc.wait()
 
-    log_file = _write_log(log_path_dir, iteration, "".join(stream.stdout_lines), stderr_data)
+    log_file = _write_log(
+        log_path_dir, iteration, "".join(stream.stdout_lines), stderr_data
+    )
 
     return AgentResult(
         returncode=None if stream.timed_out else proc.returncode,
@@ -350,7 +363,11 @@ def execute_agent(
     """
     if _supports_stream_json(cmd):
         return _run_agent_streaming(
-            cmd, prompt, timeout, log_path_dir, iteration,
+            cmd,
+            prompt,
+            timeout,
+            log_path_dir,
+            iteration,
             on_activity=on_activity,
         )
     return _run_agent_blocking(cmd, prompt, timeout, log_path_dir, iteration)

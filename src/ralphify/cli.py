@@ -36,7 +36,13 @@ from ralphify._frontmatter import (
     parse_frontmatter,
 )
 from ralphify._output import IS_WINDOWS
-from ralphify._run_types import Command, DEFAULT_COMMAND_TIMEOUT, RunConfig, RunState, generate_run_id
+from ralphify._run_types import (
+    Command,
+    DEFAULT_COMMAND_TIMEOUT,
+    RunConfig,
+    RunState,
+    generate_run_id,
+)
 from ralphify.engine import run_loop
 
 if IS_WINDOWS:
@@ -87,7 +93,10 @@ BANNER = [
     ("██████╔╝███████║██║░░░░░██████╔╝███████║██║█████╗░░░╚████╔╝░", _brand.LAVENDER),
     ("██╔══██╗██╔══██║██║░░░░░██╔═══╝░██╔══██║██║██╔══╝░░░░╚██╔╝░░", _brand.PEACH),
     ("██║░░██║██║░░██║███████╗██║░░░░░██║░░██║██║██║░░░░░░░░██║░░░", _brand.ORANGE),
-    ("╚═╝░░╚═╝╚═╝░░╚═╝╚══════╝╚═╝░░░░░╚═╝░░╚═╝╚═╝╚═╝░░░░░░░░╚═╝░░░", _brand.DEEP_ORANGE),
+    (
+        "╚═╝░░╚═╝╚═╝░░╚═╝╚══════╝╚═╝░░░░░╚═╝░░╚═╝╚═╝╚═╝░░░░░░░░╚═╝░░░",
+        _brand.DEEP_ORANGE,
+    ),
 ]
 
 TAGLINE = "Stop stressing over not having an agent running. Ralph is always running"
@@ -136,7 +145,9 @@ def _print_banner() -> None:
     for line, color in BANNER:
         _console.print(f"[bold {color}]{prefix}{line}[/bold {color}]")
     _console.print()
-    _console.print(f"[italic {_brand.PURPLE}]{TAGLINE:^{width}}[/italic {_brand.PURPLE}]")
+    _console.print(
+        f"[italic {_brand.PURPLE}]{TAGLINE:^{width}}[/italic {_brand.PURPLE}]"
+    )
     _console.print()
     help_text = "Run 'ralph --help' for usage information"
     _console.print(f"[dim]{help_text:^{width}}[/dim]")
@@ -154,7 +165,14 @@ def _version_callback(value: bool) -> None:
 @app.callback(invoke_without_command=True)
 def main_callback(
     ctx: typer.Context,
-    version: bool = typer.Option(False, "--version", "-V", help="Show version and exit.", callback=_version_callback, is_eager=True),
+    version: bool = typer.Option(
+        False,
+        "--version",
+        "-V",
+        help="Show version and exit.",
+        callback=_version_callback,
+        is_eager=True,
+    ),
 ) -> None:
     """Stop stressing over not having an agent running. Ralph is always running."""
     if ctx.invoked_subcommand is None:
@@ -165,7 +183,9 @@ def main_callback(
 
 @app.command()
 def new(
-    name: str | None = typer.Argument(None, help="Name for the new ralph. If omitted, the agent will help you choose."),
+    name: str | None = typer.Argument(
+        None, help="Name for the new ralph. If omitted, the agent will help you choose."
+    ),
 ) -> None:
     """Create a new ralph with AI-guided setup."""
     from ralphify._skills import build_agent_command, detect_agent, install_skill
@@ -189,7 +209,10 @@ def new(
 
 @app.command()
 def init(
-    name: str | None = typer.Argument(None, help="Directory name. If omitted, creates RALPH.md in the current directory."),
+    name: str | None = typer.Argument(
+        None,
+        help="Directory name. If omitted, creates RALPH.md in the current directory.",
+    ),
 ) -> None:
     """Scaffold a new ralph with a ready-to-customize template."""
     if name:
@@ -210,7 +233,9 @@ def init(
 
 @app.command()
 def add(
-    source: str = typer.Argument(..., help="GitHub source: owner/repo or owner/repo/ralph-name"),
+    source: str = typer.Argument(
+        ..., help="GitHub source: owner/repo or owner/repo/ralph-name"
+    ),
 ) -> None:
     """Add a ralph from a GitHub repository."""
     from ralphify._source import fetch_ralphs, parse_github_source
@@ -233,10 +258,12 @@ def add(
         _console.print(f"[green]Added[/green] {name}")
         _console.print(f"[dim]Run it with:[/dim] ralph run {name}")
     else:
-        _console.print(f"[green]Added {len(result.installed)} ralphs from {parsed.handle}:[/green]")
+        _console.print(
+            f"[green]Added {len(result.installed)} ralphs from {parsed.handle}:[/green]"
+        )
         for name, _ in result.installed:
             _console.print(f"  {name}")
-        _console.print(f"\n[dim]Run any with:[/dim] ralph run <name>")
+        _console.print("\n[dim]Run any with:[/dim] ralph run <name>")
 
 
 def _parse_user_args(
@@ -266,7 +293,9 @@ def _parse_user_args(
                 try:
                     value = next(it)
                 except StopIteration:
-                    raise typer.BadParameter(f"Flag '--{name}' requires a value.") from None
+                    raise typer.BadParameter(
+                        f"Flag '--{name}' requires a value."
+                    ) from None
             if not NAME_RE.fullmatch(name):
                 raise typer.BadParameter(
                     f"Arg name '{name}' contains invalid characters. "
@@ -280,7 +309,10 @@ def _parse_user_args(
                     f"Use --name value syntax or add 'args: [...]' to your {RALPH_MARKER}."
                 )
             # Skip declared names already provided via named flags
-            while positional_index < len(declared_names) and declared_names[positional_index] in result:
+            while (
+                positional_index < len(declared_names)
+                and declared_names[positional_index] in result
+            ):
                 positional_index += 1
             if positional_index >= len(declared_names):
                 raise typer.BadParameter(
@@ -319,8 +351,14 @@ def _parse_command_items(raw_commands: list[dict[str, Any]]) -> list[Command]:
     commands: list[Command] = []
     seen_names: set[str] = set()
     for cmd_def in raw_commands:
-        if not isinstance(cmd_def, dict) or CMD_FIELD_NAME not in cmd_def or CMD_FIELD_RUN not in cmd_def:
-            _exit_error(f"Each command must have '{CMD_FIELD_NAME}' and '{CMD_FIELD_RUN}' fields.")
+        if (
+            not isinstance(cmd_def, dict)
+            or CMD_FIELD_NAME not in cmd_def
+            or CMD_FIELD_RUN not in cmd_def
+        ):
+            _exit_error(
+                f"Each command must have '{CMD_FIELD_NAME}' and '{CMD_FIELD_RUN}' fields."
+            )
         for key in (CMD_FIELD_NAME, CMD_FIELD_RUN):
             if not _is_nonempty_string(cmd_def[key]):
                 _exit_error(f"Command '{key}' must be a non-empty string.")
@@ -336,11 +374,13 @@ def _parse_command_items(raw_commands: list[dict[str, Any]]) -> list[Command]:
                 f"Command '{cmd_name}' has invalid timeout: {timeout!r}. "
                 f"Must be a positive number."
             )
-        commands.append(Command(
-            name=cmd_name,
-            run=cmd_run,
-            timeout=timeout,
-        ))
+        commands.append(
+            Command(
+                name=cmd_name,
+                run=cmd_run,
+                timeout=timeout,
+            )
+        )
     return commands
 
 
@@ -403,11 +443,15 @@ def _validate_agent(raw_agent: Any) -> str:
     value is missing, malformed, or the binary is not found on PATH.
     """
     if not _is_nonempty_string(raw_agent):
-        _exit_error(f"Missing or empty '{FIELD_AGENT}' field in {RALPH_MARKER} frontmatter.")
+        _exit_error(
+            f"Missing or empty '{FIELD_AGENT}' field in {RALPH_MARKER} frontmatter."
+        )
     try:
         agent_binary = shlex.split(raw_agent)[0]
     except ValueError as exc:
-        _exit_error(f"Malformed '{FIELD_AGENT}' field in {RALPH_MARKER} frontmatter: {exc}")
+        _exit_error(
+            f"Malformed '{FIELD_AGENT}' field in {RALPH_MARKER} frontmatter: {exc}"
+        )
     if not shutil.which(agent_binary):
         _exit_error(f"Agent command '{agent_binary}' not found on PATH.")
     return raw_agent
@@ -486,15 +530,40 @@ def _build_run_config(
     )
 
 
-@app.command(context_settings={"allow_extra_args": True, "allow_interspersed_args": True, "ignore_unknown_options": True})
+@app.command(
+    context_settings={
+        "allow_extra_args": True,
+        "allow_interspersed_args": True,
+        "ignore_unknown_options": True,
+    }
+)
 def run(
     ctx: typer.Context,
     path: str = typer.Argument(..., help="Path to a ralph directory or RALPH.md file."),
-    n: int | None = typer.Option(None, "-n", help="Max number of iterations. Infinite if not set."),
-    stop_on_error: bool = typer.Option(False, "--stop-on-error", "-s", help="Stop if the agent exits non-zero or times out."),
-    delay: float = typer.Option(0, "--delay", "-d", help="Seconds to wait between iterations."),
-    log_dir: str | None = typer.Option(None, "--log-dir", "-l", help="Save iteration output to log files in this directory."),
-    timeout: float | None = typer.Option(None, "--timeout", "-t", help="Max seconds per iteration. Kill agent if exceeded."),
+    n: int | None = typer.Option(
+        None, "-n", help="Max number of iterations. Infinite if not set."
+    ),
+    stop_on_error: bool = typer.Option(
+        False,
+        "--stop-on-error",
+        "-s",
+        help="Stop if the agent exits non-zero or times out.",
+    ),
+    delay: float = typer.Option(
+        0, "--delay", "-d", help="Seconds to wait between iterations."
+    ),
+    log_dir: str | None = typer.Option(
+        None,
+        "--log-dir",
+        "-l",
+        help="Save iteration output to log files in this directory.",
+    ),
+    timeout: float | None = typer.Option(
+        None,
+        "--timeout",
+        "-t",
+        help="Max seconds per iteration. Kill agent if exceeded.",
+    ),
 ) -> None:
     """Run the autonomous coding loop.
 
@@ -508,7 +577,12 @@ def run(
     extra = list(ctx.args)
 
     config = _build_run_config(
-        path, n, stop_on_error, delay, log_dir, timeout,
+        path,
+        n,
+        stop_on_error,
+        delay,
+        log_dir,
+        timeout,
         extra_args=extra or None,
     )
 
@@ -526,7 +600,9 @@ def run(
         ctrl_c_count += 1
         if ctrl_c_count == 1:
             state.request_stop()
-            _console.print("\n[yellow]Finishing current iteration… (Ctrl+C again to force stop)[/yellow]")
+            _console.print(
+                "\n[yellow]Finishing current iteration… (Ctrl+C again to force stop)[/yellow]"
+            )
         else:
             signal.signal(signal.SIGINT, original_handler)
             raise KeyboardInterrupt

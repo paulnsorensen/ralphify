@@ -51,7 +51,9 @@ def _get_agent_config(agent_name: str) -> _AgentConfig:
 
 def read_bundled_skill(skill_name: str) -> str:
     """Read a bundled SKILL.md from the ``ralphify.skills`` package."""
-    pkg = importlib.resources.files("ralphify.skills").joinpath(skill_name, SKILL_MARKER)
+    pkg = importlib.resources.files("ralphify.skills").joinpath(
+        skill_name, SKILL_MARKER
+    )
     return pkg.read_text(encoding="utf-8")
 
 
@@ -68,9 +70,7 @@ def detect_agent() -> DetectedAgent:
         if resolved:
             return DetectedAgent(name=name, path=resolved)
 
-    raise RuntimeError(
-        "No agent found. Install Claude Code or Codex."
-    )
+    raise RuntimeError("No agent found. Install Claude Code or Codex.")
 
 
 def install_skill(skill_name: str, agent_name: str) -> Path:
@@ -83,7 +83,9 @@ def install_skill(skill_name: str, agent_name: str) -> Path:
     return dest
 
 
-def build_agent_command(agent_name: str, skill_name: str, ralph_name: str | None) -> list[str]:
+def build_agent_command(
+    agent_name: str, skill_name: str, ralph_name: str | None
+) -> list[str]:
     """Build the command to launch the agent with the skill invoked."""
     agent_config = _get_agent_config(agent_name)
     invocation = f"{agent_config.skill_prefix}{skill_name}"

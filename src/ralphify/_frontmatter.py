@@ -41,7 +41,9 @@ _FRONTMATTER_DELIMITER = "---"
 NAME_RE = re.compile(r"[a-zA-Z0-9_-]+")
 
 # Human-readable description of allowed name characters, paired with NAME_RE.
-VALID_NAME_CHARS_MSG = "Names may only contain letters, digits, hyphens, and underscores."
+VALID_NAME_CHARS_MSG = (
+    "Names may only contain letters, digits, hyphens, and underscores."
+)
 
 # UTF-8 BOM character — files saved on Windows may start with this.
 _UTF8_BOM = "\ufeff"
@@ -110,7 +112,9 @@ def serialize_frontmatter(frontmatter: dict[str, Any], body: str) -> str:
     parts: list[str] = []
     if frontmatter:
         parts.append(_FRONTMATTER_DELIMITER)
-        fm_text = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False).strip()
+        fm_text = yaml.dump(
+            frontmatter, default_flow_style=False, sort_keys=False
+        ).strip()
         parts.append(fm_text)
         parts.append(_FRONTMATTER_DELIMITER)
         parts.append("")

@@ -7,7 +7,6 @@ import pytest
 from helpers import MOCK_SKILLS_WHICH
 
 from ralphify._skills import (
-    DetectedAgent,
     build_agent_command,
     detect_agent,
     install_skill,

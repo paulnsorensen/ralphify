@@ -121,8 +121,12 @@ class RunState:
     timed_out_count: int = 0
     started_at: datetime | None = None
 
-    _stop_event: threading.Event = field(default_factory=threading.Event, init=False, repr=False, compare=False)
-    _resume_event: threading.Event = field(default_factory=threading.Event, init=False, repr=False, compare=False)
+    _stop_event: threading.Event = field(
+        default_factory=threading.Event, init=False, repr=False, compare=False
+    )
+    _resume_event: threading.Event = field(
+        default_factory=threading.Event, init=False, repr=False, compare=False
+    )
 
     @property
     def total(self) -> int:

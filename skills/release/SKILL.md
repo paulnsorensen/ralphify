@@ -34,7 +34,7 @@ You are running the ralphify release process. Follow each phase in order. Stop a
 
 Not every release needs doc updates everywhere. Use judgment:
 
-### Changelog (`docs/changelog.md`)
+### Changelog (`CHANGELOG.md`)
 - **Always update.** Add a new section at the top (below the header), following the existing format:
   ```
   ## X.Y.Z — YYYY-MM-DD
@@ -66,7 +66,10 @@ For each doc surface, state whether you're updating it and why (or why not). Don
 Run locally before pushing:
 
 ```bash
-uv run pytest           # All tests must pass
+uv run ruff check .           # Lint must pass
+uv run ruff format --check .  # Format must pass
+uv run ty check               # Type check must pass
+uv run pytest                 # All tests must pass
 uv run mkdocs build --strict  # Zero warnings
 ```
 
@@ -79,28 +82,13 @@ If either fails, fix the issue before continuing.
 3. Create an annotated tag: `git tag -a vX.Y.Z -m "vX.Y.Z"`.
 4. Push with tags: `git push origin main --follow-tags`.
 
-## Phase 7: Create GitHub release
-
-Use `gh release create` to create the release:
-
-```bash
-gh release create vX.Y.Z --title "vX.Y.Z" --notes "$(cat <<'EOF'
-<release notes in markdown — same content as changelog entry>
-
-**Full changelog**: https://github.com/computerlovetech/ralphify/compare/<prev-tag>...vX.Y.Z
-
-**PyPI**: https://pypi.org/project/ralphify/X.Y.Z/
-EOF
-)"
-```
-
-## Phase 8: Verify CI pipeline
+## Phase 7: Verify CI pipeline
 
 1. Watch the publish workflow: `gh run list --workflow=publish.yml --limit=3`.
 2. If a run is in progress, check its status: `gh run watch <run-id>`.
 3. If the run fails, investigate and report to the user. Do not retry automatically.
 
-## Phase 9: Social content
+## Phase 8: Social content
 
 Generate two pieces of social content for the user to review and post:
 
@@ -119,6 +107,6 @@ Present both to the user for review. These are suggestions — the user decides 
 
 ## Important notes
 
-- The publish workflow (`publish.yml`) triggers on GitHub release creation and verifies the git tag matches `pyproject.toml` version. The tag format is `vX.Y.Z`.
+- The publish workflow (`publish.yml`) triggers on tag push (`v*`) and verifies the git tag matches `pyproject.toml` version. CI automatically creates the GitHub Release from `CHANGELOG.md`. The tag format is `vX.Y.Z`.
 - Never force-push or rewrite history on main.
 - If anything goes wrong mid-release, stop and discuss with the user rather than trying to recover automatically.

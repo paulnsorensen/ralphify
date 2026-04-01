@@ -6,7 +6,6 @@ from unittest.mock import patch, MagicMock
 class TestVersionFallback:
     def test_fallback_to_0_0_0_when_package_not_found(self):
         """When importlib.metadata can't find the package, __version__ falls back to '0.0.0'."""
-        import importlib
         import sys
         from importlib.metadata import PackageNotFoundError
 

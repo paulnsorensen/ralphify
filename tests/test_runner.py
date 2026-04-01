@@ -72,7 +72,9 @@ class TestRunCommand:
     @patch(MOCK_RUNNER_SUBPROCESS)
     def test_env_merged_with_parent(self, mock_run):
         mock_run.return_value = ok_result()
-        run_command(command="echo", cwd=Path("/project"), timeout=60, env={"RALPH_NAME": "docs"})
+        run_command(
+            command="echo", cwd=Path("/project"), timeout=60, env={"RALPH_NAME": "docs"}
+        )
 
         passed_env = mock_run.call_args.kwargs["env"]
         assert passed_env["RALPH_NAME"] == "docs"
