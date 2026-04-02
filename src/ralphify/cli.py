@@ -8,7 +8,6 @@ loop.  Terminal rendering of events is handled by
 from __future__ import annotations
 
 import math
-import os
 import shlex
 import shutil
 import signal
@@ -101,8 +100,11 @@ BANNER = [
 
 TAGLINE = "Stop stressing over not having an agent running. Ralph is always running"
 
-_RALPHIFY_RALPHS_DIR = Path(".ralphify") / "ralphs"
+_PROJECT_RALPHS_DIR = Path(".agents") / "ralphs"
 """Project-local directory for installed ralphs."""
+
+_USER_RALPHS_DIR = Path.home() / ".agents" / "ralphs"
+"""User-level directory for installed ralphs."""
 
 _INIT_TEMPLATE = """\
 ---
@@ -182,33 +184,7 @@ def main_callback(
 
 
 @app.command()
-def new(
-    name: str | None = typer.Argument(
-        None, help="Name for the new ralph. If omitted, the agent will help you choose."
-    ),
-) -> None:
-    """Create a new ralph with AI-guided setup."""
-    from ralphify._skills import build_agent_command, detect_agent, install_skill
-
-    try:
-        agent = detect_agent()
-    except RuntimeError as exc:
-        _exit_error(str(exc))
-
-    try:
-        install_skill("new-ralph", agent.name)
-    except RuntimeError as exc:
-        _exit_error(str(exc))
-
-    cmd = build_agent_command(agent.name, "new-ralph", name)
-    try:
-        os.execvp(cmd[0], cmd)
-    except FileNotFoundError:
-        _exit_error(f"Agent command '{cmd[0]}' not found on PATH.")
-
-
-@app.command()
-def init(
+def scaffold(
     name: str | None = typer.Argument(
         None,
         help="Directory name. If omitted, creates RALPH.md in the current directory.",
@@ -229,41 +205,6 @@ def init(
     rel = ralph_file.relative_to(Path.cwd())
     _console.print(f"[green]Created[/green] {rel}")
     _console.print(f"[dim]Edit the file, then run:[/dim] ralph run {name or '.'}")
-
-
-@app.command()
-def add(
-    source: str = typer.Argument(
-        ..., help="GitHub source: owner/repo or owner/repo/ralph-name"
-    ),
-) -> None:
-    """Add a ralph from a GitHub repository."""
-    from ralphify._source import fetch_ralphs, parse_github_source
-
-    try:
-        parsed = parse_github_source(source)
-    except ValueError as exc:
-        _exit_error(str(exc))
-
-    ralphs_dir = Path.cwd() / _RALPHIFY_RALPHS_DIR
-    ralphs_dir.mkdir(parents=True, exist_ok=True)
-
-    try:
-        result = fetch_ralphs(parsed, ralphs_dir)
-    except RuntimeError as exc:
-        _exit_error(str(exc))
-
-    if len(result.installed) == 1:
-        name, _ = result.installed[0]
-        _console.print(f"[green]Added[/green] {name}")
-        _console.print(f"[dim]Run it with:[/dim] ralph run {name}")
-    else:
-        _console.print(
-            f"[green]Added {len(result.installed)} ralphs from {parsed.handle}:[/green]"
-        )
-        for name, _ in result.installed:
-            _console.print(f"  {name}")
-        _console.print("\n[dim]Run any with:[/dim] ralph run <name>")
 
 
 def _parse_user_args(
@@ -398,10 +339,15 @@ def _validate_commands(raw_commands: Any) -> list[Command]:
 
 
 def _installed_ralph_path(name: str) -> Path | None:
-    """Return the installed ralph directory if it exists, else *None*."""
-    path = Path.cwd() / _RALPHIFY_RALPHS_DIR / name
-    if (path / RALPH_MARKER).is_file():
-        return path
+    """Return the installed ralph directory if it exists, else *None*.
+
+    Checks project-level ``.agents/ralphs/<name>/`` first, then
+    user-level ``~/.agents/ralphs/<name>/``.
+    """
+    for base in (Path.cwd() / _PROJECT_RALPHS_DIR, _USER_RALPHS_DIR):
+        path = base / name
+        if (path / RALPH_MARKER).is_file():
+            return path
     return None
 
 
@@ -409,6 +355,7 @@ def _resolve_ralph_paths(ralph_path: str) -> tuple[Path, Path]:
     """Resolve the ralph directory and RALPH.md file from a user-provided path.
 
     Accepts a directory containing RALPH.md or a direct path to RALPH.md.
+    Falls back to name-based lookup in ``.agents/ralphs/`` (project then user).
     Returns ``(ralph_dir, ralph_file)``.  Exits with an error message when
     the path is invalid or RALPH.md is not found.
     """
@@ -420,11 +367,12 @@ def _resolve_ralph_paths(ralph_path: str) -> tuple[Path, Path]:
         ralph_dir = path.parent
         ralph_file = path
     else:
-        # Fallback: check installed ralphs in .ralphify/ralphs/<name>/
+        # Fallback: check installed ralphs in .agents/ralphs/<name>/
         installed = _installed_ralph_path(ralph_path)
         if installed is not None:
             ralph_dir = installed
             ralph_file = installed / RALPH_MARKER
+            _console.print(f"[dim]Resolved:[/dim] {ralph_file}")
         else:
             _exit_error(
                 f"'{ralph_path}' is not a directory, {RALPH_MARKER} file, or installed ralph."
@@ -539,7 +487,7 @@ def _build_run_config(
 )
 def run(
     ctx: typer.Context,
-    path: str = typer.Argument(..., help="Path to a ralph directory or RALPH.md file."),
+    path: str = typer.Argument(..., help="Path to a ralph directory, RALPH.md file, or installed ralph name."),
     n: int | None = typer.Option(
         None, "-n", help="Max number of iterations. Infinite if not set."
     ),

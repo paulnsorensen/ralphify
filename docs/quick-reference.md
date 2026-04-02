@@ -1,7 +1,7 @@
 ---
 title: "RALPH.md Syntax and CLI Cheat Sheet — Ralphify Quick Reference"
-description: "Cheat sheet for ralphify — RALPH.md frontmatter format, CLI flags for ralph run/init/add/new, placeholder syntax for commands and args, and common loop patterns you can copy-paste."
-keywords: RALPH.md format, RALPH.md frontmatter syntax, ralph run CLI flags, ralphify cheat sheet, AI coding agent loop syntax, ralph commands placeholder, ralph args placeholder, ralph add GitHub, ralph init scaffold, autonomous agent loop reference, ralphify quick reference
+description: "Cheat sheet for ralphify — RALPH.md frontmatter format, CLI flags for ralph run/scaffold, placeholder syntax for commands and args, and common loop patterns you can copy-paste."
+keywords: RALPH.md format, RALPH.md frontmatter syntax, ralph run CLI flags, ralphify cheat sheet, AI coding agent loop syntax, ralph commands placeholder, ralph args placeholder, ralph scaffold, autonomous agent loop reference, ralphify quick reference
 ---
 
 # Quick Reference
@@ -20,15 +20,8 @@ ralph run my-ralph --delay 10      # Wait 10s between iterations
 ralph run my-ralph --timeout 300   # Kill agent after 5 min per iteration
 ralph run my-ralph --dir ./src     # Pass user args to the ralph
 
-ralph init my-task                  # Scaffold a ralph from template (no AI)
-ralph init                         # Scaffold in current directory
-
-ralph new                          # AI-guided ralph creation
-ralph new docs                     # AI-guided creation with name pre-filled
-
-ralph add owner/repo               # Install ralph(s) from a GitHub repo
-ralph add owner/repo/my-ralph      # Install a specific ralph by name
-ralph add https://github.com/owner/repo/tree/main/my-ralph  # URL from GitHub
+ralph scaffold my-task              # Scaffold a ralph from template
+ralph scaffold                     # Scaffold in current directory
 
 ralph --version                    # Show version
 ```
@@ -172,17 +165,6 @@ Each iteration:
 - HTML comments (`<!-- ... -->`) are stripped from the prompt — use them for notes to yourself
 
 Tips on structuring prompts for different tasks → [Writing Prompts](writing-prompts.md)
-
-## `ralph add` source formats
-
-| Format | Example | What it does |
-|---|---|---|
-| Shorthand | `owner/repo` | Installs all ralphs in the repo (or the repo itself if root has `RALPH.md`) |
-| Subpath | `owner/repo/my-ralph` | Installs the ralph named `my-ralph` from the repo |
-| Full URL | `https://github.com/owner/repo` | Same as shorthand |
-| GitHub tree URL | `https://github.com/owner/repo/tree/main/my-ralph` | Extracts the path from the URL — works when you copy a URL from the GitHub browser UI |
-
-Installed ralphs go to `.ralphify/ralphs/<name>/`. Re-running `ralph add` overwrites without warning (that's how you update). See the [CLI reference](cli.md) for full `ralph add` options.
 
 ## Common patterns
 

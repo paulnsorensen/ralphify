@@ -10,7 +10,6 @@ from typer.testing import CliRunner
 
 from helpers import (
     MOCK_WAIT_FOR_STOP,
-    MOCK_SKILLS_WHICH,
     MOCK_SUBPROCESS,
     MOCK_WHICH,
     ok_proc,
@@ -507,66 +506,10 @@ class TestRunTimeout:
         assert "timeout 5m 0s" in result.output
 
 
-class TestNew:
-    @patch("ralphify.cli.os.execvp")
-    @patch(MOCK_SKILLS_WHICH, return_value="/usr/bin/claude")
-    def test_installs_skill_and_launches_agent(
-        self, mock_which, mock_execvp, tmp_path, monkeypatch
-    ):
-        monkeypatch.chdir(tmp_path)
-        result = runner.invoke(app, ["new", "my-task"])
-        assert result.exit_code == 0
-        skill_file = tmp_path / ".claude" / "skills" / "new-ralph" / "SKILL.md"
-        assert skill_file.exists()
-        assert "new-ralph" in skill_file.read_text()
-        mock_execvp.assert_called_once_with(
-            "claude", ["claude", "--dangerously-skip-permissions", "/new-ralph my-task"]
-        )
-
-    @patch("ralphify.cli.os.execvp")
-    @patch(MOCK_SKILLS_WHICH, return_value="/usr/bin/claude")
-    def test_name_is_optional(self, mock_which, mock_execvp, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        result = runner.invoke(app, ["new"])
-        assert result.exit_code == 0
-        mock_execvp.assert_called_once_with(
-            "claude", ["claude", "--dangerously-skip-permissions", "/new-ralph"]
-        )
-
-    @patch(MOCK_SKILLS_WHICH, return_value=None)
-    def test_errors_when_no_agent_found(self, mock_which, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        result = runner.invoke(app, ["new"])
-        assert result.exit_code == 1
-        assert "No agent found" in result.output
-
-    @patch(
-        "ralphify._skills.install_skill", side_effect=RuntimeError("permission denied")
-    )
-    @patch(MOCK_SKILLS_WHICH, return_value="/usr/bin/claude")
-    def test_errors_when_install_skill_fails(
-        self, mock_which, mock_install, tmp_path, monkeypatch
-    ):
-        monkeypatch.chdir(tmp_path)
-        result = runner.invoke(app, ["new"])
-        assert result.exit_code == 1
-        assert "permission denied" in result.output
-
-    @patch("ralphify.cli.os.execvp", side_effect=FileNotFoundError("not found"))
-    @patch(MOCK_SKILLS_WHICH, return_value="/usr/bin/claude")
-    def test_errors_when_agent_binary_not_found(
-        self, mock_which, mock_execvp, tmp_path, monkeypatch
-    ):
-        monkeypatch.chdir(tmp_path)
-        result = runner.invoke(app, ["new", "my-task"])
-        assert result.exit_code == 1
-        assert "not found on PATH" in result.output
-
-
-class TestInit:
+class TestScaffold:
     def test_creates_ralph_with_name(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
-        result = runner.invoke(app, ["init", "my-task"])
+        result = runner.invoke(app, ["scaffold", "my-task"])
         assert result.exit_code == 0
         ralph_file = tmp_path / "my-task" / RALPH_MARKER
         assert ralph_file.exists()
@@ -574,27 +517,27 @@ class TestInit:
 
     def test_creates_ralph_in_cwd(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
-        result = runner.invoke(app, ["init"])
+        result = runner.invoke(app, ["scaffold"])
         assert result.exit_code == 0
         assert (tmp_path / RALPH_MARKER).exists()
 
     def test_errors_if_exists(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / RALPH_MARKER).write_text("existing")
-        result = runner.invoke(app, ["init"])
+        result = runner.invoke(app, ["scaffold"])
         assert result.exit_code == 1
         assert "already exists" in result.output
 
     def test_creates_directory_if_missing(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
-        result = runner.invoke(app, ["init", "new-dir"])
+        result = runner.invoke(app, ["scaffold", "new-dir"])
         assert result.exit_code == 0
         assert (tmp_path / "new-dir" / RALPH_MARKER).exists()
 
     def test_uses_existing_directory(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         (tmp_path / "existing-dir").mkdir()
-        result = runner.invoke(app, ["init", "existing-dir"])
+        result = runner.invoke(app, ["scaffold", "existing-dir"])
         assert result.exit_code == 0
         assert (tmp_path / "existing-dir" / RALPH_MARKER).exists()
 
@@ -602,7 +545,7 @@ class TestInit:
         from ralphify._frontmatter import parse_frontmatter
 
         monkeypatch.chdir(tmp_path)
-        runner.invoke(app, ["init", "my-task"])
+        runner.invoke(app, ["scaffold", "my-task"])
         content = (tmp_path / "my-task" / RALPH_MARKER).read_text()
         fm, body = parse_frontmatter(content)
         assert "agent" in fm
@@ -952,110 +895,6 @@ class TestMainCallback:
         assert "Ralph is always running" in result.output
 
 
-class TestAdd:
-    @patch("ralphify._source.fetch_ralphs")
-    @patch("ralphify._source.parse_github_source")
-    def test_add_single_ralph(self, mock_parse, mock_fetch, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        from ralphify._source import ParsedSource, FetchResult
-
-        parsed = ParsedSource(
-            owner_repo="owner/repo",
-            repo_url="https://github.com/owner/repo.git",
-            subpath="my-ralph",
-            handle="owner/repo/my-ralph",
-            name="my-ralph",
-        )
-        mock_parse.return_value = parsed
-        dest = tmp_path / ".ralphify" / "ralphs" / "my-ralph"
-        mock_fetch.return_value = FetchResult(installed=[("my-ralph", dest)])
-
-        result = runner.invoke(app, ["add", "owner/repo/my-ralph"])
-        assert result.exit_code == 0
-        assert "Added" in result.output
-        assert "my-ralph" in result.output
-        assert "ralph run my-ralph" in result.output
-
-    @patch("ralphify._source.fetch_ralphs")
-    @patch("ralphify._source.parse_github_source")
-    def test_add_multiple_ralphs(self, mock_parse, mock_fetch, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        from ralphify._source import ParsedSource, FetchResult
-
-        parsed = ParsedSource(
-            owner_repo="owner/repo",
-            repo_url="https://github.com/owner/repo.git",
-            subpath=None,
-            handle="owner/repo",
-            name="repo",
-        )
-        mock_parse.return_value = parsed
-        mock_fetch.return_value = FetchResult(
-            installed=[
-                ("ralph-a", tmp_path / "a"),
-                ("ralph-b", tmp_path / "b"),
-            ]
-        )
-
-        result = runner.invoke(app, ["add", "owner/repo"])
-        assert result.exit_code == 0
-        assert "Added 2 ralphs" in result.output
-        assert "ralph-a" in result.output
-        assert "ralph-b" in result.output
-        assert "ralph run <name>" in result.output
-
-    @patch(
-        "ralphify._source.parse_github_source",
-        side_effect=ValueError("Cannot parse source 'bad'"),
-    )
-    def test_add_invalid_source_errors(self, mock_parse, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        result = runner.invoke(app, ["add", "bad"])
-        assert result.exit_code == 1
-        assert "Cannot parse source" in result.output
-
-    @patch(
-        "ralphify._source.fetch_ralphs", side_effect=RuntimeError("git clone failed")
-    )
-    @patch("ralphify._source.parse_github_source")
-    def test_add_fetch_failure_errors(
-        self, mock_parse, mock_fetch, tmp_path, monkeypatch
-    ):
-        monkeypatch.chdir(tmp_path)
-        from ralphify._source import ParsedSource
-
-        mock_parse.return_value = ParsedSource(
-            owner_repo="owner/repo",
-            repo_url="https://github.com/owner/repo.git",
-            subpath=None,
-            handle="owner/repo",
-            name="repo",
-        )
-        result = runner.invoke(app, ["add", "owner/repo"])
-        assert result.exit_code == 1
-        assert "git clone failed" in result.output
-
-    @patch("ralphify._source.fetch_ralphs")
-    @patch("ralphify._source.parse_github_source")
-    def test_add_creates_ralphs_dir(
-        self, mock_parse, mock_fetch, tmp_path, monkeypatch
-    ):
-        monkeypatch.chdir(tmp_path)
-        from ralphify._source import ParsedSource, FetchResult
-
-        mock_parse.return_value = ParsedSource(
-            owner_repo="owner/repo",
-            repo_url="https://github.com/owner/repo.git",
-            subpath="x",
-            handle="owner/repo/x",
-            name="x",
-        )
-        mock_fetch.return_value = FetchResult(installed=[("x", tmp_path / "x")])
-        result = runner.invoke(app, ["add", "owner/repo/x"])
-        assert result.exit_code == 0
-        assert (tmp_path / ".ralphify" / "ralphs").is_dir()
-
-
 class TestTwoStageCtrlC:
     """Test the two-stage Ctrl+C signal handler installed by the run command.
 
@@ -1128,7 +967,7 @@ class TestInstalledRalphResolution:
         self, mock_which, tmp_path, monkeypatch
     ):
         monkeypatch.chdir(tmp_path)
-        installed = tmp_path / ".ralphify" / "ralphs" / "my-tool"
+        installed = tmp_path / ".agents" / "ralphs" / "my-tool"
         installed.mkdir(parents=True)
         (installed / RALPH_MARKER).write_text("---\nagent: claude -p\n---\ngo")
         result = runner.invoke(app, ["run", "my-tool", "-n", "1"])
@@ -1143,7 +982,7 @@ class TestInstalledRalphResolution:
         local.mkdir()
         (local / RALPH_MARKER).write_text("---\nagent: claude -p\n---\nlocal prompt")
 
-        installed = tmp_path / ".ralphify" / "ralphs" / "my-tool"
+        installed = tmp_path / ".agents" / "ralphs" / "my-tool"
         installed.mkdir(parents=True)
         (installed / RALPH_MARKER).write_text(
             "---\nagent: claude -p\n---\ninstalled prompt"
@@ -1161,6 +1000,38 @@ class TestInstalledRalphResolution:
         result = runner.invoke(app, ["run", "nonexistent"])
         assert result.exit_code == 1
         assert "installed ralph" in result.output.lower()
+
+    def test_user_level_ralphs(self, mock_which, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        user_home = tmp_path / "fakehome"
+        user_ralphs = user_home / ".agents" / "ralphs" / "global-tool"
+        user_ralphs.mkdir(parents=True)
+        (user_ralphs / RALPH_MARKER).write_text("---\nagent: claude -p\n---\nglobal")
+
+        with patch("ralphify.cli._USER_RALPHS_DIR", user_home / ".agents" / "ralphs"):
+            from ralphify.cli import _resolve_ralph_paths
+
+            ralph_dir, ralph_file = _resolve_ralph_paths("global-tool")
+            assert "global" in ralph_file.read_text()
+
+    def test_project_level_beats_user_level(self, mock_which, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        # Project-level
+        project = tmp_path / ".agents" / "ralphs" / "my-tool"
+        project.mkdir(parents=True)
+        (project / RALPH_MARKER).write_text("---\nagent: claude -p\n---\nproject")
+
+        # User-level
+        user_home = tmp_path / "fakehome"
+        user = user_home / ".agents" / "ralphs" / "my-tool"
+        user.mkdir(parents=True)
+        (user / RALPH_MARKER).write_text("---\nagent: claude -p\n---\nuser")
+
+        with patch("ralphify.cli._USER_RALPHS_DIR", user_home / ".agents" / "ralphs"):
+            from ralphify.cli import _resolve_ralph_paths
+
+            ralph_dir, ralph_file = _resolve_ralph_paths("my-tool")
+            assert "project" in ralph_file.read_text()
 
 
 class TestWin32Reconfigure:

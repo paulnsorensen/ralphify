@@ -35,9 +35,6 @@ MOCK_RUN_COMMAND = "ralphify.engine.run_command"
 MOCK_WAIT_FOR_STOP = "ralphify._run_types.RunState.wait_for_stop"
 """Patch target for RunState.wait_for_stop used by the engine delay logic."""
 
-MOCK_SKILLS_WHICH = "ralphify._skills.shutil.which"
-"""Patch target for shutil.which inside the skills module."""
-
 
 # ── Factory helpers ───────────────────────────────────────────────────
 

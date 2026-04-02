@@ -15,12 +15,12 @@ This page shows how to configure the [`agent` frontmatter field](quick-reference
 
 ## Agent comparison
 
-| Agent | Stdin support | Streaming | `ralph new` support | Wrapper needed |
-|---|---|---|---|---|
-| [Claude Code](#claude-code) | Native (`-p`) | Yes — real-time activity tracking | Yes | No |
-| [Aider](#aider) | Via bash wrapper | No | No | Yes (`bash -c`) |
-| [Codex CLI](#codex-cli) | Native (`exec`) | No | Yes | No |
-| [Custom](#custom-wrapper-script) | You implement it | No | No | Yes (script) |
+| Agent | Stdin support | Streaming | Wrapper needed |
+|---|---|---|---|
+| [Claude Code](#claude-code) | Native (`-p`) | Yes — real-time activity tracking | No |
+| [Aider](#aider) | Via bash wrapper | No | Yes (`bash -c`) |
+| [Codex CLI](#codex-cli) | Native (`exec`) | No | No |
+| [Custom](#custom-wrapper-script) | You implement it | No | Yes (script) |
 
 If you're not sure which to pick: **start with Claude Code.** It has the deepest integration, the best autonomous coding capabilities, and is the default.
 

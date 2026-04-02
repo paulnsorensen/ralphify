@@ -11,6 +11,6 @@ ralph_logs/
 node_modules/
 .playwright-cli/
 mess/
-.ralphify/
+.agents/
 .DS_Store
 .coverage

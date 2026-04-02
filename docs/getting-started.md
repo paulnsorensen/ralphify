@@ -7,7 +7,7 @@ keywords: set up autonomous AI coding agent, install ralphify, AI coding loop tu
 # Getting Started
 
 !!! tldr "TL;DR"
-    `uv tool install ralphify` → `ralph init my-ralph` → edit the RALPH.md → `ralph run my-ralph -n 1 --log-dir ralph_logs` to test → add a `commands` entry for your test suite → `ralph run my-ralph` to loop. The agent sees fresh test output each iteration and fixes what it breaks.
+    `uv tool install ralphify` → `ralph scaffold my-ralph` → edit the RALPH.md → `ralph run my-ralph -n 1 --log-dir ralph_logs` to test → add a `commands` entry for your test suite → `ralph run my-ralph` to loop. The agent sees fresh test output each iteration and fixes what it breaks.
 
 This tutorial walks through setting up ralphify, creating a ralph with commands, and running a productive autonomous loop. By the end, you'll have a self-healing coding loop that validates its own work.
 
@@ -41,10 +41,10 @@ ralphify 0.3.0
 
 ## Step 2: Create a ralph
 
-The fastest way to scaffold a ralph is `ralph init`:
+The fastest way to scaffold a ralph is `ralph scaffold`:
 
 ```bash
-ralph init my-ralph
+ralph scaffold my-ralph
 ```
 
 ```text
@@ -54,16 +54,16 @@ Edit the file, then run: ralph run my-ralph
 
 This creates `my-ralph/RALPH.md` with a ready-to-customize template including an example command, arg, and prompt. Edit the task section, [test it](#step-3-do-a-test-run), then follow [Step 4](#step-4-add-a-test-command) to add a test command — test feedback is what makes the loop self-healing.
 
-Alternatively, use `ralph new` for AI-guided setup, or create the file manually as shown below.
+Or create the file manually as shown below.
 
 !!! tip "Installing an existing ralph?"
-    If someone has shared a ralph on GitHub, skip the manual setup and install it directly:
+    Use [agr](https://github.com/computerlovetech/agr) to install shared ralphs from GitHub:
 
     ```bash
-    ralph add owner/repo
+    agr add owner/repo
     ```
 
-    This installs to `.ralphify/ralphs/` so you can run it by name with `ralph run <name>`. See the [CLI reference](cli.md#ralph-add) for all source formats.
+    This installs to `.agents/ralphs/` so you can run it by name with `ralph run <name>`.
 
 ### Manual setup
 

@@ -45,7 +45,7 @@ ralph run my-ralph -n 5    # Run 5 iterations
 - **Fresh context every cycle**: No conversation bloat or hallucinated memories. The agent reads current codebase state each time.
 - **Progress in git**: Every iteration commits to git. Roll back with `git reset` if needed.
 - **Any agent**: Works with Claude Code, Aider, Codex CLI, or any CLI that reads stdin.
-- **Shareable ralphs**: Install pre-built ralphs from GitHub with `ralph add owner/repo`.
+- **Shareable ralphs**: Install pre-built ralphs from GitHub with [agr](https://github.com/computerlovetech/agr).
 
 ## Placeholder types
 
@@ -58,9 +58,7 @@ ralph run my-ralph -n 5    # Run 5 iterations
 ## CLI commands
 
 - `ralph run <path> [-n N] [--log-dir DIR] [--stop-on-error] [--timeout SEC] [--delay SEC]` — run the loop
-- `ralph init <name>` — scaffold a ralph from template
-- `ralph new [name]` — AI-guided ralph creation
-- `ralph add <source>` — install ralph(s) from GitHub
+- `ralph scaffold <name>` — scaffold a ralph from template
 
 ## Python API
 

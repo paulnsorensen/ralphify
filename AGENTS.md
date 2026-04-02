@@ -21,7 +21,7 @@ uv run mkdocs serve        # Preview docs at http://127.0.0.1:8000
 All source code is in `src/ralphify/`. The main file is `cli.py` — it contains the CLI commands and delegates to the engine for the core loop.
 
 Key modules:
-- `cli.py` — CLI commands (`run`, `new`, `init`); delegates to `_console_emitter.py` for terminal event rendering
+- `cli.py` — CLI commands (`run`, `scaffold`); delegates to `_console_emitter.py` for terminal event rendering
 - `engine.py` — Core run loop orchestration with structured event emission
 - `manager.py` — Multi-run orchestration (concurrent runs via threads)
 - `_frontmatter.py` — YAML frontmatter parsing (uses PyYAML) and the `RALPH_MARKER` constant
@@ -33,15 +33,12 @@ Key modules:
 - `_console_emitter.py` — Rich terminal rendering of events
 - `_output.py` — `ProcessResult` base class, combine stdout+stderr, format durations
 - `_brand.py` — Brand color constants shared across CLI and console rendering
-- `_source.py` — GitHub source parsing and git-based ralph fetching for `ralph add`
-- `_skills.py` — Skill installation, agent detection, and command building for `ralph new`
-- `skills/new-ralph/SKILL.md` — AI-guided ralph creation skill (bundled, installed into agent skill dir)
 
 Tests are in `tests/` with one file per module. Docs are in `docs/` using MkDocs with Material theme.
 
 ## Core concepts
 
-A **ralph** is a directory containing a `RALPH.md` file. That's it. No project-level config, no `.ralphify/` directory, no `ralph init`.
+A **ralph** is a directory containing a `RALPH.md` file. That's it. No project-level config, no special directories.
 
 **RALPH.md** has YAML frontmatter + a prompt body:
 - `agent` (required) — the agent command to run
@@ -60,14 +57,12 @@ A **ralph** is a directory containing a `RALPH.md` file. That's it. No project-l
   - `docs/` (MkDocs) — user-facing docs: CLI reference, quick reference, writing prompts guide, cookbook. Only include what's relevant for users.
   - `docs/contributing/` — contributor/agent docs: codebase map, architecture. Only include what's relevant for contributors and coding agents.
   - `README.md` — keep short and high-level. Update only when the change affects the quickstart, install, or core concepts.
-  - `src/ralphify/skills/new-ralph/SKILL.md` — the skill that powers `ralph new`. Update when new frontmatter fields or features are added.
   - `CHANGELOG.md` — add an entry for every release.
 
 ## Boundaries
 
 ### Always Do
 - Run `uv run pytest` and `uv run ruff check .` before committing
-- Save all skills in `skills/` directory (not `.claude/skills/` which is gitignored)
 
 ## Traps
 

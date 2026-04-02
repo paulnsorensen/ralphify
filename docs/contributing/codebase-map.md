@@ -19,7 +19,7 @@ The core loop is simple. The complexity lives in **prompt assembly** — running
 ```
 src/ralphify/           # All source code
 ├── __init__.py         # Version detection + app entry point
-├── cli.py              # CLI commands (run, new, init) — delegates to engine for the loop
+├── cli.py              # CLI commands (run, scaffold) — delegates to engine for the loop
 ├── engine.py           # Core run loop orchestration with structured event emission
 ├── manager.py          # Multi-run orchestration (concurrent runs via threads)
 ├── _resolver.py        # Template placeholder resolution ({{ commands.* }}, {{ args.* }}, {{ ralph.* }})
@@ -27,14 +27,10 @@ src/ralphify/           # All source code
 ├── _run_types.py       # RunConfig, RunState, RunStatus, Command — shared data types
 ├── _runner.py          # Execute shell commands with timeout and capture output
 ├── _frontmatter.py     # Parse YAML frontmatter from RALPH.md, marker constants
-├── _source.py          # GitHub source parsing and git-based ralph fetching for `ralph add`
-├── _skills.py          # Skill installation and agent detection for `ralph new`
 ├── _console_emitter.py # Rich console renderer for run-loop events (ConsoleEmitter)
 ├── _events.py          # Event types, emitter protocol, and BoundEmitter convenience wrapper
 ├── _output.py          # ProcessResult base class, combine stdout+stderr, format durations
-├── _brand.py           # Brand color constants shared across CLI and console rendering
-└── skills/             # Bundled skill definitions (installed into agent skill dirs)
-    └── new-ralph/      # AI-guided ralph creation skill for `ralph new`
+└── _brand.py           # Brand color constants shared across CLI and console rendering
 
 tests/                  # Pytest tests — one test file per module
 docs/                   # MkDocs site (Material theme) — user-facing documentation
@@ -118,8 +114,6 @@ The CLI uses a `ConsoleEmitter` (defined in `_console_emitter.py`) that renders 
 3. **`cli.py`** — All CLI commands. Validates frontmatter fields via extracted helpers (`_validate_agent`, `_validate_commands`, `_validate_credit`, `_validate_run_options`, `_validate_declared_args`), builds a `RunConfig`, and delegates to `engine.run_loop()` for the actual loop. Terminal event rendering lives in `_console_emitter.py`.
 4. **`_frontmatter.py`** — YAML frontmatter parsing. Extracts `agent`, `commands`, `args` from the RALPH.md file.
 5. **`_resolver.py`** — Template placeholder logic. Small file but critical.
-6. **`_skills.py`** + **`skills/`** — The skill system behind `ralph new`. `_skills.py` handles agent detection, reads bundled skill definitions from `skills/`, installs them into the agent's skill directory, and builds the command to launch the agent.
-
 ## Traps and gotchas
 
 ### If you change frontmatter fields...
