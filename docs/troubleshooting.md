@@ -1,7 +1,7 @@
 ---
 title: Troubleshooting Ralph Loops
-description: Fix common ralphify issues — setup errors, agent hangs, command failures, ralph add problems, and permission issues.
-keywords: ralphify troubleshooting, agent hangs, command failures, setup errors, debug ralph loop, ralph add issues
+description: Fix common ralphify issues — setup errors, agent hangs, command failures, and permission issues.
+keywords: ralphify troubleshooting, agent hangs, command failures, setup errors, debug ralph loop
 ---
 
 # Troubleshooting
@@ -18,19 +18,19 @@ Common issues and how to fix them. If your problem isn't listed here, run [`ralp
 
 ### "is not a directory, RALPH.md file, or installed ralph"
 
-The path you passed to [`ralph run`](cli.md#ralph-run) doesn't resolve to a valid ralph. The command accepts a **directory** containing `RALPH.md`, a **direct path** to a `RALPH.md` file, or the **name of an installed ralph** (from [`ralph add`](cli.md#ralph-add)):
+The path you passed to [`ralph run`](cli.md#ralph-run) doesn't resolve to a valid ralph. The command accepts a **directory** containing `RALPH.md`, a **direct path** to a `RALPH.md` file, or the **name of an installed ralph** in `.agents/ralphs/`:
 
 ```bash
 ralph run my-ralph              # directory containing RALPH.md
 ralph run my-ralph/RALPH.md     # direct path to the file
-ralph run my-ralph              # installed ralph in .ralphify/ralphs/my-ralph/
+ralph run my-ralph              # installed ralph in .agents/ralphs/my-ralph/
 ```
 
 If you're getting this error, check that the path exists and points to the right place:
 
 ```bash
 ls my-ralph/RALPH.md                       # local ralph
-ls .ralphify/ralphs/my-ralph/RALPH.md      # installed ralph
+ls .agents/ralphs/my-ralph/RALPH.md        # installed ralph
 ```
 
 ### "Missing or empty 'agent' field in RALPH.md frontmatter"
@@ -46,98 +46,6 @@ agent: claude -p --dangerously-skip-permissions
 ### "Agent command 'claude' not found on PATH"
 
 The agent CLI isn't installed or isn't in your shell's PATH. Verify by running `claude --version` directly. If it's installed but not found, check your PATH. See [supported agents](agents.md) for setup instructions.
-
-### "Ralph name '...' contains invalid characters"
-
-The ralph directory name you passed to [`ralph new`](cli.md#ralph-new) contains characters that aren't allowed. Names may only contain letters, digits, hyphens, and underscores:
-
-```bash
-# ✗ Wrong — dots and spaces aren't allowed
-ralph new my.ralph
-ralph new "my ralph"
-
-# ✓ Correct — use hyphens or underscores
-ralph new my-ralph
-ralph new my_ralph
-```
-
-### "No agent found. Install Claude Code or Codex"
-
-[`ralph new`](cli.md#ralph-new) auto-detects which agent to use by checking your PATH for `claude` and `codex` (in that order). If neither is found, you get this error. Install one of the [supported agents](agents.md) and make sure it's on your PATH:
-
-```bash
-# Check if an agent is available
-claude --version   # Claude Code
-codex --version    # Codex
-```
-
-### "Unknown agent: '...'. Supported: claude, codex"
-
-`ralph new` detected an agent on your PATH but couldn't match it to a supported agent name. The supported agents are `claude` and `codex`. If you want to use a different agent CLI, skip `ralph new` and create the `RALPH.md` manually — see [getting started](getting-started.md).
-
-### "RALPH.md already exists"
-
-You ran [`ralph new`](cli.md#ralph-new) in a directory that already contains a `RALPH.md`. Either use a different directory name or edit the existing file:
-
-```bash
-# ✗ Fails — RALPH.md already exists in my-ralph/
-ralph new my-ralph
-
-# ✓ Option A — use a different name
-ralph new my-other-ralph
-
-# ✓ Option B — edit the existing file directly
-```
-
-## `ralph add` issues
-
-### "Cannot parse source"
-
-The source format wasn't recognized. [`ralph add`](cli.md#ralph-add) accepts these formats:
-
-```bash
-ralph add owner/repo                                        # shorthand
-ralph add owner/repo/ralph-name                             # specific ralph
-ralph add https://github.com/owner/repo                     # full URL
-ralph add https://github.com/owner/repo/tree/main/my-ralph  # URL copied from GitHub
-```
-
-The easiest way to add a ralph from GitHub is to navigate to the directory in your browser and copy the URL — it works directly with `ralph add`.
-
-### "git is required for 'ralph add'"
-
-`ralph add` uses `git clone` under the hood. Install git from [git-scm.com](https://git-scm.com/) and make sure it's on your PATH:
-
-```bash
-git --version
-```
-
-### "git clone failed"
-
-The repository couldn't be cloned. Common causes:
-
-- The repository doesn't exist or has a typo in the owner/repo name
-- The repository is **private** — `ralph add` uses `git clone` under the hood, so your local git credentials must have access. If you can `git clone https://github.com/owner/repo.git` manually, `ralph add` will work too.
-
-### "No RALPH.md found" / "No ralph named '...' found"
-
-The repository was cloned successfully but no ralphs were found. Either the repo doesn't contain any `RALPH.md` files, or the ralph name you specified doesn't match any directory in the repo.
-
-### "Found multiple ralphs named '...'"
-
-The repository contains more than one ralph directory with the same name (in different subdirectories). Use the full path to tell `ralph add` which one you want:
-
-```bash
-# ✗ Fails — ambiguous name
-ralph add owner/repo/my-ralph
-
-# ✓ Correct — use the full path shown in the error message
-ralph add owner/repo/examples/my-ralph
-```
-
-### Re-running `ralph add` overwrites without warning
-
-If you `ralph add` a ralph that's already installed in `.ralphify/ralphs/`, the existing copy is replaced silently. This is by design — it's how you update an installed ralph to the latest version. If you've made local edits to an installed ralph, copy them elsewhere before re-adding.
 
 ## Loop issues
 

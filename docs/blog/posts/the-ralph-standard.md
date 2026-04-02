@@ -150,14 +150,14 @@ ralph run ./ralphs/bug-hunter
 
 Declare `args: [focus]` and you get `--focus` on the CLI. The value fills `{{ args.focus }}` in the prompt. One ralph, many use cases.
 
-Because ralphs are just directories in a git repo, anyone can share them. If a repo contains a directory with a `RALPH.md`, you can install it with `ralph add`:
+Because ralphs are just directories in a git repo, anyone can share them. If a repo contains a directory with a `RALPH.md`, you can install it with [agr](https://github.com/computerlovetech/agr):
 
 ```bash
 # install a specific ralph from any GitHub repo
-ralph add owner/repo/ralph-name
+agr add owner/repo/ralph-name
 
 # install all ralphs in a repo
-ralph add owner/repo
+agr add owner/repo
 ```
 
 The [ralphify examples](https://github.com/computerlovetech/ralphify/tree/main/examples) are a good place to start — and the [cookbook](https://ralphify.co/docs/cookbook/) has more.

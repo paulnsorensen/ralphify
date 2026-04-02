@@ -1,13 +1,13 @@
 ---
 title: "CLI Reference: Run AI Coding Agents in Autonomous Loops"
-description: "Complete CLI reference for the ralph command — run autonomous AI coding loops, scaffold new agent prompts, install shared ralphs from GitHub, and configure RALPH.md frontmatter options."
-keywords: run AI agent in loop CLI, autonomous coding agent command line, ralph run command, ralph init, ralph add GitHub, RALPH.md frontmatter format, AI coding loop options, agent timeout iterations, user arguments CLI, ralphify CLI reference
+description: "Complete CLI reference for the ralph command — run autonomous AI coding loops, scaffold new agent prompts, and configure RALPH.md frontmatter options."
+keywords: run AI agent in loop CLI, autonomous coding agent command line, ralph run command, ralph scaffold, RALPH.md frontmatter format, AI coding loop options, agent timeout iterations, user arguments CLI, ralphify CLI reference
 ---
 
 # CLI Reference
 
 !!! tldr "TL;DR"
-    **`ralph run <path> -n 5`** runs the loop. **`ralph init <name>`** scaffolds a ralph from a template. **`ralph new`** creates one with AI guidance. **`ralph add owner/repo`** installs from GitHub. Pass user args as `--name value` flags. Everything is configured in a single [`RALPH.md`](#ralphmd-format) file with YAML frontmatter.
+    **`ralph run <path> -n 5`** runs the loop. **`ralph scaffold <name>`** creates a ralph from a template. Pass user args as `--name value` flags. Everything is configured in a single [`RALPH.md`](#ralphmd-format) file with YAML frontmatter.
 
 ## `ralph`
 
@@ -52,7 +52,7 @@ ralph run my-ralph --dir ./src             # Pass user args to the ralph
 
 | Argument / Option | Short | Default | Description |
 |---|---|---|---|
-| `PATH` | | (required) | Path to a ralph directory containing `RALPH.md`, a direct path to a `RALPH.md` file, or the name of an installed ralph (from `ralph add`) |
+| `PATH` | | (required) | Path to a ralph directory containing `RALPH.md`, a direct path to a `RALPH.md` file, or the name of an installed ralph in `.agents/ralphs/` |
 | `-n` | | unlimited | Max number of iterations |
 | `--stop-on-error` | `-s` | off | Stop loop if agent exits non-zero or times out |
 | `--delay` | `-d` | `0` | Seconds to wait between iterations |
@@ -116,13 +116,13 @@ The loop also stops automatically when:
 
 ---
 
-## `ralph init`
+## `ralph scaffold`
 
-Scaffold a new ralph with a ready-to-customize template. No AI agent required. For a guided setup, see [`ralph new`](#ralph-new) instead.
+Scaffold a new ralph with a ready-to-customize template.
 
 ```bash
-ralph init my-task      # Creates my-task/RALPH.md with a generic template
-ralph init              # Creates RALPH.md in the current directory
+ralph scaffold my-task      # Creates my-task/RALPH.md with a generic template
+ralph scaffold              # Creates RALPH.md in the current directory
 ```
 
 | Argument | Default | Description |
@@ -132,52 +132,6 @@ ralph init              # Creates RALPH.md in the current directory
 The generated template includes an example command (`git-log`), an example arg (`focus`), and a prompt body with placeholders for both. Edit it, then run [`ralph run`](#ralph-run). See [Getting Started](getting-started.md) for a full walkthrough.
 
 Errors if `RALPH.md` already exists at the target location.
-
----
-
-## `ralph new`
-
-Create a new ralph with AI-guided setup. Launches an interactive session where the agent guides you through creating a complete ralph via conversation.
-
-```bash
-ralph new              # Agent helps you choose a name and build everything
-ralph new my-task      # Start with a name already chosen
-```
-
-| Argument | Default | Description |
-|---|---|---|
-| `[NAME]` | none | Name for the new ralph. If omitted, the agent will help you choose |
-
-The command detects your [agent](agents.md) and installs a skill to guide the creation process.
-
----
-
-## `ralph add`
-
-Add a ralph from a GitHub repository. Installs it to `.ralphify/ralphs/<name>/` so you can run it by name.
-
-```bash
-ralph add owner/repo                                        # Install all ralphs in the repo
-ralph add owner/repo/ralph-name                             # Specific ralph by name
-ralph add https://github.com/owner/repo                     # Full GitHub URL
-ralph add https://github.com/owner/repo/tree/main/my-ralph  # URL copied from GitHub browser
-```
-
-| Argument | Default | Description |
-|---|---|---|
-| `SOURCE` | required | GitHub source — shorthand (`owner/repo`), subpath (`owner/repo/path`), or full GitHub URL |
-
-**How it resolves:**
-
-- `owner/repo` — if the repo root contains `RALPH.md`, installs it as a single ralph named after the repo. Otherwise, finds and installs all ralphs in the repo.
-- `owner/repo/ralph-name` — searches the repo for a directory named `ralph-name` containing `RALPH.md`. If multiple matches are found, prints the paths and asks you to use the full subpath to disambiguate.
-- `https://github.com/owner/repo/tree/branch/path` — extracts the path from the URL. This is the format you get when you copy a URL from the GitHub web UI while browsing a directory. The branch name is used only to locate the path — `ralph add` always clones the default branch.
-
-After adding, run the ralph by name:
-
-```bash
-ralph run ralph-name
-```
 
 ---
 

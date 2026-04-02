@@ -39,7 +39,7 @@ Any of these gives you the `ralph` command.
 A ralph is a directory with a `RALPH.md` file. Scaffold one:
 
 ```bash
-ralph init my-ralph
+ralph scaffold my-ralph
 ```
 
 Then edit `my-ralph/RALPH.md`:
@@ -140,22 +140,16 @@ my-ralph/
 
 **No project-level configuration.** No `ralph.toml`. No config files. A ralph is fully self-contained.
 
-## AI-guided setup
-
-```bash
-ralph new my-task
-```
-
-Launches an interactive agent conversation to scaffold a new ralph with the right commands and prompt for your project.
-
 ## Install ralphs from GitHub
 
+Use [agr](https://github.com/computerlovetech/agr) to install shared ralphs:
+
 ```bash
-ralph add owner/repo              # Install all ralphs from a repo
-ralph add owner/repo/my-ralph     # Install a specific ralph by name
+agr add owner/repo/my-ralph      # Install a ralph from GitHub
+ralph run my-ralph                # Run it by name
 ```
 
-Installs ralphs to `.ralphify/ralphs/` so you can run them by name with `ralph run`.
+Ralphs installed by agr go to `.agents/ralphs/` and are automatically discovered by `ralph run`.
 
 ## Documentation
 
