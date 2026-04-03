@@ -3,7 +3,12 @@
 import pytest
 from rich.console import Console
 
-from ralphify._console_emitter import ConsoleEmitter, _IterationSpinner, _format_summary
+from ralphify._console_emitter import (
+    ConsoleEmitter,
+    _IterationSpinner,
+    _format_run_info,
+    _format_summary,
+)
 from ralphify._events import Event, EventType
 
 
@@ -503,6 +508,43 @@ class TestFormatSummary:
         result = _format_summary(3, 0, 3, 0)
         assert "0 succeeded" in result
         assert "3 failed" in result
+
+
+class TestFormatRunInfo:
+    def test_empty_when_no_config(self):
+        assert _format_run_info(timeout=0, command_count=0, max_iterations=None) == ""
+        assert _format_run_info(timeout=None, command_count=0, max_iterations=None) == ""
+
+    def test_timeout_only(self):
+        result = _format_run_info(timeout=120, command_count=0, max_iterations=None)
+        assert result == "timeout 2m 0s"
+
+    def test_commands_only(self):
+        assert _format_run_info(timeout=0, command_count=3, max_iterations=None) == "3 commands"
+
+    def test_singular_command(self):
+        assert _format_run_info(timeout=0, command_count=1, max_iterations=None) == "1 command"
+
+    def test_max_iterations_only(self):
+        assert _format_run_info(timeout=0, command_count=0, max_iterations=5) == "max 5 iterations"
+
+    def test_singular_iteration(self):
+        assert _format_run_info(timeout=0, command_count=0, max_iterations=1) == "max 1 iteration"
+
+    def test_all_fields(self):
+        result = _format_run_info(timeout=60, command_count=2, max_iterations=3)
+        assert "timeout 1m 0s" in result
+        assert "2 commands" in result
+        assert "max 3 iterations" in result
+        assert " · " in result
+
+    def test_zero_timeout_excluded(self):
+        result = _format_run_info(timeout=0, command_count=2, max_iterations=None)
+        assert "timeout" not in result
+
+    def test_negative_timeout_excluded(self):
+        result = _format_run_info(timeout=-1, command_count=2, max_iterations=None)
+        assert "timeout" not in result
 
 
 class TestIterationSpinner:

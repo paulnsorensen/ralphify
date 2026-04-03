@@ -64,6 +64,25 @@ def _format_summary(
     return f"{_plural(total, 'iteration')} {_ICON_DASH} {detail}"
 
 
+def _format_run_info(
+    timeout: float | None, command_count: int, max_iterations: int | None
+) -> str:
+    """Build a plain-text run info string from configuration values.
+
+    Returns an empty string when no information is available.  Used by
+    :meth:`ConsoleEmitter._on_run_started` to show the config summary
+    beneath the "Running:" header.
+    """
+    parts: list[str] = []
+    if timeout is not None and timeout > 0:
+        parts.append(f"timeout {format_duration(timeout)}")
+    if command_count > 0:
+        parts.append(_plural(command_count, "command"))
+    if max_iterations is not None:
+        parts.append(f"max {_plural(max_iterations, 'iteration')}")
+    return " · ".join(parts)
+
+
 class _IterationSpinner:
     """Rich renderable that shows a spinner with elapsed time."""
 
@@ -113,19 +132,9 @@ class ConsoleEmitter:
         self._console.print(
             f"\n[bold {_brand.PURPLE}]▶ Running:[/] [bold]{escape_markup(ralph_name)}[/]"
         )
-
-        info_parts: list[str] = []
-        timeout = data["timeout"]
-        if timeout is not None and timeout > 0:
-            info_parts.append(f"timeout {format_duration(timeout)}")
-        command_count = data["commands"]
-        if command_count > 0:
-            info_parts.append(_plural(command_count, "command"))
-        max_iter = data["max_iterations"]
-        if max_iter is not None:
-            info_parts.append(f"max {_plural(max_iter, 'iteration')}")
-        if info_parts:
-            self._console.print(f"  [dim]{' · '.join(info_parts)}[/]")
+        info = _format_run_info(data["timeout"], data["commands"], data["max_iterations"])
+        if info:
+            self._console.print(f"  [dim]{info}[/]")
 
     def _start_live(self) -> None:
         spinner = _IterationSpinner()
