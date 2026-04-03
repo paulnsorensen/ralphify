@@ -28,7 +28,12 @@ class TestEmitDispatch:
         emitter, console = _capture_emitter()
         emitter.emit(
             _make_event(
-                EventType.RUN_STARTED, ralph_name="my-ralph", timeout=0, commands=0
+                EventType.RUN_STARTED,
+                ralph_name="my-ralph",
+                timeout=0,
+                commands=0,
+                max_iterations=None,
+                delay=0,
             )
         )
         output = console.export_text()
@@ -39,7 +44,12 @@ class TestEmitDispatch:
         emitter, console = _capture_emitter()
         emitter.emit(
             _make_event(
-                EventType.RUN_STARTED, ralph_name="test", timeout=120, commands=0
+                EventType.RUN_STARTED,
+                ralph_name="test",
+                timeout=120,
+                commands=0,
+                max_iterations=None,
+                delay=0,
             )
         )
         output = console.export_text()
@@ -48,7 +58,14 @@ class TestEmitDispatch:
     def test_run_started_shows_command_count(self):
         emitter, console = _capture_emitter()
         emitter.emit(
-            _make_event(EventType.RUN_STARTED, ralph_name="test", timeout=0, commands=3)
+            _make_event(
+                EventType.RUN_STARTED,
+                ralph_name="test",
+                timeout=0,
+                commands=3,
+                max_iterations=None,
+                delay=0,
+            )
         )
         output = console.export_text()
         assert "3 commands" in output
@@ -56,7 +73,14 @@ class TestEmitDispatch:
     def test_run_started_singular_command(self):
         emitter, console = _capture_emitter()
         emitter.emit(
-            _make_event(EventType.RUN_STARTED, ralph_name="test", timeout=0, commands=1)
+            _make_event(
+                EventType.RUN_STARTED,
+                ralph_name="test",
+                timeout=0,
+                commands=1,
+                max_iterations=None,
+                delay=0,
+            )
         )
         output = console.export_text()
         assert "1 command" in output
@@ -72,6 +96,7 @@ class TestEmitDispatch:
                 timeout=0,
                 commands=0,
                 max_iterations=5,
+                delay=0,
             )
         )
         output = console.export_text()
@@ -80,7 +105,14 @@ class TestEmitDispatch:
     def test_run_started_no_info_line_when_no_config(self):
         emitter, console = _capture_emitter()
         emitter.emit(
-            _make_event(EventType.RUN_STARTED, ralph_name="test", timeout=0, commands=0)
+            _make_event(
+                EventType.RUN_STARTED,
+                ralph_name="test",
+                timeout=0,
+                commands=0,
+                max_iterations=None,
+                delay=0,
+            )
         )
         output = console.export_text()
         # Should still show the ralph name header
@@ -97,6 +129,7 @@ class TestEmitDispatch:
                 timeout=60,
                 commands=2,
                 max_iterations=3,
+                delay=0,
             )
         )
         output = console.export_text()

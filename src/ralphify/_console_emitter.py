@@ -103,7 +103,7 @@ class ConsoleEmitter:
         command_count = data["commands"]
         if command_count > 0:
             info_parts.append(_plural(command_count, "command"))
-        max_iter = data.get("max_iterations")
+        max_iter = data["max_iterations"]
         if max_iter is not None:
             info_parts.append(f"max {_plural(max_iter, 'iteration')}")
         if info_parts:
