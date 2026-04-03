@@ -126,7 +126,7 @@ def _run_commands(
             ) from exc
         output = result.output
         if result.timed_out:
-            output += f"\n\n[Command '{cmd.name}' timed out after {cmd.timeout}s — output may be incomplete]"
+            output += f"\n\n[Command '{cmd.name}' timed out after {format_duration(cmd.timeout)} — output may be incomplete]"
         results[cmd.name] = output
     return results
 

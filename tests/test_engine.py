@@ -866,6 +866,24 @@ class TestRunCommands:
         assert "partial output" in result["slow"]
         assert "timed out" in result["slow"].lower()
 
+    @patch(MOCK_RUN_COMMAND)
+    def test_timed_out_command_uses_formatted_duration(self, mock_run_cmd, tmp_path):
+        """The timeout notice injected into command output should use
+        format_duration() for consistency with the rest of the UI — e.g.
+        '2m 0s' instead of raw '120s'."""
+        mock_run_cmd.return_value = RunResult(
+            returncode=None,
+            output="partial",
+            timed_out=True,
+        )
+        commands = [Command(name="slow", run="sleep 200", timeout=120)]
+
+        result = _run_commands(
+            commands, ralph_dir=tmp_path, project_root=tmp_path, user_args={}
+        )
+
+        assert "2m 0s" in result["slow"]
+
     @patch(MOCK_RUN_COMMAND, side_effect=FileNotFoundError("no-such-binary"))
     def test_command_not_found_raises_with_context(self, mock_run_cmd, tmp_path):
         commands = [Command(name="missing", run="no-such-binary --flag")]
