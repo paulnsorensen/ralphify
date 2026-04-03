@@ -145,11 +145,9 @@ def _print_banner() -> None:
 
     _console.print()
     for line, color in BANNER:
-        _console.print(f"[bold {color}]{prefix}{line}[/bold {color}]")
+        _console.print(f"[bold {color}]{prefix}{line}[/]")
     _console.print()
-    _console.print(
-        f"[italic {_brand.PURPLE}]{TAGLINE:^{width}}[/italic {_brand.PURPLE}]"
-    )
+    _console.print(f"[italic {_brand.PURPLE}]{TAGLINE:^{width}}[/]")
     _console.print()
     help_text = "Run 'ralph --help' for usage information"
     _console.print(f"[dim]{help_text:^{width}}[/dim]")
@@ -487,7 +485,9 @@ def _build_run_config(
 )
 def run(
     ctx: typer.Context,
-    path: str = typer.Argument(..., help="Path to a ralph directory, RALPH.md file, or installed ralph name."),
+    path: str = typer.Argument(
+        ..., help="Path to a ralph directory, RALPH.md file, or installed ralph name."
+    ),
     n: int | None = typer.Option(
         None, "-n", help="Max number of iterations. Infinite if not set."
     ),

@@ -10,7 +10,15 @@ import queue
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Literal, NotRequired, Protocol, TypedDict, cast, runtime_checkable
+from typing import (
+    Any,
+    Literal,
+    NotRequired,
+    Protocol,
+    TypedDict,
+    cast,
+    runtime_checkable,
+)
 
 
 LogLevel = Literal["info", "error"]

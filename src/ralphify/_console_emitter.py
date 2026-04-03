@@ -93,7 +93,7 @@ class ConsoleEmitter:
     def _on_run_started(self, data: RunStartedData) -> None:
         ralph_name = data["ralph_name"]
         self._console.print(
-            f"\n[bold {_brand.PURPLE}]▶ Running:[/bold {_brand.PURPLE}] [bold]{escape_markup(ralph_name)}[/bold]"
+            f"\n[bold {_brand.PURPLE}]▶ Running:[/] [bold]{escape_markup(ralph_name)}[/]"
         )
 
         info_parts: list[str] = []
@@ -126,9 +126,7 @@ class ConsoleEmitter:
 
     def _on_iteration_started(self, data: IterationStartedData) -> None:
         iteration = data["iteration"]
-        self._console.print(
-            f"\n[bold {_brand.BLUE}]── Iteration {iteration} ──[/bold {_brand.BLUE}]"
-        )
+        self._console.print(f"\n[bold {_brand.BLUE}]── Iteration {iteration} ──[/]")
         self._start_live()
 
     def _on_iteration_ended(
@@ -148,7 +146,7 @@ class ConsoleEmitter:
     def _on_commands_completed(self, data: CommandsCompletedData) -> None:
         count = data["count"]
         if count:
-            self._console.print(f"  [bold]Commands:[/bold] {count} ran")
+            self._console.print(f"  [bold]Commands:[/] {count} ran")
 
     def _on_log_message(self, data: LogMessageData) -> None:
         msg = escape_markup(data["message"])
@@ -180,9 +178,7 @@ class ConsoleEmitter:
         if timed_out_count:
             parts.append(f"{timed_out_count} timed out")
         detail = ", ".join(parts)
+        self._console.print(f"\n[bold {_brand.BLUE}]──────────────────────[/]")
         self._console.print(
-            f"\n[bold {_brand.BLUE}]──────────────────────[/bold {_brand.BLUE}]"
-        )
-        self._console.print(
-            f"[bold {_brand.GREEN}]Done:[/bold {_brand.GREEN}] {_plural(total, 'iteration')} {_ICON_DASH} {detail}"
+            f"[bold {_brand.GREEN}]Done:[/] {_plural(total, 'iteration')} {_ICON_DASH} {detail}"
         )
