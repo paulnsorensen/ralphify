@@ -107,7 +107,7 @@ class ConsoleEmitter:
         if max_iter is not None:
             info_parts.append(f"max {_plural(max_iter, 'iteration')}")
         if info_parts:
-            self._console.print(f"  [dim]{' · '.join(info_parts)}[/dim]")
+            self._console.print(f"  [dim]{' · '.join(info_parts)}[/]")
 
     def _start_live(self) -> None:
         spinner = _IterationSpinner()
@@ -135,10 +135,10 @@ class ConsoleEmitter:
         self._stop_live()
         iteration = data["iteration"]
         detail = data["detail"]
-        self._console.print(f"[{color}]{icon} Iteration {iteration} {detail}[/{color}]")
+        self._console.print(f"[{color}]{icon} Iteration {iteration} {detail}[/]")
         log_file = data["log_file"]
         if log_file:
-            self._console.print(f"  [dim]{_ICON_ARROW} {escape_markup(log_file)}[/dim]")
+            self._console.print(f"  [dim]{_ICON_ARROW} {escape_markup(log_file)}[/]")
         result_text = data["result_text"]
         if result_text:
             self._console.print(Markdown(result_text))
@@ -152,12 +152,12 @@ class ConsoleEmitter:
         msg = escape_markup(data["message"])
         level = data["level"]
         if level == LOG_ERROR:
-            self._console.print(f"[red]{msg}[/red]")
+            self._console.print(f"[red]{msg}[/]")
             tb = data.get("traceback")
             if tb:
-                self._console.print(f"[dim]{escape_markup(tb)}[/dim]")
+                self._console.print(f"[dim]{escape_markup(tb)}[/]")
         else:
-            self._console.print(f"[dim]{msg}[/dim]")
+            self._console.print(f"[dim]{msg}[/]")
 
     def _on_run_stopped(self, data: RunStoppedData) -> None:
         self._stop_live()
