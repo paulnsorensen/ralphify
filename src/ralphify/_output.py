@@ -20,6 +20,11 @@ SUBPROCESS_TEXT_KWARGS: dict[str, Any] = {
     "errors": "replace",
 }
 
+# Subprocess kwargs that isolate child processes in their own session/group.
+# On POSIX this uses start_new_session so the child and all its descendants
+# form a separate process group that can be killed together.
+SESSION_KWARGS: dict[str, Any] = {} if IS_WINDOWS else {"start_new_session": True}
+
 
 @dataclass
 class ProcessResult:

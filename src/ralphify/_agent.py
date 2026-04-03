@@ -29,6 +29,7 @@ from typing import IO, Any
 
 from ralphify._output import (
     IS_WINDOWS,
+    SESSION_KWARGS,
     SUBPROCESS_TEXT_KWARGS,
     ProcessResult,
     collect_output,
@@ -53,11 +54,6 @@ _LOG_ITERATION_PAD_WIDTH = 3
 
 # Seconds to wait for graceful shutdown after SIGTERM before escalating to SIGKILL.
 _SIGTERM_GRACE_PERIOD = 3
-
-# Subprocess kwargs that isolate agent processes in their own session/group.
-# On POSIX this uses start_new_session so the agent and all its children
-# form a separate process group that can be killed together.
-_SESSION_KWARGS: dict[str, Any] = {} if IS_WINDOWS else {"start_new_session": True}
 
 
 def _try_graceful_group_kill(proc: subprocess.Popen[Any]) -> bool:
@@ -248,7 +244,7 @@ def _run_agent_streaming(
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         **SUBPROCESS_TEXT_KWARGS,
-        **_SESSION_KWARGS,
+        **SESSION_KWARGS,
     )
     try:
         # Popen with PIPE guarantees non-None streams; guard explicitly
@@ -317,7 +313,7 @@ def _run_agent_blocking(
         stdout=subprocess.PIPE if capture else None,
         stderr=subprocess.PIPE if capture else None,
         **SUBPROCESS_TEXT_KWARGS,
-        **_SESSION_KWARGS,
+        **SESSION_KWARGS,
     )
     try:
         stdout, stderr = proc.communicate(input=prompt, timeout=timeout)
