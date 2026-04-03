@@ -3,7 +3,7 @@
 import pytest
 from rich.console import Console
 
-from ralphify._console_emitter import ConsoleEmitter, _IterationSpinner
+from ralphify._console_emitter import ConsoleEmitter, _IterationSpinner, _format_summary
 from ralphify._events import Event, EventType
 
 
@@ -471,6 +471,38 @@ class TestRunStopped:
         )
         output = console.export_text()
         assert "3 iterations" in output
+
+
+class TestFormatSummary:
+    def test_all_succeeded(self):
+        assert _format_summary(3, 3, 0, 0) == "3 iterations — 3 succeeded"
+
+    def test_singular_iteration(self):
+        assert _format_summary(1, 1, 0, 0) == "1 iteration — 1 succeeded"
+
+    def test_with_failures(self):
+        result = _format_summary(5, 4, 1, 0)
+        assert "4 succeeded" in result
+        assert "1 failed" in result
+        assert "timed out" not in result
+
+    def test_with_timeouts_only(self):
+        result = _format_summary(3, 2, 1, 1)
+        assert "2 succeeded" in result
+        assert "1 timed out" in result
+        # timed_out_count is subset of failed — no separate "failed" category
+        assert "failed" not in result
+
+    def test_with_mixed_failures_and_timeouts(self):
+        result = _format_summary(5, 3, 2, 1)
+        assert "3 succeeded" in result
+        assert "1 failed" in result
+        assert "1 timed out" in result
+
+    def test_all_failed(self):
+        result = _format_summary(3, 0, 3, 0)
+        assert "0 succeeded" in result
+        assert "3 failed" in result
 
 
 class TestIterationSpinner:

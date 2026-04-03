@@ -46,6 +46,24 @@ def _plural(count: int, word: str) -> str:
     return f"{count} {word}{'s' if count != 1 else ''}"
 
 
+def _format_summary(
+    total: int, completed: int, failed: int, timed_out_count: int
+) -> str:
+    """Build a plain-text run summary string from iteration counters.
+
+    ``timed_out_count`` is a subset of ``failed`` — non-timeout failures
+    and timeouts are shown as separate categories for clarity.
+    """
+    non_timeout_failures = failed - timed_out_count
+    parts = [f"{completed} succeeded"]
+    if non_timeout_failures:
+        parts.append(f"{non_timeout_failures} failed")
+    if timed_out_count:
+        parts.append(f"{timed_out_count} timed out")
+    detail = ", ".join(parts)
+    return f"{_plural(total, 'iteration')} {_ICON_DASH} {detail}"
+
+
 class _IterationSpinner:
     """Rich renderable that shows a spinner with elapsed time."""
 
@@ -164,21 +182,8 @@ class ConsoleEmitter:
         if data["reason"] != STOP_COMPLETED:
             return
 
-        total = data["total"]
-        completed = data["completed"]
-        failed = data["failed"]
-        timed_out_count = data["timed_out_count"]
-
-        # timed_out_count is a subset of failed — show non-timeout failures
-        # and timeouts as separate categories for clarity.
-        non_timeout_failures = failed - timed_out_count
-        parts = [f"{completed} succeeded"]
-        if non_timeout_failures:
-            parts.append(f"{non_timeout_failures} failed")
-        if timed_out_count:
-            parts.append(f"{timed_out_count} timed out")
-        detail = ", ".join(parts)
-        self._console.print(f"\n[bold {_brand.BLUE}]──────────────────────[/]")
-        self._console.print(
-            f"[bold {_brand.GREEN}]Done:[/] {_plural(total, 'iteration')} {_ICON_DASH} {detail}"
+        summary = _format_summary(
+            data["total"], data["completed"], data["failed"], data["timed_out_count"]
         )
+        self._console.print(f"\n[bold {_brand.BLUE}]──────────────────────[/]")
+        self._console.print(f"[bold {_brand.GREEN}]Done:[/] {summary}")
