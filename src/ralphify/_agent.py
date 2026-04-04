@@ -349,12 +349,27 @@ def _pump_stream(
 
     Runs on a background thread so stdout and stderr can be drained
     concurrently without deadlocking the child subprocess.
+
+    Exception handling:
+
+    - **Callback exceptions** are caught per-line so that a raising
+      callback never kills the drain loop.  The line is still buffered.
+    - **``ValueError`` / ``OSError``** from ``readline`` (e.g. the pipe
+      was closed concurrently) cause a clean exit so ``join()`` returns.
     """
-    for line in iter(stream.readline, ""):
-        if buffer is not None:
-            buffer.append(line)
-        if on_output_line is not None:
-            on_output_line(line.rstrip("\r\n"), stream_name)
+    try:
+        for line in iter(stream.readline, ""):
+            if buffer is not None:
+                buffer.append(line)
+            if on_output_line is not None:
+                try:
+                    on_output_line(line.rstrip("\r\n"), stream_name)
+                except Exception:
+                    # Callback is best-effort; draining must not stop.
+                    pass
+    except (ValueError, OSError):
+        # Pipe closed concurrently — exit cleanly so join() returns.
+        pass
 
 
 def _start_pump_thread(

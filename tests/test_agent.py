@@ -13,6 +13,7 @@ from helpers import MOCK_SUBPROCESS, fail_proc, make_mock_popen, ok_proc, timeou
 from ralphify._agent import (
     AgentResult,
     _kill_process_group,
+    _pump_stream,
     _read_agent_stream,
     _run_agent_blocking,
     _run_agent_streaming,
@@ -936,3 +937,137 @@ class TestBlockingInheritPath:
         assert result.returncode == 0
         assert result.log_file is None
         assert received == ["line1", "line2"]
+
+
+class TestPumpStreamExceptionHandling:
+    """Tests for _pump_stream resilience against callback and I/O errors."""
+
+    def test_continues_when_callback_raises(self):
+        """A callback that raises on the first line must not prevent
+        subsequent lines from being buffered."""
+        script = (
+            "import sys; "
+            "print('line1'); print('line2'); print('line3'); "
+            "sys.stdout.flush()"
+        )
+        call_count = 0
+
+        def raising_callback(line, stream):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise RuntimeError("boom")
+
+        result = _run_agent_blocking(
+            [sys.executable, "-u", "-c", script],
+            prompt="",
+            timeout=10,
+            log_path_dir=None,
+            iteration=1,
+            on_output_line=raising_callback,
+        )
+
+        assert result.returncode == 0
+        # The callback was called for all three lines, even though
+        # the first invocation raised.
+        assert call_count == 3
+
+    def test_buffers_all_lines_when_callback_raises(self, tmp_path):
+        """When logging is enabled, all lines must be captured in the log
+        even if the callback raises on every single line."""
+        script = "import sys; print('a'); print('b'); print('c'); sys.stdout.flush()"
+
+        def always_raises(line, stream):
+            raise ValueError("always fails")
+
+        result = _run_agent_blocking(
+            [sys.executable, "-u", "-c", script],
+            prompt="",
+            timeout=10,
+            log_path_dir=tmp_path,
+            iteration=1,
+            on_output_line=always_raises,
+        )
+
+        assert result.returncode == 0
+        assert result.log_file is not None
+        log_text = result.log_file.read_text()
+        assert "a" in log_text
+        assert "b" in log_text
+        assert "c" in log_text
+
+    def test_exits_cleanly_on_closed_stream(self):
+        """When the read end of a pipe is closed, the pump thread must
+        exit within a short bounded join — not hang forever."""
+        import os
+        import threading
+
+        read_fd, write_fd = os.pipe()
+        read_file = os.fdopen(read_fd, "r")
+        write_file = os.fdopen(write_fd, "w")
+
+        buffer: list[str] = []
+        thread = threading.Thread(
+            target=_pump_stream,
+            args=(read_file, buffer, "stdout", None),
+            daemon=True,
+        )
+        thread.start()
+
+        # Write a line so the thread is actively reading, then close.
+        write_file.write("hello\n")
+        write_file.flush()
+        write_file.close()
+
+        # The thread must exit promptly — EOF from the closed write end.
+        thread.join(timeout=5)
+        assert not thread.is_alive(), (
+            "_pump_stream thread did not exit after pipe closed"
+        )
+        assert buffer == ["hello\n"]
+
+        read_file.close()
+
+    def test_exits_cleanly_on_valueerror(self):
+        """A stream whose readline raises ValueError (e.g. closed file)
+        must not crash the thread — it should exit cleanly."""
+        import threading
+
+        class ClosedStream:
+            """Fake stream that raises ValueError on readline, simulating
+            a concurrent close of the underlying file descriptor."""
+
+            def readline(self):
+                raise ValueError("I/O operation on closed file")
+
+        buffer: list[str] = []
+        thread = threading.Thread(
+            target=_pump_stream,
+            args=(ClosedStream(), buffer, "stdout", None),
+            daemon=True,
+        )
+        thread.start()
+        thread.join(timeout=5)
+        assert not thread.is_alive(), (
+            "_pump_stream thread did not exit after ValueError"
+        )
+        assert buffer == []
+
+    def test_exits_cleanly_on_oserror(self):
+        """A stream whose readline raises OSError must not crash the thread."""
+        import threading
+
+        class BrokenStream:
+            def readline(self):
+                raise OSError("stream error")
+
+        buffer: list[str] = []
+        thread = threading.Thread(
+            target=_pump_stream,
+            args=(BrokenStream(), buffer, "stdout", None),
+            daemon=True,
+        )
+        thread.start()
+        thread.join(timeout=5)
+        assert not thread.is_alive(), "_pump_stream thread did not exit after OSError"
+        assert buffer == []
