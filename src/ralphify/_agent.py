@@ -307,12 +307,9 @@ def _run_agent_streaming(
         # Start the stderr pump BEFORE writing stdin so large prompts can't
         # deadlock against an agent that writes substantial diagnostics to
         # stderr while still reading its stdin.
-        stderr_thread = threading.Thread(
-            target=_pump_stream,
-            args=(proc.stderr, stderr_lines, _STDERR, on_output_line),
-            daemon=True,
+        stderr_thread = _start_pump_thread(
+            proc.stderr, stderr_lines, _STDERR, on_output_line
         )
-        stderr_thread.start()
 
         _deliver_prompt(proc, prompt)
 
@@ -323,8 +320,7 @@ def _run_agent_streaming(
         proc.wait()
     finally:
         _ensure_process_dead(proc)
-        if stderr_thread is not None:
-            stderr_thread.join(timeout=_THREAD_JOIN_TIMEOUT)
+        _drain_readers(stderr_thread)
 
     log_file = _write_log(
         log_path_dir, iteration, "".join(stream.stdout_lines), "".join(stderr_lines)
@@ -341,19 +337,62 @@ def _run_agent_streaming(
 
 def _pump_stream(
     stream: IO[str],
-    buffer: list[str],
+    buffer: list[str] | None,
     stream_name: OutputStream,
     on_output_line: Callable[[str, OutputStream], None] | None,
 ) -> None:
-    """Read *stream* line by line, appending to *buffer* and forwarding to the callback.
+    """Read *stream* line by line, optionally appending to *buffer* and forwarding to the callback.
+
+    When *buffer* is ``None`` lines are forwarded to the callback without
+    accumulating — this avoids unbounded memory growth when no log file
+    will be written.
 
     Runs on a background thread so stdout and stderr can be drained
     concurrently without deadlocking the child subprocess.
     """
     for line in iter(stream.readline, ""):
-        buffer.append(line)
+        if buffer is not None:
+            buffer.append(line)
         if on_output_line is not None:
             on_output_line(line.rstrip("\r\n"), stream_name)
+
+
+def _start_pump_thread(
+    stream: IO[str],
+    buffer: list[str] | None,
+    stream_name: OutputStream,
+    on_output_line: Callable[[str, OutputStream], None] | None,
+) -> threading.Thread:
+    """Create and start a daemon thread that drains *stream*.
+
+    When *buffer* is not ``None``, lines are accumulated for later log
+    writing.  When ``None``, lines are only forwarded to the callback.
+
+    A thin wrapper around :func:`_pump_stream` that eliminates the repeated
+    ``Thread(…, daemon=True) / .start()`` boilerplate in the streaming and
+    blocking execution paths.
+    """
+    thread = threading.Thread(
+        target=_pump_stream,
+        args=(stream, buffer, stream_name, on_output_line),
+        daemon=True,
+    )
+    thread.start()
+    return thread
+
+
+def _drain_readers(
+    *threads: threading.Thread | None,
+    timeout: float = _THREAD_JOIN_TIMEOUT,
+) -> None:
+    """Join reader threads, skipping any that are ``None``.
+
+    Used in ``finally`` and ``except`` blocks to ensure background pump
+    threads finish draining before the caller continues.
+    """
+    for thread in threads:
+        if thread is not None:
+            thread.join(timeout=timeout)
 
 
 def _run_agent_blocking(
@@ -402,18 +441,12 @@ def _run_agent_blocking(
         if proc.stdin is None or proc.stdout is None or proc.stderr is None:
             raise RuntimeError("subprocess.Popen failed to create PIPE streams")
 
-        stdout_thread = threading.Thread(
-            target=_pump_stream,
-            args=(proc.stdout, stdout_lines, _STDOUT, on_output_line),
-            daemon=True,
+        stdout_thread = _start_pump_thread(
+            proc.stdout, stdout_lines, _STDOUT, on_output_line
         )
-        stderr_thread = threading.Thread(
-            target=_pump_stream,
-            args=(proc.stderr, stderr_lines, _STDERR, on_output_line),
-            daemon=True,
+        stderr_thread = _start_pump_thread(
+            proc.stderr, stderr_lines, _STDERR, on_output_line
         )
-        stdout_thread.start()
-        stderr_thread.start()
 
         _deliver_prompt(proc, prompt)
 
@@ -428,10 +461,7 @@ def _run_agent_blocking(
         _ensure_process_dead(proc)
         # Drain reader threads before re-raising so daemon threads don't
         # race the main thread's teardown and leave the pipes half-read.
-        if stdout_thread is not None:
-            stdout_thread.join(timeout=_THREAD_JOIN_TIMEOUT)
-        if stderr_thread is not None:
-            stderr_thread.join(timeout=_THREAD_JOIN_TIMEOUT)
+        _drain_readers(stdout_thread, stderr_thread)
         raise
     finally:
         _ensure_process_dead(proc)
