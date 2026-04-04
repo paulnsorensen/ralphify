@@ -403,16 +403,19 @@ def _run_agent_blocking(
     iteration: int,
     on_output_line: Callable[[str, OutputStream], None] | None = None,
 ) -> AgentResult:
-    """Run the agent subprocess, line-streaming its output, and return the result.
+    """Run the agent subprocess and return the result.
 
-    stdout and stderr are always captured and drained by background reader
-    threads so that callers can observe output live (for the peek feature)
-    while still preserving the full buffered output for log writing.
+    Uses a three-way capture strategy:
 
-    Reader threads are started **before** the prompt is written to stdin so
-    that an agent which writes a large burst of output before consuming the
-    full prompt cannot deadlock us on a full OS pipe buffer (the classic
-    writer-reader deadlock on prompts larger than the ~64 KB pipe buffer).
+    1. **Inherit** (``on_output_line is None and log_path_dir is None``) —
+       stdout/stderr are not piped; the child writes directly to the
+       parent's file descriptors.  No reader threads, no buffering.
+    2. **Callback only** (``on_output_line`` set, no log dir) — reader
+       threads forward lines to the callback without accumulating them,
+       avoiding unbounded memory growth.
+    3. **Log capture** (``log_path_dir`` set) — reader threads accumulate
+       lines into lists for log writing; lines are also forwarded to the
+       callback if provided.
 
     The subprocess is started in its own process group so that on
     ``KeyboardInterrupt`` or timeout the entire child tree can be killed
@@ -422,10 +425,54 @@ def _run_agent_blocking(
     Raises ``FileNotFoundError`` if the command binary does not exist.
     """
     start = time.monotonic()
-    returncode: int | None = None
+    capture = log_path_dir is not None or on_output_line is not None
+
+    if not capture:
+        # ── Inherit path ─────────────────────────────────────────
+        # No subscriber needs the bytes — let the child write directly
+        # to the terminal.  Avoids silent output loss when the user
+        # pipes ralph's output (e.g. ``ralph run | cat``).
+        returncode: int | None = None
+        timed_out = False
+
+        proc = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            **SUBPROCESS_TEXT_KWARGS,
+            **SESSION_KWARGS,
+        )
+        try:
+            if proc.stdin is None:
+                raise RuntimeError("subprocess.Popen failed to create PIPE stdin")
+
+            _deliver_prompt(proc, prompt)
+
+            try:
+                returncode = proc.wait(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                _ensure_process_dead(proc)
+                timed_out = True
+        except KeyboardInterrupt:
+            _ensure_process_dead(proc)
+            raise
+        finally:
+            _ensure_process_dead(proc)
+
+        return AgentResult(
+            returncode=None if timed_out else returncode,
+            elapsed=time.monotonic() - start,
+            log_file=None,
+            timed_out=timed_out,
+        )
+
+    # ── Capture path ─────────────────────────────────────────────
+    # Reader threads drain stdout/stderr concurrently.  Lines are only
+    # accumulated into buffers when a log file will be written; otherwise
+    # the callback alone observes them, avoiding unbounded memory growth.
+    returncode = None
     timed_out = False
-    stdout_lines: list[str] = []
-    stderr_lines: list[str] = []
+    stdout_lines: list[str] | None = [] if log_path_dir is not None else None
+    stderr_lines: list[str] | None = [] if log_path_dir is not None else None
     stdout_thread: threading.Thread | None = None
     stderr_thread: threading.Thread | None = None
 
@@ -455,25 +502,21 @@ def _run_agent_blocking(
         except subprocess.TimeoutExpired:
             _ensure_process_dead(proc)
             timed_out = True
-        stdout_thread.join()
-        stderr_thread.join()
+        _drain_readers(stdout_thread, stderr_thread)
     except KeyboardInterrupt:
         _ensure_process_dead(proc)
-        # Drain reader threads before re-raising so daemon threads don't
-        # race the main thread's teardown and leave the pipes half-read.
         _drain_readers(stdout_thread, stderr_thread)
         raise
     finally:
         _ensure_process_dead(proc)
 
-    stdout = "".join(stdout_lines)
-    stderr = "".join(stderr_lines)
+    stdout = "".join(stdout_lines) if stdout_lines is not None else None
+    stderr = "".join(stderr_lines) if stderr_lines is not None else None
 
     log_file = _write_log(log_path_dir, iteration, stdout, stderr)
     # When logging is enabled, output is diverted into the log file; echo it
     # so the user still sees what ran.  When logging is disabled, live peek
-    # (if enabled) has already shown the lines as they arrived — echoing here
-    # would double every line.
+    # (if enabled) has already shown the lines as they arrived.
     if log_path_dir is not None:
         _echo_output(stdout, stderr)
 
