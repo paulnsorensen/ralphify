@@ -429,7 +429,7 @@ def _validate_run_options(
         _exit_error(f"'-n' must be a positive integer, got {max_iterations}.")
     if not math.isfinite(delay) or delay < 0:
         _exit_error(f"'--delay' must be non-negative, got {delay}.")
-    if timeout is not None and (not math.isfinite(timeout) or timeout <= 0):
+    if timeout is not None and not _is_valid_timeout(timeout):
         _exit_error(f"'--timeout' must be a positive number, got {timeout}.")
 
 
