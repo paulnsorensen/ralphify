@@ -21,6 +21,7 @@ from rich.console import Console
 from ralphify import __version__
 from ralphify import _brand
 from ralphify._console_emitter import ConsoleEmitter
+from ralphify._keypress import KeypressListener
 from ralphify._frontmatter import (
     CMD_FIELD_NAME,
     CMD_FIELD_RUN,
@@ -307,7 +308,9 @@ def _parse_command_items(raw_commands: list[dict[str, Any]]) -> list[Command]:
         if cmd_name in seen_names:
             _exit_error(f"Duplicate command name '{cmd_name}'.")
         seen_names.add(cmd_name)
-        timeout = cmd_def.get(CMD_FIELD_TIMEOUT, DEFAULT_COMMAND_TIMEOUT)
+        timeout = cmd_def.get(CMD_FIELD_TIMEOUT)
+        if timeout is None:
+            timeout = DEFAULT_COMMAND_TIMEOUT
         if not _is_valid_timeout(timeout):
             _exit_error(
                 f"Command '{cmd_name}' has invalid timeout: {timeout!r}. "
@@ -556,7 +559,15 @@ def run(
             raise KeyboardInterrupt
 
     signal.signal(signal.SIGINT, _sigint_handler)
+
+    def _on_key(key: str) -> None:
+        if key == "p":
+            emitter.toggle_peek()
+
+    listener = KeypressListener(_on_key)
+    listener.start()
     try:
         run_loop(config, state, emitter)
     finally:
+        listener.stop()
         signal.signal(signal.SIGINT, original_handler)

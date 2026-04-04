@@ -737,6 +737,15 @@ class TestParseCommands:
         commands = _parse_command_items(raw)
         assert commands[0].timeout == DEFAULT_COMMAND_TIMEOUT
 
+    def test_null_timeout_uses_default(self):
+        """YAML `timeout:` (no value) or `timeout: null` should use the default timeout,
+        not error — consistent with how commands/args/credit treat null values."""
+        from ralphify._run_types import DEFAULT_COMMAND_TIMEOUT
+
+        raw = [{"name": "test", "run": "echo hi", "timeout": None}]
+        commands = _parse_command_items(raw)
+        assert commands[0].timeout == DEFAULT_COMMAND_TIMEOUT
+
     def test_missing_name_errors(self):
         with pytest.raises(typer.Exit):
             _parse_command_items([{"run": "echo hi"}])
