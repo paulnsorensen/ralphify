@@ -292,7 +292,7 @@ class TestRun:
         assert result.exit_code == 0
         assert mock_run.call_count == 3
         for proc in procs:
-            assert proc.communicate.call_args.kwargs["input"].startswith("test prompt")
+            assert proc.stdin.write.call_args.args[0].startswith("test prompt")
 
     @patch(MOCK_SUBPROCESS)
     def test_reads_prompt_each_iteration(
@@ -321,8 +321,8 @@ class TestRun:
 
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "2"])
         assert result.exit_code == 0
-        assert procs[0].communicate.call_args.kwargs["input"].startswith("v1")
-        assert procs[1].communicate.call_args.kwargs["input"].startswith("v2")
+        assert procs[0].stdin.write.call_args.args[0].startswith("v1")
+        assert procs[1].stdin.write.call_args.args[0].startswith("v2")
 
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_shows_success_per_iteration(
@@ -420,7 +420,7 @@ class TestRunLogging:
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
         log_dir = tmp_path / "logs"
-        mock_run.return_value = ok_proc(stdout="agent output\n")
+        mock_run.return_value = ok_proc(stdout_text="agent output\n")
         result = runner.invoke(
             app, ["run", str(ralph_dir), "-n", "2", "--log-dir", str(log_dir)]
         )
@@ -437,7 +437,9 @@ class TestRunLogging:
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
         log_dir = tmp_path / "logs"
-        mock_run.return_value = ok_proc(stdout="hello from agent\n", stderr="warning\n")
+        mock_run.return_value = ok_proc(
+            stdout_text="hello from agent\n", stderr_text="warning\n"
+        )
         result = runner.invoke(
             app, ["run", str(ralph_dir), "-n", "1", "--log-dir", str(log_dir)]
         )
@@ -471,7 +473,7 @@ class TestRunTimeout:
             app, ["run", str(ralph_dir), "-n", "1", "--timeout", "30"]
         )
         assert result.exit_code == 0
-        assert mock_run.return_value.communicate.call_args.kwargs["timeout"] == 30
+        assert mock_run.return_value.wait.call_args_list[0].kwargs["timeout"] == 30
 
     @patch(MOCK_SUBPROCESS)
     def test_no_timeout_by_default(self, mock_run, mock_which, tmp_path, monkeypatch):
@@ -480,7 +482,7 @@ class TestRunTimeout:
         mock_run.return_value = ok_proc()
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
         assert result.exit_code == 0
-        assert mock_run.return_value.communicate.call_args.kwargs["timeout"] is None
+        assert mock_run.return_value.wait.call_args_list[0].kwargs["timeout"] is None
 
     @patch(MOCK_SUBPROCESS, side_effect=timeout_proc)
     def test_timeout_counts_as_failure(
@@ -671,7 +673,7 @@ class TestRunWithUserArgs:
             app, ["run", str(ralph_dir), "-n", "1", "--dir", "./my-project"]
         )
         assert result.exit_code == 0
-        assert mock_run.return_value.communicate.call_args.kwargs["input"].startswith(
+        assert mock_run.return_value.stdin.write.call_args.args[0].startswith(
             "Research ./my-project"
         )
 
@@ -690,7 +692,7 @@ class TestRunWithUserArgs:
             app, ["run", str(ralph_dir), "-n", "1", "./my-project", "performance"]
         )
         assert result.exit_code == 0
-        assert mock_run.return_value.communicate.call_args.kwargs["input"].startswith(
+        assert mock_run.return_value.stdin.write.call_args.args[0].startswith(
             "Research ./my-project with focus on performance"
         )
 
@@ -703,7 +705,7 @@ class TestRunWithUserArgs:
         mock_run.return_value = ok_proc()
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
         assert result.exit_code == 0
-        assert mock_run.return_value.communicate.call_args.kwargs["input"].startswith(
+        assert mock_run.return_value.stdin.write.call_args.args[0].startswith(
             "Before  after"
         )
 
@@ -846,7 +848,7 @@ class TestCreditFrontmatter:
         assert result.exit_code == 0
         assert (
             "Co-authored-by: Ralphify"
-            in mock_run.return_value.communicate.call_args.kwargs["input"]
+            in mock_run.return_value.stdin.write.call_args.args[0]
         )
 
     @patch(MOCK_SUBPROCESS)
@@ -863,8 +865,7 @@ class TestCreditFrontmatter:
         result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
         assert result.exit_code == 0
         assert (
-            "Co-authored-by"
-            not in mock_run.return_value.communicate.call_args.kwargs["input"]
+            "Co-authored-by" not in mock_run.return_value.stdin.write.call_args.args[0]
         )
 
     def test_credit_invalid_value_errors(self, mock_which, tmp_path, monkeypatch):

@@ -1,6 +1,7 @@
 """Tests for the _agent module — subprocess execution, log writing, and stream parsing."""
 
 import io
+import itertools
 import signal
 import subprocess
 import sys
@@ -13,6 +14,7 @@ from ralphify._agent import (
     AgentResult,
     _kill_process_group,
     _read_agent_stream,
+    _run_agent_blocking,
     _run_agent_streaming,
     _supports_stream_json,
     _write_log,
@@ -233,7 +235,7 @@ class TestExecuteAgentBlocking:
 
     @patch(MOCK_SUBPROCESS)
     def test_writes_log_on_success(self, mock_popen, tmp_path):
-        mock_popen.return_value = ok_proc(stdout="agent output\n")
+        mock_popen.return_value = ok_proc(stdout_text="agent output\n")
         result = execute_agent(
             ["echo"],
             "prompt",
@@ -249,7 +251,7 @@ class TestExecuteAgentBlocking:
 
     @patch(MOCK_SUBPROCESS)
     def test_writes_log_on_timeout(self, mock_popen, tmp_path):
-        mock_popen.return_value = timeout_proc(stdout="partial", stderr="err")
+        mock_popen.return_value = timeout_proc(stdout_text="partial", stderr_text="err")
         result = execute_agent(
             ["echo"],
             "prompt",
@@ -266,7 +268,7 @@ class TestExecuteAgentBlocking:
         """When logging is enabled and the agent times out, partial output
         should be echoed to the terminal — same as on normal completion."""
         mock_popen.return_value = timeout_proc(
-            stdout="partial stdout", stderr="partial stderr"
+            stdout_text="partial stdout", stderr_text="partial stderr"
         )
         execute_agent(
             ["echo"],
@@ -654,9 +656,19 @@ class TestRunAgentBlockingKeyboardInterrupt:
     def test_keyboard_interrupt_kills_and_reraises(self, mock_popen):
         proc = MagicMock()
         proc.pid = 12345
-        proc.communicate.side_effect = KeyboardInterrupt
-        proc.poll.return_value = None  # process still running
-        proc.wait.return_value = -2
+        proc.stdin = MagicMock()
+        proc.stdout = io.StringIO("")
+        proc.stderr = io.StringIO("")
+        # First wait() raises KeyboardInterrupt; all subsequent calls
+        # return -2.  Uses itertools.chain so the exact number of wait()
+        # calls made by cleanup paths can drift without breaking the test.
+        proc.wait.side_effect = itertools.chain(
+            [KeyboardInterrupt], itertools.repeat(-2)
+        )
+        # First poll() (inside _kill_process_group) sees a live process;
+        # every later poll() sees it as reaped so cleanup paths don't
+        # re-enter kill/wait.
+        proc.poll.side_effect = itertools.chain([None], itertools.repeat(0))
         mock_popen.return_value = proc
 
         with pytest.raises(KeyboardInterrupt):
@@ -670,3 +682,154 @@ class TestRunAgentBlockingKeyboardInterrupt:
 
         proc.kill.assert_called()
         proc.wait.assert_called()
+
+
+class TestRunAgentBlockingLineStreaming:
+    """Real-subprocess tests for live line streaming via _run_agent_blocking.
+
+    Uses tiny ``python -c`` subprocesses rather than mocks so we exercise
+    the actual reader-thread path and observe lines as the process runs.
+    """
+
+    def test_on_output_line_receives_lines_in_order(self, tmp_path):
+        script = "import sys; print('first'); print('second'); print('third')"
+        received: list[tuple[str, str]] = []
+
+        result = _run_agent_blocking(
+            [sys.executable, "-c", script],
+            prompt="",
+            timeout=10,
+            log_path_dir=tmp_path,
+            iteration=1,
+            on_output_line=lambda line, stream: received.append((line, stream)),
+        )
+
+        assert result.returncode == 0
+        assert [line for line, _ in received] == ["first", "second", "third"]
+        assert all(stream == "stdout" for _, stream in received)
+
+        # Log file still receives the full output (behavior preserved).
+        assert result.log_file is not None
+        log_text = result.log_file.read_text()
+        assert "first" in log_text
+        assert "second" in log_text
+        assert "third" in log_text
+
+    def test_on_output_line_captures_stderr_separately(self, tmp_path):
+        script = (
+            "import sys; "
+            "print('out-line', file=sys.stdout); "
+            "print('err-line', file=sys.stderr); "
+            "sys.stdout.flush(); sys.stderr.flush()"
+        )
+        received: list[tuple[str, str]] = []
+
+        _run_agent_blocking(
+            [sys.executable, "-u", "-c", script],
+            prompt="",
+            timeout=10,
+            log_path_dir=tmp_path,
+            iteration=1,
+            on_output_line=lambda line, stream: received.append((line, stream)),
+        )
+
+        streams = {stream for _, stream in received}
+        assert streams == {"stdout", "stderr"}
+        lines_by_stream = {stream: line for line, stream in received}
+        assert lines_by_stream["stdout"] == "out-line"
+        assert lines_by_stream["stderr"] == "err-line"
+
+    def test_stdin_prompt_delivered_to_subprocess(self, tmp_path):
+        """The prompt must reach the child via stdin so real agents get it."""
+        script = "import sys; sys.stdout.write(sys.stdin.read())"
+        received: list[str] = []
+
+        _run_agent_blocking(
+            [sys.executable, "-c", script],
+            prompt="hello-from-prompt\n",
+            timeout=10,
+            log_path_dir=tmp_path,
+            iteration=1,
+            on_output_line=lambda line, stream: received.append(line),
+        )
+
+        assert received == ["hello-from-prompt"]
+
+    def test_large_prompt_with_concurrent_stderr_does_not_deadlock(self, tmp_path):
+        """Regression guard for the pipe-buffer deadlock.
+
+        If the child writes a burst of stderr larger than the OS pipe
+        buffer before reading its stdin, and the parent is simultaneously
+        writing a stdin prompt larger than the buffer, the only way to
+        avoid deadlock is for the parent to drain stderr concurrently on
+        a reader thread that was started **before** the stdin write began.
+
+        This test fails (hangs) if the reader threads are started after
+        the stdin write.
+        """
+        script = (
+            "import sys\n"
+            "sys.stderr.write('y' * 200000)\n"
+            "sys.stderr.flush()\n"
+            "sys.stdin.read()\n"
+            "sys.stdout.write('done\\n')\n"
+        )
+        large_prompt = "x" * 200000
+
+        result = _run_agent_blocking(
+            [sys.executable, "-c", script],
+            prompt=large_prompt,
+            timeout=15,
+            log_path_dir=tmp_path,
+            iteration=1,
+        )
+
+        assert result.returncode == 0
+        assert result.timed_out is False
+
+    def test_early_exit_with_large_prompt_does_not_crash(self, tmp_path):
+        """If the agent exits without consuming its stdin, the parent's
+        write will raise ``BrokenPipeError``; the blocking path must
+        swallow it and still return the child's real exit code.
+        """
+        script = "import sys; sys.exit(0)"
+        large_prompt = "x" * 200000
+
+        result = _run_agent_blocking(
+            [sys.executable, "-c", script],
+            prompt=large_prompt,
+            timeout=10,
+            log_path_dir=tmp_path,
+            iteration=1,
+        )
+
+        assert result.returncode == 0
+        assert result.timed_out is False
+
+    def test_streaming_large_stderr_drained_concurrently(self, tmp_path):
+        """Regression guard for the streaming path.
+
+        An agent that writes substantial stderr before emitting its result
+        event would previously deadlock the streaming path because stderr
+        was only read after ``proc.wait()``.  With a concurrent stderr
+        pump thread this finishes normally.
+        """
+        script = (
+            "import sys\n"
+            "sys.stderr.write('y' * 200000)\n"
+            "sys.stderr.flush()\n"
+            "sys.stdin.read()\n"
+            'sys.stdout.write(\'{"type": "result", "result": "ok"}\\n\')\n'
+        )
+
+        result = _run_agent_streaming(
+            [sys.executable, "-c", script],
+            prompt="hi",
+            timeout=15,
+            log_path_dir=tmp_path,
+            iteration=1,
+        )
+
+        assert result.returncode == 0
+        assert result.timed_out is False
+        assert result.result_text == "ok"

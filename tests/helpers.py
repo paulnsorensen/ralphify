@@ -7,6 +7,7 @@ Fixtures stay in conftest.py — pytest discovers them automatically.
 from __future__ import annotations
 
 import io
+import itertools
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -134,12 +135,21 @@ def fail_result(
 
 
 def _make_mock_proc(
-    returncode: int = 0, stdout: str = "", stderr: str = ""
+    returncode: int = 0, stdout_text: str = "", stderr_text: str = ""
 ) -> MagicMock:
-    """Build a MagicMock that mimics Popen for the agent blocking path."""
+    """Build a MagicMock that mimics Popen for the agent blocking path.
+
+    The blocking path drains stdout/stderr via reader threads that call
+    ``readline()`` in a loop until EOF, so stdout/stderr must be real
+    file-like objects (``io.StringIO``) — a bare ``MagicMock`` would make
+    ``iter(readline, "")`` spin forever and leak memory.
+    """
     proc = MagicMock()
     proc.returncode = returncode
-    proc.communicate.return_value = (stdout, stderr)
+    proc.stdin = MagicMock()
+    proc.stdout = io.StringIO(stdout_text)
+    proc.stderr = io.StringIO(stderr_text)
+    proc.communicate.return_value = (stdout_text, stderr_text)
     proc.wait.return_value = returncode
     proc.poll.return_value = returncode
     proc.pid = 12345
@@ -147,33 +157,56 @@ def _make_mock_proc(
 
 
 def ok_proc(
-    *_args: Any, stdout: str = "", stderr: str = "", **_kwargs: Any
+    *_args: Any, stdout_text: str = "", stderr_text: str = "", **_kwargs: Any
 ) -> MagicMock:
-    """Popen mock with exit code 0.  Works as a factory and ``side_effect``."""
-    return _make_mock_proc(returncode=0, stdout=stdout, stderr=stderr)
+    """Popen mock with exit code 0.  Works as a factory and ``side_effect``.
+
+    ``_kwargs`` swallows Popen's ``stdout=``/``stderr=`` PIPE sentinels so
+    the factory stays usable as ``side_effect`` for ``patch(Popen)``.
+    """
+    return _make_mock_proc(
+        returncode=0, stdout_text=stdout_text, stderr_text=stderr_text
+    )
 
 
 def fail_proc(
-    *_args: Any, stdout: str = "", stderr: str = "", **_kwargs: Any
+    *_args: Any, stdout_text: str = "", stderr_text: str = "", **_kwargs: Any
 ) -> MagicMock:
     """Popen mock with exit code 1."""
-    return _make_mock_proc(returncode=1, stdout=stdout, stderr=stderr)
+    return _make_mock_proc(
+        returncode=1, stdout_text=stdout_text, stderr_text=stderr_text
+    )
 
 
 def timeout_proc(
     *_args: Any,
     timeout: float = 5,
-    stdout: str = "",
-    stderr: str = "",
+    stdout_text: str = "",
+    stderr_text: str = "",
     **_kwargs: Any,
 ) -> MagicMock:
-    """Popen mock whose communicate() raises TimeoutExpired."""
-    proc = _make_mock_proc(returncode=0)
-    proc.communicate.side_effect = [
-        subprocess.TimeoutExpired(cmd="agent", timeout=timeout),
-        (stdout, stderr),
-    ]
-    proc.poll.return_value = None
+    """Popen mock whose wait() raises TimeoutExpired.
+
+    The blocking path waits with ``proc.wait(timeout=...)`` and drains the
+    output streams via reader threads, so we wire both here.  Uses
+    ``itertools.chain`` so the exact number of ``poll()`` calls made by
+    the blocking path is allowed to drift as the code is refactored
+    without needing to re-count and update the side_effect list.
+    """
+    proc = _make_mock_proc(
+        returncode=0, stdout_text=stdout_text, stderr_text=stderr_text
+    )
+    # First wait() raises TimeoutExpired; all subsequent calls return 0.
+    # Uses itertools.chain so the exact number of wait() calls made by
+    # cleanup paths is allowed to drift as the code is refactored.
+    proc.wait.side_effect = itertools.chain(
+        [subprocess.TimeoutExpired(cmd="agent", timeout=timeout)],
+        itertools.repeat(0),
+    )
+    # First poll() (inside _kill_process_group during the except branch)
+    # sees a live process; every later poll() sees it as already reaped,
+    # so we don't try to kill/wait a second time in the cleanup paths.
+    proc.poll.side_effect = itertools.chain([None], itertools.repeat(0))
     return proc
 
 

@@ -20,6 +20,7 @@ import os
 import signal
 import subprocess
 import sys
+import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -27,6 +28,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import IO, Any
 
+from ralphify._events import OutputStream
 from ralphify._output import (
     IS_WINDOWS,
     SESSION_KWARGS,
@@ -35,6 +37,11 @@ from ralphify._output import (
     collect_output,
     ensure_str,
 )
+
+# Typed constants for the OutputStream literal so the type checker enforces
+# that only "stdout" / "stderr" ever reach ``on_output_line``.
+_STDOUT: OutputStream = "stdout"
+_STDERR: OutputStream = "stderr"
 
 # Agent binary name that supports --output-format stream-json.
 _CLAUDE_BINARY = "claude"
@@ -54,6 +61,9 @@ _LOG_ITERATION_PAD_WIDTH = 3
 
 # Seconds to wait for graceful shutdown after SIGTERM before escalating to SIGKILL.
 _SIGTERM_GRACE_PERIOD = 3
+
+# Seconds to wait for reader threads to drain during cleanup.
+_THREAD_JOIN_TIMEOUT = 1.0
 
 
 def _try_graceful_group_kill(proc: subprocess.Popen[Any]) -> bool:
@@ -103,6 +113,37 @@ def _kill_process_group(proc: subprocess.Popen[Any]) -> None:
         if _try_graceful_group_kill(proc):
             return
     proc.kill()
+
+
+def _ensure_process_dead(proc: subprocess.Popen[Any]) -> None:
+    """Kill the agent process if still running, then wait for exit.
+
+    Safe to call multiple times — no-ops when the process has already
+    exited.  Used in ``finally`` and exception-handler blocks to
+    guarantee the child is reaped before we move on.
+    """
+    if proc.poll() is None:
+        _kill_process_group(proc)
+    proc.wait()
+
+
+def _deliver_prompt(proc: subprocess.Popen[Any], prompt: str) -> None:
+    """Write *prompt* to the agent's stdin and close the pipe.
+
+    Silently handles ``BrokenPipeError`` — the agent may exit before
+    consuming the full prompt, which is a normal (if uncommon) lifecycle
+    event.
+    """
+    assert proc.stdin is not None
+    try:
+        proc.stdin.write(prompt)
+    except BrokenPipeError:
+        pass
+    finally:
+        try:
+            proc.stdin.close()
+        except BrokenPipeError:
+            pass
 
 
 @dataclass
@@ -175,6 +216,7 @@ def _read_agent_stream(
     stdout: IO[str],
     deadline: float | None,
     on_activity: Callable[[dict[str, Any]], None] | None,
+    on_output_line: Callable[[str, OutputStream], None] | None = None,
 ) -> _StreamResult:
     """Read the agent's JSON stream line-by-line until EOF or timeout.
 
@@ -194,6 +236,8 @@ def _read_agent_stream(
 
     for line in stdout:
         stdout_lines.append(line)
+        if on_output_line is not None:
+            on_output_line(line.rstrip("\r\n"), _STDOUT)
 
         stripped = line.strip()
         if stripped:
@@ -226,6 +270,7 @@ def _run_agent_streaming(
     log_path_dir: Path | None,
     iteration: int,
     on_activity: Callable[[dict[str, Any]], None] | None = None,
+    on_output_line: Callable[[str, OutputStream], None] | None = None,
 ) -> AgentResult:
     """Run the agent subprocess with line-by-line streaming of JSON output.
 
@@ -233,10 +278,17 @@ def _run_agent_streaming(
     Code).  Stream processing is delegated to :func:`_read_agent_stream`;
     this function owns the subprocess lifecycle (spawn, stdin delivery,
     timeout kill, and cleanup via ``try/finally``).
+
+    stderr is drained concurrently on a background reader thread so large
+    stderr volume can't deadlock the child on a full OS pipe buffer while
+    the main thread is reading stdout.
     """
     stream_cmd = cmd + [_OUTPUT_FORMAT_FLAG, _STREAM_FORMAT, _VERBOSE_FLAG]
     start = time.monotonic()
     deadline = (start + timeout) if timeout is not None else None
+
+    stderr_lines: list[str] = []
+    stderr_thread: threading.Thread | None = None
 
     proc = subprocess.Popen(
         stream_cmd,
@@ -252,23 +304,30 @@ def _run_agent_streaming(
         if proc.stdin is None or proc.stdout is None or proc.stderr is None:
             raise RuntimeError("subprocess.Popen failed to create PIPE streams")
 
-        proc.stdin.write(prompt)
-        proc.stdin.close()
+        # Start the stderr pump BEFORE writing stdin so large prompts can't
+        # deadlock against an agent that writes substantial diagnostics to
+        # stderr while still reading its stdin.
+        stderr_thread = threading.Thread(
+            target=_pump_stream,
+            args=(proc.stderr, stderr_lines, _STDERR, on_output_line),
+            daemon=True,
+        )
+        stderr_thread.start()
 
-        stream = _read_agent_stream(proc.stdout, deadline, on_activity)
+        _deliver_prompt(proc, prompt)
+
+        stream = _read_agent_stream(proc.stdout, deadline, on_activity, on_output_line)
 
         if stream.timed_out:
             _kill_process_group(proc)
         proc.wait()
-
-        stderr_data = proc.stderr.read()
     finally:
-        if proc.poll() is None:
-            _kill_process_group(proc)
-            proc.wait()
+        _ensure_process_dead(proc)
+        if stderr_thread is not None:
+            stderr_thread.join(timeout=_THREAD_JOIN_TIMEOUT)
 
     log_file = _write_log(
-        log_path_dir, iteration, "".join(stream.stdout_lines), stderr_data
+        log_path_dir, iteration, "".join(stream.stdout_lines), "".join(stderr_lines)
     )
 
     return AgentResult(
@@ -280,18 +339,41 @@ def _run_agent_streaming(
     )
 
 
+def _pump_stream(
+    stream: IO[str],
+    buffer: list[str],
+    stream_name: OutputStream,
+    on_output_line: Callable[[str, OutputStream], None] | None,
+) -> None:
+    """Read *stream* line by line, appending to *buffer* and forwarding to the callback.
+
+    Runs on a background thread so stdout and stderr can be drained
+    concurrently without deadlocking the child subprocess.
+    """
+    for line in iter(stream.readline, ""):
+        buffer.append(line)
+        if on_output_line is not None:
+            on_output_line(line.rstrip("\r\n"), stream_name)
+
+
 def _run_agent_blocking(
     cmd: list[str],
     prompt: str,
     timeout: float | None,
     log_path_dir: Path | None,
     iteration: int,
+    on_output_line: Callable[[str, OutputStream], None] | None = None,
 ) -> AgentResult:
-    """Run the agent subprocess, optionally write logs, and return the result.
+    """Run the agent subprocess, line-streaming its output, and return the result.
 
-    When *log_path_dir* is set, output is captured, written to a log file,
-    then echoed to stdout/stderr so the user still sees it live.  When unset,
-    output streams directly to the terminal (no capture overhead).
+    stdout and stderr are always captured and drained by background reader
+    threads so that callers can observe output live (for the peek feature)
+    while still preserving the full buffered output for log writing.
+
+    Reader threads are started **before** the prompt is written to stdin so
+    that an agent which writes a large burst of output before consuming the
+    full prompt cannot deadlock us on a full OS pipe buffer (the classic
+    writer-reader deadlock on prompts larger than the ~64 KB pipe buffer).
 
     The subprocess is started in its own process group so that on
     ``KeyboardInterrupt`` or timeout the entire child tree can be killed
@@ -303,36 +385,70 @@ def _run_agent_blocking(
     start = time.monotonic()
     returncode: int | None = None
     timed_out = False
-    stdout: str | bytes | None = None
-    stderr: str | bytes | None = None
-    capture = log_path_dir is not None
+    stdout_lines: list[str] = []
+    stderr_lines: list[str] = []
+    stdout_thread: threading.Thread | None = None
+    stderr_thread: threading.Thread | None = None
 
     proc = subprocess.Popen(
         cmd,
         stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE if capture else None,
-        stderr=subprocess.PIPE if capture else None,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         **SUBPROCESS_TEXT_KWARGS,
         **SESSION_KWARGS,
     )
     try:
-        stdout, stderr = proc.communicate(input=prompt, timeout=timeout)
-        returncode = proc.returncode
-    except subprocess.TimeoutExpired:
-        _kill_process_group(proc)
-        stdout, stderr = proc.communicate()
-        timed_out = True
+        if proc.stdin is None or proc.stdout is None or proc.stderr is None:
+            raise RuntimeError("subprocess.Popen failed to create PIPE streams")
+
+        stdout_thread = threading.Thread(
+            target=_pump_stream,
+            args=(proc.stdout, stdout_lines, _STDOUT, on_output_line),
+            daemon=True,
+        )
+        stderr_thread = threading.Thread(
+            target=_pump_stream,
+            args=(proc.stderr, stderr_lines, _STDERR, on_output_line),
+            daemon=True,
+        )
+        stdout_thread.start()
+        stderr_thread.start()
+
+        _deliver_prompt(proc, prompt)
+
+        try:
+            returncode = proc.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            _ensure_process_dead(proc)
+            timed_out = True
+        stdout_thread.join()
+        stderr_thread.join()
     except KeyboardInterrupt:
-        _kill_process_group(proc)
-        proc.wait()
+        _ensure_process_dead(proc)
+        # Drain reader threads before re-raising so daemon threads don't
+        # race the main thread's teardown and leave the pipes half-read.
+        if stdout_thread is not None:
+            stdout_thread.join(timeout=_THREAD_JOIN_TIMEOUT)
+        if stderr_thread is not None:
+            stderr_thread.join(timeout=_THREAD_JOIN_TIMEOUT)
         raise
+    finally:
+        _ensure_process_dead(proc)
+
+    stdout = "".join(stdout_lines)
+    stderr = "".join(stderr_lines)
 
     log_file = _write_log(log_path_dir, iteration, stdout, stderr)
-    if capture:
+    # When logging is enabled, output is diverted into the log file; echo it
+    # so the user still sees what ran.  When logging is disabled, live peek
+    # (if enabled) has already shown the lines as they arrived — echoing here
+    # would double every line.
+    if log_path_dir is not None:
         _echo_output(stdout, stderr)
 
     return AgentResult(
-        returncode=returncode,
+        returncode=None if timed_out else returncode,
         elapsed=time.monotonic() - start,
         log_file=log_file,
         timed_out=timed_out,
@@ -347,12 +463,15 @@ def execute_agent(
     log_path_dir: Path | None,
     iteration: int,
     on_activity: Callable[[dict[str, Any]], None] | None = None,
+    on_output_line: Callable[[str, OutputStream], None] | None = None,
 ) -> AgentResult:
     """Run the agent subprocess, auto-selecting streaming or blocking mode.
 
     Uses streaming mode for agents that support ``--output-format stream-json``
-    (e.g. Claude Code); all other agents use the blocking ``subprocess.run``
-    path.  The *on_activity* callback is only invoked in streaming mode.
+    (e.g. Claude Code); all other agents use the blocking path that drains
+    stdout and stderr via reader threads.  The *on_activity* callback is
+    only invoked in streaming mode; *on_output_line* fires for both modes
+    as raw lines arrive.
 
     This is the single entry point the engine should use — callers don't need
     to know which execution mode is selected.
@@ -365,5 +484,13 @@ def execute_agent(
             log_path_dir,
             iteration,
             on_activity=on_activity,
+            on_output_line=on_output_line,
         )
-    return _run_agent_blocking(cmd, prompt, timeout, log_path_dir, iteration)
+    return _run_agent_blocking(
+        cmd,
+        prompt,
+        timeout,
+        log_path_dir,
+        iteration,
+        on_output_line=on_output_line,
+    )
