@@ -81,6 +81,7 @@ class EventType(Enum):
 
     # ── Agent activity (live streaming) ─────────────────────────
     AGENT_ACTIVITY = "agent_activity"
+    AGENT_OUTPUT_LINE = "agent_output_line"
 
     # ── Other ───────────────────────────────────────────────────
     LOG_MESSAGE = "log_message"
@@ -139,6 +140,16 @@ class AgentActivityData(TypedDict):
     iteration: int
 
 
+OutputStream = Literal["stdout", "stderr"]
+"""Which standard stream an :class:`AgentOutputLineData` event came from."""
+
+
+class AgentOutputLineData(TypedDict):
+    line: str
+    stream: OutputStream
+    iteration: int
+
+
 class LogMessageData(TypedDict):
     message: str
     level: LogLevel
@@ -154,6 +165,7 @@ EventData = (
     | CommandsCompletedData
     | PromptAssembledData
     | AgentActivityData
+    | AgentOutputLineData
     | LogMessageData
 )
 """Union of all typed event data payloads."""
@@ -188,12 +200,16 @@ class EventEmitter(Protocol):
 class NullEmitter:
     """Discards all events silently."""
 
+    wants_agent_output = False
+
     def emit(self, event: Event) -> None:
         pass
 
 
 class QueueEmitter:
     """Pushes events into a :class:`queue.Queue` for async consumption."""
+
+    wants_agent_output = True
 
     def __init__(self, q: queue.Queue[Event] | None = None) -> None:
         self.queue: queue.Queue[Event] = q or queue.Queue()
@@ -224,6 +240,7 @@ class BoundEmitter:
     def __init__(self, emitter: EventEmitter, run_id: str) -> None:
         self._emitter = emitter
         self._run_id = run_id
+        self.wants_agent_output: bool = getattr(emitter, "wants_agent_output", True)
 
     def __call__(
         self,
@@ -241,6 +258,15 @@ class BoundEmitter:
     def log_info(self, message: str) -> None:
         """Emit a ``LOG_MESSAGE`` event at info level."""
         self(EventType.LOG_MESSAGE, LogMessageData(message=message, level=LOG_INFO))
+
+    def agent_output_line(
+        self, line: str, stream: OutputStream, iteration: int
+    ) -> None:
+        """Emit an ``AGENT_OUTPUT_LINE`` event with a raw line of agent output."""
+        self(
+            EventType.AGENT_OUTPUT_LINE,
+            AgentOutputLineData(line=line, stream=stream, iteration=iteration),
+        )
 
     def log_error(self, message: str, *, traceback: str | None = None) -> None:
         """Emit a ``LOG_MESSAGE`` event at error level."""

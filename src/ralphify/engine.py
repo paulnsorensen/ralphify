@@ -178,6 +178,12 @@ def _run_agent_phase(
             f"Invalid agent command syntax: {config.agent!r}. {_field_hint(FIELD_AGENT)}"
         ) from exc
 
+    on_output_line = (
+        (lambda line, stream: emit.agent_output_line(line, stream, state.iteration))
+        if emit.wants_agent_output
+        else None
+    )
+
     try:
         agent = execute_agent(
             cmd,
@@ -189,6 +195,7 @@ def _run_agent_phase(
                 EventType.AGENT_ACTIVITY,
                 AgentActivityData(raw=data, iteration=state.iteration),
             ),
+            on_output_line=on_output_line,
         )
     except FileNotFoundError as exc:
         raise FileNotFoundError(

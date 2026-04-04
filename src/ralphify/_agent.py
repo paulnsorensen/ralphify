@@ -502,13 +502,12 @@ def _run_agent_blocking(
         except subprocess.TimeoutExpired:
             _ensure_process_dead(proc)
             timed_out = True
-        _drain_readers(stdout_thread, stderr_thread)
     except KeyboardInterrupt:
         _ensure_process_dead(proc)
-        _drain_readers(stdout_thread, stderr_thread)
         raise
     finally:
         _ensure_process_dead(proc)
+        _drain_readers(stdout_thread, stderr_thread)
 
     stdout = "".join(stdout_lines) if stdout_lines is not None else None
     stderr = "".join(stderr_lines) if stderr_lines is not None else None

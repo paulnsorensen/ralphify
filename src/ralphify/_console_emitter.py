@@ -6,6 +6,8 @@ Rich-formatted terminal output.
 
 from __future__ import annotations
 
+import sys
+import threading
 import time
 from collections.abc import Callable
 from functools import partial
@@ -20,6 +22,7 @@ from rich.text import Text
 from ralphify._events import (
     LOG_ERROR,
     STOP_COMPLETED,
+    AgentOutputLineData,
     CommandsCompletedData,
     Event,
     EventType,
@@ -99,12 +102,35 @@ class _IterationSpinner:
         yield text
 
 
+def _interactive_default_peek(console: Console) -> bool:
+    """Return True when live peek should be on by default.
+
+    Peek is only useful when both (a) the console is attached to a real
+    terminal (so the user can see the extra lines) and (b) stdin is a TTY
+    (so the keypress listener is actually active and the user can turn
+    peek back off).  Recording consoles used in tests fail check (a).
+    """
+    if not console.is_terminal:
+        return False
+    try:
+        return sys.stdin.isatty()
+    except (ValueError, OSError):
+        return False
+
+
 class ConsoleEmitter:
     """Renders engine events to the Rich console."""
 
     def __init__(self, console: Console) -> None:
         self._console = console
         self._live: Live | None = None
+        self._peek_enabled = _interactive_default_peek(console)
+        self.wants_agent_output: bool = self._peek_enabled
+        self._peek_lock = threading.Lock()
+        # Outer lock that serialises every ``_console.print`` call so that
+        # reader-thread / keypress-thread writes cannot interleave with
+        # main-thread event handlers while a Rich ``Live`` region is active.
+        self._console_lock = threading.Lock()
         self._handlers: dict[EventType, Callable[..., None]] = {
             EventType.RUN_STARTED: self._on_run_started,
             EventType.ITERATION_STARTED: self._on_iteration_started,
@@ -120,7 +146,37 @@ class ConsoleEmitter:
             EventType.COMMANDS_COMPLETED: self._on_commands_completed,
             EventType.LOG_MESSAGE: self._on_log_message,
             EventType.RUN_STOPPED: self._on_run_stopped,
+            EventType.AGENT_OUTPUT_LINE: self._on_agent_output_line,
         }
+
+    def toggle_peek(self) -> bool:
+        """Flip live-output rendering on or off.
+
+        Safe to call from a non-main thread (e.g. the keypress listener).
+        Returns the new peek state.  A short status banner is printed so
+        the user gets visible feedback that the toggle took effect.
+
+        The banner print is issued while still holding ``_peek_lock`` so
+        that two rapid toggles cannot print their banners in an order that
+        disagrees with the final flag value.  ``_console_lock`` is acquired
+        after ``_peek_lock`` — this is the only nested-lock site, so the
+        order is uncontested and there is no deadlock risk.
+        """
+        with self._peek_lock:
+            self._peek_enabled = not self._peek_enabled
+            enabled = self._peek_enabled
+            with self._console_lock:
+                self._console.print(
+                    "[dim]peek on[/]" if enabled else "[dim]peek off[/]"
+                )
+        return enabled
+
+    def _on_agent_output_line(self, data: AgentOutputLineData) -> None:
+        if not self._peek_enabled:
+            return
+        line = escape_markup(data["line"])
+        with self._console_lock:
+            self._console.print(f"[dim]{line}[/]")
 
     def emit(self, event: Event) -> None:
         handler = self._handlers.get(event.type)
@@ -129,31 +185,37 @@ class ConsoleEmitter:
 
     def _on_run_started(self, data: RunStartedData) -> None:
         ralph_name = data["ralph_name"]
-        self._console.print(
-            f"\n[bold {_brand.PURPLE}]▶ Running:[/] [bold]{escape_markup(ralph_name)}[/]"
-        )
-        info = _format_run_info(data["timeout"], data["commands"], data["max_iterations"])
-        if info:
-            self._console.print(f"  [dim]{info}[/]")
+        with self._console_lock:
+            self._console.print(
+                f"\n[bold {_brand.PURPLE}]▶ Running:[/] [bold]{escape_markup(ralph_name)}[/]"
+            )
+            info = _format_run_info(
+                data["timeout"], data["commands"], data["max_iterations"]
+            )
+            if info:
+                self._console.print(f"  [dim]{info}[/]")
 
     def _start_live(self) -> None:
         spinner = _IterationSpinner()
-        self._live = Live(
-            spinner,
-            console=self._console,
-            transient=True,
-            refresh_per_second=_LIVE_REFRESH_RATE,
-        )
-        self._live.start()
+        with self._console_lock:
+            self._live = Live(
+                spinner,
+                console=self._console,
+                transient=True,
+                refresh_per_second=_LIVE_REFRESH_RATE,
+            )
+            self._live.start()
 
     def _stop_live(self) -> None:
         if self._live is not None:
-            self._live.stop()
-            self._live = None
+            with self._console_lock:
+                self._live.stop()
+                self._live = None
 
     def _on_iteration_started(self, data: IterationStartedData) -> None:
         iteration = data["iteration"]
-        self._console.print(f"\n[bold {_brand.BLUE}]── Iteration {iteration} ──[/]")
+        with self._console_lock:
+            self._console.print(f"\n[bold {_brand.BLUE}]── Iteration {iteration} ──[/]")
         self._start_live()
 
     def _on_iteration_ended(
@@ -162,29 +224,34 @@ class ConsoleEmitter:
         self._stop_live()
         iteration = data["iteration"]
         detail = data["detail"]
-        self._console.print(f"[{color}]{icon} Iteration {iteration} {detail}[/]")
         log_file = data["log_file"]
-        if log_file:
-            self._console.print(f"  [dim]{_ICON_ARROW} {escape_markup(log_file)}[/]")
         result_text = data["result_text"]
-        if result_text:
-            self._console.print(Markdown(result_text))
+        with self._console_lock:
+            self._console.print(f"[{color}]{icon} Iteration {iteration} {detail}[/]")
+            if log_file:
+                self._console.print(
+                    f"  [dim]{_ICON_ARROW} {escape_markup(log_file)}[/]"
+                )
+            if result_text:
+                self._console.print(Markdown(result_text))
 
     def _on_commands_completed(self, data: CommandsCompletedData) -> None:
         count = data["count"]
         if count:
-            self._console.print(f"  [bold]Commands:[/] {count} ran")
+            with self._console_lock:
+                self._console.print(f"  [bold]Commands:[/] {count} ran")
 
     def _on_log_message(self, data: LogMessageData) -> None:
         msg = escape_markup(data["message"])
         level = data["level"]
-        if level == LOG_ERROR:
-            self._console.print(f"[red]{msg}[/]")
-            tb = data.get("traceback")
-            if tb:
-                self._console.print(f"[dim]{escape_markup(tb)}[/]")
-        else:
-            self._console.print(f"[dim]{msg}[/]")
+        with self._console_lock:
+            if level == LOG_ERROR:
+                self._console.print(f"[red]{msg}[/]")
+                tb = data.get("traceback")
+                if tb:
+                    self._console.print(f"[dim]{escape_markup(tb)}[/]")
+            else:
+                self._console.print(f"[dim]{msg}[/]")
 
     def _on_run_stopped(self, data: RunStoppedData) -> None:
         self._stop_live()
@@ -194,5 +261,6 @@ class ConsoleEmitter:
         summary = _format_summary(
             data["total"], data["completed"], data["failed"], data["timed_out_count"]
         )
-        self._console.print(f"\n[bold {_brand.BLUE}]──────────────────────[/]")
-        self._console.print(f"[bold {_brand.GREEN}]Done:[/] {summary}")
+        with self._console_lock:
+            self._console.print(f"\n[bold {_brand.BLUE}]──────────────────────[/]")
+            self._console.print(f"[bold {_brand.GREEN}]Done:[/] {summary}")

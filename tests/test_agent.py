@@ -833,3 +833,106 @@ class TestRunAgentBlockingLineStreaming:
         assert result.returncode == 0
         assert result.timed_out is False
         assert result.result_text == "ok"
+
+
+class TestBlockingInheritPath:
+    """Tests for the fd-inheritance path in _run_agent_blocking.
+
+    When both ``log_path_dir`` and ``on_output_line`` are ``None``, the
+    blocking path should inherit stdout/stderr from the parent (no PIPE,
+    no reader threads) so that ``ralph run | cat`` shows output.
+    """
+
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
+    def test_no_pipe_when_no_log_no_callback(self, mock_popen):
+        """Popen must NOT receive stdout/stderr=PIPE when no one needs capture."""
+        result = _run_agent_blocking(
+            ["echo"],
+            "prompt",
+            timeout=None,
+            log_path_dir=None,
+            iteration=1,
+            on_output_line=None,
+        )
+
+        call_kwargs = mock_popen.call_args[1]
+        assert "stdout" not in call_kwargs
+        assert "stderr" not in call_kwargs
+        assert result.returncode == 0
+        assert result.log_file is None
+
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
+    def test_still_pipes_when_callback_set(self, mock_popen):
+        """When on_output_line is provided, stdout/stderr must be PIPE'd."""
+        _run_agent_blocking(
+            ["echo"],
+            "prompt",
+            timeout=None,
+            log_path_dir=None,
+            iteration=1,
+            on_output_line=lambda line, stream: None,
+        )
+
+        call_kwargs = mock_popen.call_args[1]
+        assert call_kwargs.get("stdout") == subprocess.PIPE
+        assert call_kwargs.get("stderr") == subprocess.PIPE
+
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
+    def test_still_pipes_when_log_dir_set(self, mock_popen, tmp_path):
+        """When log_path_dir is provided, stdout/stderr must be PIPE'd."""
+        _run_agent_blocking(
+            ["echo"],
+            "prompt",
+            timeout=None,
+            log_path_dir=tmp_path,
+            iteration=1,
+            on_output_line=None,
+        )
+
+        call_kwargs = mock_popen.call_args[1]
+        assert call_kwargs.get("stdout") == subprocess.PIPE
+        assert call_kwargs.get("stderr") == subprocess.PIPE
+
+    def test_inherit_path_shows_output(self, capfd):
+        """Real subprocess in inherit mode: child output reaches the parent's
+        stdout, verifying the ``ralph run | cat`` scenario works.
+
+        Uses ``capfd`` (fd-level capture) rather than ``capsys`` because
+        the inherit path writes to the raw file descriptor, bypassing
+        Python's ``sys.stdout``.
+        """
+        script = "import sys; print('visible-output')"
+
+        result = _run_agent_blocking(
+            [sys.executable, "-c", script],
+            prompt="",
+            timeout=10,
+            log_path_dir=None,
+            iteration=1,
+            on_output_line=None,
+        )
+
+        assert result.returncode == 0
+        captured = capfd.readouterr()
+        assert "visible-output" in captured.out
+
+    def test_callback_only_does_not_buffer(self, tmp_path):
+        """When on_output_line is set but log_path_dir is None, lines should
+        be forwarded to the callback but NOT accumulated (no unbounded
+        buffering).  Verified indirectly: log_file is None (no buffer to
+        write) but the callback still receives lines."""
+        script = "import sys; print('line1'); print('line2')"
+        received: list[str] = []
+
+        result = _run_agent_blocking(
+            [sys.executable, "-c", script],
+            prompt="",
+            timeout=10,
+            log_path_dir=None,
+            iteration=1,
+            on_output_line=lambda line, stream: received.append(line),
+        )
+
+        assert result.returncode == 0
+        assert result.log_file is None
+        assert received == ["line1", "line2"]
