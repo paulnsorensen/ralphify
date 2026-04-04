@@ -3,6 +3,19 @@
 version = 1
 
 [[skill]]
+path = "skills/brand-guidelines"
+installed-name = "brand-guidelines"
+
+[[skill]]
+handle = "microsoft/playwright-cli/playwright-cli"
+source = "github"
+installed-name = "playwright-cli"
+
+[[skill]]
+path = "skills/release"
+installed-name = "release"
+
+[[skill]]
 handle = "computerlovetech/docs-audit"
 source = "github"
 commit = "5674fdd2eb72497761061cc0acd6623b76185832"
@@ -15,3 +28,10 @@ source = "github"
 commit = "5674fdd2eb72497761061cc0acd6623b76185832"
 content-hash = "sha256:4bcd7df99e67fd99f49098bf3732a44a053562ee2516de098c2c70204a191b61"
 installed-name = "setup-agent-workspace"
+
+[[skill]]
+handle = "maragudk/code-review"
+source = "github"
+commit = "9859f7bceb7a46af8482cabb9aa24e0d38a49413"
+content-hash = "sha256:fa1ce825fa7e11cd5aac55ee7eac5e9c918e3af113b7988fdbd281a319acc110"
+installed-name = "code-review"

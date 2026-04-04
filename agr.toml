@@ -5,6 +5,7 @@ dependencies = [
     {path = "skills/release", type = "skill"},
     {handle = "computerlovetech/docs-audit", type = "skill"},
     {handle = "computerlovetech/setup-agent-workspace", type = "skill"},
+    {handle = "maragudk/code-review", type = "skill"},
 ]
 
 [[source]]
