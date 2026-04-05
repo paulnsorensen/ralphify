@@ -107,15 +107,26 @@ def serialize_frontmatter(frontmatter: dict[str, Any], body: str) -> str:
     """Serialize frontmatter and body back to a markdown string.
 
     This is the inverse of :func:`parse_frontmatter`.  If *frontmatter*
-    is empty the body is returned as-is (no ``---`` delimiters).
+    is empty **and** the body cannot be mistaken for a frontmatter block,
+    the body is returned as-is (no ``---`` delimiters).  When the body
+    starts with ``---`` (after stripping whitespace), empty delimiters are
+    emitted to prevent :func:`parse_frontmatter` from consuming the body
+    as frontmatter on a subsequent round-trip.
     """
     parts: list[str] = []
-    if frontmatter:
+    # Emit delimiters when there is frontmatter content OR when the body
+    # starts with the delimiter string (which would be mis-parsed as
+    # frontmatter without the protective empty block).
+    needs_delimiters = bool(frontmatter) or body.lstrip().startswith(
+        _FRONTMATTER_DELIMITER
+    )
+    if needs_delimiters:
         parts.append(_FRONTMATTER_DELIMITER)
-        fm_text = yaml.dump(
-            frontmatter, default_flow_style=False, sort_keys=False
-        ).strip()
-        parts.append(fm_text)
+        if frontmatter:
+            fm_text = yaml.dump(
+                frontmatter, default_flow_style=False, sort_keys=False
+            ).strip()
+            parts.append(fm_text)
         parts.append(_FRONTMATTER_DELIMITER)
         parts.append("")
     parts.append(body)
