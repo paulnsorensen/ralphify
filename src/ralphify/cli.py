@@ -17,6 +17,7 @@ from typing import Any, NoReturn
 
 import typer
 from rich.console import Console
+from rich.markup import escape as escape_markup
 
 from ralphify import __version__
 from ralphify import _brand
@@ -56,7 +57,7 @@ app = typer.Typer()
 
 def _exit_error(msg: str) -> NoReturn:
     """Print an error in red and exit with code 1."""
-    _console.print(f"[red]{msg}[/]")
+    _console.print(f"[red]{escape_markup(msg)}[/]")
     raise typer.Exit(1)
 
 
@@ -202,8 +203,8 @@ def scaffold(
 
     ralph_file.write_text(_INIT_TEMPLATE, encoding="utf-8")
     rel = ralph_file.relative_to(Path.cwd())
-    _console.print(f"[green]Created[/] {rel}")
-    _console.print(f"[dim]Edit the file, then run:[/] ralph run {name or '.'}")
+    _console.print(f"[green]Created[/] {escape_markup(str(rel))}")
+    _console.print(f"[dim]Edit the file, then run:[/] ralph run {escape_markup(name or '.')}")
 
 
 def _parse_user_args(
@@ -373,7 +374,7 @@ def _resolve_ralph_paths(ralph_path: str) -> tuple[Path, Path]:
         if installed is not None:
             ralph_dir = installed
             ralph_file = installed / RALPH_MARKER
-            _console.print(f"[dim]Resolved:[/] {ralph_file}")
+            _console.print(f"[dim]Resolved:[/] {escape_markup(str(ralph_file))}")
         else:
             _exit_error(
                 f"'{ralph_path}' is not a directory, {RALPH_MARKER} file, or installed ralph."
@@ -543,7 +544,7 @@ def run(
     )
 
     if log_dir:
-        _console.print(f"[dim]Logging output to {log_dir}/[/]")
+        _console.print(f"[dim]Logging output to {escape_markup(log_dir)}/[/]")
 
     state = RunState(run_id=generate_run_id())
     emitter = ConsoleEmitter(_console)
