@@ -94,6 +94,7 @@ plugins:
       exclude:
         - blog/archive/*
         - blog/category/*
+        - blog/posts/*
 
 extra_css:
   - stylesheets/extra.css
