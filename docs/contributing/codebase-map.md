@@ -29,7 +29,8 @@ src/ralphify/           # All source code
 ├── _frontmatter.py     # Parse YAML frontmatter from RALPH.md, marker constants
 ├── _console_emitter.py # Rich console renderer for run-loop events (ConsoleEmitter)
 ├── _events.py          # Event types, emitter protocol, and BoundEmitter convenience wrapper
-├── _output.py          # ProcessResult base class, combine stdout+stderr, format durations
+├── _keypress.py        # Cross-platform single-keypress listener (powers the `p` peek toggle)
+├── _output.py          # ProcessResult base class, subprocess constants (SESSION_KWARGS, SUBPROCESS_TEXT_KWARGS), format durations
 └── _brand.py           # Brand color constants shared across CLI and console rendering
 
 tests/                  # Pytest tests — one test file per module
@@ -130,6 +131,10 @@ Add it in `cli.py`. The CLI uses Typer. Update `docs/cli.md` to document the new
 
 Events are defined in `_events.py:EventType`, with a corresponding TypedDict payload class for each type. Adding a new event type requires a new `EventType` member, a new TypedDict payload class, adding it to the `EventData` union, and handling it in `ConsoleEmitter` (`_console_emitter.py`).
 
+### Live agent output (peek)
+
+Both execution paths in `_agent.py` accept an `on_output_line(line, stream)` callback and drain the agent's stdout/stderr line-by-line — the blocking path uses two background reader threads, and the streaming path forwards each raw line from `_read_agent_stream`. The engine wires this callback to emit `EventType.AGENT_OUTPUT_LINE` events, which the `ConsoleEmitter` renders only while peek is enabled. The `p` keybinding flips that state via `ConsoleEmitter.toggle_peek()`, driven by `KeypressListener` in `_keypress.py`. The listener only activates on a real TTY; in CI or when stdin is piped it silently no-ops.
+
 ### Credit trailer
 
 When `credit` is `true` (the default), `engine.py:_assemble_prompt()` appends `_CREDIT_INSTRUCTION` to the prompt — a short instruction telling the agent to include a `Co-authored-by: Ralphify` trailer in git commits. Users can opt out with `credit: false` in frontmatter.
@@ -140,14 +145,14 @@ When `credit` is `true` (the default), `engine.py:_assemble_prompt()` appends `_
 
 ### If you change shutdown or signal handling...
 
-Agent subprocesses run in their own process group (`start_new_session=True` on POSIX, configured via `_SESSION_KWARGS` in `_agent.py`). This lets `_kill_process_group()` send signals to the agent and all its children at once.
+Agent subprocesses run in their own process group (`start_new_session=True` on POSIX, configured via `SESSION_KWARGS` in `_output.py`). This lets `_kill_process_group()` send signals to the agent and all its children at once.
 
 The two-stage Ctrl+C flow:
 
 1. **First Ctrl+C** — the engine's SIGINT handler sets `RunState.stop_requested`, which lets the current iteration finish gracefully.
 2. **Second Ctrl+C** — `KeyboardInterrupt` propagates normally and the agent process is killed.
 
-Timeout and cancellation both use a two-step kill: SIGTERM first, then SIGKILL after `_SIGTERM_GRACE_PERIOD` seconds (3s). If you add a new subprocess wrapper, use `_kill_process_group()` and `_SESSION_KWARGS` to get consistent cleanup behavior.
+Timeout and cancellation both use a two-step kill: SIGTERM first, then SIGKILL after `_SIGTERM_GRACE_PERIOD` seconds (3s). If you add a new subprocess wrapper, use `_kill_process_group()` and `SESSION_KWARGS` to get consistent cleanup behavior.
 
 ### Command parsing
 
