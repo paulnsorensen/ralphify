@@ -1098,8 +1098,8 @@ class TestBlockingInheritPath:
         )
 
         call_kwargs = mock_popen.call_args[1]
-        assert "stdout" not in call_kwargs
-        assert "stderr" not in call_kwargs
+        assert call_kwargs.get("stdout") is None
+        assert call_kwargs.get("stderr") is None
         assert result.returncode == 0
         assert result.log_file is None
 

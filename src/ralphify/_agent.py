@@ -518,9 +518,7 @@ def _start_writer_thread(
     ``Thread(…, daemon=True) / .start()`` boilerplate across the streaming and
     blocking execution paths.
     """
-    thread = threading.Thread(
-        target=_deliver_prompt, args=(proc, prompt), daemon=True
-    )
+    thread = threading.Thread(target=_deliver_prompt, args=(proc, prompt), daemon=True)
     thread.start()
     return thread
 
@@ -602,17 +600,18 @@ def _run_agent_blocking(
 ) -> AgentResult:
     """Run the agent subprocess and return the result.
 
-    Uses a three-way capture strategy:
+    Conditionally pipes stdout/stderr based on whether any subscriber
+    needs the output:
 
-    1. **Inherit** (``on_output_line is None and log_path_dir is None``) —
-       stdout/stderr are not piped; the child writes directly to the
-       parent's file descriptors.  No reader threads, no buffering.
-    2. **Callback only** (``on_output_line`` set, no log dir) — reader
-       threads forward lines to the callback without accumulating them,
-       avoiding unbounded memory growth.
-    3. **Log capture** (``log_path_dir`` set) — reader threads accumulate
-       lines into lists for log writing; lines are also forwarded to the
-       callback if provided.
+    - **Inherit** (``on_output_line is None and log_path_dir is None``) —
+      stdout/stderr are not piped; the child writes directly to the
+      parent's file descriptors.  No reader threads, no buffering.
+    - **Callback only** (``on_output_line`` set, no log dir) — reader
+      threads forward lines to the callback without accumulating them,
+      avoiding unbounded memory growth.
+    - **Log capture** (``log_path_dir`` set) — reader threads accumulate
+      lines into lists for log writing; lines are also forwarded to the
+      callback if provided.
 
     The subprocess is started in its own process group so that on
     ``KeyboardInterrupt`` or timeout the entire child tree can be killed
@@ -624,72 +623,41 @@ def _run_agent_blocking(
     start = time.monotonic()
     capture = log_path_dir is not None or on_output_line is not None
 
-    if not capture:
-        # ── Inherit path ─────────────────────────────────────────
-        # No subscriber needs the bytes — let the child write directly
-        # to the terminal.  Avoids silent output loss when the user
-        # pipes ralph's output (e.g. ``ralph run | cat``).
-        returncode: int | None = None
-        timed_out = False
-        writer_thread: threading.Thread | None = None
-
-        proc = subprocess.Popen(
-            cmd,
-            stdin=subprocess.PIPE,
-            **SUBPROCESS_TEXT_KWARGS,
-            **SESSION_KWARGS,
-        )
-        try:
-            if proc.stdin is None:
-                raise RuntimeError("subprocess.Popen failed to create PIPE stdin")
-
-            writer_thread = _start_writer_thread(proc, prompt)
-
-            try:
-                returncode = proc.wait(timeout=timeout)
-            except subprocess.TimeoutExpired:
-                _ensure_process_dead(proc)
-                timed_out = True
-        finally:
-            _cleanup_agent(proc, writer_thread)
-
-        return AgentResult(
-            returncode=None if timed_out else returncode,
-            elapsed=time.monotonic() - start,
-            log_file=None,
-            timed_out=timed_out,
-        )
-
-    # ── Capture path ─────────────────────────────────────────────
-    # Reader threads drain stdout/stderr concurrently.  Lines are only
-    # accumulated into buffers when a log file will be written; otherwise
-    # the callback alone observes them, avoiding unbounded memory growth.
-    returncode = None
+    # When no subscriber needs the bytes, stdout/stderr are left
+    # un-piped so the child writes directly to the terminal.  When
+    # capture is needed, reader threads drain stdout/stderr
+    # concurrently.  Lines are only accumulated into buffers when a
+    # log file will be written; otherwise the callback alone observes
+    # them, avoiding unbounded memory growth.
+    returncode: int | None = None
     timed_out = False
     writer_thread: threading.Thread | None = None
-    stdout_lines: list[str] | None = [] if log_path_dir is not None else None
-    stderr_lines: list[str] | None = [] if log_path_dir is not None else None
     stdout_thread: threading.Thread | None = None
     stderr_thread: threading.Thread | None = None
+    stdout_lines: list[str] | None = [] if log_path_dir is not None else None
+    stderr_lines: list[str] | None = [] if log_path_dir is not None else None
 
+    pipe = subprocess.PIPE if capture else None
     proc = subprocess.Popen(
         cmd,
         stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stdout=pipe,
+        stderr=pipe,
         **SUBPROCESS_TEXT_KWARGS,
         **SESSION_KWARGS,
     )
     try:
-        if proc.stdin is None or proc.stdout is None or proc.stderr is None:
-            raise RuntimeError("subprocess.Popen failed to create PIPE streams")
-
-        stdout_thread = _start_pump_thread(
-            proc.stdout, stdout_lines, _STDOUT, on_output_line
-        )
-        stderr_thread = _start_pump_thread(
-            proc.stderr, stderr_lines, _STDERR, on_output_line
-        )
+        if proc.stdin is None:
+            raise RuntimeError("subprocess.Popen failed to create PIPE stdin")
+        if capture:
+            if proc.stdout is None or proc.stderr is None:
+                raise RuntimeError("subprocess.Popen failed to create PIPE streams")
+            stdout_thread = _start_pump_thread(
+                proc.stdout, stdout_lines, _STDOUT, on_output_line
+            )
+            stderr_thread = _start_pump_thread(
+                proc.stderr, stderr_lines, _STDERR, on_output_line
+            )
 
         writer_thread = _start_writer_thread(proc, prompt)
 
@@ -703,7 +671,6 @@ def _run_agent_blocking(
 
     stdout = "".join(stdout_lines) if stdout_lines is not None else None
     stderr = "".join(stderr_lines) if stderr_lines is not None else None
-
     log_file = _write_log(log_path_dir, iteration, stdout, stderr)
 
     return AgentResult(
