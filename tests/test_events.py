@@ -56,6 +56,9 @@ class TestNullEmitter:
         event = Event(type=EventType.RUN_STARTED, run_id="x")
         emitter.emit(event)  # should not raise
 
+    def test_wants_agent_output_lines_false(self):
+        assert NullEmitter().wants_agent_output_lines() is False
+
 
 class TestQueueEmitter:
     def test_emit_pushes_to_queue(self):
@@ -91,6 +94,9 @@ class TestQueueEmitter:
         emitter.emit(event)
 
         assert q.get() is event
+
+    def test_wants_agent_output_lines_false(self):
+        assert QueueEmitter().wants_agent_output_lines() is False
 
 
 class TestBoundEmitter:
@@ -148,6 +154,30 @@ class TestBoundEmitter:
         assert events[0].data["level"] == LOG_ERROR
         assert "traceback" not in events[0].data
 
+    def test_agent_output_line_emits_event(self):
+        q = QueueEmitter()
+        emit = BoundEmitter(q, "run-peek")
+        emit.agent_output_line("a line", "stdout", 3)
+
+        events = drain_events(q)
+        assert len(events) == 1
+        assert events[0].type == EventType.AGENT_OUTPUT_LINE
+        assert events[0].data == {
+            "line": "a line",
+            "stream": "stdout",
+            "iteration": 3,
+        }
+
+    def test_wants_agent_output_lines_delegates(self):
+        """BoundEmitter delegates to the underlying emitter dynamically."""
+        q = QueueEmitter()
+        emit = BoundEmitter(q, "run-1")
+        assert emit.wants_agent_output_lines() is False
+
+        null = NullEmitter()
+        emit2 = BoundEmitter(null, "run-2")
+        assert emit2.wants_agent_output_lines() is False
+
     def test_log_error_includes_traceback_when_provided(self):
         q = QueueEmitter()
         emit = BoundEmitter(q, "run-log")
@@ -188,3 +218,10 @@ class TestFanoutEmitter:
         fanout.emit(event)
 
         assert q.queue.get() is event
+
+    def test_wants_agent_output_lines_false_when_no_child_wants(self):
+        fanout = FanoutEmitter([NullEmitter(), QueueEmitter()])
+        assert fanout.wants_agent_output_lines() is False
+
+    def test_wants_agent_output_lines_false_when_empty(self):
+        assert FanoutEmitter([]).wants_agent_output_lines() is False

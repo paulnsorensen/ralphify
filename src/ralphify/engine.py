@@ -25,6 +25,7 @@ from ralphify._events import (
     IterationEndedData,
     IterationStartedData,
     NullEmitter,
+    OutputStream,
     PromptAssembledData,
     RunStartedData,
     RunStoppedData,
@@ -178,11 +179,17 @@ def _run_agent_phase(
             f"Invalid agent command syntax: {config.agent!r}. {_field_hint(FIELD_AGENT)}"
         ) from exc
 
-    on_output_line = (
-        (lambda line, stream: emit.agent_output_line(line, stream, state.iteration))
-        if emit.wants_agent_output
-        else None
-    )
+    # Option C: recheck per-line so mid-iteration peek toggle takes effect.
+    # When neither peek nor logging needs output, pass None so the blocking
+    # path can inherit file descriptors (critical-01 contract).
+    def _on_output_line(line: str, stream: OutputStream) -> None:
+        if emit.wants_agent_output_lines():
+            emit.agent_output_line(line, stream, state.iteration)
+
+    if emit.wants_agent_output_lines() or config.log_dir is not None:
+        on_output_line = _on_output_line
+    else:
+        on_output_line = None
 
     try:
         agent = execute_agent(
@@ -226,11 +233,10 @@ def _run_agent_phase(
         log_file=str(agent.log_file) if agent.log_file else None,
         result_text=agent.result_text,
     )
-    # When logging is enabled and live peek was off (on_output_line is None),
-    # include captured output so the emitter can echo it after stopping the
-    # Live spinner — avoiding the terminal tear that direct sys.stdout writes
-    # would cause.  When peek was on, lines were already rendered live.
-    if on_output_line is None and config.log_dir is not None:
+    # When logging captured output and peek was off (lines were not rendered
+    # live), include captured output so the emitter can echo it after
+    # stopping the Live spinner.  When peek was on, lines were already shown.
+    if not emit.wants_agent_output_lines() and config.log_dir is not None:
         ended_data["echo_stdout"] = agent.captured_stdout
         ended_data["echo_stderr"] = agent.captured_stderr
 

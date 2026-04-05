@@ -198,26 +198,37 @@ class EventEmitter(Protocol):
 
     def emit(self, event: Event) -> None: ...
 
+    def wants_agent_output_lines(self) -> bool:
+        """Return True if this emitter will render AGENT_OUTPUT_LINE events.
+
+        Used by the engine to avoid per-line event allocation when no
+        subscriber cares.  This is a hint — emitters may still receive
+        the events if the caller chooses to send them anyway.
+        """
+        return False
+
 
 class NullEmitter:
     """Discards all events silently."""
 
-    wants_agent_output = False
-
     def emit(self, event: Event) -> None:
         pass
+
+    def wants_agent_output_lines(self) -> bool:
+        return False
 
 
 class QueueEmitter:
     """Pushes events into a :class:`queue.Queue` for async consumption."""
-
-    wants_agent_output = True
 
     def __init__(self, q: queue.Queue[Event] | None = None) -> None:
         self.queue: queue.Queue[Event] = q or queue.Queue()
 
     def emit(self, event: Event) -> None:
         self.queue.put(event)
+
+    def wants_agent_output_lines(self) -> bool:
+        return False
 
 
 class FanoutEmitter:
@@ -229,6 +240,9 @@ class FanoutEmitter:
     def emit(self, event: Event) -> None:
         for e in self._emitters:
             e.emit(event)
+
+    def wants_agent_output_lines(self) -> bool:
+        return any(e.wants_agent_output_lines() for e in self._emitters)
 
 
 class BoundEmitter:
@@ -242,7 +256,10 @@ class BoundEmitter:
     def __init__(self, emitter: EventEmitter, run_id: str) -> None:
         self._emitter = emitter
         self._run_id = run_id
-        self.wants_agent_output: bool = getattr(emitter, "wants_agent_output", True)
+
+    def wants_agent_output_lines(self) -> bool:
+        """Delegate to the underlying emitter (checked per-call, not cached)."""
+        return self._emitter.wants_agent_output_lines()
 
     def __call__(
         self,

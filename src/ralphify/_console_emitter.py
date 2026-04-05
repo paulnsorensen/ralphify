@@ -125,7 +125,6 @@ class ConsoleEmitter:
         self._console = console
         self._live: Live | None = None
         self._peek_enabled = _interactive_default_peek(console)
-        self.wants_agent_output: bool = self._peek_enabled
         self._peek_lock = threading.Lock()
         # Outer lock that serialises every ``_console.print`` call so that
         # reader-thread / keypress-thread writes cannot interleave with
@@ -148,6 +147,9 @@ class ConsoleEmitter:
             EventType.RUN_STOPPED: self._on_run_stopped,
             EventType.AGENT_OUTPUT_LINE: self._on_agent_output_line,
         }
+
+    def wants_agent_output_lines(self) -> bool:
+        return self._peek_enabled
 
     def toggle_peek(self) -> bool:
         """Flip live-output rendering on or off.

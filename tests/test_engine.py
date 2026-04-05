@@ -1090,7 +1090,6 @@ class TestEchoCoordination:
         console = Console(record=True, width=120)
         emitter = ConsoleEmitter(console)
         emitter.toggle_peek()  # force peek on
-        emitter.wants_agent_output = True  # ensure on_output_line is set
 
         log_dir = tmp_path / "logs"
         config = make_config(tmp_path, max_iterations=1, log_dir=log_dir)
@@ -1123,3 +1122,53 @@ class TestEchoCoordination:
         output = console.export_text()
         assert "hello" in output
         assert "world" in output
+
+
+class TestAgentOutputLineFiltering:
+    """Tests for AGENT_OUTPUT_LINE event filtering (medium-01)."""
+
+    @patch(MOCK_SUBPROCESS)
+    def test_agent_output_line_not_emitted_when_peek_off(self, mock_run, tmp_path):
+        """When peek is off, no AGENT_OUTPUT_LINE events are emitted."""
+        mock_run.return_value = ok_proc(stdout_text="line1\nline2\nline3\n")
+        q = QueueEmitter()
+        config = make_config(tmp_path, max_iterations=1)
+        state = make_state()
+
+        run_loop(config, state, q)
+
+        events = drain_events(q)
+        output_events = events_of_type(events, EventType.AGENT_OUTPUT_LINE)
+        assert output_events == []
+
+    @patch(MOCK_SUBPROCESS)
+    def test_agent_output_line_emitted_when_peek_toggled_mid_iteration(
+        self, mock_run, tmp_path
+    ):
+        """Start with peek off, toggle on before agent runs — subsequent
+        lines appear as AGENT_OUTPUT_LINE events.  Requires log_dir so the
+        callback path is taken (without log_dir the inherit path gives
+        on_output_line=None and no mid-iteration toggle is possible)."""
+        console = Console(record=True, width=120)
+        emitter = ConsoleEmitter(console)
+        # peek starts off for recording consoles
+
+        original_proc = ok_proc(stdout_text="first\nsecond\nthird\n")
+
+        def popen_with_toggle(*args, **kwargs):
+            # Toggle peek on before the process runs — simulates user
+            # pressing 'p' early in the iteration.
+            emitter.toggle_peek()
+            return original_proc
+
+        mock_run.side_effect = popen_with_toggle
+
+        log_dir = tmp_path / "logs"
+        config = make_config(tmp_path, max_iterations=1, log_dir=log_dir)
+        state = make_state()
+
+        run_loop(config, state, emitter)
+
+        output = console.export_text()
+        # With peek toggled on, agent output lines should appear
+        assert "first" in output or "second" in output or "third" in output
