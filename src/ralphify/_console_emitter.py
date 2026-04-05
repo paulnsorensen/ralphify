@@ -40,6 +40,11 @@ _ICON_FAILURE = "✗"
 _ICON_TIMEOUT = "⏱"
 _ICON_ARROW = "→"
 _ICON_DASH = "—"
+_ICON_PLAY = "▶"
+
+# Horizontal rules used to visually bracket iteration and run sections.
+_RULE_THIN = "──"
+_RULE_HEAVY = "──────────────────────"
 
 _LIVE_REFRESH_RATE = 4  # Hz — how often the spinner redraws
 
@@ -188,7 +193,7 @@ class ConsoleEmitter:
         ralph_name = data["ralph_name"]
         with self._console_lock:
             self._console.print(
-                f"\n[bold {_brand.PURPLE}]▶ Running:[/] [bold]{escape_markup(ralph_name)}[/]"
+                f"\n[bold {_brand.PURPLE}]{_ICON_PLAY} Running:[/] [bold]{escape_markup(ralph_name)}[/]"
             )
             info = _format_run_info(
                 data["timeout"], data["commands"], data["max_iterations"]
@@ -222,7 +227,9 @@ class ConsoleEmitter:
     def _on_iteration_started(self, data: IterationStartedData) -> None:
         iteration = data["iteration"]
         with self._console_lock:
-            self._console.print(f"\n[bold {_brand.BLUE}]── Iteration {iteration} ──[/]")
+            self._console.print(
+                f"\n[bold {_brand.BLUE}]{_RULE_THIN} Iteration {iteration} {_RULE_THIN}[/]"
+            )
             self._start_live_unlocked()
 
     def _echo_stream(self, text: str | None) -> None:
@@ -282,7 +289,10 @@ class ConsoleEmitter:
                 return
 
             summary = _format_summary(
-                data["total"], data["completed"], data["failed"], data["timed_out_count"]
+                data["total"],
+                data["completed"],
+                data["failed"],
+                data["timed_out_count"],
             )
-            self._console.print(f"\n[bold {_brand.BLUE}]──────────────────────[/]")
+            self._console.print(f"\n[bold {_brand.BLUE}]{_RULE_HEAVY}[/]")
             self._console.print(f"[bold {_brand.GREEN}]Done:[/] {summary}")
