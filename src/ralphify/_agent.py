@@ -113,7 +113,14 @@ def _kill_process_group(proc: subprocess.Popen[Any]) -> None:
     On POSIX, attempts a graceful group kill (SIGTERM → SIGKILL) via
     :func:`_try_graceful_group_kill`.  Falls back to ``proc.kill()``
     on Windows, when the process already exited, or if the group kill fails.
+
+    Short-circuits when ``proc.pid`` is ``None`` or non-positive — these
+    are sentinel values used by test mocks.  A non-positive pid would also
+    be dangerous to pass to ``os.getpgid`` / ``os.killpg`` (pid 0 means
+    the caller's own process group).
     """
+    if proc.pid is None or proc.pid <= 0:
+        return
     if not IS_WINDOWS and proc.poll() is None:
         if _try_graceful_group_kill(proc):
             return

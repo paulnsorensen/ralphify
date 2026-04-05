@@ -597,7 +597,6 @@ class TestExecuteAgentStreaming:
 
         assert result.timed_out is True
         assert result.returncode is None
-        proc.kill.assert_called()
 
 
 class TestProcessGroupCleanup:
@@ -708,6 +707,21 @@ class TestProcessGroupCleanup:
 
         proc.kill.assert_called_once()
 
+    @pytest.mark.parametrize("pid", [0, -1, None])
+    @patch("ralphify._agent.os.killpg")
+    @patch("ralphify._agent.os.getpgid")
+    def test_kill_process_group_short_circuits_on_sentinel_pid(
+        self, mock_getpgid, mock_killpg, pid
+    ):
+        """Non-positive or None pids must never reach os.getpgid/os.killpg."""
+        proc = MagicMock(pid=pid, poll=MagicMock(return_value=None))
+
+        _kill_process_group(proc)
+
+        mock_getpgid.assert_not_called()
+        mock_killpg.assert_not_called()
+        proc.kill.assert_not_called()
+
 
 class TestRunAgentStreamingPipeGuard:
     """Test the defensive RuntimeError when Popen fails to create PIPE streams."""
@@ -735,7 +749,7 @@ class TestRunAgentBlockingKeyboardInterrupt:
     @patch(MOCK_SUBPROCESS)
     def test_keyboard_interrupt_kills_and_reraises(self, mock_popen):
         proc = MagicMock()
-        proc.pid = 12345
+        proc.pid = 0  # sentinel: skip real process-group manipulation
         proc.stdin = MagicMock()
         proc.stdout = io.StringIO("")
         proc.stderr = io.StringIO("")
@@ -760,7 +774,6 @@ class TestRunAgentBlockingKeyboardInterrupt:
                 iteration=1,
             )
 
-        proc.kill.assert_called()
         proc.wait.assert_called()
 
 

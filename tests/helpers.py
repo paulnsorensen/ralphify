@@ -152,7 +152,9 @@ def _make_mock_proc(
     proc.communicate.return_value = (stdout_text, stderr_text)
     proc.wait.return_value = returncode
     proc.poll.return_value = returncode
-    proc.pid = 12345
+    proc.pid = (
+        0  # sentinel: skip real process-group manipulation in _kill_process_group
+    )
     return proc
 
 
@@ -233,6 +235,9 @@ def make_mock_popen(
     proc.returncode = returncode
     proc.wait.return_value = returncode
     proc.poll.return_value = returncode  # not None → process finished
+    proc.pid = (
+        0  # sentinel: skip real process-group manipulation in _kill_process_group
+    )
     return proc
 
 
