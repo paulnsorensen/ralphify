@@ -456,10 +456,7 @@ def _run_agent_streaming(
             _kill_process_group(proc)
         proc.wait()
     finally:
-        _ensure_process_dead(proc)
-        _close_pipes(proc)
-        _drain_readers(stderr_thread, writer_thread)
-        _finalize_pipes(proc)
+        _cleanup_agent(proc, stderr_thread, writer_thread)
 
     stdout = "".join(stream.stdout_lines)
     stderr = "".join(stderr_lines)
@@ -559,6 +556,26 @@ def _drain_readers(
                     f" exit within {timeout}s — log output may be incomplete",
                     file=sys.stderr,
                 )
+
+
+def _cleanup_agent(
+    proc: subprocess.Popen[Any],
+    *threads: threading.Thread | None,
+) -> None:
+    """Perform the full four-step shutdown for a piped agent subprocess.
+
+    1. Kill the process if still running and wait for exit.
+    2. Close parent-side pipe fds to unblock reader threads.
+    3. Join reader/writer threads to drain remaining output.
+    4. Finalize Python pipe objects to suppress GC warnings.
+
+    Used in ``finally`` blocks of the streaming and blocking capture
+    paths, which previously duplicated this exact sequence inline.
+    """
+    _ensure_process_dead(proc)
+    _close_pipes(proc)
+    _drain_readers(*threads)
+    _finalize_pipes(proc)
 
 
 def _run_agent_blocking(
@@ -681,10 +698,7 @@ def _run_agent_blocking(
         _ensure_process_dead(proc)
         raise
     finally:
-        _ensure_process_dead(proc)
-        _close_pipes(proc)
-        _drain_readers(stdout_thread, stderr_thread, writer_thread)
-        _finalize_pipes(proc)
+        _cleanup_agent(proc, stdout_thread, stderr_thread, writer_thread)
 
     stdout = "".join(stdout_lines) if stdout_lines is not None else None
     stderr = "".join(stderr_lines) if stderr_lines is not None else None
