@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import os
+import queue as _queue
 import signal
 import subprocess
 import sys
@@ -260,6 +261,26 @@ def _supports_stream_json(cmd: list[str]) -> bool:
     return binary == _CLAUDE_BINARY
 
 
+def _readline_pump(
+    stdout: IO[str],
+    line_queue: _queue.Queue[str | None],
+) -> None:
+    """Read *stdout* line-by-line and put each line into *line_queue*.
+
+    Sends a ``None`` sentinel on EOF or pipe error so the consumer can
+    distinguish "no more data" from "still waiting".  Runs on a daemon
+    thread started by :func:`_read_agent_stream`.
+    """
+    try:
+        for line in iter(stdout.readline, ""):
+            line_queue.put(line)
+    except (ValueError, OSError):
+        # Pipe closed concurrently (e.g. after timeout kill) — exit cleanly.
+        pass
+    finally:
+        line_queue.put(None)  # EOF sentinel
+
+
 def _read_agent_stream(
     stdout: IO[str],
     deadline: float | None,
@@ -267,6 +288,17 @@ def _read_agent_stream(
     on_output_line: Callable[[str, OutputStream], None] | None = None,
 ) -> _StreamResult:
     """Read the agent's JSON stream line-by-line until EOF or timeout.
+
+    Uses a background reader thread that feeds lines into a
+    :class:`queue.Queue`.  The main thread pulls from the queue with a
+    bounded wait derived from *deadline*, so the timeout is enforced even
+    when the agent produces no output (a silent hang).  This is
+    cross-platform — ``select.select`` on pipes only works on POSIX.
+
+    ``SUBPROCESS_TEXT_KWARGS`` sets ``bufsize=1`` (line-buffered), so
+    ``readline()`` in the reader thread returns as soon as a newline
+    arrives instead of filling an 8 KB readahead buffer.  Combined with
+    the queue, peek lines flow one-at-a-time.
 
     Parses each non-empty line as JSON.  Valid JSON objects are forwarded
     to *on_activity* (if provided).  The ``result`` field from
@@ -282,7 +314,39 @@ def _read_agent_stream(
     stdout_lines: list[str] = []
     result_text: str | None = None
 
-    for line in stdout:
+    line_q: _queue.Queue[str | None] = _queue.Queue()
+    reader = threading.Thread(target=_readline_pump, args=(stdout, line_q), daemon=True)
+    reader.start()
+
+    while True:
+        # Compute how long we can wait for the next line.
+        if deadline is not None:
+            remaining = deadline - time.monotonic()
+            # Use max(remaining, 0) so that an already-expired deadline
+            # still does a non-blocking drain of queued lines before
+            # returning — lines the reader thread already buffered are
+            # not silently lost.
+            get_timeout: float | None = max(remaining, 0)
+        else:
+            get_timeout = None
+
+        try:
+            line = line_q.get(timeout=get_timeout)
+        except _queue.Empty:
+            # Deadline expired while waiting for a line.
+            return _StreamResult(
+                stdout_lines=stdout_lines,
+                result_text=result_text,
+                timed_out=True,
+            )
+
+        if line is None:  # EOF sentinel from reader thread
+            return _StreamResult(
+                stdout_lines=stdout_lines,
+                result_text=result_text,
+                timed_out=False,
+            )
+
         stdout_lines.append(line)
         if on_output_line is not None:
             try:
@@ -309,14 +373,15 @@ def _read_agent_stream(
                         # Callback is best-effort; draining must not stop.
                         pass
 
+        # Also check deadline after processing — if the reader thread
+        # already queued many lines, this prevents unbounded processing
+        # past the deadline.
         if deadline is not None and time.monotonic() > deadline:
             return _StreamResult(
-                stdout_lines=stdout_lines, result_text=result_text, timed_out=True
+                stdout_lines=stdout_lines,
+                result_text=result_text,
+                timed_out=True,
             )
-
-    return _StreamResult(
-        stdout_lines=stdout_lines, result_text=result_text, timed_out=False
-    )
 
 
 def _run_agent_streaming(

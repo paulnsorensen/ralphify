@@ -18,6 +18,9 @@ SUBPROCESS_TEXT_KWARGS: dict[str, Any] = {
     "text": True,
     "encoding": "utf-8",
     "errors": "replace",
+    "bufsize": 1,  # Line-buffered: readline() returns as soon as a newline
+    # arrives instead of filling an 8KB readahead buffer.  Critical for the
+    # streaming path where peek must flow line-at-a-time.
 }
 
 # Subprocess kwargs that isolate child processes in their own session/group.

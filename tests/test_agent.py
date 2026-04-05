@@ -2,6 +2,7 @@
 
 import io
 import itertools
+import os
 import signal
 import subprocess
 import sys
@@ -143,45 +144,74 @@ class TestReadAgentStream:
 
     def test_timeout_returns_early(self):
         stream = io.StringIO("line1\nline2\n")
-        # Deadline already in the past (must be > 0 since 0.0 is falsy)
+        # Deadline already in the past — the reader thread may or may not
+        # have queued lines yet, but timed_out must be True.
         result = _read_agent_stream(stream, deadline=0.001, on_activity=None)
 
         assert result.timed_out is True
 
-    def test_timeout_preserves_last_read_line(self):
-        """When timeout fires after reading a line, that line must still be
-        included in stdout_lines — otherwise log output silently loses data."""
-        stream = io.StringIO("line1\nline2\n")
-        result = _read_agent_stream(stream, deadline=0.001, on_activity=None)
+    def test_timeout_preserves_already_read_lines(self):
+        """When timeout fires after the reader thread has queued lines,
+        those lines must still appear in stdout_lines ��� the non-blocking
+        drain on an expired deadline must not silently discard them."""
+        r_fd, w_fd = os.pipe()
+        reader = os.fdopen(r_fd, "r")
+        writer = os.fdopen(w_fd, "w")
+        try:
+            writer.write("line1\nline2\n")
+            writer.flush()
+            # Don't close writer — stream stays open so reader blocks on
+            # readline after the two lines, and the deadline fires.
+            deadline = time.monotonic() + 0.5
+            result = _read_agent_stream(reader, deadline=deadline, on_activity=None)
 
-        assert result.timed_out is True
-        # The stream reader already consumed at least one line before
-        # noticing the deadline — that line must be in stdout_lines.
-        assert len(result.stdout_lines) >= 1
-        assert result.stdout_lines[0] == "line1\n"
+            assert result.timed_out is True
+            assert len(result.stdout_lines) >= 1
+            assert result.stdout_lines[0] == "line1\n"
+        finally:
+            writer.close()
+            reader.close()
 
     def test_timeout_still_processes_last_line(self):
         """When timeout fires on a line containing a result event, the result
         text must still be extracted — the deadline check should not skip
         processing of the already-read line."""
-        stream = io.StringIO('{"type": "result", "result": "Done"}\n')
-        result = _read_agent_stream(stream, deadline=0.001, on_activity=None)
+        r_fd, w_fd = os.pipe()
+        reader = os.fdopen(r_fd, "r")
+        writer = os.fdopen(w_fd, "w")
+        try:
+            writer.write('{"type": "result", "result": "Done"}\n')
+            writer.flush()
+            deadline = time.monotonic() + 0.5
+            result = _read_agent_stream(reader, deadline=deadline, on_activity=None)
 
-        assert result.timed_out is True
-        assert result.result_text == "Done"
+            assert result.timed_out is True
+            assert result.result_text == "Done"
+        finally:
+            writer.close()
+            reader.close()
 
     def test_timeout_still_calls_on_activity_for_last_line(self):
         """When timeout fires on a line, on_activity must still be called
         for that line so the last event is not silently swallowed."""
-        activities = []
-        stream = io.StringIO('{"type": "status", "msg": "working"}\n')
-        result = _read_agent_stream(
-            stream, deadline=0.001, on_activity=activities.append
-        )
+        r_fd, w_fd = os.pipe()
+        reader = os.fdopen(r_fd, "r")
+        writer = os.fdopen(w_fd, "w")
+        try:
+            activities = []
+            writer.write('{"type": "status", "msg": "working"}\n')
+            writer.flush()
+            deadline = time.monotonic() + 0.5
+            result = _read_agent_stream(
+                reader, deadline=deadline, on_activity=activities.append
+            )
 
-        assert result.timed_out is True
-        assert len(activities) == 1
-        assert activities[0]["type"] == "status"
+            assert result.timed_out is True
+            assert len(activities) == 1
+            assert activities[0]["type"] == "status"
+        finally:
+            writer.close()
+            reader.close()
 
     def test_result_type_without_result_field_ignored(self):
         stream = io.StringIO('{"type": "result"}\n')
@@ -542,8 +572,14 @@ class TestExecuteAgentStreaming:
     @patch("ralphify._agent.time.monotonic")
     @patch(MOCK_SUBPROCESS)
     def test_timeout_kills_process(self, mock_popen, mock_time):
-        # Simulate: start=0, deadline check after reading first line = 100 (past deadline)
-        mock_time.side_effect = [0.0, 100.0, 100.0]
+        # start=0 → deadline=5.  First loop check: remaining=5 (positive,
+        # so queue.get waits up to 5 real seconds — succeeds immediately
+        # because the StringIO reader fills the queue).  Post-line check
+        # returns 100 → past deadline → timed_out.
+        mock_time.side_effect = itertools.chain(
+            [0.0, 0.0, 100.0],
+            itertools.repeat(100.0),
+        )
         proc = make_mock_popen(
             stdout_lines="line1\nline2\n",
             returncode=0,
@@ -909,6 +945,91 @@ class TestRunAgentBlockingLineStreaming:
         assert result.returncode is None
         # Must complete well before the child's 30-second sleep finishes.
         assert elapsed < 15.0
+
+
+class TestStreamingDeadlineAndBuffering:
+    """Tests for deadline enforcement and line-at-a-time delivery in the
+    streaming path (_read_agent_stream / _run_agent_streaming).
+
+    Uses real subprocesses to exercise the actual I/O layer — the bugs
+    these tests guard against live at the pipe-buffering and thread-scheduling
+    level, where mocks would be misleading.
+    """
+
+    def test_streaming_timeout_enforced_on_silent_agent(self, tmp_path):
+        """A hung agent that produces no output must still be killed by --timeout.
+
+        Before the fix, ``for line in stdout`` blocked in readline()
+        indefinitely, and the deadline check only ran between lines.  The
+        queue-based approach unblocks via ``queue.get(timeout=remaining)``
+        so the deadline fires even with zero output.
+        """
+        # Agent reads stdin then sleeps 30s, writing nothing to stdout.
+        script = "import sys, time; sys.stdin.read(); time.sleep(30)"
+
+        start = time.monotonic()
+        result = _run_agent_streaming(
+            [sys.executable, "-u", "-c", script],
+            prompt="go",
+            timeout=1.0,
+            log_path_dir=tmp_path,
+            iteration=1,
+        )
+        elapsed = time.monotonic() - start
+
+        assert result.timed_out is True
+        assert result.returncode is None
+        # Must return well before the child's 30-second sleep.
+        assert elapsed < 10.0
+
+    def test_streaming_peek_flows_line_at_a_time(self, tmp_path):
+        """Peek callbacks must fire promptly as lines arrive, not in 8KB bursts.
+
+        A fake agent emits timestamped lines with 200ms sleeps.  Each
+        ``on_output_line`` callback must fire within 500ms of the line's
+        emission — if they arrived in readahead bursts the later lines
+        would be delayed.
+        """
+        # Agent emits 5 lines at ~200ms intervals with wall-clock timestamps.
+        script = (
+            "import sys, time\n"
+            "sys.stdin.read()\n"
+            "for i in range(5):\n"
+            "    print(f'{time.monotonic():.6f} line{i}', flush=True)\n"
+            "    if i < 4:\n"
+            "        time.sleep(0.2)\n"
+        )
+        receive_times: list[float] = []
+
+        def on_line(line: str, stream: str) -> None:
+            receive_times.append(time.monotonic())
+
+        result = _run_agent_streaming(
+            [sys.executable, "-u", "-c", script],
+            prompt="go",
+            timeout=15,
+            log_path_dir=tmp_path,
+            iteration=1,
+            on_output_line=on_line,
+        )
+
+        assert result.returncode == 0
+        assert result.timed_out is False
+        # Should have received all 5 lines (stdout) plus any stderr lines
+        # forwarded by the stderr pump — at least 5.
+        stdout_callbacks = len(receive_times)
+        assert stdout_callbacks >= 5
+
+        # Check that lines were delivered promptly.  The gap between
+        # consecutive callbacks should be roughly 200ms (±300ms for
+        # scheduling jitter).  If buffered in 8KB bursts, the last 4
+        # lines would all arrive at once with ~0ms gaps.
+        for i in range(1, min(5, stdout_callbacks)):
+            gap = receive_times[i] - receive_times[i - 1]
+            assert gap > 0.05, (
+                f"Gap between line {i - 1} and {i} was {gap:.3f}s — "
+                "lines likely arrived in a buffered burst"
+            )
 
 
 class TestBlockingInheritPath:
