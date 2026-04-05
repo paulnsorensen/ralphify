@@ -237,7 +237,11 @@ def _read_agent_stream(
     for line in stdout:
         stdout_lines.append(line)
         if on_output_line is not None:
-            on_output_line(line.rstrip("\r\n"), _STDOUT)
+            try:
+                on_output_line(line.rstrip("\r\n"), _STDOUT)
+            except Exception:
+                # Callback is best-effort; draining must not stop.
+                pass
 
         stripped = line.strip()
         if stripped:
@@ -251,7 +255,11 @@ def _read_agent_stream(
                 ):
                     result_text = parsed[_RESULT_FIELD]
                 if on_activity is not None:
-                    on_activity(parsed)
+                    try:
+                        on_activity(parsed)
+                    except Exception:
+                        # Callback is best-effort; draining must not stop.
+                        pass
 
         if deadline is not None and time.monotonic() > deadline:
             return _StreamResult(

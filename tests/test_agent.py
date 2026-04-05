@@ -204,6 +204,52 @@ class TestReadAgentStream:
 
         assert result.result_text == "second"
 
+    def test_continues_when_on_output_line_raises(self):
+        """A raising on_output_line callback must not crash the stream reader.
+
+        This mirrors _pump_stream's behavior where callback exceptions are
+        caught per-line so that draining continues.  Without this guard, a
+        transient rendering error in the console emitter would kill the
+        entire streaming run."""
+        call_count = 0
+
+        def raising_callback(line, stream):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise RuntimeError("boom")
+
+        stream = io.StringIO("line1\nline2\nline3\n")
+        result = _read_agent_stream(
+            stream, deadline=None, on_activity=None, on_output_line=raising_callback
+        )
+
+        assert len(result.stdout_lines) == 3
+        assert call_count == 3
+        assert result.timed_out is False
+
+    def test_continues_when_on_activity_raises(self):
+        """A raising on_activity callback must not crash the stream reader."""
+        call_count = 0
+
+        def raising_activity(data):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise RuntimeError("boom")
+
+        stream = io.StringIO(
+            '{"type": "status", "msg": "a"}\n'
+            '{"type": "status", "msg": "b"}\n'
+        )
+        result = _read_agent_stream(
+            stream, deadline=None, on_activity=raising_activity
+        )
+
+        assert len(result.stdout_lines) == 2
+        assert call_count == 2
+        assert result.timed_out is False
+
 
 class TestExecuteAgentBlocking:
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
