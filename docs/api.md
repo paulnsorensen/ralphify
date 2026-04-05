@@ -102,7 +102,7 @@ cmd_slow = Command(name="integration", run="uv run pytest tests/integration", ti
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `name` | `str` | (required) | Identifier used in [`{{ commands.<name> }}`](writing-prompts.md#using-commands-for-dynamic-data) placeholders. Letters, digits, hyphens, and underscores only. |
+| `name` | `str` | (required) | Identifier used in [`{{ commands.<name> }}`](how-it-works.md#3-resolve-placeholders-with-command-output) placeholders. Letters, digits, hyphens, and underscores only. |
 | `run` | `str` | (required) | Shell command to execute |
 | `timeout` | `float` | `60` | Max seconds before the command is killed |
 
@@ -258,11 +258,19 @@ Use `event.to_dict()` to serialize to a JSON-compatible dict.
 |---|---|
 | `PROMPT_ASSEMBLED` | `iteration`, `prompt_length` |
 
-#### Other
+#### Agent output
 
 | Event | Data fields |
 |---|---|
 | `AGENT_ACTIVITY` | `iteration`, `raw` (dict — one stream-json line from the agent) |
+| `AGENT_OUTPUT_LINE` | `iteration`, `line` (raw text), `stream` (`"stdout"` or `"stderr"`) |
+
+`AGENT_ACTIVITY` fires only for Claude Code (streaming mode) and carries parsed JSON events. `AGENT_OUTPUT_LINE` fires for **all agents** and carries each raw output line as it's produced — this is what powers [live peek](cli.md#peeking-at-live-agent-output).
+
+#### Other
+
+| Event | Data fields |
+|---|---|
 | `LOG_MESSAGE` | `message`, `level` (`"info"` / `"error"`), `traceback` (optional) |
 
 ### Built-in emitters
@@ -272,7 +280,7 @@ Use `event.to_dict()` to serialize to a JSON-compatible dict.
 | `NullEmitter` | Discards all events silently. Default when no emitter is passed. |
 | `QueueEmitter` | Pushes events into a `queue.Queue` for async consumption. |
 | `FanoutEmitter` | Broadcasts each event to multiple emitters. |
-| `BoundEmitter` | Wraps any emitter with a fixed `run_id` so you don't have to construct `Event` objects manually. Has `log_info(message)` and `log_error(message, traceback=...)` convenience methods. |
+| `BoundEmitter` | Wraps any emitter with a fixed `run_id` so you don't have to construct `Event` objects manually. Has `log_info(message)`, `log_error(message, traceback=...)`, and `agent_output_line(line, stream, iteration)` convenience methods. |
 
 ```python
 from ralphify import QueueEmitter, FanoutEmitter, BoundEmitter
@@ -385,5 +393,4 @@ When extra listeners are registered, events are broadcast to both the built-in q
 ## Next steps
 
 - [**How the loop works**](how-it-works.md) — understand the iteration cycle that `run_loop` executes
-- [**Writing prompts**](writing-prompts.md) — learn how to write RALPH.md files with commands and placeholders
 - [**Cookbook**](cookbook.md) — real-world ralph examples you can adapt for your own projects
