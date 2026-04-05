@@ -639,12 +639,8 @@ def _run_agent_blocking(
             except subprocess.TimeoutExpired:
                 _ensure_process_dead(proc)
                 timed_out = True
-        except KeyboardInterrupt:
-            _ensure_process_dead(proc)
-            raise
         finally:
-            _ensure_process_dead(proc)
-            _drain_readers(writer_thread)
+            _cleanup_agent(proc, writer_thread)
 
         return AgentResult(
             returncode=None if timed_out else returncode,
@@ -694,9 +690,6 @@ def _run_agent_blocking(
         except subprocess.TimeoutExpired:
             _ensure_process_dead(proc)
             timed_out = True
-    except KeyboardInterrupt:
-        _ensure_process_dead(proc)
-        raise
     finally:
         _cleanup_agent(proc, stdout_thread, stderr_thread, writer_thread)
 
