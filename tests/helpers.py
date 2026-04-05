@@ -137,19 +137,17 @@ def fail_result(
 def _make_mock_proc(
     returncode: int = 0, stdout_text: str = "", stderr_text: str = ""
 ) -> MagicMock:
-    """Build a MagicMock that mimics Popen for the agent blocking path.
+    """Build a MagicMock that mimics ``subprocess.Popen``.
 
-    The blocking path drains stdout/stderr via reader threads that call
-    ``readline()`` in a loop until EOF, so stdout/stderr must be real
-    file-like objects (``io.StringIO``) — a bare ``MagicMock`` would make
-    ``iter(readline, "")`` spin forever and leak memory.
+    Used by both blocking and streaming agent test paths.  stdout/stderr
+    are real ``io.StringIO`` objects so reader threads that call
+    ``readline()`` in a loop hit EOF instead of spinning forever.
     """
     proc = MagicMock()
     proc.returncode = returncode
     proc.stdin = MagicMock()
     proc.stdout = io.StringIO(stdout_text)
     proc.stderr = io.StringIO(stderr_text)
-    proc.communicate.return_value = (stdout_text, stderr_text)
     proc.wait.return_value = returncode
     proc.poll.return_value = returncode
     proc.pid = (
@@ -227,18 +225,14 @@ def make_mock_popen(
     stderr_text: str = "",
     returncode: int = 0,
 ) -> MagicMock:
-    """Create a MagicMock that mimics subprocess.Popen for the streaming path."""
-    proc = MagicMock()
-    proc.stdin = MagicMock()
-    proc.stdout = io.StringIO(stdout_lines)
-    proc.stderr = io.StringIO(stderr_text)
-    proc.returncode = returncode
-    proc.wait.return_value = returncode
-    proc.poll.return_value = returncode  # not None → process finished
-    proc.pid = (
-        0  # sentinel: skip real process-group manipulation in _kill_process_group
+    """Create a MagicMock that mimics ``subprocess.Popen`` for the streaming path.
+
+    Thin wrapper around :func:`_make_mock_proc` that accepts the
+    ``stdout_lines`` parameter name used by streaming-path tests.
+    """
+    return _make_mock_proc(
+        returncode=returncode, stdout_text=stdout_lines, stderr_text=stderr_text
     )
-    return proc
 
 
 def drain_events(emitter: QueueEmitter) -> list[Event]:
