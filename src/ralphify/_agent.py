@@ -287,6 +287,7 @@ def _run_agent_streaming(
     start = time.monotonic()
     deadline = (start + timeout) if timeout is not None else None
 
+    writer_thread: threading.Thread | None = None
     stderr_lines: list[str] = []
     stderr_thread: threading.Thread | None = None
 
@@ -311,7 +312,15 @@ def _run_agent_streaming(
             proc.stderr, stderr_lines, _STDERR, on_output_line
         )
 
-        _deliver_prompt(proc, prompt)
+        # Deliver the prompt on a background thread so that a blocked write
+        # (child not reading stdin, pipe buffer full) cannot prevent
+        # proc.wait / deadline checks from firing.  Killing the process
+        # group unblocks the write with BrokenPipeError, which
+        # _deliver_prompt already swallows.
+        writer_thread = threading.Thread(
+            target=_deliver_prompt, args=(proc, prompt), daemon=True
+        )
+        writer_thread.start()
 
         stream = _read_agent_stream(proc.stdout, deadline, on_activity, on_output_line)
 
@@ -320,7 +329,7 @@ def _run_agent_streaming(
         proc.wait()
     finally:
         _ensure_process_dead(proc)
-        _drain_readers(stderr_thread)
+        _drain_readers(stderr_thread, writer_thread)
 
     log_file = _write_log(
         log_path_dir, iteration, "".join(stream.stdout_lines), "".join(stderr_lines)
@@ -449,6 +458,7 @@ def _run_agent_blocking(
         # pipes ralph's output (e.g. ``ralph run | cat``).
         returncode: int | None = None
         timed_out = False
+        writer_thread: threading.Thread | None = None
 
         proc = subprocess.Popen(
             cmd,
@@ -460,7 +470,10 @@ def _run_agent_blocking(
             if proc.stdin is None:
                 raise RuntimeError("subprocess.Popen failed to create PIPE stdin")
 
-            _deliver_prompt(proc, prompt)
+            writer_thread = threading.Thread(
+                target=_deliver_prompt, args=(proc, prompt), daemon=True
+            )
+            writer_thread.start()
 
             try:
                 returncode = proc.wait(timeout=timeout)
@@ -472,6 +485,7 @@ def _run_agent_blocking(
             raise
         finally:
             _ensure_process_dead(proc)
+            _drain_readers(writer_thread)
 
         return AgentResult(
             returncode=None if timed_out else returncode,
@@ -486,6 +500,7 @@ def _run_agent_blocking(
     # the callback alone observes them, avoiding unbounded memory growth.
     returncode = None
     timed_out = False
+    writer_thread: threading.Thread | None = None
     stdout_lines: list[str] | None = [] if log_path_dir is not None else None
     stderr_lines: list[str] | None = [] if log_path_dir is not None else None
     stdout_thread: threading.Thread | None = None
@@ -510,7 +525,10 @@ def _run_agent_blocking(
             proc.stderr, stderr_lines, _STDERR, on_output_line
         )
 
-        _deliver_prompt(proc, prompt)
+        writer_thread = threading.Thread(
+            target=_deliver_prompt, args=(proc, prompt), daemon=True
+        )
+        writer_thread.start()
 
         try:
             returncode = proc.wait(timeout=timeout)
@@ -522,7 +540,7 @@ def _run_agent_blocking(
         raise
     finally:
         _ensure_process_dead(proc)
-        _drain_readers(stdout_thread, stderr_thread)
+        _drain_readers(stdout_thread, stderr_thread, writer_thread)
 
     stdout = "".join(stdout_lines) if stdout_lines is not None else None
     stderr = "".join(stderr_lines) if stderr_lines is not None else None

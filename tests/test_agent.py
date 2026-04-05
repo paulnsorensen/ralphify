@@ -5,6 +5,7 @@ import itertools
 import signal
 import subprocess
 import sys
+import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -834,6 +835,38 @@ class TestRunAgentBlockingLineStreaming:
         assert result.returncode == 0
         assert result.timed_out is False
         assert result.result_text == "ok"
+
+    def test_timeout_enforced_when_agent_does_not_read_stdin(self, tmp_path):
+        """If the agent never reads stdin, --timeout must still fire.
+
+        Before the writer-thread fix, proc.stdin.write(prompt) blocked on
+        the main thread when the OS pipe buffer was full, and
+        proc.wait(timeout=...) was never reached — so --timeout silently
+        did nothing.
+
+        Uses a prompt large enough to fill the pipe buffer (64 KB on
+        Linux, ~8 KB on macOS) so the write would block if it were on
+        the main thread.
+        """
+        # Agent that never reads stdin and sleeps for 30 seconds.
+        script = "import time; time.sleep(30)"
+        # Prompt larger than OS pipe buffer on any platform.
+        large_prompt = "x" * 200_000
+
+        start = time.monotonic()
+        result = _run_agent_blocking(
+            [sys.executable, "-c", script],
+            prompt=large_prompt,
+            timeout=2.0,
+            log_path_dir=tmp_path,
+            iteration=1,
+        )
+        elapsed = time.monotonic() - start
+
+        assert result.timed_out is True
+        assert result.returncode is None
+        # Must complete well before the child's 30-second sleep finishes.
+        assert elapsed < 15.0
 
 
 class TestBlockingInheritPath:
