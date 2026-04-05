@@ -62,7 +62,7 @@ npm install -g @anthropic-ai/claude-code
 ```
 
 !!! info "Why `--dangerously-skip-permissions`?"
-    Without this flag, Claude Code pauses to ask for approval before editing files, running commands, or making commits. In an autonomous loop, nobody is there to approve — so the agent would hang forever. [Commands](writing-prompts.md#using-commands-for-dynamic-data) in your RALPH.md act as your guardrails instead.
+    Without this flag, Claude Code pauses to ask for approval before editing files, running commands, or making commits. In an autonomous loop, nobody is there to approve — so the agent would hang forever. [Commands](how-it-works.md#2-run-commands-and-capture-output) in your RALPH.md act as your guardrails instead.
 
 ### Automatic streaming mode
 
@@ -187,24 +187,23 @@ ralph run my-ralph -n 1 --log-dir ralph_logs
 
 ## How agent output works
 
-Ralphify uses two different execution modes depending on the agent (see [how the loop works](how-it-works.md) for the full lifecycle):
+Ralphify streams agent output line-by-line in both execution modes. In an interactive terminal, output streams live to the console by default — press `p` to silence it and `p` again to resume. See [Peeking at live agent output](cli.md#peeking-at-live-agent-output) for details.
+
+When [`--log-dir`](cli.md#ralph-run) is set, output is captured to a log file and also echoed after each iteration completes. Live peek still works the same way in that mode.
 
 ### Streaming mode (Claude Code)
 
-When the agent command starts with `claude`, ralphify spawns the process with `Popen` and reads its JSON output line by line. This enables:
+When the agent command starts with `claude`, ralphify parses the agent's structured JSON output line by line. This enables additional features beyond live output:
 
-- **Live activity tracking** — the terminal shows what the agent is doing in real time
-- **Result text extraction** — the agent's final response is captured
-- **Verbose logging** — with [`--log-dir`](cli.md#ralph-run), logs include the agent's internal tool calls and reasoning
+- **Activity tracking** — the terminal shows what the agent is doing (tool calls, reasoning) in real time
+- **Result text extraction** — the agent's final response is captured separately
+- **Verbose logging** — with `--log-dir`, logs include the agent's internal tool calls and reasoning
 
 ### Blocking mode (all other agents)
 
-For non-Claude agents, ralphify uses `subprocess.run` and waits for the process to exit. Output behavior depends on whether you're using `--log-dir`:
+For non-Claude agents, ralphify spawns the process and drains stdout and stderr through background reader threads. You see the agent's plain text output line by line as it's produced.
 
-- **Without `--log-dir`** — agent output streams directly to your terminal in real time
-- **With `--log-dir`** — output is captured, written to a log file, then replayed to the terminal after the iteration completes
-
-Both modes support all ralphify features (commands, timeouts, iteration tracking). The difference is only in how output is handled during each iteration.
+Both modes support all ralphify features (commands, timeouts, iteration tracking, live peek). The difference is that Claude Code gets structured activity tracking on top of the raw output.
 
 ## Adapting other tools
 
@@ -221,5 +220,4 @@ If the tool has no way to accept a prompt non-interactively, a [custom wrapper s
 ## Next steps
 
 - [Getting Started](getting-started.md) — set up your first loop with the agent you just configured
-- [Writing Prompts](writing-prompts.md) — patterns for writing effective autonomous loop prompts
 - [Troubleshooting](troubleshooting.md) — when the agent hangs, produces no output, or exits unexpectedly
