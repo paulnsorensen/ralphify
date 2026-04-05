@@ -84,7 +84,8 @@ Event data uses TypedDict classes — one per event type — rather than free-fo
 - **`IterationStartedData`** / **`IterationEndedData`** — per-iteration data (return code, duration, log path)
 - **`CommandsStartedData`** / **`CommandsCompletedData`** — command execution bookends
 - **`PromptAssembledData`** — prompt length after placeholder resolution
-- **`AgentActivityData`** — streaming agent output
+- **`AgentActivityData`** — streaming agent output (Claude Code only)
+- **`AgentOutputLineData`** — raw line of agent output from any agent (powers live peek)
 - **`LogMessageData`** — info/error messages with optional traceback
 
 All payload types are unioned as `EventData`.
