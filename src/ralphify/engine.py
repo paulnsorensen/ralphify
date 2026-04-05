@@ -217,18 +217,24 @@ def _run_agent_phase(
         event_type = EventType.ITERATION_FAILED
         state_detail = f"failed with exit code {agent.returncode} ({duration})"
 
-    emit(
-        event_type,
-        IterationEndedData(
-            iteration=state.iteration,
-            returncode=agent.returncode,
-            duration=agent.elapsed,
-            duration_formatted=duration,
-            detail=state_detail,
-            log_file=str(agent.log_file) if agent.log_file else None,
-            result_text=agent.result_text,
-        ),
+    ended_data = IterationEndedData(
+        iteration=state.iteration,
+        returncode=agent.returncode,
+        duration=agent.elapsed,
+        duration_formatted=duration,
+        detail=state_detail,
+        log_file=str(agent.log_file) if agent.log_file else None,
+        result_text=agent.result_text,
     )
+    # When logging is enabled and live peek was off (on_output_line is None),
+    # include captured output so the emitter can echo it after stopping the
+    # Live spinner — avoiding the terminal tear that direct sys.stdout writes
+    # would cause.  When peek was on, lines were already rendered live.
+    if on_output_line is None and config.log_dir is not None:
+        ended_data["echo_stdout"] = agent.captured_stdout
+        ended_data["echo_stderr"] = agent.captured_stderr
+
+    emit(event_type, ended_data)
     return agent.success
 
 

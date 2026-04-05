@@ -226,7 +226,16 @@ class ConsoleEmitter:
         detail = data["detail"]
         log_file = data["log_file"]
         result_text = data["result_text"]
+        echo_stdout = data.get("echo_stdout")
+        echo_stderr = data.get("echo_stderr")
         with self._console_lock:
+            # Echo captured output before the status line — Live is already
+            # stopped so this cannot tear the spinner.  Only present when
+            # peek was off and logging captured the output.
+            if echo_stdout:
+                self._console.print(Text(echo_stdout), end="")
+            if echo_stderr:
+                self._console.print(Text(echo_stderr), end="")
             self._console.print(f"[{color}]{icon} Iteration {iteration} {detail}[/]")
             if log_file:
                 self._console.print(

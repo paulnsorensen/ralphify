@@ -309,13 +309,13 @@ class TestExecuteAgentBlocking:
         assert result.log_file.exists()
 
     @patch(MOCK_SUBPROCESS)
-    def test_timeout_echoes_captured_output(self, mock_popen, tmp_path, capsys):
+    def test_timeout_captures_partial_output(self, mock_popen, tmp_path):
         """When logging is enabled and the agent times out, partial output
-        should be echoed to the terminal — same as on normal completion."""
+        is captured on the AgentResult for the engine to echo."""
         mock_popen.return_value = timeout_proc(
             stdout_text="partial stdout", stderr_text="partial stderr"
         )
-        execute_agent(
+        result = execute_agent(
             ["echo"],
             "prompt",
             timeout=5,
@@ -323,9 +323,8 @@ class TestExecuteAgentBlocking:
             iteration=1,
         )
 
-        captured = capsys.readouterr()
-        assert "partial stdout" in captured.out
-        assert "partial stderr" in captured.err
+        assert result.captured_stdout == "partial stdout"
+        assert result.captured_stderr == "partial stderr"
 
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_no_log_when_dir_not_set(self, mock_popen):

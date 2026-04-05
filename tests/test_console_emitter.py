@@ -1,5 +1,7 @@
 """Tests for the ConsoleEmitter rich terminal renderer."""
 
+import threading
+
 import pytest
 from rich.console import Console
 
@@ -28,6 +30,104 @@ class TestEmitDispatch:
         emitter, _ = _capture_emitter()
         # AGENT_ACTIVITY has no handler registered — should be silently ignored
         emitter.emit(_make_event(EventType.AGENT_ACTIVITY, raw="data"))
+
+
+class TestPeekToggle:
+    def test_peek_disabled_by_default_drops_output_lines(self):
+        emitter, console = _capture_emitter()
+        emitter.emit(
+            _make_event(
+                EventType.AGENT_OUTPUT_LINE,
+                line="hello world",
+                stream="stdout",
+                iteration=1,
+            )
+        )
+        assert "hello world" not in console.export_text()
+
+    def test_toggle_peek_enables_rendering(self):
+        emitter, console = _capture_emitter()
+        assert emitter.toggle_peek() is True
+        emitter.emit(
+            _make_event(
+                EventType.AGENT_OUTPUT_LINE,
+                line="visible line",
+                stream="stdout",
+                iteration=1,
+            )
+        )
+        assert "visible line" in console.export_text()
+
+    def test_toggle_peek_twice_disables_rendering(self):
+        emitter, console = _capture_emitter()
+        emitter.toggle_peek()  # on
+        assert emitter.toggle_peek() is False  # off
+        emitter.emit(
+            _make_event(
+                EventType.AGENT_OUTPUT_LINE,
+                line="should not appear",
+                stream="stdout",
+                iteration=1,
+            )
+        )
+        assert "should not appear" not in console.export_text()
+
+    def test_toggle_peek_prints_status_banner(self):
+        emitter, console = _capture_emitter()
+        emitter.toggle_peek()
+        assert "peek on" in console.export_text()
+        emitter.toggle_peek()
+        assert "peek off" in console.export_text()
+
+    def test_concurrent_peek_writes_do_not_interleave(self):
+        """Two threads hammering ``_on_agent_output_line`` while peek is on
+        must produce whole, un-interleaved lines — proving the console lock
+        is serialising writes across threads.
+        """
+        emitter, console = _capture_emitter()
+        emitter.toggle_peek()  # turn peek on (console.is_terminal is False
+        # in record mode, so the default is off; we flip it explicitly).
+
+        line_a = "A" * 50
+        line_b = "B" * 50
+        iterations = 20
+
+        def worker(line: str) -> None:
+            for _ in range(iterations):
+                emitter._on_agent_output_line(
+                    {"line": line, "stream": "stdout", "iteration": 1}
+                )
+
+        threads = [
+            threading.Thread(target=worker, args=(line_a,)),
+            threading.Thread(target=worker, args=(line_b,)),
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        output = console.export_text()
+        # Each worker prints ``iterations`` whole copies of its line.  If the
+        # lock is working, both substrings appear exactly that many times;
+        # any interleaving would split one of them and drop the count.
+        assert output.count(line_a) == iterations
+        assert output.count(line_b) == iterations
+
+    def test_peek_line_escapes_rich_markup(self):
+        """Raw agent lines may contain ``[…]`` that Rich would treat as
+        markup — escape so the literal text is preserved."""
+        emitter, console = _capture_emitter()
+        emitter.toggle_peek()
+        emitter.emit(
+            _make_event(
+                EventType.AGENT_OUTPUT_LINE,
+                line="[bold red]not markup[/]",
+                stream="stdout",
+                iteration=1,
+            )
+        )
+        assert "[bold red]not markup[/]" in console.export_text()
 
     def test_run_started_shows_ralph_name(self):
         emitter, console = _capture_emitter()
@@ -513,23 +613,37 @@ class TestFormatSummary:
 class TestFormatRunInfo:
     def test_empty_when_no_config(self):
         assert _format_run_info(timeout=0, command_count=0, max_iterations=None) == ""
-        assert _format_run_info(timeout=None, command_count=0, max_iterations=None) == ""
+        assert (
+            _format_run_info(timeout=None, command_count=0, max_iterations=None) == ""
+        )
 
     def test_timeout_only(self):
         result = _format_run_info(timeout=120, command_count=0, max_iterations=None)
         assert result == "timeout 2m 0s"
 
     def test_commands_only(self):
-        assert _format_run_info(timeout=0, command_count=3, max_iterations=None) == "3 commands"
+        assert (
+            _format_run_info(timeout=0, command_count=3, max_iterations=None)
+            == "3 commands"
+        )
 
     def test_singular_command(self):
-        assert _format_run_info(timeout=0, command_count=1, max_iterations=None) == "1 command"
+        assert (
+            _format_run_info(timeout=0, command_count=1, max_iterations=None)
+            == "1 command"
+        )
 
     def test_max_iterations_only(self):
-        assert _format_run_info(timeout=0, command_count=0, max_iterations=5) == "max 5 iterations"
+        assert (
+            _format_run_info(timeout=0, command_count=0, max_iterations=5)
+            == "max 5 iterations"
+        )
 
     def test_singular_iteration(self):
-        assert _format_run_info(timeout=0, command_count=0, max_iterations=1) == "max 1 iteration"
+        assert (
+            _format_run_info(timeout=0, command_count=0, max_iterations=1)
+            == "max 1 iteration"
+        )
 
     def test_all_fields(self):
         result = _format_run_info(timeout=60, command_count=2, max_iterations=3)
@@ -545,6 +659,74 @@ class TestFormatRunInfo:
     def test_negative_timeout_excluded(self):
         result = _format_run_info(timeout=-1, command_count=2, max_iterations=None)
         assert "timeout" not in result
+
+
+class TestEchoOutput:
+    def test_echo_does_not_tear_live_spinner(self):
+        """Echo output routed through the iteration-ended event must not
+        interleave with Rich Live spinner frames — Live is stopped first."""
+        emitter, console = _capture_emitter()
+        # Start Live via iteration start
+        emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
+        assert emitter._live is not None
+        # End iteration with echo data (simulates peek-off + log-dir)
+        emitter.emit(
+            _make_event(
+                EventType.ITERATION_COMPLETED,
+                iteration=1,
+                detail="completed (1s)",
+                log_file=None,
+                result_text=None,
+                echo_stdout="line one\nline two\nline three\n",
+                echo_stderr=None,
+            )
+        )
+        assert emitter._live is None
+        output = console.export_text()
+        assert "line one" in output
+        assert "line two" in output
+        assert "line three" in output
+        # Echo text and status line should both appear cleanly
+        assert "completed (1s)" in output
+        # No Rich Live spinner frame characters interleaved in the echoed text
+        for char in ("⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"):
+            for line in output.splitlines():
+                if "line one" in line or "line two" in line or "line three" in line:
+                    assert char not in line
+
+    def test_echo_not_shown_when_absent(self):
+        """When no echo data is present, only the status line appears."""
+        emitter, console = _capture_emitter()
+        emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
+        emitter.emit(
+            _make_event(
+                EventType.ITERATION_COMPLETED,
+                iteration=1,
+                detail="completed (1s)",
+                log_file=None,
+                result_text=None,
+            )
+        )
+        output = console.export_text()
+        assert "completed (1s)" in output
+
+    def test_echo_stderr_rendered(self):
+        """stderr echo output is rendered when present."""
+        emitter, console = _capture_emitter()
+        emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
+        emitter.emit(
+            _make_event(
+                EventType.ITERATION_COMPLETED,
+                iteration=1,
+                detail="completed (1s)",
+                log_file=None,
+                result_text=None,
+                echo_stdout=None,
+                echo_stderr="warning: something\n",
+            )
+        )
+        output = console.export_text()
+        assert "warning: something" in output
 
 
 class TestIterationSpinner:

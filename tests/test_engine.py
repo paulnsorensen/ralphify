@@ -18,7 +18,9 @@ from helpers import (
     ok_run_result,
     timeout_proc,
 )
+from rich.console import Console
 
+from ralphify._console_emitter import ConsoleEmitter
 from ralphify._events import BoundEmitter, EventType, NullEmitter, QueueEmitter
 from ralphify._run_types import Command, RunStatus
 from ralphify._runner import RunResult
@@ -107,14 +109,11 @@ class TestRunLoop:
 
         run_loop(config, state, NullEmitter())
 
-        assert (
-            mock_run.return_value.communicate.call_args.kwargs["input"]
-            == "my prompt text"
-        )
+        assert mock_run.return_value.stdin.write.call_args.args[0] == "my prompt text"
 
     @patch(MOCK_SUBPROCESS)
     def test_log_dir_creates_files(self, mock_run, tmp_path):
-        mock_run.return_value = ok_proc(stdout="output\n")
+        mock_run.return_value = ok_proc(stdout_text="output\n")
         log_dir = tmp_path / "logs"
         config = make_config(tmp_path, max_iterations=2, log_dir=log_dir)
         state = make_state()
@@ -293,7 +292,7 @@ class TestRalphArgs:
         state = make_state()
         run_loop(config, state, NullEmitter())
 
-        call_input = mock_run.return_value.communicate.call_args.kwargs["input"]
+        call_input = mock_run.return_value.stdin.write.call_args.args[0]
         assert call_input == "Research ./src focus: perf"
 
     @patch(MOCK_SUBPROCESS)
@@ -309,7 +308,7 @@ class TestRalphArgs:
         state = make_state()
         run_loop(config, state, NullEmitter())
 
-        call_input = mock_run.return_value.communicate.call_args.kwargs["input"]
+        call_input = mock_run.return_value.stdin.write.call_args.args[0]
         assert call_input == "Before  after"
 
 
@@ -330,7 +329,7 @@ class TestCommandExecution:
         state = make_state()
         run_loop(config, state, NullEmitter())
 
-        call_input = mock_agent.return_value.communicate.call_args.kwargs["input"]
+        call_input = mock_agent.return_value.stdin.write.call_args.args[0]
         assert "test output" in call_input
         assert "{{ commands.tests }}" not in call_input
 
@@ -1066,7 +1065,7 @@ class TestCreditInLoop:
         state = make_state()
         run_loop(config, state, NullEmitter())
 
-        call_input = mock_run.return_value.communicate.call_args.kwargs["input"]
+        call_input = mock_run.return_value.stdin.write.call_args.args[0]
         assert "Co-authored-by: Ralphify <noreply@ralphify.co>" in call_input
 
     @patch(MOCK_SUBPROCESS)
@@ -1076,5 +1075,51 @@ class TestCreditInLoop:
         state = make_state()
         run_loop(config, state, NullEmitter())
 
-        call_input = mock_run.return_value.communicate.call_args.kwargs["input"]
+        call_input = mock_run.return_value.stdin.write.call_args.args[0]
         assert "Co-authored-by" not in call_input
+
+
+class TestEchoCoordination:
+    @patch(MOCK_SUBPROCESS)
+    def test_no_double_print_with_log_dir_and_peek(self, mock_run, tmp_path):
+        """When --log-dir is set and peek is on, each agent output line
+        appears exactly once in the console — no double-print from echo."""
+        mock_run.return_value = ok_proc(
+            stdout_text="alpha\nbeta\ngamma\n",
+        )
+        console = Console(record=True, width=120)
+        emitter = ConsoleEmitter(console)
+        emitter.toggle_peek()  # force peek on
+        emitter.wants_agent_output = True  # ensure on_output_line is set
+
+        log_dir = tmp_path / "logs"
+        config = make_config(tmp_path, max_iterations=1, log_dir=log_dir)
+        state = make_state()
+
+        run_loop(config, state, emitter)
+
+        output = console.export_text()
+        assert output.count("alpha") == 1
+        assert output.count("beta") == 1
+        assert output.count("gamma") == 1
+
+    @patch(MOCK_SUBPROCESS)
+    def test_echo_shown_when_peek_off_and_log_dir_set(self, mock_run, tmp_path):
+        """When --log-dir is set and peek is off, captured output is echoed
+        via the iteration-ended event so the user still sees it."""
+        mock_run.return_value = ok_proc(
+            stdout_text="hello\nworld\n",
+        )
+        console = Console(record=True, width=120)
+        emitter = ConsoleEmitter(console)
+        # peek is off by default for recording consoles
+
+        log_dir = tmp_path / "logs"
+        config = make_config(tmp_path, max_iterations=1, log_dir=log_dir)
+        state = make_state()
+
+        run_loop(config, state, emitter)
+
+        output = console.export_text()
+        assert "hello" in output
+        assert "world" in output

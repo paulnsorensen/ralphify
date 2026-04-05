@@ -118,6 +118,8 @@ class IterationEndedData(TypedDict):
     detail: str
     log_file: str | None
     result_text: str | None
+    echo_stdout: NotRequired[str | None]
+    echo_stderr: NotRequired[str | None]
 
 
 class CommandsStartedData(TypedDict):

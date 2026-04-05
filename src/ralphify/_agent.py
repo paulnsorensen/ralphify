@@ -35,7 +35,6 @@ from ralphify._output import (
     SUBPROCESS_TEXT_KWARGS,
     ProcessResult,
     collect_output,
-    ensure_str,
 )
 
 # Typed constants for the OutputStream literal so the type checker enforces
@@ -215,6 +214,8 @@ class AgentResult(ProcessResult):
     elapsed: float = 0.0
     log_file: Path | None = None
     result_text: str | None = None
+    captured_stdout: str | None = None
+    captured_stderr: str | None = None
 
 
 @dataclass(frozen=True)
@@ -244,21 +245,6 @@ def _write_log(
     )
     log_file.write_text(collect_output(stdout, stderr), encoding="utf-8")
     return log_file
-
-
-def _echo_output(
-    stdout: str | bytes | None,
-    stderr: str | bytes | None,
-) -> None:
-    """Echo captured output to the terminal so the user still sees it.
-
-    Called after output has been written to a log file — without this,
-    captured output would be silently swallowed when logging is enabled.
-    """
-    if stdout:
-        sys.stdout.write(ensure_str(stdout))
-    if stderr:
-        sys.stderr.write(ensure_str(stderr))
 
 
 def _supports_stream_json(cmd: list[str]) -> bool:
@@ -629,17 +615,14 @@ def _run_agent_blocking(
     stderr = "".join(stderr_lines) if stderr_lines is not None else None
 
     log_file = _write_log(log_path_dir, iteration, stdout, stderr)
-    # When logging is enabled, output is diverted into the log file; echo it
-    # so the user still sees what ran.  When logging is disabled, live peek
-    # (if enabled) has already shown the lines as they arrived.
-    if log_path_dir is not None:
-        _echo_output(stdout, stderr)
 
     return AgentResult(
         returncode=None if timed_out else returncode,
         elapsed=time.monotonic() - start,
         log_file=log_file,
         timed_out=timed_out,
+        captured_stdout=stdout,
+        captured_stderr=stderr,
     )
 
 
