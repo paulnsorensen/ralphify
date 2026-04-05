@@ -20,7 +20,7 @@ from rich.console import Console
 
 from ralphify import __version__
 from ralphify import _brand
-from ralphify._console_emitter import ConsoleEmitter
+from ralphify._console_emitter import PEEK_TOGGLE_KEY, ConsoleEmitter
 from ralphify._keypress import KeypressListener
 from ralphify._frontmatter import (
     CMD_FIELD_NAME,
@@ -567,7 +567,7 @@ def run(
 
     def _on_key(key: str) -> None:
         try:
-            if key == "p":
+            if key == PEEK_TOGGLE_KEY:
                 emitter.toggle_peek()
         except Exception:
             # Don't let a render error kill the listener thread.

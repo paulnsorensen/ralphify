@@ -43,9 +43,13 @@ _ICON_DASH = "—"
 
 _LIVE_REFRESH_RATE = 4  # Hz — how often the spinner redraws
 
+# The key that toggles live peek of agent output.  Used here for status
+# messages and imported by cli.py for the keypress handler.
+PEEK_TOGGLE_KEY = "p"
+
 # Peek status messages shown when peek is toggled or at run startup.
-_PEEK_ON_MSG = "[dim]peek on — press p to toggle[/]"
-_PEEK_OFF_MSG = "[dim]peek off — press p to toggle[/]"
+_PEEK_ON_MSG = f"[dim]peek on — press {PEEK_TOGGLE_KEY} to toggle[/]"
+_PEEK_OFF_MSG = f"[dim]peek off — press {PEEK_TOGGLE_KEY} to toggle[/]"
 
 
 def _plural(count: int, word: str) -> str:
