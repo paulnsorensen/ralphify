@@ -349,6 +349,8 @@ Watch the output. Each iteration runs the commands, assembles the prompt with th
 Done: 3 iterations — 2 succeeded, 1 failed
 ```
 
+The agent's output streams live to your terminal between the iteration markers — you can watch it work in real time. Press `p` to silence the stream if you prefer a quieter loop, and `p` again to resume.
+
 If the agent breaks a test, the next iteration sees the failure output via `{{ commands.tests }}` and fixes it automatically.
 
 Once you're confident the loop works, drop the `-n 3` to let it run indefinitely. Press `Ctrl+C` to stop.

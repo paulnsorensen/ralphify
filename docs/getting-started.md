@@ -247,6 +247,8 @@ Watch the output. Each iteration runs the commands, assembles the prompt with th
 Done: 3 iterations — 2 succeeded, 1 failed
 ```
 
+The agent's output streams live to your terminal between the iteration markers — you can watch it work in real time. Press `p` to silence the stream if you prefer a quieter loop, and `p` again to resume.
+
 If the agent breaks a test, the next iteration sees the failure output via `{{ commands.tests }}` and fixes it automatically.
 
 Once you're confident the loop works, drop the `-n 3` to let it run indefinitely. Press `Ctrl+C` to stop.
@@ -269,14 +271,13 @@ When you want to shift focus, change the task:
 Read TODO.md and focus only on the API module.
 ```
 
-This is the most powerful part of ralph loops — you're steering a running agent with a text file. See [Tuning a running loop](writing-prompts.md#tuning-a-running-loop) for more patterns.
+This is the most powerful part of ralph loops — you're steering a running agent with a text file.
 
 !!! warning "Frontmatter changes need a restart"
     Only the **prompt body** is re-read each iteration. Frontmatter fields (`agent`, `commands`, `args`) are parsed once at startup. If you add a new command or change the agent, stop the loop with `Ctrl+C` and restart it.
 
 ## Next steps
 
-- [Writing Prompts](writing-prompts.md) — patterns for writing effective autonomous loop prompts
 - [Cookbook](cookbook.md) — copy-pasteable setups for coding, docs, research, and more
 - [How it Works](how-it-works.md) — what happens inside each iteration
 - [Troubleshooting](troubleshooting.md) — when things don't work as expected
