@@ -146,10 +146,10 @@ ralphify 0.3.0
 
 ## Step 2: Create a ralph
 
-The fastest way to scaffold a ralph is `ralph init`:
+The fastest way to scaffold a ralph is `ralph scaffold`:
 
 ```bash
-ralph init my-ralph
+ralph scaffold my-ralph
 ```
 
 ```text
@@ -159,17 +159,16 @@ Edit the file, then run: ralph run my-ralph
 
 This creates `my-ralph/RALPH.md` with a ready-to-customize template including an example command, arg, and prompt. Edit the task section, [test it](#step-3-do-a-test-run), then follow [Step 4](#step-4-add-a-test-command) to add a test command — test feedback is what makes the loop self-healing.
 
-Alternatively, use `ralph new` for AI-guided setup, or create the file manually as shown below.
+Or create the file manually as shown below.
 
 Installing an existing ralph?
 
-If someone has shared a ralph on GitHub, skip the manual setup and install it directly:
+Use [agr](https://github.com/computerlovetech/agr) to install shared ralphs from GitHub:
 
 ```bash
-ralph add owner/repo
+agr add owner/repo/my-ralph     # install a ralph from GitHub
+ralph run my-ralph               # run it by name
 ```
-
-This installs to `.ralphify/ralphs/` so you can run it by name with `ralph run <name>`. See the [CLI reference](cli.md#ralph-add) for all source formats.
 
 ### Manual setup
 
@@ -582,12 +581,12 @@ This page shows how to configure the `agent` field in your RALPH.md for popular 
 
 ## Agent comparison
 
-| Agent | Stdin support | Streaming | `ralph new` support | Wrapper needed |
-|---|---|---|---|---|
-| [Claude Code](#claude-code) | Native (`-p`) | Yes — real-time activity tracking | Yes | No |
-| [Aider](#aider) | Via bash wrapper | No | No | Yes (`bash -c`) |
-| [Codex CLI](#codex-cli) | Native (`exec`) | No | Yes | No |
-| [Custom](#custom-wrapper-script) | You implement it | No | No | Yes (script) |
+| Agent | Stdin support | Streaming | Wrapper needed |
+|---|---|---|---|
+| [Claude Code](#claude-code) | Native (`-p`) | Yes — real-time activity tracking | No |
+| [Aider](#aider) | Via bash wrapper | No | Yes (`bash -c`) |
+| [Codex CLI](#codex-cli) | Native (`exec`) | No | No |
+| [Custom](#custom-wrapper-script) | You implement it | No | Yes (script) |
 
 If you're not sure which to pick: **start with Claude Code.** It has the deepest integration, the best autonomous coding capabilities, and is the default.
 
@@ -1616,15 +1615,8 @@ ralph run my-ralph --delay 10      # Wait 10s between iterations
 ralph run my-ralph --timeout 300   # Kill agent after 5 min per iteration
 ralph run my-ralph --dir ./src     # Pass user args to the ralph
 
-ralph init my-task                  # Scaffold a ralph from template (no AI)
-ralph init                         # Scaffold in current directory
-
-ralph new                          # AI-guided ralph creation
-ralph new docs                     # AI-guided creation with name pre-filled
-
-ralph add owner/repo               # Install ralph(s) from a GitHub repo
-ralph add owner/repo/my-ralph      # Install a specific ralph by name
-ralph add https://github.com/owner/repo/tree/main/my-ralph  # URL from GitHub
+ralph scaffold my-task              # Scaffold a ralph from template
+ralph scaffold                     # Scaffold in current directory
 
 ralph --version                    # Show version
 ```
@@ -1753,6 +1745,7 @@ Each iteration:
 |---|---|
 | `Ctrl+C` (once) | Finishes the current iteration gracefully, then stops |
 | `Ctrl+C` (twice) | Force-kills the agent process and exits immediately |
+| `p` | Toggle live peek of the agent's stdout (on by default in an interactive terminal — press to silence, press again to resume) |
 | `-n` limit reached | Stops after the specified number of iterations |
 | `--stop-on-error` | Stops if agent exits non-zero or times out |
 
@@ -1760,17 +1753,6 @@ Each iteration:
 
 - The prompt body is re-read from disk every iteration — edit the prompt while the loop runs (frontmatter is parsed once at startup)
 - HTML comments (``) are stripped from the prompt — use them for notes to yourself
-
-## `ralph add` source formats
-
-| Format | Example | What it does |
-|---|---|---|
-| Shorthand | `owner/repo` | Installs all ralphs in the repo (or the repo itself if root has `RALPH.md`) |
-| Subpath | `owner/repo/my-ralph` | Installs the ralph named `my-ralph` from the repo |
-| Full URL | `https://github.com/owner/repo` | Same as shorthand |
-| GitHub tree URL | `https://github.com/owner/repo/tree/main/my-ralph` | Extracts the path from the URL — works when you copy a URL from the GitHub browser UI |
-
-Installed ralphs go to `.ralphify/ralphs//`. Re-running `ralph add` overwrites without warning (that's how you update). See the [CLI reference](cli.md) for full `ralph add` options.
 
 ## Common patterns
 
@@ -1885,7 +1867,7 @@ ralph run my-ralph --dir ./src             # Pass user args to the ralph
 
 | Argument / Option | Short | Default | Description |
 |---|---|---|---|
-| `PATH` | | (required) | Path to a ralph directory containing `RALPH.md`, a direct path to a `RALPH.md` file, or the name of an installed ralph (from `ralph add`) |
+| `PATH` | | (required) | Path to a ralph directory containing `RALPH.md`, a direct path to a `RALPH.md` file, or the name of an installed ralph in `.agents/ralphs/` |
 | `-n` | | unlimited | Max number of iterations |
 | `--stop-on-error` | `-s` | off | Stop loop if agent exits non-zero or times out |
 | `--delay` | `-d` | `0` | Seconds to wait between iterations |
@@ -1947,15 +1929,21 @@ The loop also stops automatically when:
 - All `-n` iterations have completed
 - `--stop-on-error` is set and the agent exits non-zero or times out
 
+### Peeking at live agent output
+
+When you run `ralph run` in an interactive terminal, the agent's stdout and stderr stream live to the console by default. Press `p` to silence the stream (useful for quieter loops) and press `p` again to resume it. The default is off whenever the output is not a real terminal (piped, redirected, or captured in CI), so `ralph run ... | cat` is unaffected.
+
+Live streaming works with line-buffered agents such as Claude Code, OpenAI Codex, Aider, and any other process that writes one line at a time. When `--log-dir` is set, output is captured to the log file and also echoed after each iteration completes; live peek still works the same way in that mode.
+
 ---
 
-## `ralph init`
+## `ralph scaffold`
 
-Scaffold a new ralph with a ready-to-customize template. No AI agent required. For a guided setup, see [`ralph new`](#ralph-new) instead.
+Scaffold a new ralph with a ready-to-customize template.
 
 ```bash
-ralph init my-task      # Creates my-task/RALPH.md with a generic template
-ralph init              # Creates RALPH.md in the current directory
+ralph scaffold my-task      # Creates my-task/RALPH.md with a generic template
+ralph scaffold              # Creates RALPH.md in the current directory
 ```
 
 | Argument | Default | Description |
@@ -1965,52 +1953,6 @@ ralph init              # Creates RALPH.md in the current directory
 The generated template includes an example command (`git-log`), an example arg (`focus`), and a prompt body with placeholders for both. Edit it, then run [`ralph run`](#ralph-run). See [Getting Started](getting-started.md) for a full walkthrough.
 
 Errors if `RALPH.md` already exists at the target location.
-
----
-
-## `ralph new`
-
-Create a new ralph with AI-guided setup. Launches an interactive session where the agent guides you through creating a complete ralph via conversation.
-
-```bash
-ralph new              # Agent helps you choose a name and build everything
-ralph new my-task      # Start with a name already chosen
-```
-
-| Argument | Default | Description |
-|---|---|---|
-| `[NAME]` | none | Name for the new ralph. If omitted, the agent will help you choose |
-
-The command detects your [agent](agents.md) and installs a skill to guide the creation process.
-
----
-
-## `ralph add`
-
-Add a ralph from a GitHub repository. Installs it to `.ralphify/ralphs//` so you can run it by name.
-
-```bash
-ralph add owner/repo                                        # Install all ralphs in the repo
-ralph add owner/repo/ralph-name                             # Specific ralph by name
-ralph add https://github.com/owner/repo                     # Full GitHub URL
-ralph add https://github.com/owner/repo/tree/main/my-ralph  # URL copied from GitHub browser
-```
-
-| Argument | Default | Description |
-|---|---|---|
-| `SOURCE` | required | GitHub source — shorthand (`owner/repo`), subpath (`owner/repo/path`), or full GitHub URL |
-
-**How it resolves:**
-
-- `owner/repo` — if the repo root contains `RALPH.md`, installs it as a single ralph named after the repo. Otherwise, finds and installs all ralphs in the repo.
-- `owner/repo/ralph-name` — searches the repo for a directory named `ralph-name` containing `RALPH.md`. If multiple matches are found, prints the paths and asks you to use the full subpath to disambiguate.
-- `https://github.com/owner/repo/tree/branch/path` — extracts the path from the URL. This is the format you get when you copy a URL from the GitHub web UI while browsing a directory. The branch name is used only to locate the path — `ralph add` always clones the default branch.
-
-After adding, run the ralph by name:
-
-```bash
-ralph run ralph-name
-```
 
 ---
 
@@ -2485,19 +2427,19 @@ Common issues and how to fix them. If your problem isn't listed here, run [`ralp
 
 ### "is not a directory, RALPH.md file, or installed ralph"
 
-The path you passed to [`ralph run`](cli.md#ralph-run) doesn't resolve to a valid ralph. The command accepts a **directory** containing `RALPH.md`, a **direct path** to a `RALPH.md` file, or the **name of an installed ralph** (from [`ralph add`](cli.md#ralph-add)):
+The path you passed to [`ralph run`](cli.md#ralph-run) doesn't resolve to a valid ralph. The command accepts a **directory** containing `RALPH.md`, a **direct path** to a `RALPH.md` file, or the **name of an installed ralph** in `.agents/ralphs/`:
 
 ```bash
 ralph run my-ralph              # directory containing RALPH.md
 ralph run my-ralph/RALPH.md     # direct path to the file
-ralph run my-ralph              # installed ralph in .ralphify/ralphs/my-ralph/
+ralph run my-ralph              # installed ralph in .agents/ralphs/my-ralph/
 ```
 
 If you're getting this error, check that the path exists and points to the right place:
 
 ```bash
 ls my-ralph/RALPH.md                       # local ralph
-ls .ralphify/ralphs/my-ralph/RALPH.md      # installed ralph
+ls .agents/ralphs/my-ralph/RALPH.md        # installed ralph
 ```
 
 ### "Missing or empty 'agent' field in RALPH.md frontmatter"
@@ -2516,55 +2458,17 @@ The agent CLI isn't installed or isn't in your shell's PATH. Verify by running `
 
 ### "RALPH.md already exists"
 
-You ran [`ralph new`](cli.md#ralph-new) in a directory that already contains a `RALPH.md`. Either use a different directory name or edit the existing file:
+You ran [`ralph scaffold`](cli.md#ralph-scaffold) in a directory that already contains a `RALPH.md`. Either use a different directory name or edit the existing file:
 
 ```bash
 # ✗ Fails — RALPH.md already exists in my-ralph/
-ralph new my-ralph
+ralph scaffold my-ralph
 
 # ✓ Option A — use a different name
-ralph new my-other-ralph
+ralph scaffold my-other-ralph
 
 # ✓ Option B — edit the existing file directly
 ```
-
-## `ralph add` issues
-
-### "Cannot parse source"
-
-The source format wasn't recognized. [`ralph add`](cli.md#ralph-add) accepts these formats:
-
-```bash
-ralph add owner/repo                                        # shorthand
-ralph add owner/repo/ralph-name                             # specific ralph
-ralph add https://github.com/owner/repo                     # full URL
-ralph add https://github.com/owner/repo/tree/main/my-ralph  # URL copied from GitHub
-```
-
-The easiest way to add a ralph from GitHub is to navigate to the directory in your browser and copy the URL — it works directly with `ralph add`.
-
-### "git is required for 'ralph add'"
-
-`ralph add` uses `git clone` under the hood. Install git from [git-scm.com](https://git-scm.com/) and make sure it's on your PATH:
-
-```bash
-git --version
-```
-
-### "git clone failed"
-
-The repository couldn't be cloned. Common causes:
-
-- The repository doesn't exist or has a typo in the owner/repo name
-- The repository is **private** — `ralph add` uses `git clone` under the hood, so your local git credentials must have access. If you can `git clone https://github.com/owner/repo.git` manually, `ralph add` will work too.
-
-### "No RALPH.md found" / "No ralph named '...' found"
-
-The repository was cloned successfully but no ralphs were found. Either the repo doesn't contain any `RALPH.md` files, or the ralph name you specified doesn't match any directory in the repo.
-
-### Re-running `ralph add` overwrites without warning
-
-If you `ralph add` a ralph that's already installed in `.ralphify/ralphs/`, the existing copy is replaced silently. This is by design — it's how you update an installed ralph to the latest version. If you've made local edits to an installed ralph, copy them elsewhere before re-adding.
 
 ## Loop issues
 
@@ -3517,7 +3421,7 @@ The core loop is simple. The complexity lives in **prompt assembly** — running
 ```
 src/ralphify/           # All source code
 ├── __init__.py         # Version detection + app entry point
-├── cli.py              # CLI commands (run, new, init) — delegates to engine for the loop
+├── cli.py              # CLI commands (run, scaffold) — delegates to engine for the loop
 ├── engine.py           # Core run loop orchestration with structured event emission
 ├── manager.py          # Multi-run orchestration (concurrent runs via threads)
 ├── _resolver.py        # Template placeholder resolution ({{ commands.* }}, {{ args.* }}, {{ ralph.* }})
@@ -3525,13 +3429,11 @@ src/ralphify/           # All source code
 ├── _run_types.py       # RunConfig, RunState, RunStatus, Command — shared data types
 ├── _runner.py          # Execute shell commands with timeout and capture output
 ├── _frontmatter.py     # Parse YAML frontmatter from RALPH.md, marker constants
-├── _source.py          # GitHub source parsing and git-based ralph fetching for `ralph add`
-├── _skills.py          # Skill installation and agent detection for `ralph new`
 ├── _console_emitter.py # Rich console renderer for run-loop events (ConsoleEmitter)
 ├── _events.py          # Event types, emitter protocol, and BoundEmitter convenience wrapper
+├── _keypress.py        # Cross-platform single-keypress listener (powers the `p` peek toggle)
 ├── _output.py          # ProcessResult base class, combine stdout+stderr, format durations
-└── skills/             # Bundled skill definitions (installed into agent skill dirs)
-    └── new-ralph/      # AI-guided ralph creation skill for `ralph new`
+└── _brand.py           # Brand color constants shared across CLI and console rendering
 
 tests/                  # Pytest tests — one test file per module
 docs/                   # MkDocs site (Material theme) — user-facing documentation
@@ -3615,7 +3517,6 @@ The CLI uses a `ConsoleEmitter` (defined in `_console_emitter.py`) that renders 
 3. **`cli.py`** — All CLI commands. Validates frontmatter fields via extracted helpers (`_validate_agent`, `_validate_commands`, `_validate_credit`, `_validate_run_options`, `_validate_declared_args`), builds a `RunConfig`, and delegates to `engine.run_loop()` for the actual loop. Terminal event rendering lives in `_console_emitter.py`.
 4. **`_frontmatter.py`** — YAML frontmatter parsing. Extracts `agent`, `commands`, `args` from the RALPH.md file.
 5. **`_resolver.py`** — Template placeholder logic. Small file but critical.
-6. **`_skills.py`** + **`skills/`** — The skill system behind `ralph new`. `_skills.py` handles agent detection, reads bundled skill definitions from `skills/`, installs them into the agent's skill directory, and builds the command to launch the agent.
 
 ## Traps and gotchas
 
@@ -3632,6 +3533,10 @@ Add it in `cli.py`. The CLI uses Typer. Update `docs/cli.md` to document the new
 ### If you change the event system...
 
 Events are defined in `_events.py:EventType`, with a corresponding TypedDict payload class for each type. Adding a new event type requires a new `EventType` member, a new TypedDict payload class, adding it to the `EventData` union, and handling it in `ConsoleEmitter` (`_console_emitter.py`).
+
+### Live agent output (peek)
+
+Both execution paths in `_agent.py` accept an `on_output_line(line, stream)` callback and drain the agent's stdout/stderr line-by-line — the blocking path uses two background reader threads, and the streaming path forwards each raw line from `_read_agent_stream`. The engine wires this callback to emit `EventType.AGENT_OUTPUT_LINE` events, which the `ConsoleEmitter` renders only while peek is enabled. The `p` keybinding flips that state via `ConsoleEmitter.toggle_peek()`, driven by `KeypressListener` in `_keypress.py`. The listener only activates on a real TTY; in CI or when stdin is piped it silently no-ops.
 
 ### Credit trailer
 
