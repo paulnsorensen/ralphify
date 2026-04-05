@@ -111,6 +111,15 @@ Common causes:
 - There's no concrete task source — point the prompt at something like `TODO.md`, `PLAN.md`, or failing tests
 - The agent can't find what it's supposed to work on
 
+### Agent output not streaming to the terminal
+
+In an interactive terminal, agent output streams live by default. If you don't see any output between the iteration markers:
+
+- **Check the peek toggle** — press `p` to toggle live output on or off. You may have silenced it in a previous iteration.
+- **Non-TTY environments** — live streaming is disabled when output is piped, redirected, or running in CI. This is intentional — use `--log-dir` to capture output instead.
+- **Output appears in bursts** — some runtimes block-buffer stdout when piped. Set `PYTHONUNBUFFERED=1` in your environment to force line-buffered output.
+- **Full-screen TUI agents** — agents that repaint their own terminal (curses-based tools) are not supported for live streaming. They detect a non-TTY and fall back to plain output, which may be minimal.
+
 ## Frontmatter issues
 
 ### "Invalid YAML in frontmatter"
@@ -447,7 +456,7 @@ If a `{{ commands.my-command }}` placeholder produces nothing in the prompt:
 3. Must be `commands` (plural) — `{{ command.name }}` won't resolve
 
 ??? note "No output visible during iteration"
-    By default, agent output goes directly to the terminal. If you're using `--log-dir`, output is captured and then replayed — you'll still see it, but only after the iteration completes.
+    Agent output streams live to the terminal by default — press `p` to toggle it on or off. If you're using `--log-dir`, output is also echoed after each iteration completes. See [Agent output not streaming](#agent-output-not-streaming-to-the-terminal) for more details.
 
 ??? note "CLI flag validation errors"
     ### "'-n' must be a positive integer"
