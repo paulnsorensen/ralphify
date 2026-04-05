@@ -33,6 +33,8 @@ import threading
 from collections.abc import Callable
 from types import FrameType
 
+from ralphify._output import warn
+
 
 _POLL_INTERVAL = 0.1  # seconds between stop-flag checks (POSIX select)
 _WIN_POLL_INTERVAL = 0.05  # seconds between kbhit() checks on Windows
@@ -123,8 +125,8 @@ class KeypressListener:
                 # posix loop will still restore the terminal on process
                 # exit, so the user's shell will not be wedged.
                 try:
-                    sys.stderr.write(
-                        f"ralphify: keypress listener did not exit within {_THREAD_JOIN_TIMEOUT}s\n"
+                    warn(
+                        f"keypress listener did not exit within {_THREAD_JOIN_TIMEOUT}s"
                     )
                 except Exception:
                     pass

@@ -20,7 +20,6 @@ import os
 import queue as _queue
 import signal
 import subprocess
-import sys
 import threading
 import time
 from collections.abc import Callable
@@ -36,6 +35,7 @@ from ralphify._output import (
     SUBPROCESS_TEXT_KWARGS,
     ProcessResult,
     collect_output,
+    warn,
 )
 
 # ── Callback type aliases ──────────────────────────────────────────────
@@ -152,11 +152,7 @@ def _ensure_process_dead(proc: subprocess.Popen[Any]) -> None:
     try:
         proc.wait(timeout=_PROCESS_WAIT_TIMEOUT)
     except subprocess.TimeoutExpired:
-        print(
-            "ralphify: warning: agent process did not exit within"
-            f" {_PROCESS_WAIT_TIMEOUT}s after kill",
-            file=sys.stderr,
-        )
+        warn(f"agent process did not exit within {_PROCESS_WAIT_TIMEOUT}s after kill")
 
 
 def _close_pipes(proc: subprocess.Popen[Any]) -> None:
@@ -573,10 +569,9 @@ def _drain_readers(
         if thread is not None:
             thread.join(timeout=timeout)
             if thread.is_alive():
-                print(
-                    f"ralphify: warning: reader thread {thread.name!r} did not"
-                    f" exit within {timeout}s — log output may be incomplete",
-                    file=sys.stderr,
+                warn(
+                    f"reader thread {thread.name!r} did not exit within"
+                    f" {timeout}s — log output may be incomplete"
                 )
 
 

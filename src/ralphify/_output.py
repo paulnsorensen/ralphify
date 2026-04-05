@@ -78,6 +78,15 @@ def collect_output(
     return "".join(parts)
 
 
+def warn(message: str) -> None:
+    """Print a warning message to stderr with the ``ralphify:`` prefix.
+
+    Used by low-level modules (agent, keypress) for operational warnings
+    that should be visible even when Rich console rendering is not active.
+    """
+    print(f"ralphify: warning: {message}", file=sys.stderr)
+
+
 _SECONDS_PER_MINUTE = 60
 _MINUTES_PER_HOUR = 60
 
