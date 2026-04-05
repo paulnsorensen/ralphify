@@ -1,8 +1,10 @@
 # Ralphify
 
-> A minimal CLI harness for autonomous AI coding loops. Run commands, assemble a prompt, pipe it to an agent, and repeat with fresh context each iteration.
+> The CLI runtime for the ralph format — a skill-like spec for autonomous agent loops. A ralph is a directory with a RALPH.md file. Ralphify runs it.
 
-Ralphify puts your AI coding agent in a `while True` loop. Each iteration: run commands (tests, lint, git log), inject their output into a prompt via placeholders, pipe the prompt to an agent, and repeat. The agent starts fresh every cycle — no context decay, no conversation bloat.
+A **ralph** is a directory with a `RALPH.md` file — a skill-like format that bundles a prompt, the commands to run between iterations, and any files the agent needs. **Ralphify** is the CLI runtime that executes them.
+
+`RALPH.md` has YAML frontmatter (agent command, commands, args) and a prompt body with `{{ placeholders }}`. Each iteration: run commands, fill placeholders with output, pipe the assembled prompt to the agent, repeat. Fresh context every cycle.
 
 ## Quick install
 
@@ -12,9 +14,9 @@ uv tool install ralphify
 
 Requires Python 3.11+ and an AI agent CLI (Claude Code recommended).
 
-## Core concept
+## The ralph format
 
-A **ralph** is a directory containing a `RALPH.md` file. That file has YAML frontmatter (agent command, commands, args) and a prompt body with `{{ placeholders }}`.
+A **ralph** is a directory containing a `RALPH.md` file. The frontmatter defines what to run; the body is the prompt.
 
 ```markdown
 ---
@@ -34,9 +36,15 @@ Read TODO.md and implement the next task.
 Run it:
 
 ```bash
-ralph run my-ralph         # Loop forever (Ctrl+C to stop)
-ralph run my-ralph -n 5    # Run 5 iterations
+ralph run my-ralph         # loop until Ctrl+C
+ralph run my-ralph -n 5    # run 5 iterations
 ```
+
+Works with any agent CLI — swap `claude -p` for Codex, Aider, or your own.
+
+## Why a format
+
+Everyone writing ralph loops ends up with the same scaffolding: a markdown prompt, a few shell commands that surface state between iterations, a while-loop that ties them together. Turning that into a format makes ralphs shareable, versionable, and installable — the same way skills made inner-loop workflows shareable.
 
 ## Key features
 
@@ -45,7 +53,7 @@ ralph run my-ralph -n 5    # Run 5 iterations
 - **Fresh context every cycle**: No conversation bloat or hallucinated memories. The agent reads current codebase state each time.
 - **Progress in git**: Every iteration commits to git. Roll back with `git reset` if needed.
 - **Any agent**: Works with Claude Code, Aider, Codex CLI, or any CLI that reads stdin.
-- **Shareable ralphs**: Install pre-built ralphs from GitHub with [agr](https://github.com/computerlovetech/agr).
+- **Shareable ralphs**: Ralphs are just directories — share via git repos, install with [agr](https://github.com/computerlovetech/agr).
 
 ## Placeholder types
 
@@ -58,7 +66,7 @@ ralph run my-ralph -n 5    # Run 5 iterations
 ## CLI commands
 
 - `ralph run <path> [-n N] [--log-dir DIR] [--stop-on-error] [--timeout SEC] [--delay SEC]` — run the loop
-- `ralph scaffold <name>` — scaffold a ralph from template
+- `ralph scaffold <name>` — scaffold a ralph from a template
 
 ## Python API
 
@@ -71,9 +79,7 @@ Embed the loop in automation pipelines. See the API docs for details.
 ## Documentation
 
 - [Getting Started](https://ralphify.co/docs/getting-started/): Install to running loop in 10 minutes
-- [When to Use](https://ralphify.co/docs/when-to-use/): Task suitability guide
 - [How it Works](https://ralphify.co/docs/how-it-works/): Iteration lifecycle details
-- [Writing Prompts](https://ralphify.co/docs/writing-prompts/): Patterns for effective loop prompts
 - [Using with Different Agents](https://ralphify.co/docs/agents/): Claude Code, Aider, Codex CLI setup
 - [Cookbook](https://ralphify.co/docs/cookbook/): Copy-pasteable recipes for coding, docs, research
 - [CLI Reference](https://ralphify.co/docs/cli/): All commands and options
