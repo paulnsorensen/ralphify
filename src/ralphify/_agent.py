@@ -38,6 +38,16 @@ from ralphify._output import (
     collect_output,
 )
 
+# ── Callback type aliases ──────────────────────────────────────────────
+# Used across the streaming and blocking execution paths for callbacks
+# that observe live agent output.
+
+ActivityCallback = Callable[[dict[str, Any]], None]
+"""Receives parsed JSON activity dicts from the agent's stream."""
+
+OutputLineCallback = Callable[[str, OutputStream], None]
+"""Receives raw output lines with their stream name ("stdout"/"stderr")."""
+
 # Typed constants for the OutputStream literal so the type checker enforces
 # that only "stdout" / "stderr" ever reach ``on_output_line``.
 _STDOUT: OutputStream = "stdout"
@@ -291,8 +301,8 @@ def _readline_pump(
 def _read_agent_stream(
     stdout: IO[str],
     deadline: float | None,
-    on_activity: Callable[[dict[str, Any]], None] | None,
-    on_output_line: Callable[[str, OutputStream], None] | None = None,
+    on_activity: ActivityCallback | None,
+    on_output_line: OutputLineCallback | None = None,
 ) -> _StreamResult:
     """Read the agent's JSON stream line-by-line until EOF or timeout.
 
@@ -397,8 +407,8 @@ def _run_agent_streaming(
     timeout: float | None,
     log_path_dir: Path | None,
     iteration: int,
-    on_activity: Callable[[dict[str, Any]], None] | None = None,
-    on_output_line: Callable[[str, OutputStream], None] | None = None,
+    on_activity: ActivityCallback | None = None,
+    on_output_line: OutputLineCallback | None = None,
 ) -> AgentResult:
     """Run the agent subprocess with line-by-line streaming of JSON output.
 
@@ -475,7 +485,7 @@ def _pump_stream(
     stream: IO[str],
     buffer: list[str] | None,
     stream_name: OutputStream,
-    on_output_line: Callable[[str, OutputStream], None] | None,
+    on_output_line: OutputLineCallback | None,
 ) -> None:
     """Read *stream* line by line, optionally appending to *buffer* and forwarding to the callback.
 
@@ -527,7 +537,7 @@ def _start_pump_thread(
     stream: IO[str],
     buffer: list[str] | None,
     stream_name: OutputStream,
-    on_output_line: Callable[[str, OutputStream], None] | None,
+    on_output_line: OutputLineCallback | None,
 ) -> threading.Thread:
     """Create and start a daemon thread that drains *stream*.
 
@@ -596,7 +606,7 @@ def _run_agent_blocking(
     timeout: float | None,
     log_path_dir: Path | None,
     iteration: int,
-    on_output_line: Callable[[str, OutputStream], None] | None = None,
+    on_output_line: OutputLineCallback | None = None,
 ) -> AgentResult:
     """Run the agent subprocess and return the result.
 
@@ -690,8 +700,8 @@ def execute_agent(
     timeout: float | None,
     log_path_dir: Path | None,
     iteration: int,
-    on_activity: Callable[[dict[str, Any]], None] | None = None,
-    on_output_line: Callable[[str, OutputStream], None] | None = None,
+    on_activity: ActivityCallback | None = None,
+    on_output_line: OutputLineCallback | None = None,
 ) -> AgentResult:
     """Run the agent subprocess, auto-selecting streaming or blocking mode.
 
