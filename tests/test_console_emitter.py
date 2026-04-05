@@ -77,7 +77,7 @@ class TestPeekToggle:
         emitter.toggle_peek()
         assert "peek on" in console.export_text()
         emitter.toggle_peek()
-        assert "peek off" in console.export_text()
+        assert "peek off — press p to resume" in console.export_text()
 
     def test_concurrent_peek_writes_do_not_interleave(self):
         """Two threads hammering ``_on_agent_output_line`` while peek is on
@@ -242,6 +242,41 @@ class TestPeekToggle:
         assert "2 commands" in output
         assert "max 3 iterations" in output
         assert "·" in output
+
+    def test_startup_hint_shown_when_peek_on_by_default(self):
+        emitter, console = _capture_emitter()
+        # Force peek on (recording consoles default to off)
+        emitter._peek_enabled = True
+        emitter.emit(
+            _make_event(
+                EventType.RUN_STARTED,
+                ralph_name="my-ralph",
+                timeout=0,
+                commands=0,
+                max_iterations=None,
+                delay=0,
+            )
+        )
+        output = console.export_text()
+        assert "peek on — press p to toggle" in output
+
+    def test_no_startup_hint_when_peek_off(self):
+        emitter, console = _capture_emitter()
+        # Peek is already off by default for recording consoles, but be explicit
+        emitter._peek_enabled = False
+        emitter.emit(
+            _make_event(
+                EventType.RUN_STARTED,
+                ralph_name="my-ralph",
+                timeout=0,
+                commands=0,
+                max_iterations=None,
+                delay=0,
+            )
+        )
+        output = console.export_text()
+        assert "peek on" not in output
+        assert "press p" not in output
 
 
 class TestIterationLifecycle:

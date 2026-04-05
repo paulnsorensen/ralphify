@@ -524,6 +524,11 @@ def run(
     Extra flags (--name value) and positional args after the path are
     passed as user arguments.  Use {{ args.name }} placeholders in
     RALPH.md to reference them.
+
+    Keybindings (interactive terminal):
+      p         Toggle live peek of agent output (on by default)
+      Ctrl+C    Finish current iteration gracefully, then stop
+      Ctrl+C ×2 Force-kill the agent and exit immediately
     """
     extra = list(ctx.args)
 

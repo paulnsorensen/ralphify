@@ -167,7 +167,9 @@ class ConsoleEmitter:
             enabled = self._peek_enabled
             with self._console_lock:
                 self._console.print(
-                    "[dim]peek on[/]" if enabled else "[dim]peek off[/]"
+                    "[dim]peek on[/]"
+                    if enabled
+                    else "[dim]peek off — press p to resume[/]"
                 )
         return enabled
 
@@ -194,6 +196,8 @@ class ConsoleEmitter:
             )
             if info:
                 self._console.print(f"  [dim]{info}[/]")
+            if self._peek_enabled:
+                self._console.print("[dim]peek on — press p to toggle[/]")
 
     def _start_live(self) -> None:
         spinner = _IterationSpinner()
