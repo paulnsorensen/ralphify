@@ -231,8 +231,12 @@ class ConsoleEmitter:
             # peek was off and logging captured the output.
             if echo_stdout:
                 self._console.print(Text(echo_stdout), end="")
+                if not echo_stdout.endswith("\n"):
+                    self._console.print()
             if echo_stderr:
                 self._console.print(Text(echo_stderr), end="")
+                if not echo_stderr.endswith("\n"):
+                    self._console.print()
             self._console.print(f"[{color}]{icon} Iteration {iteration} {detail}[/]")
             if log_file:
                 self._console.print(

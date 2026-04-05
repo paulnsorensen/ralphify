@@ -778,6 +778,30 @@ class TestEchoOutput:
         output = console.export_text()
         assert "warning: something" in output
 
+    def test_echo_without_trailing_newline_does_not_collide_with_status(self):
+        """When echo output lacks a trailing newline, the status line must
+        still start on its own line — not appended to the last echo line."""
+        emitter, console = _capture_emitter()
+        emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
+        emitter.emit(
+            _make_event(
+                EventType.ITERATION_COMPLETED,
+                iteration=1,
+                detail="completed (1s)",
+                log_file=None,
+                result_text=None,
+                echo_stdout="partial output",
+                echo_stderr=None,
+            )
+        )
+        output = console.export_text()
+        # The status line must be on its own line, not merged with echo output
+        for line in output.splitlines():
+            if "completed (1s)" in line:
+                assert "partial output" not in line, (
+                    "Status line collided with echo output on the same line"
+                )
+
 
 class TestIterationSpinner:
     def test_renders_elapsed_time(self):
