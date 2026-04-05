@@ -308,6 +308,17 @@ class TestExecuteAgentBlocking:
         assert result.returncode is None
         assert result.timed_out is True
 
+    @patch(MOCK_SUBPROCESS, side_effect=timeout_proc)
+    def test_returncode_is_none_on_blocking_timeout(self, mock_popen):
+        """Blocking path returns returncode=None on timeout, matching the
+        ProcessResult contract and the streaming path's behavior."""
+        result = _run_agent_blocking(
+            ["echo"], "prompt", timeout=5, log_path_dir=None, iteration=1
+        )
+
+        assert result.returncode is None
+        assert result.timed_out is True
+
     @patch(MOCK_SUBPROCESS)
     def test_writes_log_on_success(self, mock_popen, tmp_path):
         mock_popen.return_value = ok_proc(stdout_text="agent output\n")

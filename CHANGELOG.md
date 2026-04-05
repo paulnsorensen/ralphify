@@ -12,6 +12,7 @@ All notable changes to ralphify are documented here.
 
 - **`ralph init` renamed to `ralph scaffold`** — the command that creates a new ralph from a template is now `ralph scaffold`. Same behavior, clearer name.
 - **Installed ralphs moved from `.ralphify/ralphs/` to `.agents/ralphs/`** — `ralph run <name>` now looks for installed ralphs in `.agents/ralphs/` (project-level) and `~/.agents/ralphs/` (user-level). The old `.ralphify/ralphs/` path is no longer checked. If you have ralphs installed there, move them to `.agents/ralphs/`.
+- **`AgentResult.returncode` is `None` on timeout** — `AgentResult.returncode` and `IterationEndedData.returncode` now consistently return `None` when the agent times out (previously the blocking path returned the kill signal's exit code, e.g. `-9`). The streaming path already behaved this way; this change aligns both paths with the documented `ProcessResult` contract. **API consumers:** if you log or emit metrics keyed on `returncode` for timed-out iterations, check the `timed_out` field first.
 
 ### Removed
 
