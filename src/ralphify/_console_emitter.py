@@ -203,10 +203,6 @@ class ConsoleEmitter:
         )
         self._live.start()
 
-    def _start_live(self) -> None:
-        with self._console_lock:
-            self._start_live_unlocked()
-
     def _stop_live_unlocked(self) -> None:
         """Stop the iteration spinner.  Caller must hold ``_console_lock``."""
         if self._live is not None:
@@ -223,6 +219,16 @@ class ConsoleEmitter:
             self._console.print(f"\n[bold {_brand.BLUE}]── Iteration {iteration} ──[/]")
             self._start_live_unlocked()
 
+    def _echo_stream(self, text: str | None) -> None:
+        """Print captured stream output, ensuring a trailing newline.
+
+        Caller must hold ``_console_lock``.  No-ops when *text* is falsy.
+        """
+        if text:
+            self._console.print(Text(text), end="")
+            if not text.endswith("\n"):
+                self._console.print()
+
     def _on_iteration_ended(
         self, data: IterationEndedData, color: str, icon: str
     ) -> None:
@@ -230,21 +236,13 @@ class ConsoleEmitter:
         detail = data["detail"]
         log_file = data["log_file"]
         result_text = data["result_text"]
-        echo_stdout = data.get("echo_stdout")
-        echo_stderr = data.get("echo_stderr")
         with self._console_lock:
             self._stop_live_unlocked()
             # Echo captured output before the status line — Live is already
             # stopped so this cannot tear the spinner.  Only present when
             # peek was off and logging captured the output.
-            if echo_stdout:
-                self._console.print(Text(echo_stdout), end="")
-                if not echo_stdout.endswith("\n"):
-                    self._console.print()
-            if echo_stderr:
-                self._console.print(Text(echo_stderr), end="")
-                if not echo_stderr.endswith("\n"):
-                    self._console.print()
+            self._echo_stream(data.get("echo_stdout"))
+            self._echo_stream(data.get("echo_stderr"))
             self._console.print(f"[{color}]{icon} Iteration {iteration} {detail}[/]")
             if log_file:
                 self._console.print(
