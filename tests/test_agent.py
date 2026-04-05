@@ -282,7 +282,7 @@ class TestExecuteAgentBlocking:
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_success(self, mock_popen):
         result = execute_agent(
-            ["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1
+            ["echo"], "prompt", timeout=None, log_dir=None, iteration=1
         )
 
         assert result.returncode == 0
@@ -293,7 +293,7 @@ class TestExecuteAgentBlocking:
     @patch(MOCK_SUBPROCESS, side_effect=fail_proc)
     def test_failure(self, mock_popen):
         result = execute_agent(
-            ["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1
+            ["echo"], "prompt", timeout=None, log_dir=None, iteration=1
         )
 
         assert result.returncode == 1
@@ -301,9 +301,7 @@ class TestExecuteAgentBlocking:
 
     @patch(MOCK_SUBPROCESS, side_effect=timeout_proc)
     def test_timeout(self, mock_popen):
-        result = execute_agent(
-            ["echo"], "prompt", timeout=5, log_path_dir=None, iteration=1
-        )
+        result = execute_agent(["echo"], "prompt", timeout=5, log_dir=None, iteration=1)
 
         assert result.returncode is None
         assert result.timed_out is True
@@ -313,7 +311,7 @@ class TestExecuteAgentBlocking:
         """Blocking path returns returncode=None on timeout, matching the
         ProcessResult contract and the streaming path's behavior."""
         result = _run_agent_blocking(
-            ["echo"], "prompt", timeout=5, log_path_dir=None, iteration=1
+            ["echo"], "prompt", timeout=5, log_dir=None, iteration=1
         )
 
         assert result.returncode is None
@@ -326,7 +324,7 @@ class TestExecuteAgentBlocking:
             ["echo"],
             "prompt",
             timeout=None,
-            log_path_dir=tmp_path,
+            log_dir=tmp_path,
             iteration=3,
         )
 
@@ -342,7 +340,7 @@ class TestExecuteAgentBlocking:
             ["echo"],
             "prompt",
             timeout=5,
-            log_path_dir=tmp_path,
+            log_dir=tmp_path,
             iteration=1,
         )
 
@@ -360,7 +358,7 @@ class TestExecuteAgentBlocking:
             ["echo"],
             "prompt",
             timeout=5,
-            log_path_dir=tmp_path,
+            log_dir=tmp_path,
             iteration=1,
         )
 
@@ -370,7 +368,7 @@ class TestExecuteAgentBlocking:
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_no_log_when_dir_not_set(self, mock_popen):
         result = execute_agent(
-            ["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1
+            ["echo"], "prompt", timeout=None, log_dir=None, iteration=1
         )
 
         assert result.log_file is None
@@ -384,7 +382,7 @@ class TestExecuteAgentBlocking:
                 ["nonexistent"],
                 "prompt",
                 timeout=None,
-                log_path_dir=None,
+                log_dir=None,
                 iteration=1,
             )
 
@@ -432,7 +430,7 @@ class TestExecuteAgentDispatch:
             ["claude", "-p"],
             "prompt",
             timeout=None,
-            log_path_dir=None,
+            log_dir=None,
             iteration=1,
         )
 
@@ -454,7 +452,7 @@ class TestExecuteAgentStreaming:
             ["claude", "-p"],
             "prompt",
             timeout=None,
-            log_path_dir=None,
+            log_dir=None,
             iteration=1,
         )
 
@@ -469,7 +467,7 @@ class TestExecuteAgentStreaming:
             ["claude", "-p"],
             "prompt",
             timeout=None,
-            log_path_dir=None,
+            log_dir=None,
             iteration=1,
         )
 
@@ -487,7 +485,7 @@ class TestExecuteAgentStreaming:
             ["claude", "-p"],
             "prompt",
             timeout=None,
-            log_path_dir=None,
+            log_dir=None,
             iteration=1,
         )
 
@@ -501,7 +499,7 @@ class TestExecuteAgentStreaming:
             ["claude", "-p"],
             "my prompt text",
             timeout=None,
-            log_path_dir=None,
+            log_dir=None,
             iteration=1,
         )
 
@@ -515,7 +513,7 @@ class TestExecuteAgentStreaming:
             ["claude", "-p"],
             "prompt",
             timeout=None,
-            log_path_dir=None,
+            log_dir=None,
             iteration=1,
         )
 
@@ -536,7 +534,7 @@ class TestExecuteAgentStreaming:
             ["claude", "-p"],
             "prompt",
             timeout=None,
-            log_path_dir=tmp_path,
+            log_dir=tmp_path,
             iteration=3,
         )
 
@@ -549,7 +547,7 @@ class TestExecuteAgentStreaming:
 
     @patch(MOCK_SUBPROCESS)
     def test_captured_output_set_when_logging(self, mock_popen, tmp_path):
-        """When log_path_dir is set, captured_stdout and captured_stderr
+        """When log_dir is set, captured_stdout and captured_stderr
         must be populated so the engine can echo them via the event system
         — matching the blocking path's behavior."""
         mock_popen.return_value = make_mock_popen(
@@ -561,7 +559,7 @@ class TestExecuteAgentStreaming:
             ["claude", "-p"],
             "prompt",
             timeout=None,
-            log_path_dir=tmp_path,
+            log_dir=tmp_path,
             iteration=1,
         )
 
@@ -575,7 +573,7 @@ class TestExecuteAgentStreaming:
             ["claude", "-p"],
             "prompt",
             timeout=None,
-            log_path_dir=None,
+            log_dir=None,
             iteration=1,
         )
 
@@ -592,7 +590,7 @@ class TestExecuteAgentStreaming:
             ["claude", "-p"],
             "prompt",
             timeout=None,
-            log_path_dir=None,
+            log_dir=None,
             iteration=1,
             on_activity=activities.append,
         )
@@ -623,7 +621,7 @@ class TestExecuteAgentStreaming:
             ["claude", "-p"],
             "prompt",
             timeout=5,
-            log_path_dir=None,
+            log_dir=None,
             iteration=1,
         )
 
@@ -697,7 +695,7 @@ class TestProcessGroupCleanup:
 
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_blocking_uses_start_new_session(self, mock_popen):
-        execute_agent(["echo"], "prompt", timeout=None, log_path_dir=None, iteration=1)
+        execute_agent(["echo"], "prompt", timeout=None, log_dir=None, iteration=1)
         assert mock_popen.call_args[1].get("start_new_session") is True
 
     @patch(MOCK_SUBPROCESS)
@@ -707,7 +705,7 @@ class TestProcessGroupCleanup:
             ["claude", "-p"],
             "prompt",
             timeout=None,
-            log_path_dir=None,
+            log_dir=None,
             iteration=1,
         )
         assert mock_popen.call_args[1].get("start_new_session") is True
@@ -770,7 +768,7 @@ class TestRunAgentStreamingPipeGuard:
                 ["claude", "-p"],
                 "prompt",
                 timeout=None,
-                log_path_dir=None,
+                log_dir=None,
                 iteration=1,
             )
 
@@ -802,7 +800,7 @@ class TestRunAgentBlockingKeyboardInterrupt:
                 ["echo"],
                 "prompt",
                 timeout=None,
-                log_path_dir=None,
+                log_dir=None,
                 iteration=1,
             )
 
@@ -824,7 +822,7 @@ class TestRunAgentBlockingLineStreaming:
             [sys.executable, "-c", script],
             prompt="",
             timeout=10,
-            log_path_dir=tmp_path,
+            log_dir=tmp_path,
             iteration=1,
             on_output_line=lambda line, stream: received.append((line, stream)),
         )
@@ -853,7 +851,7 @@ class TestRunAgentBlockingLineStreaming:
             [sys.executable, "-u", "-c", script],
             prompt="",
             timeout=10,
-            log_path_dir=tmp_path,
+            log_dir=tmp_path,
             iteration=1,
             on_output_line=lambda line, stream: received.append((line, stream)),
         )
@@ -873,7 +871,7 @@ class TestRunAgentBlockingLineStreaming:
             [sys.executable, "-c", script],
             prompt="hello-from-prompt\n",
             timeout=10,
-            log_path_dir=tmp_path,
+            log_dir=tmp_path,
             iteration=1,
             on_output_line=lambda line, stream: received.append(line),
         )
@@ -905,7 +903,7 @@ class TestRunAgentBlockingLineStreaming:
             [sys.executable, "-c", script],
             prompt=large_prompt,
             timeout=15,
-            log_path_dir=tmp_path,
+            log_dir=tmp_path,
             iteration=1,
         )
 
@@ -924,7 +922,7 @@ class TestRunAgentBlockingLineStreaming:
             [sys.executable, "-c", script],
             prompt=large_prompt,
             timeout=10,
-            log_path_dir=tmp_path,
+            log_dir=tmp_path,
             iteration=1,
         )
 
@@ -951,7 +949,7 @@ class TestRunAgentBlockingLineStreaming:
             [sys.executable, "-c", script],
             prompt="hi",
             timeout=15,
-            log_path_dir=tmp_path,
+            log_dir=tmp_path,
             iteration=1,
         )
 
@@ -981,7 +979,7 @@ class TestRunAgentBlockingLineStreaming:
             [sys.executable, "-c", script],
             prompt=large_prompt,
             timeout=2.0,
-            log_path_dir=tmp_path,
+            log_dir=tmp_path,
             iteration=1,
         )
         elapsed = time.monotonic() - start
@@ -1017,7 +1015,7 @@ class TestStreamingDeadlineAndBuffering:
             [sys.executable, "-u", "-c", script],
             prompt="go",
             timeout=1.0,
-            log_path_dir=tmp_path,
+            log_dir=tmp_path,
             iteration=1,
         )
         elapsed = time.monotonic() - start
@@ -1053,7 +1051,7 @@ class TestStreamingDeadlineAndBuffering:
             [sys.executable, "-u", "-c", script],
             prompt="go",
             timeout=15,
-            log_path_dir=tmp_path,
+            log_dir=tmp_path,
             iteration=1,
             on_output_line=on_line,
         )
@@ -1080,7 +1078,7 @@ class TestStreamingDeadlineAndBuffering:
 class TestBlockingInheritPath:
     """Tests for the fd-inheritance path in _run_agent_blocking.
 
-    When both ``log_path_dir`` and ``on_output_line`` are ``None``, the
+    When both ``log_dir`` and ``on_output_line`` are ``None``, the
     blocking path should inherit stdout/stderr from the parent (no PIPE,
     no reader threads) so that ``ralph run | cat`` shows output.
     """
@@ -1092,7 +1090,7 @@ class TestBlockingInheritPath:
             ["echo"],
             "prompt",
             timeout=None,
-            log_path_dir=None,
+            log_dir=None,
             iteration=1,
             on_output_line=None,
         )
@@ -1110,7 +1108,7 @@ class TestBlockingInheritPath:
             ["echo"],
             "prompt",
             timeout=None,
-            log_path_dir=None,
+            log_dir=None,
             iteration=1,
             on_output_line=lambda line, stream: None,
         )
@@ -1121,12 +1119,12 @@ class TestBlockingInheritPath:
 
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_still_pipes_when_log_dir_set(self, mock_popen, tmp_path):
-        """When log_path_dir is provided, stdout/stderr must be PIPE'd."""
+        """When log_dir is provided, stdout/stderr must be PIPE'd."""
         _run_agent_blocking(
             ["echo"],
             "prompt",
             timeout=None,
-            log_path_dir=tmp_path,
+            log_dir=tmp_path,
             iteration=1,
             on_output_line=None,
         )
@@ -1149,7 +1147,7 @@ class TestBlockingInheritPath:
             [sys.executable, "-c", script],
             prompt="",
             timeout=10,
-            log_path_dir=None,
+            log_dir=None,
             iteration=1,
             on_output_line=None,
         )
@@ -1159,7 +1157,7 @@ class TestBlockingInheritPath:
         assert "visible-output" in captured.out
 
     def test_callback_only_does_not_buffer(self, tmp_path):
-        """When on_output_line is set but log_path_dir is None, lines should
+        """When on_output_line is set but log_dir is None, lines should
         be forwarded to the callback but NOT accumulated (no unbounded
         buffering).  Verified indirectly: log_file is None (no buffer to
         write) but the callback still receives lines."""
@@ -1170,7 +1168,7 @@ class TestBlockingInheritPath:
             [sys.executable, "-c", script],
             prompt="",
             timeout=10,
-            log_path_dir=None,
+            log_dir=None,
             iteration=1,
             on_output_line=lambda line, stream: received.append(line),
         )
@@ -1203,7 +1201,7 @@ class TestPumpStreamExceptionHandling:
             [sys.executable, "-u", "-c", script],
             prompt="",
             timeout=10,
-            log_path_dir=None,
+            log_dir=None,
             iteration=1,
             on_output_line=raising_callback,
         )
@@ -1225,7 +1223,7 @@ class TestPumpStreamExceptionHandling:
             [sys.executable, "-u", "-c", script],
             prompt="",
             timeout=10,
-            log_path_dir=tmp_path,
+            log_dir=tmp_path,
             iteration=1,
             on_output_line=always_raises,
         )
@@ -1349,7 +1347,7 @@ class TestBoundedReaderThreadJoins:
             [sys.executable, "-c", script],
             prompt="",
             timeout=15,
-            log_path_dir=tmp_path,
+            log_dir=tmp_path,
             iteration=1,
         )
         elapsed = time.monotonic() - start
@@ -1427,7 +1425,7 @@ class TestBoundedReaderThreadJoins:
                         [sys.executable, "-c", script],
                         prompt="",
                         timeout=10,
-                        log_path_dir=None,
+                        log_dir=None,
                         iteration=1,
                         on_output_line=lambda line, stream: None,
                     )

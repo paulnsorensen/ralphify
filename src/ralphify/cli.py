@@ -204,7 +204,9 @@ def scaffold(
     ralph_file.write_text(_INIT_TEMPLATE, encoding="utf-8")
     rel = ralph_file.relative_to(Path.cwd())
     _console.print(f"[green]Created[/] {escape_markup(str(rel))}")
-    _console.print(f"[dim]Edit the file, then run:[/] ralph run {escape_markup(name or '.')}")
+    _console.print(
+        f"[dim]Edit the file, then run:[/] ralph run {escape_markup(name or '.')}"
+    )
 
 
 def _parse_user_args(

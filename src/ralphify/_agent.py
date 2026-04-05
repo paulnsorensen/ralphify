@@ -242,21 +242,19 @@ class _StreamResult:
 
 
 def _write_log(
-    log_path_dir: Path | None,
+    log_dir: Path | None,
     iteration: int,
     stdout: str | bytes | None,
     stderr: str | bytes | None,
 ) -> Path | None:
     """Write iteration output to a timestamped log file if logging is configured.
 
-    Returns the log file path, or ``None`` when *log_path_dir* is not set.
+    Returns the log file path, or ``None`` when *log_dir* is not set.
     """
-    if log_path_dir is None:
+    if log_dir is None:
         return None
     timestamp = datetime.now(timezone.utc).strftime(_LOG_TIMESTAMP_FORMAT)
-    log_file = (
-        log_path_dir / f"{iteration:0{_LOG_ITERATION_PAD_WIDTH}d}_{timestamp}.log"
-    )
+    log_file = log_dir / f"{iteration:0{_LOG_ITERATION_PAD_WIDTH}d}_{timestamp}.log"
     log_file.write_text(collect_output(stdout, stderr), encoding="utf-8")
     return log_file
 
@@ -401,7 +399,7 @@ def _run_agent_streaming(
     cmd: list[str],
     prompt: str,
     timeout: float | None,
-    log_path_dir: Path | None,
+    log_dir: Path | None,
     iteration: int,
     on_activity: ActivityCallback | None = None,
     on_output_line: OutputLineCallback | None = None,
@@ -464,7 +462,7 @@ def _run_agent_streaming(
     stdout = "".join(stream.stdout_lines)
     stderr = "".join(stderr_lines)
 
-    log_file = _write_log(log_path_dir, iteration, stdout, stderr)
+    log_file = _write_log(log_dir, iteration, stdout, stderr)
 
     return AgentResult(
         returncode=None if stream.timed_out else proc.returncode,
@@ -472,8 +470,8 @@ def _run_agent_streaming(
         log_file=log_file,
         result_text=stream.result_text,
         timed_out=stream.timed_out,
-        captured_stdout=stdout if log_path_dir is not None else None,
-        captured_stderr=stderr if log_path_dir is not None else None,
+        captured_stdout=stdout if log_dir is not None else None,
+        captured_stderr=stderr if log_dir is not None else None,
     )
 
 
@@ -599,7 +597,7 @@ def _run_agent_blocking(
     cmd: list[str],
     prompt: str,
     timeout: float | None,
-    log_path_dir: Path | None,
+    log_dir: Path | None,
     iteration: int,
     on_output_line: OutputLineCallback | None = None,
 ) -> AgentResult:
@@ -608,13 +606,13 @@ def _run_agent_blocking(
     Conditionally pipes stdout/stderr based on whether any subscriber
     needs the output:
 
-    - **Inherit** (``on_output_line is None and log_path_dir is None``) —
+    - **Inherit** (``on_output_line is None and log_dir is None``) —
       stdout/stderr are not piped; the child writes directly to the
       parent's file descriptors.  No reader threads, no buffering.
     - **Callback only** (``on_output_line`` set, no log dir) — reader
       threads forward lines to the callback without accumulating them,
       avoiding unbounded memory growth.
-    - **Log capture** (``log_path_dir`` set) — reader threads accumulate
+    - **Log capture** (``log_dir`` set) — reader threads accumulate
       lines into lists for log writing; lines are also forwarded to the
       callback if provided.
 
@@ -626,7 +624,7 @@ def _run_agent_blocking(
     Raises ``FileNotFoundError`` if the command binary does not exist.
     """
     start = time.monotonic()
-    capture = log_path_dir is not None or on_output_line is not None
+    capture = log_dir is not None or on_output_line is not None
 
     # When no subscriber needs the bytes, stdout/stderr are left
     # un-piped so the child writes directly to the terminal.  When
@@ -639,8 +637,8 @@ def _run_agent_blocking(
     writer_thread: threading.Thread | None = None
     stdout_thread: threading.Thread | None = None
     stderr_thread: threading.Thread | None = None
-    stdout_lines: list[str] | None = [] if log_path_dir is not None else None
-    stderr_lines: list[str] | None = [] if log_path_dir is not None else None
+    stdout_lines: list[str] | None = [] if log_dir is not None else None
+    stderr_lines: list[str] | None = [] if log_dir is not None else None
 
     pipe = subprocess.PIPE if capture else None
     proc = subprocess.Popen(
@@ -676,7 +674,7 @@ def _run_agent_blocking(
 
     stdout = "".join(stdout_lines) if stdout_lines is not None else None
     stderr = "".join(stderr_lines) if stderr_lines is not None else None
-    log_file = _write_log(log_path_dir, iteration, stdout, stderr)
+    log_file = _write_log(log_dir, iteration, stdout, stderr)
 
     return AgentResult(
         returncode=None if timed_out else returncode,
@@ -693,7 +691,7 @@ def execute_agent(
     prompt: str,
     *,
     timeout: float | None,
-    log_path_dir: Path | None,
+    log_dir: Path | None,
     iteration: int,
     on_activity: ActivityCallback | None = None,
     on_output_line: OutputLineCallback | None = None,
@@ -714,7 +712,7 @@ def execute_agent(
             cmd,
             prompt,
             timeout,
-            log_path_dir,
+            log_dir,
             iteration,
             on_activity=on_activity,
             on_output_line=on_output_line,
@@ -723,7 +721,7 @@ def execute_agent(
         cmd,
         prompt,
         timeout,
-        log_path_dir,
+        log_dir,
         iteration,
         on_output_line=on_output_line,
     )
