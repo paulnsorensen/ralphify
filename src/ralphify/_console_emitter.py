@@ -192,33 +192,40 @@ class ConsoleEmitter:
             if self._peek_enabled:
                 self._console.print("[dim]peek on — press p to toggle[/]")
 
-    def _start_live(self) -> None:
+    def _start_live_unlocked(self) -> None:
+        """Start the iteration spinner.  Caller must hold ``_console_lock``."""
         spinner = _IterationSpinner()
+        self._live = Live(
+            spinner,
+            console=self._console,
+            transient=True,
+            refresh_per_second=_LIVE_REFRESH_RATE,
+        )
+        self._live.start()
+
+    def _start_live(self) -> None:
         with self._console_lock:
-            self._live = Live(
-                spinner,
-                console=self._console,
-                transient=True,
-                refresh_per_second=_LIVE_REFRESH_RATE,
-            )
-            self._live.start()
+            self._start_live_unlocked()
+
+    def _stop_live_unlocked(self) -> None:
+        """Stop the iteration spinner.  Caller must hold ``_console_lock``."""
+        if self._live is not None:
+            self._live.stop()
+            self._live = None
 
     def _stop_live(self) -> None:
-        if self._live is not None:
-            with self._console_lock:
-                self._live.stop()
-                self._live = None
+        with self._console_lock:
+            self._stop_live_unlocked()
 
     def _on_iteration_started(self, data: IterationStartedData) -> None:
         iteration = data["iteration"]
         with self._console_lock:
             self._console.print(f"\n[bold {_brand.BLUE}]── Iteration {iteration} ──[/]")
-        self._start_live()
+            self._start_live_unlocked()
 
     def _on_iteration_ended(
         self, data: IterationEndedData, color: str, icon: str
     ) -> None:
-        self._stop_live()
         iteration = data["iteration"]
         detail = data["detail"]
         log_file = data["log_file"]
@@ -226,6 +233,7 @@ class ConsoleEmitter:
         echo_stdout = data.get("echo_stdout")
         echo_stderr = data.get("echo_stderr")
         with self._console_lock:
+            self._stop_live_unlocked()
             # Echo captured output before the status line — Live is already
             # stopped so this cannot tear the spinner.  Only present when
             # peek was off and logging captured the output.

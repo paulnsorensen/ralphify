@@ -302,6 +302,52 @@ class TestIterationLifecycle:
         output = console.export_text()
         assert "Iteration 1" in output
 
+    def test_peek_lines_do_not_splice_between_iteration_header_and_spinner(self):
+        """The iteration header print and spinner start are covered by a
+        single lock acquisition, preventing peek lines from splicing
+        between them."""
+        emitter, console = _capture_emitter()
+        emitter.toggle_peek()  # enable peek (off by default for recording consoles)
+
+        # Verify the lock is held when _start_live_unlocked executes
+        lock_held_during_start = []
+        original_start = emitter._start_live_unlocked
+
+        def instrumented_start():
+            lock_held_during_start.append(emitter._console_lock.locked())
+            original_start()
+
+        emitter._start_live_unlocked = instrumented_start
+
+        barrier = threading.Barrier(2, timeout=5)
+        peek_marker = "SPLICE_TEST_PEEK"
+
+        def peek_worker():
+            barrier.wait()
+            for _ in range(20):
+                emitter._on_agent_output_line(
+                    {"line": peek_marker, "stream": "stdout", "iteration": 1}
+                )
+
+        t = threading.Thread(target=peek_worker)
+        t.start()
+        barrier.wait()
+
+        emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
+        t.join()
+        emitter._stop_live()
+
+        # _start_live_unlocked must have run while _console_lock was held
+        assert lock_held_during_start == [True]
+
+        output = console.export_text()
+        lines = [line.strip() for line in output.splitlines() if line.strip()]
+
+        # The iteration header must exist and not be contaminated by peek content
+        header_indices = [i for i, line in enumerate(lines) if "Iteration 1" in line]
+        assert header_indices, f"Iteration header not found in output: {lines}"
+        assert peek_marker not in lines[header_indices[0]]
+
     @pytest.mark.parametrize(
         "event_type,detail,expected",
         [
