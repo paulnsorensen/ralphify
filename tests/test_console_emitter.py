@@ -77,7 +77,7 @@ class TestPeekToggle:
         emitter.toggle_peek()
         assert "peek on" in console.export_text()
         emitter.toggle_peek()
-        assert "peek off — press p to resume" in console.export_text()
+        assert "peek off — press p to toggle" in console.export_text()
 
     def test_concurrent_peek_writes_do_not_interleave(self):
         """Two threads hammering ``_on_agent_output_line`` while peek is on

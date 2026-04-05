@@ -43,6 +43,10 @@ _ICON_DASH = "—"
 
 _LIVE_REFRESH_RATE = 4  # Hz — how often the spinner redraws
 
+# Peek status messages shown when peek is toggled or at run startup.
+_PEEK_ON_MSG = "[dim]peek on — press p to toggle[/]"
+_PEEK_OFF_MSG = "[dim]peek off — press p to toggle[/]"
+
 
 def _plural(count: int, word: str) -> str:
     """Return *count* followed by *word*, pluralised when count is not 1."""
@@ -161,9 +165,7 @@ class ConsoleEmitter:
         with self._console_lock:
             self._peek_enabled = not self._peek_enabled
             enabled = self._peek_enabled
-            self._console.print(
-                "[dim]peek on[/]" if enabled else "[dim]peek off — press p to resume[/]"
-            )
+            self._console.print(_PEEK_ON_MSG if enabled else _PEEK_OFF_MSG)
         return enabled
 
     def _on_agent_output_line(self, data: AgentOutputLineData) -> None:
@@ -190,7 +192,7 @@ class ConsoleEmitter:
             if info:
                 self._console.print(f"  [dim]{info}[/]")
             if self._peek_enabled:
-                self._console.print("[dim]peek on — press p to toggle[/]")
+                self._console.print(_PEEK_ON_MSG)
 
     def _start_live_unlocked(self) -> None:
         """Start the iteration spinner.  Caller must hold ``_console_lock``."""
