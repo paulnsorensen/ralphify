@@ -180,7 +180,7 @@ Ralphs installed by agr go to `.agents/ralphs/` and are automatically discovered
 
 ## Documentation
 
-Full documentation at **[ralphify.co/docs](https://ralphify.co/docs/)** — getting started tutorial, prompt writing guide, cookbook, and troubleshooting.
+Full documentation at **[ralphify.co/docs](https://ralphify.co/docs/)** — getting started tutorial, format spec, cookbook, CLI reference, and troubleshooting.
 
 ## Requirements
 
