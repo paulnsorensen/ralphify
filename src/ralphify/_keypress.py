@@ -27,9 +27,11 @@ from __future__ import annotations
 
 import atexit
 import os
+import signal
 import sys
 import threading
 from collections.abc import Callable
+from types import FrameType
 
 
 _POLL_INTERVAL = 0.1  # seconds between stop-flag checks (POSIX select)
@@ -49,6 +51,10 @@ class KeypressListener:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._atexit_hook: Callable[[], None] | None = None
+        self._old_sigcont: Callable[[int, FrameType | None], object] | int | None = (
+            signal.SIG_DFL
+        )
+        self._sigcont_installed = False
 
     def start(self) -> None:
         """Begin listening for keypresses.
@@ -63,8 +69,33 @@ class KeypressListener:
             return
 
         self._stop.clear()
+
+        # Install SIGCONT handler on POSIX so cbreak is re-applied after
+        # Ctrl+Z / fg.  Must be installed from the main thread.
+        if hasattr(signal, "SIGCONT"):
+            try:
+                self._old_sigcont = signal.getsignal(signal.SIGCONT)
+                signal.signal(signal.SIGCONT, self._on_sigcont)
+                self._sigcont_installed = True
+            except (OSError, ValueError):
+                pass
+
         self._thread = threading.Thread(target=self._loop, daemon=True)
         self._thread.start()
+
+    def _on_sigcont(self, signum: int, frame: FrameType | None) -> None:
+        """Re-apply cbreak after the process resumes from Ctrl+Z / fg."""
+        import tty
+
+        try:
+            fd = sys.stdin.fileno()
+            tty.setcbreak(fd)
+        except Exception:
+            pass
+        # Chain to any previously-installed handler.
+        old = self._old_sigcont
+        if not isinstance(old, int) and old is not None:
+            old(signum, frame)
 
     def stop(self) -> None:
         """Stop the listener and wait for the thread to finish.
@@ -74,6 +105,14 @@ class KeypressListener:
         silently dropping the handle and leaking termios state.
         """
         self._stop.set()
+
+        # Restore the previous SIGCONT handler.
+        if self._sigcont_installed:
+            try:
+                signal.signal(signal.SIGCONT, self._old_sigcont)
+            except (OSError, ValueError):
+                pass
+            self._sigcont_installed = False
         thread = self._thread
         if thread is not None:
             thread.join(timeout=_THREAD_JOIN_TIMEOUT)
@@ -125,11 +164,16 @@ class KeypressListener:
         try:
             tty.setcbreak(fd)
             while not self._stop.is_set():
-                ready, _, _ = select.select([sys.stdin], [], [], _POLL_INTERVAL)
+                try:
+                    ready, _, _ = select.select([sys.stdin], [], [], _POLL_INTERVAL)
+                except InterruptedError:
+                    continue
                 if not ready:
                     continue
                 try:
                     ch = sys.stdin.read(1)
+                except InterruptedError:
+                    continue
                 except (ValueError, OSError):
                     return
                 if not ch:
