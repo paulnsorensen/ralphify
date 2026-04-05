@@ -445,10 +445,7 @@ def _run_agent_streaming(
         # proc.wait / deadline checks from firing.  Killing the process
         # group unblocks the write with BrokenPipeError, which
         # _deliver_prompt already swallows.
-        writer_thread = threading.Thread(
-            target=_deliver_prompt, args=(proc, prompt), daemon=True
-        )
-        writer_thread.start()
+        writer_thread = _start_writer_thread(proc, prompt)
 
         stream = _read_agent_stream(proc.stdout, deadline, on_activity, on_output_line)
 
@@ -509,6 +506,23 @@ def _pump_stream(
     except (ValueError, OSError):
         # Pipe closed concurrently — exit cleanly so join() returns.
         pass
+
+
+def _start_writer_thread(
+    proc: subprocess.Popen[Any],
+    prompt: str,
+) -> threading.Thread:
+    """Create and start a daemon thread that delivers *prompt* to *proc*'s stdin.
+
+    A thin wrapper around :func:`_deliver_prompt` that eliminates the repeated
+    ``Thread(…, daemon=True) / .start()`` boilerplate across the streaming and
+    blocking execution paths.
+    """
+    thread = threading.Thread(
+        target=_deliver_prompt, args=(proc, prompt), daemon=True
+    )
+    thread.start()
+    return thread
 
 
 def _start_pump_thread(
@@ -629,10 +643,7 @@ def _run_agent_blocking(
             if proc.stdin is None:
                 raise RuntimeError("subprocess.Popen failed to create PIPE stdin")
 
-            writer_thread = threading.Thread(
-                target=_deliver_prompt, args=(proc, prompt), daemon=True
-            )
-            writer_thread.start()
+            writer_thread = _start_writer_thread(proc, prompt)
 
             try:
                 returncode = proc.wait(timeout=timeout)
@@ -680,10 +691,7 @@ def _run_agent_blocking(
             proc.stderr, stderr_lines, _STDERR, on_output_line
         )
 
-        writer_thread = threading.Thread(
-            target=_deliver_prompt, args=(proc, prompt), daemon=True
-        )
-        writer_thread.start()
+        writer_thread = _start_writer_thread(proc, prompt)
 
         try:
             returncode = proc.wait(timeout=timeout)
