@@ -461,9 +461,10 @@ def _run_agent_streaming(
         _drain_readers(stderr_thread, writer_thread)
         _finalize_pipes(proc)
 
-    log_file = _write_log(
-        log_path_dir, iteration, "".join(stream.stdout_lines), "".join(stderr_lines)
-    )
+    stdout = "".join(stream.stdout_lines)
+    stderr = "".join(stderr_lines)
+
+    log_file = _write_log(log_path_dir, iteration, stdout, stderr)
 
     return AgentResult(
         returncode=None if stream.timed_out else proc.returncode,
@@ -471,6 +472,8 @@ def _run_agent_streaming(
         log_file=log_file,
         result_text=stream.result_text,
         timed_out=stream.timed_out,
+        captured_stdout=stdout if log_path_dir is not None else None,
+        captured_stderr=stderr if log_path_dir is not None else None,
     )
 
 

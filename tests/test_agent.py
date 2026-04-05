@@ -537,6 +537,27 @@ class TestExecuteAgentStreaming:
         assert "some stderr" in content
 
     @patch(MOCK_SUBPROCESS)
+    def test_captured_output_set_when_logging(self, mock_popen, tmp_path):
+        """When log_path_dir is set, captured_stdout and captured_stderr
+        must be populated so the engine can echo them via the event system
+        — matching the blocking path's behavior."""
+        mock_popen.return_value = make_mock_popen(
+            stdout_lines="agent output\n",
+            stderr_text="some stderr\n",
+            returncode=0,
+        )
+        result = _run_agent_streaming(
+            ["claude", "-p"],
+            "prompt",
+            timeout=None,
+            log_path_dir=tmp_path,
+            iteration=1,
+        )
+
+        assert result.captured_stdout == "agent output\n"
+        assert result.captured_stderr == "some stderr\n"
+
+    @patch(MOCK_SUBPROCESS)
     def test_no_log_when_dir_not_set(self, mock_popen):
         mock_popen.return_value = make_mock_popen(returncode=0)
         result = _run_agent_streaming(
