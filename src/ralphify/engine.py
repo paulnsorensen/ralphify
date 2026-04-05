@@ -306,7 +306,7 @@ def _delay_if_needed(config: RunConfig, state: RunState, emit: BoundEmitter) -> 
     if config.delay > 0 and (
         config.max_iterations is None or state.iteration < config.max_iterations
     ):
-        emit.log_info(f"Waiting {config.delay}s...")
+        emit.log_info(f"Waiting {format_duration(config.delay)}...")
         state.wait_for_stop(timeout=config.delay)
 
 

@@ -556,6 +556,26 @@ class TestDelayIfNeeded:
         assert events[0].type == EventType.LOG_MESSAGE
         assert "Waiting" in events[0].data["message"]
 
+    def test_delay_message_uses_format_duration(self, tmp_path):
+        """Delay log message should use format_duration for consistency with
+        the rest of the UI — e.g. '2m 0s' instead of raw '120s'."""
+        config = make_config(tmp_path, delay=120, max_iterations=5)
+        state = make_state()
+        state.iteration = 1
+        q = QueueEmitter()
+        emit = BoundEmitter(q, state.run_id)
+
+        # Request stop immediately so we don't actually wait 120s
+        state.request_stop()
+        _delay_if_needed(config, state, emit)
+
+        events = drain_events(q)
+        assert len(events) == 1
+        msg = events[0].data["message"]
+        assert "2m 0s" in msg, (
+            f"Expected formatted duration '2m 0s' in message, got: {msg!r}"
+        )
+
     def test_no_delay_on_last_iteration(self, tmp_path):
         config = make_config(tmp_path, delay=0.5, max_iterations=3)
         state = make_state()
