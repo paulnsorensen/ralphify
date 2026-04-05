@@ -1,7 +1,7 @@
 ---
-title: Troubleshooting Ralph Loops
-description: Fix common ralphify issues — setup errors, agent hangs, command failures, and permission issues.
-keywords: ralphify troubleshooting, agent hangs, command failures, setup errors, debug ralph loop
+title: "Fix Agent Hangs, Command Failures, and RALPH.md Errors — Ralphify Troubleshooting"
+description: "Solve common ralphify issues: agent hangs or produces no output, RALPH.md frontmatter syntax errors, commands with pipes not working, missing placeholders, argument parsing failures, and iteration timeouts."
+keywords: ralphify troubleshooting, fix agent hang, agent produces no output, RALPH.md frontmatter error, invalid YAML frontmatter, command timeout ralphify, command pipes not working shlex, ralph run error, agent command not found, debug ralph loop, fix autonomous coding agent, placeholder not resolving, ralph argument parsing
 ---
 
 # Troubleshooting
@@ -35,7 +35,7 @@ ls .agents/ralphs/my-ralph/RALPH.md        # installed ralph
 
 ### "Missing or empty 'agent' field in RALPH.md frontmatter"
 
-Your `RALPH.md` [frontmatter](writing-prompts.md#the-anatomy-of-a-good-ralphmd) is missing the `agent` field or it's an empty string. Add it:
+Your `RALPH.md` frontmatter is missing the `agent` field or it's an empty string. Add it:
 
 ```markdown
 ---
@@ -107,8 +107,8 @@ cat ralph_logs/001_*.log
 
 Common causes:
 
-- The prompt is too vague — see [anti-patterns that waste iterations](writing-prompts.md#anti-patterns-that-waste-iterations)
-- There's no concrete task source (no TODO.md, PLAN.md, or failing tests to fix) — see [the TODO-driven loop](writing-prompts.md#the-todo-driven-loop)
+- The prompt is too vague — tell the agent it's in a loop with no memory between iterations, and give it a specific task
+- There's no concrete task source — point the prompt at something like `TODO.md`, `PLAN.md`, or failing tests
 - The agent can't find what it's supposed to work on
 
 ## Frontmatter issues
@@ -208,7 +208,7 @@ credit: true
 
 ### "Command name contains invalid characters" / "Arg name contains invalid characters"
 
-Command names and arg names may only contain letters, digits, hyphens, and underscores (`a-z`, `A-Z`, `0-9`, `-`, `_`). Names with dots, spaces, or special characters are rejected because they can't be used in [`{{ commands.<name> }}` or `{{ args.<name> }}` placeholders](writing-prompts.md#ralph-context-placeholders).
+Command names and arg names may only contain letters, digits, hyphens, and underscores (`a-z`, `A-Z`, `0-9`, `-`, `_`). Names with dots, spaces, or special characters are rejected because they can't be used in [`{{ commands.<name> }}` or `{{ args.<name> }}` placeholders](how-it-works.md#3-resolve-placeholders-with-command-output).
 
 ```yaml
 # ✗ Wrong — dots and spaces aren't allowed
@@ -377,7 +377,7 @@ commands:
 
 ### Command with pipes or redirections not working
 
-Commands in the `run` field are parsed with `shlex` and run **directly** — not through a shell. Shell features like pipes (`|`), redirections (`2>&1`), chaining (`&&`), and variable expansion (`$VAR`) silently fail or produce unexpected results. See [shell features in commands](writing-prompts.md#shell-features-in-commands) for background.
+Commands in the `run` field are parsed with `shlex` and run **directly** — not through a shell. Shell features like pipes (`|`), redirections (`2>&1`), chaining (`&&`), and variable expansion (`$VAR`) silently fail or produce unexpected results. The escape hatch is a script — wrap the shell features inside a `.sh` file and point the command at it.
 
 **Won't work:**
 
@@ -421,7 +421,7 @@ Note that command output is included in the prompt **regardless of exit code**. 
 
 ### Command output looks truncated
 
-Each command has a default timeout of **60 seconds** (see [command timeouts](writing-prompts.md#command-timeouts)). If your command takes longer (a large test suite, a slow build), it's killed at the timeout and only the output captured so far is used. The agent sees a notice appended to the output:
+Each command has a default timeout of **60 seconds** (see [Run commands and capture output](how-it-works.md#2-run-commands-and-capture-output)). If your command takes longer (a large test suite, a slow build), it's killed at the timeout and only the output captured so far is used. The agent sees a notice appended to the output:
 
 ```text
 [Command 'tests' timed out after 60s — output may be incomplete]
@@ -547,7 +547,7 @@ ralph run my-ralph --dir ./api --focus "error handling"
 ralph run my-ralph --dir ./frontend --focus "accessibility"
 ```
 
-See [Parameterized ralphs](writing-prompts.md#parameterized-ralphs) for more patterns.
+See [User arguments](cli.md#user-arguments) for more on parameterizing ralphs.
 
 ## Getting more help
 
@@ -559,5 +559,4 @@ See [Parameterized ralphs](writing-prompts.md#parameterized-ralphs) for more pat
 ## Next steps
 
 - [How it works](how-it-works.md) — understand the iteration lifecycle to debug more effectively
-- [Writing prompts](writing-prompts.md) — improve your RALPH.md to avoid common loop issues
 - [Cookbook](cookbook.md) — working examples you can adapt for your project
