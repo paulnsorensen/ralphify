@@ -276,13 +276,13 @@ class ConsoleEmitter:
                 self._console.print(f"[dim]{msg}[/]")
 
     def _on_run_stopped(self, data: RunStoppedData) -> None:
-        self._stop_live()
-        if data["reason"] != STOP_COMPLETED:
-            return
-
-        summary = _format_summary(
-            data["total"], data["completed"], data["failed"], data["timed_out_count"]
-        )
         with self._console_lock:
+            self._stop_live_unlocked()
+            if data["reason"] != STOP_COMPLETED:
+                return
+
+            summary = _format_summary(
+                data["total"], data["completed"], data["failed"], data["timed_out_count"]
+            )
             self._console.print(f"\n[bold {_brand.BLUE}]──────────────────────[/]")
             self._console.print(f"[bold {_brand.GREEN}]Done:[/] {summary}")
