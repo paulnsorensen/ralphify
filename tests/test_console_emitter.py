@@ -114,6 +114,21 @@ class TestPeekToggle:
         assert output.count(line_a) == iterations
         assert output.count(line_b) == iterations
 
+    def test_toggle_peek_survives_console_print_error(self):
+        """If ``_console.print`` raises inside ``toggle_peek``, the emitter
+        must remain functional for subsequent calls."""
+        from unittest.mock import patch
+
+        emitter, console = _capture_emitter()
+        with patch.object(console, "print", side_effect=RuntimeError("boom")):
+            with pytest.raises(RuntimeError, match="boom"):
+                emitter.toggle_peek()
+        # The flag should still have been flipped (peek was off, now on).
+        assert emitter._peek_enabled is True
+        # Emitter is still usable — a subsequent toggle succeeds.
+        assert emitter.toggle_peek() is False
+        assert "peek off" in console.export_text()
+
     def test_peek_line_escapes_rich_markup(self):
         """Raw agent lines may contain ``[…]`` that Rich would treat as
         markup — escape so the literal text is preserved."""

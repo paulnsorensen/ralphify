@@ -125,10 +125,10 @@ class ConsoleEmitter:
         self._console = console
         self._live: Live | None = None
         self._peek_enabled = _interactive_default_peek(console)
-        self._peek_lock = threading.Lock()
-        # Outer lock that serialises every ``_console.print`` call so that
-        # reader-thread / keypress-thread writes cannot interleave with
-        # main-thread event handlers while a Rich ``Live`` region is active.
+        # Single lock that serialises every ``_console.print`` call and
+        # protects ``_peek_enabled`` mutations so that reader-thread /
+        # keypress-thread writes cannot interleave with main-thread event
+        # handlers while a Rich ``Live`` region is active.
         self._console_lock = threading.Lock()
         self._handlers: dict[EventType, Callable[..., None]] = {
             EventType.RUN_STARTED: self._on_run_started,
@@ -157,29 +157,20 @@ class ConsoleEmitter:
         Safe to call from a non-main thread (e.g. the keypress listener).
         Returns the new peek state.  A short status banner is printed so
         the user gets visible feedback that the toggle took effect.
-
-        The banner print is issued while still holding ``_peek_lock`` so
-        that two rapid toggles cannot print their banners in an order that
-        disagrees with the final flag value.  ``_console_lock`` is acquired
-        after ``_peek_lock`` — this is the only nested-lock site, so the
-        order is uncontested and there is no deadlock risk.
         """
-        with self._peek_lock:
+        with self._console_lock:
             self._peek_enabled = not self._peek_enabled
             enabled = self._peek_enabled
-            with self._console_lock:
-                self._console.print(
-                    "[dim]peek on[/]"
-                    if enabled
-                    else "[dim]peek off — press p to resume[/]"
-                )
+            self._console.print(
+                "[dim]peek on[/]" if enabled else "[dim]peek off — press p to resume[/]"
+            )
         return enabled
 
     def _on_agent_output_line(self, data: AgentOutputLineData) -> None:
-        if not self._peek_enabled:
-            return
-        line = escape_markup(data["line"])
         with self._console_lock:
+            if not self._peek_enabled:
+                return
+            line = escape_markup(data["line"])
             self._console.print(f"[dim]{line}[/]")
 
     def emit(self, event: Event) -> None:

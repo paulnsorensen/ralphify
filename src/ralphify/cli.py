@@ -566,8 +566,12 @@ def run(
     signal.signal(signal.SIGINT, _sigint_handler)
 
     def _on_key(key: str) -> None:
-        if key == "p":
-            emitter.toggle_peek()
+        try:
+            if key == "p":
+                emitter.toggle_peek()
+        except Exception:
+            # Don't let a render error kill the listener thread.
+            pass
 
     listener = KeypressListener(_on_key)
     listener.start()
