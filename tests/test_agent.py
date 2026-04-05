@@ -239,12 +239,9 @@ class TestReadAgentStream:
                 raise RuntimeError("boom")
 
         stream = io.StringIO(
-            '{"type": "status", "msg": "a"}\n'
-            '{"type": "status", "msg": "b"}\n'
+            '{"type": "status", "msg": "a"}\n{"type": "status", "msg": "b"}\n'
         )
-        result = _read_agent_stream(
-            stream, deadline=None, on_activity=raising_activity
-        )
+        result = _read_agent_stream(stream, deadline=None, on_activity=raising_activity)
 
         assert len(result.stdout_lines) == 2
         assert call_count == 2
@@ -1150,3 +1147,135 @@ class TestPumpStreamExceptionHandling:
         thread.join(timeout=5)
         assert not thread.is_alive(), "_pump_stream thread did not exit after OSError"
         assert buffer == []
+
+
+class TestBoundedReaderThreadJoins:
+    """Tests for bounded reader-thread joins and pipe-closing in finally blocks.
+
+    Validates that grandchild processes holding stdout/stderr pipes cannot
+    hang the CLI, and that joins always happen in the finally block.
+    """
+
+    def test_grandchild_inheriting_stdout_does_not_hang(self, tmp_path):
+        """Spawn an agent that forks a grandchild inheriting stdout.
+
+        The grandchild sleeps for 30s holding the pipe open.  The parent
+        agent exits after 0.1s.  Without parent-side pipe closing and
+        bounded joins, _run_agent_blocking would hang forever waiting for
+        the grandchild's readline to return EOF.
+
+        The fix (close parent-side pipes → bounded join) must let
+        _run_agent_blocking return well within the 5s join timeout.
+        """
+        # The agent spawns a grandchild that inherits stdout and sleeps,
+        # then the agent itself exits quickly.
+        script = (
+            "import subprocess, sys, time\n"
+            "subprocess.Popen(\n"
+            "    [sys.executable, '-c', 'import time; time.sleep(30)'],\n"
+            ")\n"
+            "print('parent-output')\n"
+            "sys.stdout.flush()\n"
+            "time.sleep(0.1)\n"
+        )
+
+        start = time.monotonic()
+        result = _run_agent_blocking(
+            [sys.executable, "-c", script],
+            prompt="",
+            timeout=15,
+            log_path_dir=tmp_path,
+            iteration=1,
+        )
+        elapsed = time.monotonic() - start
+
+        assert result.returncode == 0
+        assert result.timed_out is False
+        # Must complete well within the grandchild's 30-second sleep.
+        # The parent-side pipe close forces EOF; 5s join timeout is the
+        # upper bound.  Allow generous headroom for CI.
+        assert elapsed < 12.0, (
+            f"_run_agent_blocking took {elapsed:.1f}s — likely hung on"
+            " grandchild holding stdout pipe"
+        )
+
+        # The parent's output should still be captured.
+        assert result.log_file is not None
+        log_text = result.log_file.read_text()
+        assert "parent-output" in log_text
+
+    def test_joins_happen_in_finally(self):
+        """Inject an exception after threads start but before proc.wait.
+
+        Both reader threads must have exited by the time the exception
+        propagates — proving that the finally block joined them.
+        """
+        import threading
+
+        stdout_thread_ref: list[threading.Thread] = []
+        stderr_thread_ref: list[threading.Thread] = []
+
+        # Script that produces output on both streams then exits.
+        script = (
+            "import sys; "
+            "print('out'); sys.stdout.flush(); "
+            "print('err', file=sys.stderr); sys.stderr.flush()"
+        )
+
+        class InjectErrorPopen(subprocess.Popen):
+            """Popen subclass whose wait() raises RuntimeError on first call.
+
+            This simulates an unexpected exception after the process has
+            been started and reader threads are running.
+            """
+
+            _first_wait = True
+
+            def wait(self, timeout=None):
+                if InjectErrorPopen._first_wait:
+                    InjectErrorPopen._first_wait = False
+                    raise RuntimeError("injected error")
+                return super().wait(timeout=timeout)
+
+        with pytest.raises(RuntimeError, match="injected error"):
+            with patch(
+                MOCK_SUBPROCESS, side_effect=lambda *a, **kw: InjectErrorPopen(*a, **kw)
+            ):
+                # Capture thread references by patching _start_pump_thread
+                original_start_pump = __import__(
+                    "ralphify._agent", fromlist=["_start_pump_thread"]
+                )._start_pump_thread
+
+                def tracking_start_pump(stream, buffer, stream_name, on_output_line):
+                    t = original_start_pump(stream, buffer, stream_name, on_output_line)
+                    if stream_name == "stdout":
+                        stdout_thread_ref.append(t)
+                    else:
+                        stderr_thread_ref.append(t)
+                    return t
+
+                with patch(
+                    "ralphify._agent._start_pump_thread",
+                    side_effect=tracking_start_pump,
+                ):
+                    _run_agent_blocking(
+                        [sys.executable, "-c", script],
+                        prompt="",
+                        timeout=10,
+                        log_path_dir=None,
+                        iteration=1,
+                        on_output_line=lambda line, stream: None,
+                    )
+
+        # After the exception propagated, the finally block must have
+        # joined (and the pipe close must have unblocked) both threads.
+        for ref, name in [(stdout_thread_ref, "stdout"), (stderr_thread_ref, "stderr")]:
+            assert len(ref) == 1, f"expected 1 {name} thread, got {len(ref)}"
+            thread = ref[0]
+            # Give a small grace period — the finally block's join should
+            # have already completed, but allow for thread scheduling.
+            thread.join(timeout=2.0)
+            assert not thread.is_alive(), (
+                f"{name} reader thread still alive after exception — "
+                "joins are not in the finally block"
+            )

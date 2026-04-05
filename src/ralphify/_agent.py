@@ -63,7 +63,12 @@ _LOG_ITERATION_PAD_WIDTH = 3
 _SIGTERM_GRACE_PERIOD = 3
 
 # Seconds to wait for reader threads to drain during cleanup.
-_THREAD_JOIN_TIMEOUT = 1.0
+# Generous bound: after parent-side pipe close, EOF propagates within
+# milliseconds — 5s is headroom for slow kernels / loaded CI boxes.
+_THREAD_JOIN_TIMEOUT = 5.0
+
+# Seconds to wait for the agent process to exit after a kill signal.
+_PROCESS_WAIT_TIMEOUT = 5.0
 
 
 def _try_graceful_group_kill(proc: subprocess.Popen[Any]) -> bool:
@@ -121,10 +126,67 @@ def _ensure_process_dead(proc: subprocess.Popen[Any]) -> None:
     Safe to call multiple times — no-ops when the process has already
     exited.  Used in ``finally`` and exception-handler blocks to
     guarantee the child is reaped before we move on.
+
+    The wait is bounded so that a stuck process (e.g. grandchild holding
+    a session) cannot hang the CLI forever.
     """
     if proc.poll() is None:
         _kill_process_group(proc)
-    proc.wait()
+    try:
+        proc.wait(timeout=_PROCESS_WAIT_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        print(
+            "ralphify: warning: agent process did not exit within"
+            f" {_PROCESS_WAIT_TIMEOUT}s after kill",
+            file=sys.stderr,
+        )
+
+
+def _close_pipes(proc: subprocess.Popen[Any]) -> None:
+    """Close parent-side stdout/stderr pipe file descriptors.
+
+    Forces EOF to propagate to reader threads even when grandchild
+    processes have inherited the write end of the pipe.  The pump
+    thread's ``readline()`` wakes with ``OSError`` (EBADF), which
+    ``_pump_stream`` catches, so the thread exits and ``join()``
+    returns promptly.
+
+    Uses ``os.close()`` on the raw fd rather than ``pipe.close()``
+    because Python's ``TextIOWrapper`` / ``BufferedReader`` hold an
+    internal lock during ``readline()``.  Calling ``pipe.close()``
+    from the main thread would block waiting for that lock — exactly
+    the hang we're trying to break.  ``os.close()`` bypasses the
+    Python lock and directly invalidates the fd at the OS level.
+
+    Safe to call multiple times or on already-closed pipes.
+    """
+    for pipe in (proc.stdout, proc.stderr):
+        if pipe is not None:
+            try:
+                os.close(pipe.fileno())
+            except Exception:
+                pass
+
+
+def _finalize_pipes(proc: subprocess.Popen[Any]) -> None:
+    """Mark parent-side pipe file objects as closed at the Python level.
+
+    Called AFTER :func:`_close_pipes` and :func:`_drain_readers` to set
+    the ``closed`` flag on the Python file objects.  This prevents
+    "Bad file descriptor" warnings when the garbage collector finalizes
+    the objects whose underlying fd was already closed by
+    :func:`_close_pipes`.
+
+    Must be called after reader threads have exited — the pipe's
+    internal lock is held during ``readline()``, so ``close()`` would
+    block on a live thread.
+    """
+    for pipe in (proc.stdout, proc.stderr):
+        if pipe is not None:
+            try:
+                pipe.close()
+            except Exception:
+                pass
 
 
 def _deliver_prompt(proc: subprocess.Popen[Any], prompt: str) -> None:
@@ -337,7 +399,9 @@ def _run_agent_streaming(
         proc.wait()
     finally:
         _ensure_process_dead(proc)
+        _close_pipes(proc)
         _drain_readers(stderr_thread, writer_thread)
+        _finalize_pipes(proc)
 
     log_file = _write_log(
         log_path_dir, iteration, "".join(stream.stdout_lines), "".join(stderr_lines)
@@ -419,12 +483,21 @@ def _drain_readers(
 ) -> None:
     """Join reader threads, skipping any that are ``None``.
 
-    Used in ``finally`` and ``except`` blocks to ensure background pump
-    threads finish draining before the caller continues.
+    Used in ``finally`` blocks to ensure background pump threads finish
+    draining before the caller continues.  Logs a warning to stderr for
+    any thread that fails to exit within the timeout — this is visible
+    feedback that a grandchild may be holding a pipe open and the log
+    may be incomplete.
     """
     for thread in threads:
         if thread is not None:
             thread.join(timeout=timeout)
+            if thread.is_alive():
+                print(
+                    f"ralphify: warning: reader thread {thread.name!r} did not"
+                    f" exit within {timeout}s — log output may be incomplete",
+                    file=sys.stderr,
+                )
 
 
 def _run_agent_blocking(
@@ -548,7 +621,9 @@ def _run_agent_blocking(
         raise
     finally:
         _ensure_process_dead(proc)
+        _close_pipes(proc)
         _drain_readers(stdout_thread, stderr_thread, writer_thread)
+        _finalize_pipes(proc)
 
     stdout = "".join(stdout_lines) if stdout_lines is not None else None
     stderr = "".join(stderr_lines) if stderr_lines is not None else None
