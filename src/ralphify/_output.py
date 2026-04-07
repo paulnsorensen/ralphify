@@ -100,8 +100,11 @@ def format_duration(seconds: float) -> str:
     """
     if round(seconds, 1) < _SECONDS_PER_MINUTE:
         return f"{seconds:.1f}s"
-    # Use rounded total to avoid edge cases like 59.95 → "0m 60s"
-    total = round(seconds)
+    # Use rounded total to avoid edge cases like 59.95 → "0m 60s".
+    # int(…+0.5) gives standard "round half up" instead of Python's
+    # round() which uses banker's rounding (round-half-to-even) — the
+    # latter silently drops 0.5s when the total is even (e.g. 90.5→90).
+    total = int(seconds + 0.5)
     minutes = total // _SECONDS_PER_MINUTE
     secs = total % _SECONDS_PER_MINUTE
     if minutes < _MINUTES_PER_HOUR:

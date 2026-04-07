@@ -107,8 +107,19 @@ class TestFormatDuration:
 
     def test_minutes(self):
         assert format_duration(60) == "1m 0s"
-        assert format_duration(90.5) == "1m 30s"
+        assert format_duration(90.5) == "1m 31s"
         assert format_duration(3599) == "59m 59s"
+
+    def test_half_second_rounds_up_not_bankers(self):
+        """Durations at exactly .5 seconds must always round UP (standard
+        rounding) rather than using Python's banker's rounding which rounds
+        to the nearest even integer — e.g. 90.5→90 loses half a second."""
+        assert format_duration(60.5) == "1m 1s"
+        assert format_duration(90.5) == "1m 31s"
+        assert format_duration(150.5) == "2m 31s"
+        # Odd totals already rounded up — verify they still do
+        assert format_duration(61.5) == "1m 2s"
+        assert format_duration(91.5) == "1m 32s"
 
     def test_zero(self):
         assert format_duration(0.0) == "0.0s"
