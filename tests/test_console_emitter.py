@@ -7,9 +7,11 @@ from rich.console import Console
 
 from ralphify._console_emitter import (
     ConsoleEmitter,
+    _IterationPanel,
     _IterationSpinner,
     _format_run_info,
     _format_summary,
+    _is_claude_command,
 )
 from ralphify._events import Event, EventType
 
@@ -28,8 +30,9 @@ def _capture_emitter():
 class TestEmitDispatch:
     def test_unknown_event_type_does_not_raise(self):
         emitter, _ = _capture_emitter()
-        # AGENT_ACTIVITY has no handler registered — should be silently ignored
-        emitter.emit(_make_event(EventType.AGENT_ACTIVITY, raw="data"))
+        # AGENT_ACTIVITY now has a handler but _structured_agent is False
+        # so it should return silently
+        emitter.emit(_make_event(EventType.AGENT_ACTIVITY, raw={"type": "system"}))
 
 
 class TestPeekToggle:
@@ -75,9 +78,14 @@ class TestPeekToggle:
     def test_toggle_peek_prints_status_banner(self):
         emitter, console = _capture_emitter()
         emitter.toggle_peek()
-        assert "peek on" in console.export_text()
+        output = console.export_text()
+        assert (
+            "peek off" in output
+            or "live output on" in output
+            or "live activity on" in output
+        )
         emitter.toggle_peek()
-        assert "peek off — press p to toggle" in console.export_text()
+        assert "peek off" in console.export_text()
 
     def test_concurrent_peek_writes_do_not_interleave(self):
         """Two threads hammering ``_on_agent_output_line`` while peek is on
@@ -150,6 +158,7 @@ class TestPeekToggle:
             _make_event(
                 EventType.RUN_STARTED,
                 ralph_name="my-ralph",
+                agent="aider",
                 timeout=0,
                 commands=0,
                 max_iterations=None,
@@ -166,6 +175,7 @@ class TestPeekToggle:
             _make_event(
                 EventType.RUN_STARTED,
                 ralph_name="test",
+                agent="aider",
                 timeout=120,
                 commands=0,
                 max_iterations=None,
@@ -181,6 +191,7 @@ class TestPeekToggle:
             _make_event(
                 EventType.RUN_STARTED,
                 ralph_name="test",
+                agent="aider",
                 timeout=0,
                 commands=3,
                 max_iterations=None,
@@ -196,6 +207,7 @@ class TestPeekToggle:
             _make_event(
                 EventType.RUN_STARTED,
                 ralph_name="test",
+                agent="aider",
                 timeout=0,
                 commands=1,
                 max_iterations=None,
@@ -213,6 +225,7 @@ class TestPeekToggle:
             _make_event(
                 EventType.RUN_STARTED,
                 ralph_name="test",
+                agent="aider",
                 timeout=0,
                 commands=0,
                 max_iterations=5,
@@ -228,6 +241,7 @@ class TestPeekToggle:
             _make_event(
                 EventType.RUN_STARTED,
                 ralph_name="test",
+                agent="aider",
                 timeout=0,
                 commands=0,
                 max_iterations=None,
@@ -246,6 +260,7 @@ class TestPeekToggle:
             _make_event(
                 EventType.RUN_STARTED,
                 ralph_name="test",
+                agent="aider",
                 timeout=60,
                 commands=2,
                 max_iterations=3,
@@ -266,6 +281,7 @@ class TestPeekToggle:
             _make_event(
                 EventType.RUN_STARTED,
                 ralph_name="my-ralph",
+                agent="aider",
                 timeout=0,
                 commands=0,
                 max_iterations=None,
@@ -273,7 +289,41 @@ class TestPeekToggle:
             )
         )
         output = console.export_text()
-        assert "peek on — press p to toggle" in output
+        assert "press p to hide" in output
+
+    def test_startup_hint_structured_for_claude(self):
+        emitter, console = _capture_emitter()
+        emitter._peek_enabled = True
+        emitter.emit(
+            _make_event(
+                EventType.RUN_STARTED,
+                ralph_name="my-ralph",
+                agent="claude --dangerously-skip-permissions",
+                timeout=0,
+                commands=0,
+                max_iterations=None,
+                delay=0,
+            )
+        )
+        output = console.export_text()
+        assert "live activity on" in output
+
+    def test_startup_hint_raw_for_non_claude(self):
+        emitter, console = _capture_emitter()
+        emitter._peek_enabled = True
+        emitter.emit(
+            _make_event(
+                EventType.RUN_STARTED,
+                ralph_name="my-ralph",
+                agent="aider --yes",
+                timeout=0,
+                commands=0,
+                max_iterations=None,
+                delay=0,
+            )
+        )
+        output = console.export_text()
+        assert "live output on" in output
 
     def test_no_startup_hint_when_peek_off(self):
         emitter, console = _capture_emitter()
@@ -283,6 +333,7 @@ class TestPeekToggle:
             _make_event(
                 EventType.RUN_STARTED,
                 ralph_name="my-ralph",
+                agent="aider",
                 timeout=0,
                 commands=0,
                 max_iterations=None,
@@ -290,8 +341,249 @@ class TestPeekToggle:
             )
         )
         output = console.export_text()
-        assert "peek on" not in output
+        assert "live activity on" not in output
+        assert "live output on" not in output
         assert "press p" not in output
+
+
+class TestStructuredPeek:
+    """Tests for the structured activity rendering (Claude agents)."""
+
+    def _make_structured_emitter(self):
+        console = Console(record=True, width=120)
+        emitter = ConsoleEmitter(console)
+        emitter._peek_enabled = True
+        emitter._structured_agent = True
+        return emitter, console
+
+    def test_agent_output_line_early_returns_for_claude(self):
+        """When structured rendering is active, raw output lines are suppressed."""
+        emitter, console = self._make_structured_emitter()
+        emitter.emit(
+            _make_event(
+                EventType.AGENT_OUTPUT_LINE,
+                line='{"type":"system","subtype":"init"}',
+                stream="stdout",
+                iteration=1,
+            )
+        )
+        assert console.export_text().strip() == ""
+
+    def test_non_claude_agent_keeps_raw_line_rendering(self):
+        """Non-claude agents still get dim raw-line rendering."""
+        emitter, console = _capture_emitter()
+        emitter._peek_enabled = True
+        emitter._structured_agent = False
+        emitter.emit(
+            _make_event(
+                EventType.AGENT_OUTPUT_LINE,
+                line="raw agent output",
+                stream="stdout",
+                iteration=1,
+            )
+        )
+        assert "raw agent output" in console.export_text()
+
+    def test_tool_use_scroll_line(self):
+        """Tool use events produce a scroll line above the Live region."""
+        emitter, console = self._make_structured_emitter()
+        # Start an iteration so there's a panel
+        emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
+        emitter.emit(
+            _make_event(
+                EventType.AGENT_ACTIVITY,
+                raw={
+                    "type": "assistant",
+                    "message": {
+                        "content": [
+                            {
+                                "type": "tool_use",
+                                "name": "Bash",
+                                "input": {"command": "uv run pytest"},
+                            }
+                        ]
+                    },
+                },
+                iteration=1,
+            )
+        )
+        emitter._stop_live()
+        output = console.export_text()
+        assert "Bash" in output
+        assert "uv run pytest" in output
+
+    def test_assistant_text_scroll_line(self):
+        """Assistant text events produce a scroll line with a preview."""
+        emitter, console = self._make_structured_emitter()
+        emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
+        emitter.emit(
+            _make_event(
+                EventType.AGENT_ACTIVITY,
+                raw={
+                    "type": "assistant",
+                    "message": {
+                        "content": [{"type": "text", "text": "I'll fix the bug now."}]
+                    },
+                },
+                iteration=1,
+            )
+        )
+        emitter._stop_live()
+        output = console.export_text()
+        assert "fix the bug" in output
+
+    def test_thinking_does_not_scroll(self):
+        """Thinking events update the panel status but don't produce scroll output."""
+        emitter, console = self._make_structured_emitter()
+        emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
+        emitter.emit(
+            _make_event(
+                EventType.AGENT_ACTIVITY,
+                raw={
+                    "type": "assistant",
+                    "message": {
+                        "content": [{"type": "thinking", "thinking": "let me think..."}]
+                    },
+                },
+                iteration=1,
+            )
+        )
+        emitter._stop_live()
+        output = console.export_text()
+        # The thinking content should NOT appear in scroll output
+        assert "let me think" not in output
+
+    def test_rate_limit_scroll_line(self):
+        emitter, console = self._make_structured_emitter()
+        emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
+        emitter.emit(
+            _make_event(
+                EventType.AGENT_ACTIVITY,
+                raw={
+                    "type": "rate_limit_event",
+                    "rate_limit_info": {
+                        "status": "rate_limited",
+                        "resetsAt": "2026-01-01T00:00:00Z",
+                    },
+                },
+                iteration=1,
+            )
+        )
+        emitter._stop_live()
+        output = console.export_text()
+        assert "rate limit" in output
+        assert "rate_limited" in output
+
+    def test_unknown_type_silently_dropped(self):
+        """Unknown event types are silently dropped, not errors."""
+        emitter, console = self._make_structured_emitter()
+        emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
+        emitter.emit(
+            _make_event(
+                EventType.AGENT_ACTIVITY,
+                raw={"type": "completely_unknown_event"},
+                iteration=1,
+            )
+        )
+        emitter._stop_live()
+        # No crash, no error output
+        assert "error" not in console.export_text().lower()
+
+    def test_parse_exception_caught_and_logged_once(self):
+        """If the panel.apply() raises, the emitter logs once and drops subsequent events."""
+        from unittest.mock import patch
+
+        emitter, console = self._make_structured_emitter()
+        emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
+
+        # Monkeypatch the panel to raise
+        with patch.object(
+            emitter._iteration_panel, "apply", side_effect=ValueError("parse boom")
+        ):
+            emitter.emit(
+                _make_event(
+                    EventType.AGENT_ACTIVITY,
+                    raw={"type": "assistant", "message": {"content": []}},
+                    iteration=1,
+                )
+            )
+
+        assert emitter._peek_broken is True
+
+        # Subsequent events should be silently dropped (no crash)
+        emitter.emit(
+            _make_event(
+                EventType.AGENT_ACTIVITY,
+                raw={"type": "assistant", "message": {"content": []}},
+                iteration=1,
+            )
+        )
+        # The flag stays set — only one warning was printed
+        assert emitter._peek_broken is True
+        emitter._stop_live()
+
+    def test_iteration_end_resets_peek_broken(self):
+        """Starting a new iteration resets the _peek_broken flag."""
+        emitter, console = self._make_structured_emitter()
+        emitter._peek_broken = True
+        emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=2))
+        assert emitter._peek_broken is False
+        emitter._stop_live()
+
+    def test_peek_off_skips_activity(self):
+        """Activity events are dropped when peek is off."""
+        emitter, console = self._make_structured_emitter()
+        emitter._peek_enabled = False
+        emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
+        emitter.emit(
+            _make_event(
+                EventType.AGENT_ACTIVITY,
+                raw={
+                    "type": "assistant",
+                    "message": {
+                        "content": [
+                            {
+                                "type": "tool_use",
+                                "name": "Bash",
+                                "input": {"command": "echo hi"},
+                            }
+                        ]
+                    },
+                },
+                iteration=1,
+            )
+        )
+        emitter._stop_live()
+        output = console.export_text()
+        assert "Bash" not in output
+
+    def test_tool_error_scroll_line(self):
+        """Tool result errors produce a scroll line."""
+        emitter, console = self._make_structured_emitter()
+        emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
+        emitter.emit(
+            _make_event(
+                EventType.AGENT_ACTIVITY,
+                raw={
+                    "type": "user",
+                    "message": {
+                        "content": [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": "abc",
+                                "is_error": True,
+                                "content": "File not found: foo.py",
+                            }
+                        ]
+                    },
+                },
+                iteration=1,
+            )
+        )
+        emitter._stop_live()
+        output = console.export_text()
+        assert "tool error" in output
+        assert "File not found" in output
 
 
 class TestIterationLifecycle:
@@ -879,3 +1171,95 @@ class TestIterationSpinner:
             )
         )
         assert emitter._live is None
+
+
+class TestIterationPanel:
+    def test_panel_renders_elapsed(self):
+        panel = _IterationPanel()
+        console = Console(record=True, width=80)
+        console.print(panel)
+        output = console.export_text()
+        assert "s" in output
+
+    def test_apply_tool_use_updates_counters(self):
+        panel = _IterationPanel()
+        result = panel.apply(
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "Read",
+                            "input": {"file_path": "/tmp/foo.py"},
+                        }
+                    ]
+                },
+            }
+        )
+        assert result is not None
+        assert "Read" in result
+        assert panel._tool_count == 1
+        assert panel._tool_categories.get("read") == 1
+
+    def test_apply_system_init_sets_model(self):
+        panel = _IterationPanel()
+        result = panel.apply(
+            {"type": "system", "subtype": "init", "model": "claude-opus-4-6"}
+        )
+        assert result is None
+        assert panel._model == "claude-opus-4-6"
+
+    def test_apply_usage_updates_tokens(self):
+        panel = _IterationPanel()
+        panel.apply(
+            {
+                "type": "assistant",
+                "message": {
+                    "usage": {
+                        "input_tokens": 100,
+                        "output_tokens": 50,
+                        "cache_read_input_tokens": 200,
+                    },
+                    "content": [],
+                },
+            }
+        )
+        assert panel._input_tokens == 100
+        assert panel._output_tokens == 50
+        assert panel._cache_read_tokens == 200
+
+    def test_apply_unknown_type_returns_none(self):
+        panel = _IterationPanel()
+        assert panel.apply({"type": "totally_unknown"}) is None
+
+    def test_format_count(self):
+        assert _IterationPanel._format_count(500) == "500"
+        assert _IterationPanel._format_count(1500) == "1.5k"
+        assert _IterationPanel._format_count(1_500_000) == "1.5M"
+
+    def test_format_count_boundary_k_to_m(self):
+        """Values that round up to 1000.0k should display as 1.0M instead."""
+        assert _IterationPanel._format_count(999_949) == "999.9k"
+        assert _IterationPanel._format_count(999_950) == "1.0M"
+        assert _IterationPanel._format_count(999_999) == "1.0M"
+
+
+class TestIsClaudeCommand:
+    def test_claude_binary(self):
+        assert _is_claude_command("claude") is True
+
+    def test_claude_with_flags(self):
+        assert _is_claude_command("claude --dangerously-skip-permissions") is True
+
+    def test_claude_full_path(self):
+        assert _is_claude_command("/usr/local/bin/claude -p") is True
+
+    def test_not_claude(self):
+        assert _is_claude_command("aider --yes") is False
+
+    def test_empty(self):
+        assert _is_claude_command("") is False
+
+    def test_invalid_shlex(self):
+        assert _is_claude_command("claude 'unterminated") is False
