@@ -276,7 +276,7 @@ class _IterationPanel:
     def _format_tokens(self) -> str:
         """Format token counts as compact ↑in ↓out string."""
         parts: list[str] = []
-        total_in = self._input_tokens + self._cache_read_tokens
+        total_in = self._input_tokens
         if total_in > 0:
             parts.append(f"↑{self._format_count(total_in)}")
         if self._output_tokens > 0:

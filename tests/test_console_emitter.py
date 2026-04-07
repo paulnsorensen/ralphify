@@ -1233,6 +1233,20 @@ class TestIterationPanel:
         panel = _IterationPanel()
         assert panel.apply({"type": "totally_unknown"}) is None
 
+    def test_format_tokens_does_not_double_count_cached_input(self):
+        """The Anthropic API's input_tokens already includes cache_read_input_tokens
+        as a subset.  _format_tokens must not add them again — that would inflate
+        the displayed total (e.g. 1000 input + 800 cached → wrong ↑1.8k instead
+        of correct ↑1.0k)."""
+        panel = _IterationPanel()
+        panel._input_tokens = 1000
+        panel._cache_read_tokens = 800
+        panel._output_tokens = 200
+        result = panel._format_tokens()
+        assert "↑1.0k" in result, (
+            f"Expected ↑1.0k (input_tokens already includes cache), got: {result!r}"
+        )
+
     def test_format_count(self):
         assert _IterationPanel._format_count(500) == "500"
         assert _IterationPanel._format_count(1500) == "1.5k"
