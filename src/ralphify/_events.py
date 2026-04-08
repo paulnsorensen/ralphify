@@ -92,6 +92,7 @@ class EventType(Enum):
 
 class RunStartedData(TypedDict):
     ralph_name: str
+    agent: str
     commands: int
     max_iterations: int | None
     timeout: float | None

@@ -333,6 +333,7 @@ def run_loop(
         EventType.RUN_STARTED,
         RunStartedData(
             ralph_name=config.ralph_dir.name,
+            agent=config.agent,
             commands=len(config.commands),
             max_iterations=config.max_iterations,
             timeout=config.timeout,
