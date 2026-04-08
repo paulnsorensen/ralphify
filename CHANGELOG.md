@@ -2,11 +2,12 @@
 
 All notable changes to ralphify are documented here.
 
-## Unreleased
+## 0.4.0b1 — 2026-04-08
 
 ### Added
 
-- **Live agent output streaming (on by default, `p` toggles)** — when you run `ralph run` in an interactive terminal, the agent's stdout and stderr now stream live to the console as the agent produces them. Press `p` to silence the stream and `p` again to resume. The blocking agent path was refactored to line-stream both pipes through background reader threads that start before the prompt is written, so large prompts can no longer deadlock against a full OS pipe buffer. Live streaming is disabled automatically when the output is not a terminal (piped, redirected, or CI), so `ralph run ... | cat` and automated use are unaffected. When `--log-dir` is set, output is still captured to the log file and echoed after each iteration — live peek works the same way in that mode. Note: agents that repaint their own terminal UI (full-screen curses or TUI apps) are not supported because ralphify pipes their stdio; they will detect a non-TTY and fall back to plain output.
+- **Structured live activity panel for Claude agents** — when you run `ralph run` with a Claude agent, pressing `p` now shows a compact, readable activity panel instead of raw JSON. The panel shows a live spinner with elapsed time, token counts, the current tool in progress, and a scrolling log of tool calls and assistant messages above it. Tool calls are rendered as one-liners (e.g. `🔧 Bash  uv run pytest`), thinking shows as a status flicker, and errors are highlighted. Non-Claude agents keep the previous raw-line output. The panel is best-effort — a rendering failure never interrupts the run loop.
+- **Live agent output streaming (on by default, `p` toggles)** — when you run `ralph run` in an interactive terminal, the agent's output now streams live to the console. Press `p` to hide and `p` again to show. Live streaming is disabled automatically when the output is not a terminal (piped, redirected, or CI). When `--log-dir` is set, output is still captured to the log file.
 
 ### Changed
 
@@ -18,6 +19,14 @@ All notable changes to ralphify are documented here.
 
 - **`ralph add` removed** — ralph installation and package management has moved to [agr](https://github.com/computerlovetech/agr). Use `agr add owner/repo` to install ralphs from GitHub.
 - **`ralph new` removed** — use `ralph scaffold` to create ralphs from a template, or write the `RALPH.md` by hand.
+
+### Fixed
+
+- **Frontmatter round-trip corruption** — `serialize_frontmatter` no longer corrupts files when the body starts with `---`.
+- **Rich markup injection** — user-provided strings in CLI output are now escaped to prevent Rich markup interpretation.
+- **Timeout enforcement on silent agents** — `--timeout` now works even when the agent produces no output.
+- **Process cleanup** — fixed multiple edge cases in subprocess lifecycle: pipe leaks, thread joins, process group kills, and SIGKILL fallback.
+- **Keypress listener resilience** — handles EINTR and SIGCONT signals without crashing.
 
 ---
 
