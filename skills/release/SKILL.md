@@ -51,7 +51,7 @@ Not every release needs doc updates everywhere. Use judgment:
 
 ### MkDocs docs (`docs/`)
 - **Only update if** a user-facing feature was added or changed (new CLI flags, new frontmatter fields, changed behavior).
-- Check: `docs/quick-reference.md`, `docs/cli-reference.md`, `docs/writing-prompts.md`, and `docs/cookbook/` for relevance.
+- Check: `docs/quick-reference.md`, `docs/cli.md`, `docs/how-it-works.md`, and `docs/cookbook.md` for relevance.
 
 ### New-ralph skill (`src/ralphify/skills/new-ralph/SKILL.md`)
 - **Only update if** new frontmatter fields or ralph structure changes were introduced.

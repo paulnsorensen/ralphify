@@ -124,10 +124,8 @@ extra:
 nav:
   - Home: index.md
   - Guide:
-    - When to Use: when-to-use.md
     - Getting Started: getting-started.md
     - How it Works: how-it-works.md
-    - Writing Prompts: writing-prompts.md
     - Using with Different Agents: agents.md
     - Cookbook: cookbook.md
   - Reference:

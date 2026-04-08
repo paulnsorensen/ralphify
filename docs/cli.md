@@ -61,7 +61,7 @@ ralph run my-ralph --dir ./src             # Pass user args to the ralph
 
 ### User arguments
 
-User arguments are passed as named flags after the ralph path. Use `{{ args.<name> }}` [placeholders](writing-prompts.md#ralph-context-placeholders) in your RALPH.md to reference them.
+User arguments are passed as named flags after the ralph path. Use `{{ args.<name> }}` [placeholders](how-it-works.md#3-resolve-placeholders-with-command-output) in your RALPH.md to reference them.
 
 Named flags (`--name value`) work without any frontmatter declaration. The `args` field is only required when you want to pass **positional** arguments — it tells ralphify which names to map them to:
 
@@ -114,6 +114,16 @@ The loop also stops automatically when:
 - All `-n` iterations have completed
 - `--stop-on-error` is set and the agent exits non-zero or times out
 
+### Peeking at live agent output
+
+When you run `ralph run` in an interactive terminal, the agent's stdout and stderr stream live to the console by default. Press `p` to silence the stream (useful for quieter loops) and press `p` again to resume it. The default is off whenever the output is not a real terminal (piped, redirected, or captured in CI), so `ralph run ... | cat` is unaffected.
+
+Live streaming works with line-buffered agents such as Claude Code, OpenAI Codex, Aider, and any other process that writes one line at a time. For Claude running in stream-json mode you'll see the raw JSON events; for other agents you'll see the agent's plain output. Agents that repaint their own terminal UI (full-screen curses or TUI apps) are not supported — ralphify pipes their stdio, so they detect a non-TTY and fall back to plain output.
+
+When `--log-dir` is set, output is captured to the log file and also echoed after each iteration completes; live peek still works the same way in that mode.
+
+Some runtimes block-buffer their stdout when it is piped, which can make lines appear in bursts rather than as they are produced. If you notice stuttering, set `PYTHONUNBUFFERED=1` (or the equivalent for your agent) in the environment where you launch `ralph`.
+
 ---
 
 ## `ralph scaffold`
@@ -137,7 +147,7 @@ Errors if `RALPH.md` already exists at the target location.
 
 ## RALPH.md format
 
-The `RALPH.md` file is the single configuration and prompt file for a ralph. It uses YAML frontmatter for settings and the body for the prompt text. See [Writing Prompts](writing-prompts.md) for detailed guidance on crafting effective prompts.
+The `RALPH.md` file is the single configuration and prompt file for a ralph. It uses YAML frontmatter for settings and the body for the prompt text.
 
 ```markdown
 ---
@@ -200,6 +210,6 @@ Unmatched placeholders resolve to an empty string.
 
 ## Next steps
 
-- [Writing Prompts](writing-prompts.md) — learn how to craft effective RALPH.md prompts
+- [How it Works](how-it-works.md) — what happens inside each iteration
 - [Quick Reference](quick-reference.md) — condensed cheat sheet for daily use
 - [Python API](api.md) — run loops programmatically instead of via the CLI

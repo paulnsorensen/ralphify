@@ -17,17 +17,7 @@
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://ralphify.co/docs/when-to-use/</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://ralphify.co/docs/how-it-works/</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ralphify.co/docs/writing-prompts/</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>

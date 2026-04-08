@@ -1,7 +1,7 @@
 ---
-title: Autonomous AI Coding Loops
-description: Ralphify is a minimal CLI harness for autonomous AI coding loops. Run commands, assemble a prompt, pipe it to an AI agent, and repeat.
-keywords: ralphify, AI coding agent, autonomous coding loop, CLI agent harness, while true loop, agent FOMO, agentic engineering
+title: Ralphify — a runtime for the ralph format
+description: Ralphify is the runtime for the ralph format — a skill-like spec for autonomous agent loops. A ralph is a directory with a RALPH.md file. Ralphify runs it.
+keywords: ralphify, ralph format, RALPH.md, autonomous agent loop, agent runtime, harness engineering, skill-like format, ralph spec
 hide:
   - toc
 ---
@@ -11,19 +11,48 @@ hide:
 </p>
 
 <p align="center" style="font-size: 1.3em; margin-top: -0.5em;">
-<strong>Put your AI coding agent in a <code>while True</code> loop and let it ship.</strong>
+<strong>A ralph is a directory that defines an autonomous agent loop. Ralphify runs it.</strong>
 </p>
 
-Ralphify is a minimal CLI harness for autonomous AI coding loops, inspired by the [Ralph Wiggum technique](https://ghuntley.com/ralph/). The core idea fits in one line:
+A **ralph** is a directory with a `RALPH.md` file — a skill-like format that bundles a prompt, the commands to run between iterations, and any files the agent needs. **Ralphify** is the CLI runtime that executes them.
 
-```bash
-while :; do cat RALPH.md | claude -p ; done
+See [The Ralph Format](blog/posts/the-ralph-format.md) for the full spec.
+
+```
+grow-coverage/
+├── RALPH.md               # the loop definition (required)
+├── check-coverage.sh      # command that runs each iteration
+└── testing-conventions.md # context for the agent
 ```
 
-Ralphify wraps this into a proper tool — running commands that feed test results and context into each iteration, tracking progress, and handling clean shutdown.
+```markdown
+---
+agent: claude -p --dangerously-skip-permissions
+commands:
+  - name: coverage
+    run: ./check-coverage.sh
+---
+
+You are an autonomous coding agent working in a loop.
+Each iteration, write tests for one untested module, then stop.
+
+Follow the conventions in testing-conventions.md.
+
+## Current coverage
+
+{{ commands.coverage }}
+```
+
+```bash
+ralph run grow-coverage     # loops until Ctrl+C
+```
+
+One directory. One command. Each iteration starts with fresh context and current data — ralphify runs the commands, fills in `{{ placeholders }}`, pipes the prompt to your agent, and loops.
+
+*Works with any agent CLI. Swap `claude -p` for Codex, Aider, or your own — just change the `agent` field.*
 
 [Get Started](getting-started.md){ .md-button .md-button--primary }
-[View Cookbook](cookbook.md){ .md-button }
+[Read the Format Spec](blog/posts/the-ralph-format.md){ .md-button }
 
 ---
 
@@ -47,102 +76,39 @@ Ralphify wraps this into a proper tool — running commands that feed test resul
     pip install ralphify
     ```
 
-## Create a ralph and run it
+## Scaffold a ralph and run it
 
 ```bash
-ralph init my-ralph
+ralph scaffold my-ralph
 ```
 
-This creates a directory with a `RALPH.md` template. Edit it to fit your project:
-
-**`my-ralph/RALPH.md`**
-
-```markdown
----
-agent: claude -p --dangerously-skip-permissions
-commands:
-  - name: tests
-    run: uv run pytest -x
-  - name: git-log
-    run: git log --oneline -10
----
-
-# Prompt
-
-## Recent commits
-
-{{ commands.git-log }}
-
-## Test results
-
-{{ commands.tests }}
-
-You are an autonomous coding agent running in a loop. Each iteration
-starts with a fresh context. Your progress lives in the code and git.
-
-Read TODO.md for the current task list. Pick the top uncompleted task,
-implement it fully, then mark it done.
-
-If tests are failing, fix them before starting new work.
-
-## Rules
-
-- One task per iteration
-- No placeholder code — full, working implementations only
-- Commit with a descriptive message like `feat: add X` or `fix: resolve Y`
-- Mark the completed task in TODO.md
-```
+This creates a directory with a `RALPH.md` template. Edit it, then run:
 
 ```bash
-ralph run my-ralph         # Start the loop (Ctrl+C to stop)
-ralph run my-ralph -n 3    # Run 3 iterations
-```
-
-### What it looks like
-
-```text
-$ ralph run my-ralph -n 3 --log-dir ralph_logs
-
-▶ Running: my-ralph
-  2 commands · max 3 iterations
-
-── Iteration 1 ──
-  Commands: 2 ran
-✓ Iteration 1 completed (52.3s)
-  → ralph_logs/001_20250115-142301.log
-
-── Iteration 2 ──
-  Commands: 2 ran
-✗ Iteration 2 failed with exit code 1 (23.1s)
-  → ralph_logs/002_20250115-142512.log
-
-── Iteration 3 ──
-  Commands: 2 ran
-✓ Iteration 3 completed (41.7s)
-  → ralph_logs/003_20250115-143012.log
-
-──────────────────────
-Done: 3 iterations — 2 succeeded, 1 failed
+ralph run my-ralph         # loop until Ctrl+C
+ralph run my-ralph -n 3    # run 3 iterations
 ```
 
 Edit `RALPH.md` while the loop is running — changes take effect on the next iteration.
 
 ## Or install one with agr
 
-Install a pre-built ralph from any GitHub repo using [agr](https://github.com/computerlovetech/agr) and run it immediately:
+Ralphs are just directories, so you can share them via any git repo. Install a pre-built ralph from GitHub with [agr](https://github.com/computerlovetech/agr):
 
 ```bash
-agr add owner/repo/my-ralph     # Install a ralph from GitHub
-ralph run my-ralph               # Run it
+agr add owner/repo/my-ralph     # install a ralph from GitHub
+ralph run my-ralph              # run it by name
 ```
 
-agr installs ralphs to `.agents/ralphs/` so you can run them by name.
+agr installs ralphs to `.agents/ralphs/` so they're automatically discovered by `ralph run`.
 
 ---
 
-## Why ralph loops?
+## Why a format
 
-A single agent conversation fills up its context window, slows down, and eventually loses the plot. ralph loops solve this by resetting every iteration — the agent always starts fresh.
+Everyone writing ralph loops ends up with the same scaffolding: a markdown prompt, a few shell commands that surface state between iterations, a while-loop that ties them together. Turning that into a format makes ralphs **shareable**, **versionable**, and **installable** — the same way skills made inner-loop workflows shareable.
+
+Ralphs are to the outer loop what [skills](https://agentskills.io/) are to the inner loop. A skill guides an agent inside a session. A ralph defines what runs *between* sessions.
 
 <div class="grid cards" markdown>
 
@@ -183,8 +149,8 @@ A single agent conversation fills up its context window, slows down, and eventua
 
 ## Next steps
 
-- **[When to Use](when-to-use.md)** — figure out if a ralph loop fits your task
+- **[The Ralph Format](blog/posts/the-ralph-format.md)** — the full spec
 - **[Getting Started](getting-started.md)** — from install to a running loop in 10 minutes
-- **[Writing Prompts](writing-prompts.md)** — patterns for effective autonomous loop prompts
-- **[Cookbook](cookbook.md)** — copy-pasteable setups for coding, docs, research, and more
+- **[How it Works](how-it-works.md)** — what happens inside each iteration
+- **[Cookbook](cookbook.md)** — copy-pasteable ralphs for coding, docs, research, and more
 - **[Python API](api.md)** — embed the loop in your own automation

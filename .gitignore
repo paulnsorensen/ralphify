@@ -14,3 +14,4 @@ mess/
 .agents/
 .DS_Store
 .coverage
+.ralphify/

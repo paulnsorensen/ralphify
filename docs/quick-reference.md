@@ -88,7 +88,7 @@ Your instructions here. Use {{ args.dir }} for user arguments. <!-- (6) -->
 | `timeout` | number | `60` | Max seconds before the command is killed |
 
 !!! warning "No shell features in commands"
-    Commands are run directly, not through a shell — pipes (`|`), redirections (`>`), and chaining (`&&`) won't work in the `run` field. Use a script instead: `run: ./my-script.sh` (scripts starting with `./` run from the ralph directory). See [Writing Prompts → Shell features](writing-prompts.md#shell-features-in-commands) for details.
+    Commands are run directly, not through a shell — pipes (`|`), redirections (`>`), and chaining (`&&`) won't work in the `run` field. Use a script instead: `run: ./my-script.sh` (scripts starting with `./` run from the ralph directory).
 
 ## Placeholders
 
@@ -105,7 +105,7 @@ Your instructions here. Use {{ args.dir }} for user arguments. <!-- (6) -->
 - Unmatched placeholders resolve to empty string
 - Must be `commands` (plural)
 
-For details on writing effective prompts with placeholders, see [Writing Prompts](writing-prompts.md).
+For details on placeholder resolution, see [How it Works](how-it-works.md#3-resolve-placeholders-with-command-output).
 
 ### User argument placeholders
 
@@ -156,6 +156,7 @@ Each iteration:
 |---|---|
 | `Ctrl+C` (once) | Finishes the current iteration gracefully, then stops |
 | `Ctrl+C` (twice) | Force-kills the agent process and exits immediately |
+| `p` | Toggle live peek of the agent's stdout (on by default in an interactive terminal — press to silence, press again to resume) |
 | `-n` limit reached | Stops after the specified number of iterations |
 | `--stop-on-error` | Stops if agent exits non-zero or times out |
 
@@ -163,8 +164,6 @@ Each iteration:
 
 - The prompt body is re-read from disk every iteration — edit the prompt while the loop runs (frontmatter is parsed once at startup)
 - HTML comments (`<!-- ... -->`) are stripped from the prompt — use them for notes to yourself
-
-Tips on structuring prompts for different tasks → [Writing Prompts](writing-prompts.md)
 
 ## Common patterns
 
@@ -228,6 +227,6 @@ More patterns and real-world examples → [Cookbook](cookbook.md)
 ## Next steps
 
 - [Getting Started](getting-started.md) — set up your first ralph end-to-end
-- [Writing Prompts](writing-prompts.md) — prompt structure, shell limitations, and advanced patterns
+- [How it Works](how-it-works.md) — what happens inside each iteration
 - [Cookbook](cookbook.md) — copy-pasteable ralphs for common tasks
 - [Troubleshooting](troubleshooting.md) — common issues and how to fix them
