@@ -51,6 +51,8 @@ class TestPeekToggle:
     def test_toggle_peek_enables_rendering(self):
         emitter, console = _capture_emitter()
         assert emitter.toggle_peek() is True
+        # Start an iteration so a spinner with a scroll buffer exists.
+        emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
         emitter.emit(
             _make_event(
                 EventType.AGENT_OUTPUT_LINE,
@@ -59,12 +61,17 @@ class TestPeekToggle:
                 iteration=1,
             )
         )
-        assert "visible line" in console.export_text()
+        spinner = emitter._iteration_spinner
+        assert spinner is not None
+        assert any("visible line" in line.plain for line in spinner._scroll_lines)
+        emitter._stop_live()
 
     def test_toggle_peek_twice_disables_rendering(self):
         emitter, console = _capture_emitter()
         emitter.toggle_peek()  # on
         assert emitter.toggle_peek() is False  # off
+        # Start an iteration so a spinner exists.
+        emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
         emitter.emit(
             _make_event(
                 EventType.AGENT_OUTPUT_LINE,
@@ -73,7 +80,10 @@ class TestPeekToggle:
                 iteration=1,
             )
         )
-        assert "should not appear" not in console.export_text()
+        spinner = emitter._iteration_spinner
+        assert spinner is not None
+        assert len(spinner._scroll_lines) == 0
+        emitter._stop_live()
 
     def test_toggle_peek_prints_status_banner(self):
         emitter, console = _capture_emitter()
@@ -95,6 +105,8 @@ class TestPeekToggle:
         emitter, console = _capture_emitter()
         emitter.toggle_peek()  # turn peek on (console.is_terminal is False
         # in record mode, so the default is off; we flip it explicitly).
+        # Start an iteration so a spinner with a scroll buffer exists.
+        emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
 
         line_a = "A" * 50
         line_b = "B" * 50
@@ -115,12 +127,15 @@ class TestPeekToggle:
         for t in threads:
             t.join()
 
-        output = console.export_text()
-        # Each worker prints ``iterations`` whole copies of its line.  If the
-        # lock is working, both substrings appear exactly that many times;
-        # any interleaving would split one of them and drop the count.
-        assert output.count(line_a) == iterations
-        assert output.count(line_b) == iterations
+        spinner = emitter._iteration_spinner
+        assert spinner is not None
+        # Each worker adds ``iterations`` whole copies of its line to the
+        # scroll buffer.  If the lock is working, both substrings appear
+        # exactly that many times; any interleaving would split one of them.
+        all_text = "\n".join(line.plain for line in spinner._scroll_lines)
+        assert all_text.count(line_a) == iterations
+        assert all_text.count(line_b) == iterations
+        emitter._stop_live()
 
     def test_toggle_peek_survives_console_print_error(self):
         """If ``_console.print`` raises inside ``toggle_peek``, the emitter
@@ -142,6 +157,8 @@ class TestPeekToggle:
         markup — escape so the literal text is preserved."""
         emitter, console = _capture_emitter()
         emitter.toggle_peek()
+        # Start an iteration so a spinner with a scroll buffer exists.
+        emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
         emitter.emit(
             _make_event(
                 EventType.AGENT_OUTPUT_LINE,
@@ -150,7 +167,12 @@ class TestPeekToggle:
                 iteration=1,
             )
         )
-        assert "[bold red]not markup[/]" in console.export_text()
+        spinner = emitter._iteration_spinner
+        assert spinner is not None
+        assert any(
+            "[bold red]not markup[/]" in line.plain for line in spinner._scroll_lines
+        )
+        emitter._stop_live()
 
     def test_run_started_shows_ralph_name(self):
         emitter, console = _capture_emitter()
@@ -345,6 +367,60 @@ class TestPeekToggle:
         assert "live output on" not in output
         assert "press p" not in output
 
+    def test_toggle_peek_off_in_live_clears_scroll_buffer(self):
+        """Toggling peek off during an iteration clears the scroll buffer."""
+        emitter, console = _capture_emitter()
+        emitter._peek_enabled = True
+        emitter._structured_agent = True
+        emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
+        # Emit some activity to populate the scroll buffer
+        emitter.emit(
+            _make_event(
+                EventType.AGENT_ACTIVITY,
+                raw={
+                    "type": "assistant",
+                    "message": {
+                        "content": [
+                            {
+                                "type": "tool_use",
+                                "name": "Read",
+                                "input": {"file_path": "/tmp/foo.py"},
+                            }
+                        ]
+                    },
+                },
+                iteration=1,
+            )
+        )
+        panel = emitter._iteration_panel
+        assert panel is not None
+        assert len(panel._scroll_lines) > 0
+        # Toggle peek off — should clear the buffer
+        emitter.toggle_peek()
+        assert len(panel._scroll_lines) == 0
+        emitter._stop_live()
+
+    def test_toggle_peek_in_live_sets_peek_message(self):
+        """Toggling peek with an active Live sets a message on the renderable."""
+        emitter, console = _capture_emitter()
+        emitter._peek_enabled = True
+        emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
+        # Toggle peek off — should set peek message on the spinner
+        emitter.toggle_peek()
+        spinner = emitter._iteration_spinner
+        assert spinner is not None
+        assert spinner._peek_message is not None
+        assert "peek off" in spinner._peek_message.plain
+        emitter._stop_live()
+
+    def test_toggle_peek_without_live_prints_to_console(self):
+        """Toggling peek without an active Live prints to the console."""
+        emitter, console = _capture_emitter()
+        # No iteration started — no Live display
+        emitter.toggle_peek()
+        output = console.export_text()
+        assert "live output on" in output or "peek off" in output
+
 
 class TestStructuredPeek:
     """Tests for the structured activity rendering (Claude agents)."""
@@ -370,10 +446,12 @@ class TestStructuredPeek:
         assert console.export_text().strip() == ""
 
     def test_non_claude_agent_keeps_raw_line_rendering(self):
-        """Non-claude agents still get dim raw-line rendering."""
+        """Non-claude agents still get dim raw-line rendering inside Live."""
         emitter, console = _capture_emitter()
         emitter._peek_enabled = True
         emitter._structured_agent = False
+        # Start an iteration so there's a spinner with a scroll buffer
+        emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
         emitter.emit(
             _make_event(
                 EventType.AGENT_OUTPUT_LINE,
@@ -382,10 +460,13 @@ class TestStructuredPeek:
                 iteration=1,
             )
         )
-        assert "raw agent output" in console.export_text()
+        spinner = emitter._iteration_spinner
+        assert spinner is not None
+        assert any("raw agent output" in line.plain for line in spinner._scroll_lines)
+        emitter._stop_live()
 
     def test_tool_use_scroll_line(self):
-        """Tool use events produce a scroll line above the Live region."""
+        """Tool use events are buffered inside the panel's scroll buffer."""
         emitter, console = self._make_structured_emitter()
         # Start an iteration so there's a panel
         emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
@@ -407,13 +488,15 @@ class TestStructuredPeek:
                 iteration=1,
             )
         )
+        panel = emitter._iteration_panel
+        assert panel is not None
+        assert len(panel._scroll_lines) == 1
+        assert "Bash" in panel._scroll_lines[0].plain
+        assert "uv run pytest" in panel._scroll_lines[0].plain
         emitter._stop_live()
-        output = console.export_text()
-        assert "Bash" in output
-        assert "uv run pytest" in output
 
     def test_assistant_text_scroll_line(self):
-        """Assistant text events produce a scroll line with a preview."""
+        """Assistant text events are buffered inside the panel's scroll buffer."""
         emitter, console = self._make_structured_emitter()
         emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
         emitter.emit(
@@ -428,9 +511,10 @@ class TestStructuredPeek:
                 iteration=1,
             )
         )
+        panel = emitter._iteration_panel
+        assert panel is not None
+        assert any("fix the bug" in line.plain for line in panel._scroll_lines)
         emitter._stop_live()
-        output = console.export_text()
-        assert "fix the bug" in output
 
     def test_thinking_does_not_scroll(self):
         """Thinking events update the panel status but don't produce scroll output."""
@@ -448,10 +532,10 @@ class TestStructuredPeek:
                 iteration=1,
             )
         )
+        panel = emitter._iteration_panel
+        assert panel is not None
+        assert len(panel._scroll_lines) == 0
         emitter._stop_live()
-        output = console.export_text()
-        # The thinking content should NOT appear in scroll output
-        assert "let me think" not in output
 
     def test_rate_limit_scroll_line(self):
         emitter, console = self._make_structured_emitter()
@@ -469,10 +553,11 @@ class TestStructuredPeek:
                 iteration=1,
             )
         )
+        panel = emitter._iteration_panel
+        assert panel is not None
+        assert any("rate limit" in line.plain for line in panel._scroll_lines)
+        assert any("rate_limited" in line.plain for line in panel._scroll_lines)
         emitter._stop_live()
-        output = console.export_text()
-        assert "rate limit" in output
-        assert "rate_limited" in output
 
     def test_unknown_type_silently_dropped(self):
         """Unknown event types are silently dropped, not errors."""
@@ -553,12 +638,13 @@ class TestStructuredPeek:
                 iteration=1,
             )
         )
+        panel = emitter._iteration_panel
+        assert panel is not None
+        assert len(panel._scroll_lines) == 0
         emitter._stop_live()
-        output = console.export_text()
-        assert "Bash" not in output
 
     def test_tool_error_scroll_line(self):
-        """Tool result errors produce a scroll line."""
+        """Tool result errors are buffered inside the panel's scroll buffer."""
         emitter, console = self._make_structured_emitter()
         emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
         emitter.emit(
@@ -580,10 +666,11 @@ class TestStructuredPeek:
                 iteration=1,
             )
         )
+        panel = emitter._iteration_panel
+        assert panel is not None
+        assert any("tool error" in line.plain for line in panel._scroll_lines)
+        assert any("File not found" in line.plain for line in panel._scroll_lines)
         emitter._stop_live()
-        output = console.export_text()
-        assert "tool error" in output
-        assert "File not found" in output
 
 
 class TestIterationLifecycle:
@@ -1257,6 +1344,90 @@ class TestIterationPanel:
         assert _IterationPanel._format_count(999_949) == "999.9k"
         assert _IterationPanel._format_count(999_950) == "1.0M"
         assert _IterationPanel._format_count(999_999) == "1.0M"
+
+    def test_apply_stores_scroll_lines_in_buffer(self):
+        """apply() stores scroll lines in the internal buffer."""
+        panel = _IterationPanel()
+        panel.apply(
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "Bash",
+                            "input": {"command": "ls"},
+                        }
+                    ]
+                },
+            }
+        )
+        assert len(panel._scroll_lines) == 1
+        assert "Bash" in panel._scroll_lines[0].plain
+
+    def test_scroll_lines_rendered_in_panel(self):
+        """Scroll lines appear in the panel's rendered output."""
+        panel = _IterationPanel()
+        panel.add_scroll_line("[dim]🔧 Read  /tmp/foo.py[/]")
+        console = Console(record=True, width=80)
+        console.print(panel)
+        output = console.export_text()
+        assert "Read" in output
+        assert "/tmp/foo.py" in output
+
+    def test_clear_scroll_empties_buffer(self):
+        panel = _IterationPanel()
+        panel.add_scroll_line("[dim]line1[/]")
+        panel.add_scroll_line("[dim]line2[/]")
+        assert len(panel._scroll_lines) == 2
+        panel.clear_scroll()
+        assert len(panel._scroll_lines) == 0
+
+    def test_peek_message_shown_when_no_scroll_lines(self):
+        """Peek message is rendered when scroll buffer is empty."""
+        panel = _IterationPanel()
+        panel.set_peek_message("[dim]peek off[/]")
+        console = Console(record=True, width=80)
+        console.print(panel)
+        output = console.export_text()
+        assert "peek off" in output
+
+    def test_peek_message_hidden_when_scroll_lines_present(self):
+        """Peek message is NOT rendered when scroll lines are present."""
+        panel = _IterationPanel()
+        panel.set_peek_message("[dim]peek off[/]")
+        panel.add_scroll_line("[dim]tool output[/]")
+        console = Console(record=True, width=80)
+        console.print(panel)
+        output = console.export_text()
+        assert "peek off" not in output
+        assert "tool output" in output
+
+
+class TestIterationSpinnerScrollLines:
+    def test_scroll_lines_rendered_in_spinner(self):
+        """Scroll lines appear in the spinner's rendered output."""
+        spinner = _IterationSpinner()
+        spinner.add_scroll_line("[dim]raw output line[/]")
+        console = Console(record=True, width=80)
+        console.print(spinner)
+        output = console.export_text()
+        assert "raw output line" in output
+
+    def test_clear_scroll_empties_spinner_buffer(self):
+        spinner = _IterationSpinner()
+        spinner.add_scroll_line("[dim]line1[/]")
+        assert len(spinner._scroll_lines) == 1
+        spinner.clear_scroll()
+        assert len(spinner._scroll_lines) == 0
+
+    def test_peek_message_shown_in_spinner(self):
+        spinner = _IterationSpinner()
+        spinner.set_peek_message("[dim]live output on[/]")
+        console = Console(record=True, width=80)
+        console.print(spinner)
+        output = console.export_text()
+        assert "live output on" in output
 
 
 class TestIsClaudeCommand:

@@ -1102,8 +1102,9 @@ class TestCreditInLoop:
 class TestEchoCoordination:
     @patch(MOCK_SUBPROCESS)
     def test_no_double_print_with_log_dir_and_peek(self, mock_run, tmp_path):
-        """When --log-dir is set and peek is on, each agent output line
-        appears exactly once in the console — no double-print from echo."""
+        """When --log-dir is set and peek is on, agent output lines are
+        rendered inside the transient Live display — they must NOT also
+        be echoed as permanent output at iteration end."""
         mock_run.return_value = ok_proc(
             stdout_text="alpha\nbeta\ngamma\n",
         )
@@ -1117,10 +1118,13 @@ class TestEchoCoordination:
 
         run_loop(config, state, emitter)
 
+        # Lines were shown inside the transient Live display (not permanent
+        # console output).  The important invariant: they must not ALSO be
+        # echoed at iteration end (which would be double-printing).
         output = console.export_text()
-        assert output.count("alpha") == 1
-        assert output.count("beta") == 1
-        assert output.count("gamma") == 1
+        assert output.count("alpha") == 0
+        assert output.count("beta") == 0
+        assert output.count("gamma") == 0
 
     @patch(MOCK_SUBPROCESS)
     def test_echo_shown_when_peek_off_and_log_dir_set(self, mock_run, tmp_path):
@@ -1166,8 +1170,9 @@ class TestAgentOutputLineFiltering:
         self, mock_run, tmp_path
     ):
         """Start with peek off, toggle on before agent runs — subsequent
-        lines appear as AGENT_OUTPUT_LINE events.  Requires log_dir so the
-        callback path is taken (without log_dir the inherit path gives
+        lines appear as AGENT_OUTPUT_LINE events rendered inside the
+        transient Live display.  Requires log_dir so the callback path
+        is taken (without log_dir the inherit path gives
         on_output_line=None and no mid-iteration toggle is possible)."""
         console = Console(record=True, width=120)
         emitter = ConsoleEmitter(console)
@@ -1189,6 +1194,11 @@ class TestAgentOutputLineFiltering:
 
         run_loop(config, state, emitter)
 
+        # Lines are rendered inside the transient Live display (not
+        # permanent console output) so they don't appear in export_text.
+        # The important invariant: they must not also be echoed at
+        # iteration end (which would be double-printing).
         output = console.export_text()
-        # With peek toggled on, agent output lines should appear
-        assert "first" in output or "second" in output or "third" in output
+        assert output.count("first") == 0
+        assert output.count("second") == 0
+        assert output.count("third") == 0
