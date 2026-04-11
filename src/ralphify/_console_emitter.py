@@ -258,6 +258,10 @@ class _IterationPanel:
         self._cache_read_tokens: int = 0
         self._scroll_lines: list[Text] = []
         self._peek_message: Text | None = None
+        # Visibility flag controlled by toggle_peek.  Buffering keeps
+        # happening behind the scenes regardless — toggling peek back on
+        # reveals the latest state with full catch-up.
+        self._peek_visible: bool = True
 
     # ── Scroll buffer management ─────────────────────────────────────
 
@@ -266,7 +270,6 @@ class _IterationPanel:
         self._scroll_lines.append(Text.from_markup(markup))
         if len(self._scroll_lines) > _MAX_SCROLL_LINES:
             self._scroll_lines.pop(0)
-        self._peek_message = None  # content is flowing — clear status
 
     def clear_scroll(self) -> None:
         """Drop all buffered scroll lines."""
@@ -275,6 +278,10 @@ class _IterationPanel:
     def set_peek_message(self, markup: str) -> None:
         """Set a transient status message shown inside the Live region."""
         self._peek_message = Text.from_markup(markup)
+
+    def set_peek_visible(self, visible: bool) -> None:
+        """Show or hide the scroll feed without touching the buffer."""
+        self._peek_visible = visible
 
     # ── Stream-json processing ───────────────────────────────────────
 
@@ -467,12 +474,15 @@ class _IterationPanel:
     def _build_body(self) -> Group:
         """Body group: scroll lines (or peek message) + spacer + footer."""
         rows: list[Any] = []
-        visible = self._scroll_lines[-_MAX_VISIBLE_SCROLL:]
-        if visible:
-            for line in visible:
-                line.no_wrap = True
-                line.overflow = "ellipsis"
-                rows.append(line)
+        if self._peek_visible:
+            visible = self._scroll_lines[-_MAX_VISIBLE_SCROLL:]
+            if visible:
+                for line in visible:
+                    line.no_wrap = True
+                    line.overflow = "ellipsis"
+                    rows.append(line)
+            elif self._peek_message is not None:
+                rows.append(self._peek_message)
         elif self._peek_message is not None:
             rows.append(self._peek_message)
         rows.append(Text(""))  # spacer above footer
@@ -547,15 +557,22 @@ class ConsoleEmitter:
         }
 
     def wants_agent_output_lines(self) -> bool:
+        # Returns the peek state so the engine still gets a "no, drop
+        # raw line events" signal when peek is off.  This lets the
+        # engine package captured output for end-of-iteration echo when
+        # ``--log-dir`` is set, preserving that recovery path for users
+        # who keep peek off the whole run.  Persistence for structured
+        # (Claude) agents goes through ``_on_agent_activity`` which is
+        # always called regardless of this gate.
         return self._peek_enabled
 
     def toggle_peek(self) -> bool:
         """Flip live-output rendering on or off.
 
         Safe to call from a non-main thread (e.g. the keypress listener).
-        Returns the new peek state.  When a Live display is active the
-        status message is shown inside it (transient); otherwise it is
-        printed as a normal console line.
+        Returns the new peek state.  Toggling never clears the scroll
+        buffer — the panel keeps recording behind the scenes so toggling
+        peek back on shows the latest state.
         """
         with self._console_lock:
             self._peek_enabled = not self._peek_enabled
@@ -570,19 +587,17 @@ class ConsoleEmitter:
                 msg = _PEEK_OFF_MSG
 
             renderable = self._iteration_panel or self._iteration_spinner
-            if renderable is not None and self._live is not None:
-                if not enabled:
-                    renderable.clear_scroll()
+            if renderable is not None:
+                renderable.set_peek_visible(enabled)
                 renderable.set_peek_message(msg)
-                self._live.update(renderable)
+                if self._live is not None:
+                    self._live.update(renderable)
             else:
                 self._console.print(msg)
         return enabled
 
     def _on_agent_output_line(self, data: AgentOutputLineData) -> None:
         with self._console_lock:
-            if not self._peek_enabled:
-                return
             # When we have structured rendering, raw lines are redundant noise.
             if self._structured_agent:
                 return
@@ -597,13 +612,13 @@ class ConsoleEmitter:
         """Handle structured agent activity events (Claude stream-json).
 
         Peek is best-effort — a failure here must never kill the run loop.
+        Events are always buffered into the panel regardless of peek
+        state; visibility is controlled by the panel's _peek_visible flag.
         """
         if not self._structured_agent:
             return
 
         with self._console_lock:
-            if not self._peek_enabled:
-                return
             if self._peek_broken:
                 return
 
@@ -660,6 +675,12 @@ class ConsoleEmitter:
             self._iteration_panel = None
             self._iteration_spinner = spinner
             renderable = spinner
+        # Carry the current peek visibility into the new renderable so
+        # an iteration that starts with peek already off doesn't flash
+        # the empty scroll feed before the first event lands.
+        renderable.set_peek_visible(self._peek_enabled)
+        if not self._peek_enabled:
+            renderable.set_peek_message(_PEEK_OFF_MSG)
         self._live = Live(
             renderable,
             console=self._console,
@@ -776,13 +797,13 @@ class _IterationSpinner:
         self._start = time.monotonic()
         self._scroll_lines: list[Text] = []
         self._peek_message: Text | None = None
+        self._peek_visible: bool = True
 
     def add_scroll_line(self, markup: str) -> None:
         """Append a Rich-markup scroll line to the transient buffer."""
         self._scroll_lines.append(Text.from_markup(markup))
         if len(self._scroll_lines) > _MAX_SCROLL_LINES:
             self._scroll_lines.pop(0)
-        self._peek_message = None
 
     def clear_scroll(self) -> None:
         """Drop all buffered scroll lines."""
@@ -791,6 +812,10 @@ class _IterationSpinner:
     def set_peek_message(self, markup: str) -> None:
         """Set a transient status message shown inside the Live region."""
         self._peek_message = Text.from_markup(markup)
+
+    def set_peek_visible(self, visible: bool) -> None:
+        """Show or hide the scroll feed without touching the buffer."""
+        self._peek_visible = visible
 
     def _build_title(self) -> Text:
         elapsed = time.monotonic() - self._start
@@ -819,12 +844,15 @@ class _IterationSpinner:
 
     def _build_body(self) -> Group:
         rows: list[Any] = []
-        visible = self._scroll_lines[-_MAX_VISIBLE_SCROLL:]
-        if visible:
-            for line in visible:
-                line.no_wrap = True
-                line.overflow = "ellipsis"
-                rows.append(line)
+        if self._peek_visible:
+            visible = self._scroll_lines[-_MAX_VISIBLE_SCROLL:]
+            if visible:
+                for line in visible:
+                    line.no_wrap = True
+                    line.overflow = "ellipsis"
+                    rows.append(line)
+            elif self._peek_message is not None:
+                rows.append(self._peek_message)
         elif self._peek_message is not None:
             rows.append(self._peek_message)
         rows.append(Text(""))

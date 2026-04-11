@@ -67,7 +67,13 @@ class TestPeekToggle:
         assert any("visible line" in line.plain for line in spinner._scroll_lines)
         emitter._stop_live()
 
-    def test_toggle_peek_twice_disables_rendering(self):
+    def test_toggle_peek_off_keeps_buffering_but_hides_lines(self):
+        """At the emitter layer, AGENT_OUTPUT_LINE events that reach the
+        spinner are always buffered regardless of peek state — the
+        visibility flag controls *rendering*, not capture.  (For raw
+        agents the engine still gates forwarding via
+        ``wants_agent_output_lines`` so the echo-at-end path keeps
+        working; this test exercises the emitter contract directly.)"""
         emitter, console = _capture_emitter()
         emitter.toggle_peek()  # on
         assert emitter.toggle_peek() is False  # off
@@ -76,14 +82,19 @@ class TestPeekToggle:
         emitter.emit(
             _make_event(
                 EventType.AGENT_OUTPUT_LINE,
-                line="should not appear",
+                line="buffered while peek off",
                 stream="stdout",
                 iteration=1,
             )
         )
         spinner = emitter._iteration_spinner
         assert spinner is not None
-        assert len(spinner._scroll_lines) == 0
+        # Buffer keeps recording even with peek off…
+        assert any(
+            "buffered while peek off" in line.plain for line in spinner._scroll_lines
+        )
+        # …but visibility flag is off so the panel hides the feed.
+        assert spinner._peek_visible is False
         emitter._stop_live()
 
     def test_toggle_peek_prints_status_banner(self):
@@ -368,8 +379,58 @@ class TestPeekToggle:
         assert "live output on" not in output
         assert "press p" not in output
 
-    def test_toggle_peek_off_in_live_clears_scroll_buffer(self):
-        """Toggling peek off during an iteration clears the scroll buffer."""
+    def test_toggle_peek_on_after_off_shows_catchup_state(self):
+        """Activity that arrived while peek was off must show up when peek
+        is toggled back on — that's the whole point of preserving the
+        buffer across toggles instead of clearing it."""
+        emitter, console = _capture_emitter()
+        emitter._peek_enabled = True
+        emitter._structured_agent = True
+        emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
+
+        def _emit_tool(name: str, arg: str) -> None:
+            emitter.emit(
+                _make_event(
+                    EventType.AGENT_ACTIVITY,
+                    raw={
+                        "type": "assistant",
+                        "message": {
+                            "content": [
+                                {
+                                    "type": "tool_use",
+                                    "name": name,
+                                    "input": {"file_path": arg}
+                                    if name == "Read"
+                                    else {"command": arg},
+                                }
+                            ]
+                        },
+                    },
+                    iteration=1,
+                )
+            )
+
+        _emit_tool("Read", "/tmp/seen-while-on.py")
+        # Toggle off — buffer keeps the first event…
+        emitter.toggle_peek()
+        # …new activity continues to land in the buffer while peek is off.
+        _emit_tool("Bash", "echo hidden-but-buffered")
+        # Toggle back on — both the original and the catch-up event are
+        # in the buffer, so the user sees current state, not stale state.
+        emitter.toggle_peek()
+        panel = emitter._iteration_panel
+        assert panel is not None
+        plains = [line.plain for line in panel._scroll_lines]
+        assert any("seen-while-on.py" in p for p in plains)
+        assert any("hidden-but-buffered" in p for p in plains)
+        assert panel._peek_visible is True
+        emitter._stop_live()
+
+    def test_toggle_peek_off_preserves_scroll_buffer(self):
+        """Toggling peek off must NOT clear the scroll buffer — the panel
+        keeps its history so the user can toggle peek back on and pick up
+        where they left off (with any new activity that arrived in the
+        meantime)."""
         emitter, console = _capture_emitter()
         emitter._peek_enabled = True
         emitter._structured_agent = True
@@ -395,10 +456,16 @@ class TestPeekToggle:
         )
         panel = emitter._iteration_panel
         assert panel is not None
-        assert len(panel._scroll_lines) > 0
-        # Toggle peek off — should clear the buffer
+        assert len(panel._scroll_lines) == 1
+        before = list(panel._scroll_lines)
+        # Toggle peek off — buffer should be preserved, visibility flipped.
         emitter.toggle_peek()
-        assert len(panel._scroll_lines) == 0
+        assert panel._scroll_lines == before
+        assert panel._peek_visible is False
+        # Toggling peek back on restores visibility, buffer still intact.
+        emitter.toggle_peek()
+        assert panel._scroll_lines == before
+        assert panel._peek_visible is True
         emitter._stop_live()
 
     def test_toggle_peek_in_live_sets_peek_message(self):
@@ -616,8 +683,10 @@ class TestStructuredPeek:
         assert emitter._peek_broken is False
         emitter._stop_live()
 
-    def test_peek_off_skips_activity(self):
-        """Activity events are dropped when peek is off."""
+    def test_peek_off_still_buffers_activity(self):
+        """Activity events keep flowing into the panel buffer when peek
+        is off — visibility is hidden but the underlying state is up to
+        date so toggling peek back on shows current activity."""
         emitter, console = self._make_structured_emitter()
         emitter._peek_enabled = False
         emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
@@ -641,7 +710,12 @@ class TestStructuredPeek:
         )
         panel = emitter._iteration_panel
         assert panel is not None
-        assert len(panel._scroll_lines) == 0
+        # Buffer captures activity even with peek off…
+        assert len(panel._scroll_lines) == 1
+        assert "Bash" in panel._scroll_lines[0].plain
+        # …but the visibility flag was carried over from the disabled
+        # peek state by _start_live_unlocked.
+        assert panel._peek_visible is False
         emitter._stop_live()
 
     def test_tool_error_scroll_line(self):
