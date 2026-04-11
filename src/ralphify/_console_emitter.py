@@ -56,8 +56,10 @@ _LIVE_REFRESH_RATE = 8  # Hz — how often the spinner redraws
 
 # Scroll-line buffer limits for the Live renderable.  Lines beyond
 # _MAX_SCROLL_LINES are dropped from memory; only the most recent
-# _MAX_VISIBLE_SCROLL are rendered inside the Live region.
-_MAX_SCROLL_LINES = 50
+# _MAX_VISIBLE_SCROLL are rendered inside the compact Live region.
+# The full buffer is exposed in the fullscreen peek view (shift+P) so
+# users can scroll back through earlier activity within an iteration.
+_MAX_SCROLL_LINES = 5000
 _MAX_VISIBLE_SCROLL = 10
 
 # Home directory used by ``_shorten_path`` to collapse $HOME → ~ in
@@ -72,10 +74,23 @@ except (RuntimeError, OSError):
 # messages and imported by cli.py for the keypress handler.
 PEEK_TOGGLE_KEY = "p"
 
+# Shift+P enters full-screen peek mode — a scrollable view of the entire
+# activity buffer that takes over the terminal using Rich's alt-screen.
+FULLSCREEN_PEEK_KEY = "P"
+
 # Peek status messages shown when peek is toggled or at run startup.
-_PEEK_ON_MSG_STRUCTURED = f"[dim]live activity on — press {PEEK_TOGGLE_KEY} to hide[/]"
-_PEEK_ON_MSG_RAW = f"[dim]live output on — press {PEEK_TOGGLE_KEY} to hide[/]"
-_PEEK_OFF_MSG = f"[dim]peek off — press {PEEK_TOGGLE_KEY} to toggle[/]"
+_PEEK_ON_MSG_STRUCTURED = (
+    f"[dim]live activity on — press {PEEK_TOGGLE_KEY} to hide, "
+    f"shift+{PEEK_TOGGLE_KEY} for full view[/]"
+)
+_PEEK_ON_MSG_RAW = (
+    f"[dim]live output on — press {PEEK_TOGGLE_KEY} to hide, "
+    f"shift+{PEEK_TOGGLE_KEY} for full view[/]"
+)
+_PEEK_OFF_MSG = (
+    f"[dim]peek off — press {PEEK_TOGGLE_KEY} to toggle, "
+    f"shift+{PEEK_TOGGLE_KEY} for full view[/]"
+)
 
 # ── Claude binary detection ───────────────────────────────────────────
 
@@ -505,6 +520,140 @@ class _IterationPanel:
         yield panel
 
 
+# ── Full-screen peek ─────────────────────────────────────────────────
+
+# Chrome rows that the fullscreen peek reserves on top of its viewport:
+# panel top border + header row + header gap + footer gap + footer row +
+# panel bottom border.  Used to size the visible viewport to the terminal.
+_FULLSCREEN_CHROME_ROWS = 6
+_FULLSCREEN_MIN_VISIBLE = 5
+
+
+class _FullscreenPeek:
+    """Scrollable alt-screen view of the activity buffer.
+
+    Reads ``_scroll_lines`` from a source :class:`_IterationPanel` or
+    :class:`_IterationSpinner` (they both expose the same attribute).
+    The source keeps receiving agent events in the background, so as new
+    lines land the view follows the tail when ``_auto_scroll`` is set.
+
+    The offset is anchored to the *bottom* of the buffer: ``_offset=0``
+    shows the latest lines, ``_offset=1`` hides the newest line, and so
+    on up to ``len(buffer) - visible``.  This keeps "follow mode" cheap —
+    auto-scroll just means "keep offset at 0".
+    """
+
+    def __init__(self, source: _IterationPanel | _IterationSpinner) -> None:
+        self._source = source
+        self._offset: int = 0
+        self._auto_scroll: bool = True
+
+    def _viewport_height(self, console_height: int) -> int:
+        return max(_FULLSCREEN_MIN_VISIBLE, console_height - _FULLSCREEN_CHROME_ROWS)
+
+    def _max_offset(self, visible: int) -> int:
+        return max(0, len(self._source._scroll_lines) - visible)
+
+    # ── Scroll commands ──────────────────────────────────────────────
+
+    def scroll_up(self, lines: int = 1) -> None:
+        """Scroll toward older lines (offset grows)."""
+        visible = self._viewport_height(self._console_height)
+        new_offset = min(self._offset + lines, self._max_offset(visible))
+        if new_offset != self._offset:
+            self._offset = new_offset
+            self._auto_scroll = False
+
+    def scroll_down(self, lines: int = 1) -> None:
+        """Scroll toward newer lines (offset shrinks)."""
+        new_offset = max(0, self._offset - lines)
+        self._offset = new_offset
+        if new_offset == 0:
+            self._auto_scroll = True
+
+    def scroll_to_top(self) -> None:
+        visible = self._viewport_height(self._console_height)
+        self._offset = self._max_offset(visible)
+        self._auto_scroll = False
+
+    def scroll_to_bottom(self) -> None:
+        self._offset = 0
+        self._auto_scroll = True
+
+    # ── Rendering ────────────────────────────────────────────────────
+
+    _console_height: int = 40  # updated on every render
+
+    def _build_header(self, total: int, visible: int) -> Text:
+        header = Text(no_wrap=True, overflow="ellipsis")
+        header.append(" Full peek ", style=f"bold {_brand.PURPLE}")
+        header.append(f"· {total} line{'s' if total != 1 else ''}", style="dim")
+        if self._auto_scroll:
+            header.append("  ·  ", style="dim")
+            header.append("following", style=f"italic {_brand.GREEN}")
+        else:
+            start = max(0, total - self._offset - visible) + 1
+            end = total - self._offset
+            header.append("  ·  ", style="dim")
+            header.append(f"lines {start}–{end}", style=f"italic {_brand.LAVENDER}")
+        return header
+
+    def _build_footer(self) -> Text:
+        hint = Text(no_wrap=True, overflow="ellipsis")
+        hint.append(
+            " ↑/k up · ↓/j down · b/space page · g/G top/bottom · q/", style="dim"
+        )
+        hint.append(FULLSCREEN_PEEK_KEY, style=f"bold {_brand.PURPLE}")
+        hint.append(" exit ", style="dim")
+        return hint
+
+    def __rich_console__(
+        self, console: Console, options: ConsoleOptions
+    ) -> RenderResult:
+        self._console_height = options.max_height or console.size.height
+        visible = self._viewport_height(self._console_height)
+        lines = self._source._scroll_lines
+        total = len(lines)
+
+        # Clamp offset whenever the buffer shrinks (edge case) or the
+        # terminal was resized since the last render.
+        max_off = self._max_offset(visible)
+        if self._offset > max_off:
+            self._offset = max_off
+        if self._auto_scroll:
+            self._offset = 0
+
+        end = total - self._offset
+        start = max(0, end - visible)
+        window = lines[start:end]
+
+        rows: list[Any] = []
+        rows.append(self._build_header(total, visible))
+        rows.append(Text(""))
+        if window:
+            for line in window:
+                line.no_wrap = True
+                line.overflow = "ellipsis"
+                rows.append(line)
+        else:
+            rows.append(Text("  (waiting for activity…)", style="dim italic"))
+        # Pad the body so the footer hugs the bottom border even when
+        # the buffer is shorter than the viewport.
+        padding = visible - len(window)
+        for _ in range(max(0, padding)):
+            rows.append(Text(""))
+        rows.append(Text(""))
+        rows.append(self._build_footer())
+
+        panel = Panel(
+            Group(*rows),
+            box=box.ROUNDED,
+            border_style=_brand.PURPLE,
+            padding=(0, 2),
+        )
+        yield panel
+
+
 def _interactive_default_peek(console: Console) -> bool:
     """Return True when live peek should be on by default.
 
@@ -532,6 +681,13 @@ class ConsoleEmitter:
         self._peek_broken: bool = False
         self._iteration_panel: _IterationPanel | None = None
         self._iteration_spinner: _IterationSpinner | None = None
+        # Fullscreen peek state — a second Live using Rich's alt-screen
+        # that shows the entire activity buffer with scroll navigation.
+        # When active, the compact ``_live`` is stopped; the underlying
+        # panel/spinner keeps buffering events so exiting fullscreen
+        # resumes the compact view with the latest state.
+        self._fullscreen_view: _FullscreenPeek | None = None
+        self._fullscreen_live: Live | None = None
         # Single lock that serialises every ``_console.print`` call and
         # protects ``_peek_enabled`` mutations so that reader-thread /
         # keypress-thread writes cannot interleave with main-thread event
@@ -605,7 +761,11 @@ class ConsoleEmitter:
             spinner = self._iteration_spinner
             if spinner is not None:
                 spinner.add_scroll_line(f"[white]{line}[/]")
-                if self._live is not None:
+                fs_live = self._fullscreen_live
+                fs_view = self._fullscreen_view
+                if fs_live is not None and fs_view is not None:
+                    fs_live.update(fs_view)
+                elif self._live is not None:
                     self._live.update(spinner)
 
     def _on_agent_activity(self, data: AgentActivityData) -> None:
@@ -627,9 +787,15 @@ class ConsoleEmitter:
                 if panel is None:
                     return
                 panel.apply(data["raw"])
-                # Update the Live renderable so it reflects new counters
-                # (scroll lines are now stored inside the panel).
-                if self._live is not None:
+                # Update whichever Live is currently on top.  Fullscreen
+                # wins — it gets the refresh so scroll-follow mode picks
+                # up new lines in real time.  Otherwise the compact Live
+                # re-renders with new counters + scroll lines.
+                fs_live = self._fullscreen_live
+                fs_view = self._fullscreen_view
+                if fs_live is not None and fs_view is not None:
+                    fs_live.update(fs_view)
+                elif self._live is not None:
                     self._live.update(panel)
             except Exception:
                 self._peek_broken = True
@@ -690,7 +856,17 @@ class ConsoleEmitter:
         self._live.start()
 
     def _stop_live_unlocked(self) -> None:
-        """Stop the iteration panel/spinner.  Caller must hold ``_console_lock``."""
+        """Stop the iteration panel/spinner.  Caller must hold ``_console_lock``.
+
+        Also tears down the fullscreen peek view if active — the
+        underlying buffer belongs to the iteration we're ending, so
+        leaving the user stuck in an alt screen showing stale data would
+        be worse than dropping them back to the normal terminal.
+        """
+        if self._fullscreen_live is not None:
+            self._fullscreen_live.stop()
+            self._fullscreen_live = None
+        self._fullscreen_view = None
         if self._live is not None:
             self._live.stop()
             self._live = None
@@ -700,6 +876,139 @@ class ConsoleEmitter:
     def _stop_live(self) -> None:
         with self._console_lock:
             self._stop_live_unlocked()
+
+    # ── Fullscreen peek ──────────────────────────────────────────────
+
+    def enter_fullscreen(self) -> bool:
+        """Enter fullscreen peek mode.  Safe to call from any thread.
+
+        Returns ``True`` if fullscreen is now active, ``False`` if the
+        caller tried to enter when no iteration was running (nothing to
+        show) or when already in fullscreen.
+        """
+        with self._console_lock:
+            if self._fullscreen_view is not None:
+                return True  # already active — no-op
+            source: _IterationPanel | _IterationSpinner | None = (
+                self._iteration_panel or self._iteration_spinner
+            )
+            if source is None:
+                self._console.print("[dim]Full peek: no active iteration yet[/]")
+                return False
+            view = _FullscreenPeek(source)
+            self._fullscreen_view = view
+            # Stop the compact Live before taking over the terminal so
+            # the two Rich renderers don't fight for the same console.
+            if self._live is not None:
+                self._live.stop()
+                self._live = None
+            self._fullscreen_live = Live(
+                view,
+                console=self._console,
+                screen=True,
+                refresh_per_second=_LIVE_REFRESH_RATE,
+            )
+            try:
+                self._fullscreen_live.start()
+            except Exception:
+                # Alt-screen can fail in unusual terminals — clean up
+                # and silently fall back to compact mode rather than
+                # wedging the user.
+                self._fullscreen_live = None
+                self._fullscreen_view = None
+                self._restart_compact_unlocked()
+                return False
+            return True
+
+    def exit_fullscreen(self) -> None:
+        """Exit fullscreen peek mode.  Safe to call from any thread."""
+        with self._console_lock:
+            if self._fullscreen_view is None:
+                return
+            if self._fullscreen_live is not None:
+                self._fullscreen_live.stop()
+                self._fullscreen_live = None
+            self._fullscreen_view = None
+            self._restart_compact_unlocked()
+
+    def _restart_compact_unlocked(self) -> None:
+        """Bring the compact Live back after a fullscreen exit.
+
+        Uses the existing panel/spinner (and its accumulated buffer) if
+        an iteration is still running.  No-op when the iteration has
+        already ended.
+        """
+        source: _IterationPanel | _IterationSpinner | None = (
+            self._iteration_panel or self._iteration_spinner
+        )
+        if source is None:
+            return
+        self._live = Live(
+            source,
+            console=self._console,
+            transient=True,
+            refresh_per_second=_LIVE_REFRESH_RATE,
+        )
+        self._live.start()
+
+    def _fullscreen_page_size(self) -> int:
+        """Lines to jump on space/b (page down/up)."""
+        try:
+            height = self._console.size.height
+        except Exception:
+            height = 40
+        return max(1, height - _FULLSCREEN_CHROME_ROWS - 2)
+
+    def handle_key(self, key: str) -> None:
+        """Dispatch a single keypress from the KeypressListener.
+
+        The emitter owns key routing because the keybindings differ
+        between compact mode (``p`` / ``P``) and fullscreen mode (vim +
+        less style navigation).  Errors are swallowed so a render bug
+        never kills the listener thread.
+        """
+        try:
+            if self._fullscreen_view is not None:
+                self._handle_fullscreen_key(key)
+                return
+            if key == PEEK_TOGGLE_KEY:
+                self.toggle_peek()
+            elif key == FULLSCREEN_PEEK_KEY:
+                self.enter_fullscreen()
+        except Exception:
+            pass
+
+    def _handle_fullscreen_key(self, key: str) -> None:
+        """Scroll navigation while fullscreen peek is active."""
+        with self._console_lock:
+            view = self._fullscreen_view
+            if view is None:
+                return  # raced with exit
+            if key in ("q", FULLSCREEN_PEEK_KEY):
+                # Release lock before exit_fullscreen re-acquires it.
+                pass
+            else:
+                page = self._fullscreen_page_size()
+                handled = True
+                if key == "j":
+                    view.scroll_down(1)
+                elif key == "k":
+                    view.scroll_up(1)
+                elif key == " ":
+                    view.scroll_down(page)
+                elif key == "b":
+                    view.scroll_up(page)
+                elif key == "g":
+                    view.scroll_to_top()
+                elif key == "G":
+                    view.scroll_to_bottom()
+                else:
+                    handled = False
+                if handled and self._fullscreen_live is not None:
+                    self._fullscreen_live.update(view)
+                return
+        # Exit path runs outside the lock to avoid re-entry.
+        self.exit_fullscreen()
 
     def _on_iteration_started(self, data: IterationStartedData) -> None:
         iteration = data["iteration"]

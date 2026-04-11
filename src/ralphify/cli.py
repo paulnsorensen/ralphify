@@ -21,7 +21,7 @@ from rich.markup import escape as escape_markup
 
 from ralphify import __version__
 from ralphify import _brand
-from ralphify._console_emitter import PEEK_TOGGLE_KEY, ConsoleEmitter
+from ralphify._console_emitter import ConsoleEmitter
 from ralphify._keypress import KeypressListener
 from ralphify._frontmatter import (
     CMD_FIELD_NAME,
@@ -530,6 +530,9 @@ def run(
 
     Keybindings (interactive terminal):
       p         Toggle live peek of agent output (on by default)
+      P         Enter full-screen peek — scroll the entire buffer
+                  (inside: j/k scroll, space/b page, g/G top/bottom,
+                   q or P to exit)
       Ctrl+C    Finish current iteration gracefully, then stop
       Ctrl+C ×2 Force-kill the agent and exit immediately
     """
@@ -568,15 +571,7 @@ def run(
 
     signal.signal(signal.SIGINT, _sigint_handler)
 
-    def _on_key(key: str) -> None:
-        try:
-            if key == PEEK_TOGGLE_KEY:
-                emitter.toggle_peek()
-        except Exception:
-            # Don't let a render error kill the listener thread.
-            pass
-
-    listener = KeypressListener(_on_key)
+    listener = KeypressListener(emitter.handle_key)
     listener.start()
     try:
         run_loop(config, state, emitter)

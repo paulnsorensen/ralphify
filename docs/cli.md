@@ -118,6 +118,19 @@ The loop also stops automatically when:
 
 When you run `ralph run` in an interactive terminal, the agent's stdout and stderr stream live to the console by default. Press `p` to silence the stream (useful for quieter loops) and press `p` again to resume it. The default is off whenever the output is not a real terminal (piped, redirected, or captured in CI), so `ralph run ... | cat` is unaffected.
 
+The compact peek panel shows the ten most recent activity lines to keep the terminal tidy. When you need to see earlier activity from the current iteration, press **shift+P** to enter **full-screen peek** — a scrollable view of the entire buffer that takes over the terminal on the alt screen.
+
+Inside full-screen peek:
+
+| Key | Action |
+|-----|--------|
+| `j` / `k` | Scroll one line down / up |
+| `space` / `b` | Page down / page up |
+| `g` / `G` | Jump to the top / bottom (bottom re-enables follow mode) |
+| `q` or `P` | Exit back to the compact view |
+
+Activity keeps streaming into the buffer while you scroll, so follow mode (`G` or scrolling back to the bottom) catches up to the tail. The full-screen view exits automatically when the iteration ends, returning you to the normal terminal.
+
 Live streaming works with line-buffered agents such as Claude Code, OpenAI Codex, Aider, and any other process that writes one line at a time. For Claude running in stream-json mode you'll see the raw JSON events; for other agents you'll see the agent's plain output. Agents that repaint their own terminal UI (full-screen curses or TUI apps) are not supported — ralphify pipes their stdio, so they detect a non-TTY and fall back to plain output.
 
 When `--log-dir` is set, output is captured to the log file and also echoed after each iteration completes; live peek still works the same way in that mode.

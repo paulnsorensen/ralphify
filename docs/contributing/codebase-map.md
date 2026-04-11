@@ -136,6 +136,8 @@ Events are defined in `_events.py:EventType`, with a corresponding TypedDict pay
 
 Both execution paths in `_agent.py` accept an `on_output_line(line, stream)` callback and drain the agent's stdout/stderr line-by-line — the blocking path uses two background reader threads, and the streaming path forwards each raw line from `_read_agent_stream`. The engine wires this callback to emit `EventType.AGENT_OUTPUT_LINE` events, which the `ConsoleEmitter` renders only while peek is enabled. The `p` keybinding flips that state via `ConsoleEmitter.toggle_peek()`, driven by `KeypressListener` in `_keypress.py`. The listener only activates on a real TTY; in CI or when stdin is piped it silently no-ops.
 
+The compact peek panel (`_IterationPanel` / `_IterationSpinner`) renders the most recent `_MAX_VISIBLE_SCROLL` lines while buffering up to `_MAX_SCROLL_LINES` (`_console_emitter.py`). Shift+P (`FULLSCREEN_PEEK_KEY`) enters a `_FullscreenPeek` view — a Rich `Live` with `screen=True` that renders the full buffer on the alt screen and accepts vim/less-style navigation (`j/k`, `space/b`, `g/G`, `q`). All keys route through a single `ConsoleEmitter.handle_key()` method that owns the keybinding map for both compact and fullscreen modes. Entering fullscreen stops the compact `Live` so only one renderer owns the terminal; exiting (or iteration end) tears the alt screen down and restores the compact panel with its still-growing buffer.
+
 ### Credit trailer
 
 When `credit` is `true` (the default), `engine.py:_assemble_prompt()` appends `_CREDIT_INSTRUCTION` to the prompt — a short instruction telling the agent to include a `Co-authored-by: Ralphify` trailer in git commits. Users can opt out with `credit: false` in frontmatter.

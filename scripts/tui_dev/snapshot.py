@@ -42,6 +42,7 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 from ralphify import _console_emitter  # noqa: E402
 from ralphify._console_emitter import (  # noqa: E402
     ConsoleEmitter,
+    _FullscreenPeek,
     _IterationPanel,
     _IterationSpinner,
 )
@@ -206,6 +207,95 @@ def _snapshot_raw_spinner() -> None:
     _save(console, "08_raw_spinner")
 
 
+def _snapshot_fullscreen_peek() -> None:
+    """Render the full-screen peek view (shift+P) with a dense buffer.
+
+    Drives 40+ agent tool calls into a panel so the scroll buffer has
+    enough lines to justify full-screen navigation, then prints the
+    ``_FullscreenPeek`` view directly instead of the compact panel.
+    """
+    from fixtures import (
+        assistant_text,
+        assistant_tool_use,
+        system_init,
+    )
+
+    console = Console(
+        record=True,
+        file=io.StringIO(),
+        force_terminal=True,
+        color_system="truecolor",
+        width=SNAPSHOT_WIDTH,
+        height=40,
+        legacy_windows=False,
+    )
+    emitter = _SnapshotConsoleEmitter(console)
+    emitter._peek_enabled = True
+    emitter._structured_agent = True
+
+    _emit_run_start(
+        emitter, ralph_name="peek-demo / 15_fullscreen_peek", structured=True
+    )
+    emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
+
+    files = [
+        "cli.py",
+        "engine.py",
+        "manager.py",
+        "_frontmatter.py",
+        "_run_types.py",
+        "_resolver.py",
+        "_agent.py",
+        "_runner.py",
+        "_events.py",
+        "_console_emitter.py",
+        "_output.py",
+        "_brand.py",
+        "_keypress.py",
+    ]
+    tokens = 12_000
+    for round_num in range(3):
+        emitter.emit(
+            _make_event(
+                EventType.AGENT_ACTIVITY,
+                raw=assistant_text(
+                    f"Let me look at the ralphify modules (pass {round_num + 1}).",
+                    input_tokens=tokens,
+                    output_tokens=200 * (round_num + 1),
+                    cache_read=8_000,
+                ),
+                iteration=1,
+            )
+        )
+        for name in files:
+            tokens += 200
+            emitter.emit(
+                _make_event(
+                    EventType.AGENT_ACTIVITY,
+                    raw=assistant_tool_use(
+                        "Read",
+                        {
+                            "file_path": f"/Users/kasper/Code/ralphify/src/ralphify/{name}"
+                        },
+                        input_tokens=tokens,
+                        output_tokens=200 * (round_num + 1),
+                        cache_read=8_000 + round_num * 5000,
+                    ),
+                    iteration=1,
+                )
+            )
+    # One init event to populate the model subtitle.
+    emitter.emit(_make_event(EventType.AGENT_ACTIVITY, raw=system_init(), iteration=1))
+
+    panel = emitter._iteration_panel
+    assert panel is not None
+
+    view = _FullscreenPeek(panel)
+    view._console_height = 40
+    console.print(view)
+    _save(console, "15_fullscreen_peek")
+
+
 def _snapshot_event_sequence(name: str, events: list[tuple[EventType, dict]]) -> None:
     """Render a generic event-sequence scenario to SVG + PNG.
 
@@ -229,11 +319,12 @@ def main() -> int:
     for name, raw_events in ALL_SCENARIOS.items():
         _snapshot_peek_scenario(name, raw_events)
     _snapshot_raw_spinner()
+    _snapshot_fullscreen_peek()
     print("  Event-sequence scenarios:")
     for name, events in EVENT_SCENARIOS.items():
         _snapshot_event_sequence(name, events)
     elapsed = time.monotonic() - start
-    total = len(ALL_SCENARIOS) + 1 + len(EVENT_SCENARIOS)
+    total = len(ALL_SCENARIOS) + 2 + len(EVENT_SCENARIOS)
     print(f"Done in {elapsed:.1f}s — {total} snapshots.")
     return 0
 
