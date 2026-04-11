@@ -1,0 +1,165 @@
+#!/usr/bin/env python3
+"""Stub Claude agent for peek dev harness.
+
+Named ``claude`` (no extension) on purpose — ralphify's ``_is_claude_command``
+matches on ``Path(parts[0]).stem == "claude"``, so placing this file on PATH
+with that name makes ralphify treat it as a structured stream-json agent.
+
+It ignores the ``--output-format stream-json --verbose`` flags that
+ralphify appends, drains the prompt from stdin (prompts can be large, so
+we must actually read them to avoid blocking ralphify's writer thread),
+and emits a realistic sequence of Claude stream-json events on stdout
+with small delays so peek has time to render intermediate states.
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+import threading
+import time
+
+EVENTS = [
+    {"type": "system", "subtype": "init", "model": "claude-opus-4-6"},
+    # Thinking
+    {
+        "type": "assistant",
+        "message": {"content": [{"type": "thinking", "thinking": "..."}]},
+    },
+    # Read file
+    {
+        "type": "assistant",
+        "message": {
+            "content": [
+                {
+                    "type": "tool_use",
+                    "name": "Read",
+                    "input": {
+                        "file_path": "/Users/kasper/Code/ralphify/src/ralphify/_console_emitter.py"
+                    },
+                }
+            ],
+            "usage": {
+                "input_tokens": 2_800,
+                "output_tokens": 120,
+                "cache_read_input_tokens": 16_500,
+            },
+        },
+    },
+    # Grep
+    {
+        "type": "assistant",
+        "message": {
+            "content": [
+                {
+                    "type": "tool_use",
+                    "name": "Grep",
+                    "input": {"pattern": "_IterationPanel"},
+                }
+            ],
+            "usage": {
+                "input_tokens": 3_100,
+                "output_tokens": 210,
+                "cache_read_input_tokens": 16_500,
+            },
+        },
+    },
+    # Text preview
+    {
+        "type": "assistant",
+        "message": {
+            "content": [
+                {
+                    "type": "text",
+                    "text": "I can see the iteration panel structure — let me refine the spacing.",
+                }
+            ],
+            "usage": {
+                "input_tokens": 3_250,
+                "output_tokens": 340,
+                "cache_read_input_tokens": 16_500,
+            },
+        },
+    },
+    # Edit
+    {
+        "type": "assistant",
+        "message": {
+            "content": [
+                {
+                    "type": "tool_use",
+                    "name": "Edit",
+                    "input": {
+                        "file_path": "/Users/kasper/Code/ralphify/src/ralphify/_console_emitter.py"
+                    },
+                }
+            ],
+            "usage": {
+                "input_tokens": 3_500,
+                "output_tokens": 480,
+                "cache_read_input_tokens": 16_500,
+            },
+        },
+    },
+    # Bash
+    {
+        "type": "assistant",
+        "message": {
+            "content": [
+                {
+                    "type": "tool_use",
+                    "name": "Bash",
+                    "input": {
+                        "command": "uv run pytest tests/test_console_emitter.py -x"
+                    },
+                }
+            ],
+            "usage": {
+                "input_tokens": 3_750,
+                "output_tokens": 560,
+                "cache_read_input_tokens": 16_500,
+            },
+        },
+    },
+    # Final result
+    {
+        "type": "result",
+        "result": "Refined the iteration panel spacing; all tests pass.",
+    },
+]
+
+
+def _drain_stdin() -> None:
+    """Read and discard the prompt from stdin.
+
+    Ralphify writes the prompt on a background thread and closes stdin;
+    if we never read it, the writer thread blocks on a full pipe buffer
+    for large prompts.  Daemon thread so the process can exit once all
+    events are flushed to stdout.
+    """
+    try:
+        sys.stdin.read()
+    except Exception:
+        pass
+
+
+def main() -> int:
+    drainer = threading.Thread(target=_drain_stdin, daemon=True)
+    drainer.start()
+
+    # Slow pacing so the live-mode capture harness can freeze the pty
+    # state mid-iteration and observe the active peek panel.  Total
+    # runtime is ~18s; capture typically freezes around t=8-10s after
+    # 5-6 events have been emitted.
+    delay = 1.8
+
+    for event in EVENTS:
+        sys.stdout.write(json.dumps(event) + "\n")
+        sys.stdout.flush()
+        time.sleep(delay)
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -139,3 +139,4 @@ nav:
   - Contributing:
     - contributing/index.md
     - Codebase Map: contributing/codebase-map.md
+    - TUI Dev Harness: contributing/tui-dev-harness.md

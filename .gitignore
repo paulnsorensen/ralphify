@@ -15,3 +15,5 @@ mess/
 .DS_Store
 .coverage
 .ralphify/
+scripts/tui_dev/output/
+
