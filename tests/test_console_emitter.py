@@ -12,6 +12,7 @@ from ralphify._console_emitter import (
     _format_run_info,
     _format_summary,
     _is_claude_command,
+    _shorten_path,
 )
 from ralphify._events import Event, EventType
 
@@ -1448,3 +1449,12 @@ class TestIsClaudeCommand:
 
     def test_invalid_shlex(self):
         assert _is_claude_command("claude 'unterminated") is False
+
+
+class TestShortenPath:
+    def test_absolute_path_no_double_slash(self):
+        """Absolute paths outside $HOME should produce '/…/' not '//…/'."""
+        path = "/usr/local/lib/python3.14/site-packages/something/file.py"
+        result = _shorten_path(path, max_len=30)
+        assert not result.startswith("//"), f"Double slash in shortened path: {result}"
+        assert result.startswith("/"), f"Should keep leading slash: {result}"

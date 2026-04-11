@@ -15,10 +15,14 @@ from functools import partial
 from pathlib import Path
 from typing import Any
 
-from rich.console import Console, ConsoleOptions, RenderResult
+from rich import box
+from rich.console import Console, ConsoleOptions, Group, RenderResult
 from rich.live import Live
 from rich.markup import escape as escape_markup
+from rich.panel import Panel
+from rich.rule import Rule
 from rich.spinner import Spinner
+from rich.table import Table
 from rich.text import Text
 
 from ralphify._events import (
@@ -45,17 +49,24 @@ _ICON_ARROW = "→"
 _ICON_DASH = "—"
 _ICON_PLAY = "▶"
 
-# Horizontal rules used to visually bracket iteration and run sections.
-_RULE_THIN = "──"
+# Horizontal rule used to visually bracket the run summary at the bottom.
 _RULE_HEAVY = "──────────────────────"
 
-_LIVE_REFRESH_RATE = 4  # Hz — how often the spinner redraws
+_LIVE_REFRESH_RATE = 8  # Hz — how often the spinner redraws
 
 # Scroll-line buffer limits for the Live renderable.  Lines beyond
 # _MAX_SCROLL_LINES are dropped from memory; only the most recent
 # _MAX_VISIBLE_SCROLL are rendered inside the Live region.
 _MAX_SCROLL_LINES = 50
-_MAX_VISIBLE_SCROLL = 15
+_MAX_VISIBLE_SCROLL = 10
+
+# Home directory used by ``_shorten_path`` to collapse $HOME → ~ in
+# tool argument display.  Captured once at import time so a missing
+# $HOME doesn't slow down every render.
+try:
+    _HOME = str(Path.home())
+except (RuntimeError, OSError):
+    _HOME = ""
 
 # The key that toggles live peek of agent output.  Used here for status
 # messages and imported by cli.py for the keypress handler.
@@ -85,20 +96,48 @@ def _is_claude_command(agent: str) -> bool:
 # ── Tool argument abbreviation ────────────────────────────────────────
 
 
-def _truncate(text: str, maxlen: int = 60) -> str:
+def _truncate(text: str, maxlen: int = 80) -> str:
     if len(text) <= maxlen:
         return text
-    return text[:maxlen] + "…"
+    return text[: maxlen - 1] + "…"
+
+
+def _shorten_path(path: str, max_len: int = 48) -> str:
+    """Make a file path readable in the activity feed.
+
+    Collapses $HOME → ``~`` and, when still too long, drops middle path
+    segments so the parent + filename remain visible (the parts a reader
+    actually scans for).  Pure paths shorter than ``max_len`` are
+    returned unchanged.
+    """
+    if _HOME and path.startswith(_HOME + "/"):
+        path = "~" + path[len(_HOME) :]
+    elif _HOME and path == _HOME:
+        return "~"
+    if len(path) <= max_len:
+        return path
+    # Path is still too long: keep the leading anchor and the trailing
+    # parent/file segments, drop the middle.
+    parts = path.split("/")
+    if len(parts) <= 3:
+        return "…" + path[-(max_len - 1) :]
+    head = parts[0]
+    tail = "/".join(parts[-2:])
+    candidate = f"{head}/…/{tail}"
+    if len(candidate) <= max_len:
+        return candidate
+    return "…/" + tail[-(max_len - 2) :]
 
 
 _TOOL_ARG_EXTRACTORS: dict[str, Callable[[dict[str, Any]], str]] = {
-    "Read": lambda i: i.get("file_path", ""),
-    "Write": lambda i: i.get("file_path", ""),
-    "Edit": lambda i: i.get("file_path", ""),
+    "Read": lambda i: _shorten_path(i.get("file_path", "")),
+    "Write": lambda i: _shorten_path(i.get("file_path", "")),
+    "Edit": lambda i: _shorten_path(i.get("file_path", "")),
+    "MultiEdit": lambda i: _shorten_path(i.get("file_path", "")),
     "Glob": lambda i: i.get("pattern", ""),
     "Grep": lambda i: i.get("pattern", ""),
-    "Bash": lambda i: _truncate(i.get("command", ""), 60),
-    "Task": lambda i: _truncate(i.get("description", i.get("prompt", "")), 60),
+    "Bash": lambda i: _truncate(i.get("command", ""), 80),
+    "Task": lambda i: _truncate(i.get("description", i.get("prompt", "")), 80),
     "WebFetch": lambda i: i.get("url", ""),
     "WebSearch": lambda i: i.get("query", ""),
     "TodoWrite": lambda i: f"{len(i.get('todos', []))} todos",
@@ -164,33 +203,59 @@ def _format_run_info(
 
 # ── Iteration panel ──────────────────────────────────────────────────
 
-_TOOL_CATEGORY_LABELS: dict[str, str] = {
-    "Read": "read",
-    "Write": "write",
-    "Edit": "edit",
-    "Bash": "bash",
-    "Glob": "glob",
-    "Grep": "grep",
-    "WebFetch": "web",
-    "WebSearch": "web",
+# (color, category) for each known tool.  Color is applied to the tool
+# name in scroll lines so the activity feed scans visually by intent —
+# blue=read/search, orange=mutate, green=execute, lavender=web, etc.
+# Category is the bucket used in the footer's compact tool counter.
+_TOOL_STYLES: dict[str, tuple[str, str]] = {
+    "Read": (_brand.BLUE, "read"),
+    "Glob": (_brand.BLUE, "glob"),
+    "Grep": (_brand.BLUE, "grep"),
+    "Edit": (_brand.ORANGE, "edit"),
+    "MultiEdit": (_brand.ORANGE, "edit"),
+    "Write": (_brand.ORANGE, "write"),
+    "Bash": (_brand.GREEN, "bash"),
+    "BashOutput": (_brand.GREEN, "bash"),
+    "WebFetch": (_brand.LAVENDER, "web"),
+    "WebSearch": (_brand.LAVENDER, "web"),
+    "Task": (_brand.VIOLET, "task"),
+    "TodoWrite": (_brand.PURPLE, "todo"),
 }
+
+_DEFAULT_TOOL_STYLE: tuple[str, str] = ("white", "other")
+
+# Width reserved for the colored tool name column in the activity feed.
+# Most common tools (Read/Edit/Bash/Grep) are 4 chars; longer ones like
+# TodoWrite/WebFetch overflow gracefully into the argument column.
+_TOOL_NAME_COL = 9
+
+
+def _tool_style_for(name: str) -> tuple[str, str]:
+    return _TOOL_STYLES.get(name, _DEFAULT_TOOL_STYLE)
 
 
 class _IterationPanel:
-    """Rich renderable that shows spinner, elapsed time, and activity counters."""
+    """Rich renderable for the live peek panel.
+
+    Shows a bordered Rich :class:`Panel` whose title carries elapsed time
+    and token counts, body holds the most recent activity rows, and
+    footer holds a spinner + tool counters + model name.
+
+    The activity feed is the centerpiece — each row shows a colored tool
+    name (color-coded by intent: blue for read/search, orange for
+    mutating, green for execution, lavender for web) followed by its
+    primary argument (file path, pattern, command) in dim text.
+    """
 
     def __init__(self) -> None:
-        self._spinner = Spinner("dots")
+        self._spinner = Spinner("dots", style=f"bold {_brand.PURPLE}")
         self._start = time.monotonic()
-        # Mutable state set by apply() — renders at the Live refresh rate.
-        self._status: str = ""
         self._model: str = ""
         self._tool_count: int = 0
         self._tool_categories: dict[str, int] = {}
         self._input_tokens: int = 0
         self._output_tokens: int = 0
         self._cache_read_tokens: int = 0
-        # Scroll lines rendered inside the Live region (transient).
         self._scroll_lines: list[Text] = []
         self._peek_message: Text | None = None
 
@@ -236,7 +301,11 @@ class _IterationPanel:
             info = raw.get("rate_limit_info", {})
             status = info.get("status", "")
             resets = info.get("resetsAt", "")
-            scroll_line = f"[dim]⏱ rate limit: {escape_markup(str(status))}, resets {escape_markup(str(resets))}[/]"
+            scroll_line = (
+                f"[bold {_brand.PEACH}]⚠ rate limit:[/]"
+                f" [dim]{escape_markup(str(status))}"
+                f", resets {escape_markup(str(resets))}[/]"
+            )
 
         if scroll_line is not None:
             self.add_scroll_line(scroll_line)
@@ -265,15 +334,13 @@ class _IterationPanel:
                 continue
             block_type = block.get("type")
 
-            if block_type == "thinking":
-                self._status = "💭 thinking…"
-
-            elif block_type == "text":
+            if block_type == "text":
                 text = block.get("text", "")
-                preview = _truncate(text.replace("\n", " "), 80)
+                preview = _truncate(text.replace("\n", " "), 100)
                 if preview:
-                    scroll_line = f'[dim]💬 "{escape_markup(preview)}"[/]'
-                self._status = ""
+                    scroll_line = (
+                        f"[italic {_brand.LAVENDER}]“{escape_markup(preview)}”[/]"
+                    )
 
             elif block_type == "tool_use":
                 name = block.get("name", "?")
@@ -282,12 +349,28 @@ class _IterationPanel:
                     tool_input = {}
 
                 self._tool_count += 1
-                cat = _TOOL_CATEGORY_LABELS.get(name, "other")
+                color, cat = _tool_style_for(name)
                 self._tool_categories[cat] = self._tool_categories.get(cat, 0) + 1
 
-                summary = _format_tool_summary(name, tool_input)
-                self._status = f"→ {summary}"
-                scroll_line = f"[dim]🔧 {escape_markup(summary)}[/]"
+                if _TOOL_ARG_EXTRACTORS.get(name) is not None:
+                    arg = _TOOL_ARG_EXTRACTORS[name](tool_input)
+                else:
+                    arg = ", ".join(sorted(tool_input.keys()))
+
+                # Pad short names to a fixed column so arguments line up;
+                # longer names get a guaranteed two-space gap so the arg
+                # never collides with the tool label.
+                if len(name) < _TOOL_NAME_COL:
+                    name_col = f"{name:<{_TOOL_NAME_COL}}"
+                else:
+                    name_col = f"{name}  "
+                if arg:
+                    scroll_line = (
+                        f"[bold {color}]{escape_markup(name_col)}[/]"
+                        f"[dim]{escape_markup(arg)}[/]"
+                    )
+                else:
+                    scroll_line = f"[bold {color}]{escape_markup(name)}[/]"
 
         return scroll_line
 
@@ -300,8 +383,11 @@ class _IterationPanel:
             if not isinstance(block, dict):
                 continue
             if block.get("type") == "tool_result" and block.get("is_error"):
-                snippet = _truncate(str(block.get("content", "")), 80)
-                return f"[dim red]✗ tool error: {escape_markup(snippet)}[/]"
+                snippet = _truncate(str(block.get("content", "")), 100)
+                return (
+                    f"[bold {_brand.DEEP_ORANGE}]{_ICON_FAILURE} tool error:[/]"
+                    f" [dim]{escape_markup(snippet)}[/]"
+                )
         return None
 
     def _format_tokens(self) -> str:
@@ -332,45 +418,81 @@ class _IterationPanel:
         parts = [f"{v} {k}" for k, v in self._tool_categories.items()]
         return " · ".join(parts)
 
+    # ── Rich renderable ───────────────────────────────────────────────
+
+    def _build_title(self) -> Text:
+        """Title bar text: elapsed time + token usage."""
+        elapsed = time.monotonic() - self._start
+        title = Text()
+        title.append(" ⏱ ", style=_brand.PURPLE)
+        title.append(format_duration(elapsed), style=f"bold {_brand.PURPLE}")
+        tokens = self._format_tokens()
+        if tokens:
+            title.append("   ", style="dim")
+            title.append(tokens, style=f"bold {_brand.LAVENDER}")
+        title.append(" ", style="dim")
+        return title
+
+    def _build_subtitle(self) -> Text | None:
+        """Subtitle: model name, when known."""
+        if not self._model:
+            return None
+        sub = Text()
+        sub.append(" ", style="dim")
+        sub.append(self._model, style=f"dim italic {_brand.LAVENDER}")
+        sub.append(" ", style="dim")
+        return sub
+
+    def _build_footer(self) -> Table:
+        """Bottom row of the panel: spinner + tool counts."""
+        summary = Text(no_wrap=True, overflow="ellipsis")
+        if self._tool_count > 0:
+            summary.append(
+                f"{self._tool_count} tool{'s' if self._tool_count != 1 else ''}",
+                style=f"bold {_brand.PURPLE}",
+            )
+            cats = self._format_categories()
+            if cats:
+                summary.append("  ·  ", style="dim")
+                summary.append(cats, style="dim")
+        else:
+            summary.append("waiting for first tool call…", style="dim italic")
+
+        grid = Table.grid(expand=True)
+        grid.add_column(width=2, no_wrap=True)
+        grid.add_column(ratio=1, no_wrap=True, overflow="ellipsis")
+        grid.add_row(self._spinner, summary)
+        return grid
+
+    def _build_body(self) -> Group:
+        """Body group: scroll lines (or peek message) + spacer + footer."""
+        rows: list[Any] = []
+        visible = self._scroll_lines[-_MAX_VISIBLE_SCROLL:]
+        if visible:
+            for line in visible:
+                line.no_wrap = True
+                line.overflow = "ellipsis"
+                rows.append(line)
+        elif self._peek_message is not None:
+            rows.append(self._peek_message)
+        rows.append(Text(""))  # spacer above footer
+        rows.append(self._build_footer())
+        return Group(*rows)
+
     def __rich_console__(
         self, console: Console, options: ConsoleOptions
     ) -> RenderResult:
-        # Transient scroll lines (tool calls, text previews, etc.)
-        visible = self._scroll_lines[-_MAX_VISIBLE_SCROLL:]
-        for line in visible:
-            yield line
-            yield Text("\n")
-
-        # Peek status message (shown when no scroll lines present)
-        if not self._scroll_lines and self._peek_message:
-            yield self._peek_message
-            yield Text("\n")
-
-        elapsed = time.monotonic() - self._start
-        # Line 1: spinner + elapsed + tokens
-        tokens = self._format_tokens()
-        header_parts = [f" {format_duration(elapsed)}"]
-        if tokens:
-            header_parts.append(tokens)
-        header = " · ".join(header_parts)
-        yield self._spinner
-        yield Text(header, style="dim")
-
-        # Line 2: current status (tool in progress, thinking, etc.)
-        if self._status:
-            yield Text(f"\n    {self._status}", style="dim")
-
-        # Line 3: tool count + categories
-        if self._tool_count > 0:
-            cats = self._format_categories()
-            line3 = f"\n    {self._tool_count} tools"
-            if cats:
-                line3 += f" · {cats}"
-            yield Text(line3, style="dim")
-
-        # Line 4: model
-        if self._model:
-            yield Text(f"\n    model: {self._model}", style="dim")
+        panel = Panel(
+            self._build_body(),
+            box=box.ROUNDED,
+            title=self._build_title(),
+            title_align="left",
+            subtitle=self._build_subtitle(),
+            subtitle_align="right",
+            border_style=_brand.PURPLE,
+            padding=(0, 2),
+        )
+        yield panel
 
 
 def _interactive_default_peek(console: Console) -> bool:
@@ -467,7 +589,7 @@ class ConsoleEmitter:
             line = escape_markup(data["line"])
             spinner = self._iteration_spinner
             if spinner is not None:
-                spinner.add_scroll_line(f"[dim]{line}[/]")
+                spinner.add_scroll_line(f"[white]{line}[/]")
                 if self._live is not None:
                     self._live.update(spinner)
 
@@ -562,8 +684,14 @@ class ConsoleEmitter:
         iteration = data["iteration"]
         with self._console_lock:
             self._peek_broken = False
+            self._console.print()
             self._console.print(
-                f"\n[bold {_brand.BLUE}]{_RULE_THIN} Iteration {iteration} {_RULE_THIN}[/]"
+                Rule(
+                    title=f"[bold {_brand.PURPLE}]Iteration {iteration}[/]",
+                    align="left",
+                    style=_brand.PURPLE,
+                    characters="─",
+                )
             )
             self._start_live_unlocked()
 
@@ -636,13 +764,15 @@ class ConsoleEmitter:
 
 
 class _IterationSpinner:
-    """Rich renderable that shows a spinner with elapsed time.
+    """Rich renderable for non-Claude agents that emit raw stdout.
 
-    Used for non-Claude agents that don't emit structured activity events.
+    Same panel chrome as :class:`_IterationPanel` so the visual feels
+    consistent across agents — only the body content differs (raw text
+    lines vs. structured tool rows).
     """
 
     def __init__(self) -> None:
-        self._spinner = Spinner("dots")
+        self._spinner = Spinner("dots", style=f"bold {_brand.PURPLE}")
         self._start = time.monotonic()
         self._scroll_lines: list[Text] = []
         self._peek_message: Text | None = None
@@ -662,17 +792,54 @@ class _IterationSpinner:
         """Set a transient status message shown inside the Live region."""
         self._peek_message = Text.from_markup(markup)
 
+    def _build_title(self) -> Text:
+        elapsed = time.monotonic() - self._start
+        title = Text()
+        title.append(" ⏱ ", style=_brand.PURPLE)
+        title.append(format_duration(elapsed), style=f"bold {_brand.PURPLE}")
+        title.append(" ", style="dim")
+        return title
+
+    def _build_footer(self) -> Table:
+        line_count = len(self._scroll_lines)
+        summary = Text(no_wrap=True, overflow="ellipsis")
+        if line_count > 0:
+            summary.append(
+                f"{line_count} line{'s' if line_count != 1 else ''}",
+                style=f"bold {_brand.PURPLE}",
+            )
+            summary.append(" of agent output", style="dim")
+        else:
+            summary.append("waiting for agent output…", style="dim italic")
+        grid = Table.grid(expand=True)
+        grid.add_column(width=2, no_wrap=True)
+        grid.add_column(ratio=1, no_wrap=True, overflow="ellipsis")
+        grid.add_row(self._spinner, summary)
+        return grid
+
+    def _build_body(self) -> Group:
+        rows: list[Any] = []
+        visible = self._scroll_lines[-_MAX_VISIBLE_SCROLL:]
+        if visible:
+            for line in visible:
+                line.no_wrap = True
+                line.overflow = "ellipsis"
+                rows.append(line)
+        elif self._peek_message is not None:
+            rows.append(self._peek_message)
+        rows.append(Text(""))
+        rows.append(self._build_footer())
+        return Group(*rows)
+
     def __rich_console__(
         self, console: Console, options: ConsoleOptions
     ) -> RenderResult:
-        visible = self._scroll_lines[-_MAX_VISIBLE_SCROLL:]
-        for line in visible:
-            yield line
-            yield Text("\n")
-        if not self._scroll_lines and self._peek_message:
-            yield self._peek_message
-            yield Text("\n")
-        elapsed = time.monotonic() - self._start
-        text = Text(f" {format_duration(elapsed)}", style="dim")
-        yield self._spinner
-        yield text
+        panel = Panel(
+            self._build_body(),
+            box=box.ROUNDED,
+            title=self._build_title(),
+            title_align="left",
+            border_style=_brand.PURPLE,
+            padding=(0, 2),
+        )
+        yield panel
