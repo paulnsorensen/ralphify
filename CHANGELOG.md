@@ -2,6 +2,20 @@
 
 All notable changes to ralphify are documented here.
 
+## 0.4.0b2 — 2026-04-12
+
+### Added
+
+- **Full-screen peek (`shift+P`)** — the compact peek panel only shows the ten most recent activity lines, so earlier tool calls from a long iteration scrolled out of view. Press **shift+P** to open a full-screen, scrollable view of the entire activity buffer on the terminal's alt screen. Navigate with `j/k` (line), `space/b` (page), `g/G` (top/bottom), and `q` or `P` to exit. Agent activity keeps streaming in while you scroll, and scrolling back to the bottom re-enables follow mode. The view auto-exits when the iteration ends, so you're never stuck in an alt screen showing dead buffer. The scroll buffer now keeps up to 5000 lines per iteration (was 50) so full-screen peek has something to show.
+
+### Fixed
+
+- **Peek toggle now restores previous terminal state** — toggling peek off used to leave the live activity region in the scrollback, so returning to the compact view looked different from before you pressed `p`. The peek region is now transient: toggling off restores the terminal to exactly the state it was in before peek was enabled, matching the behavior pre-0.4.0.
+- **Peek scroll buffer preserved across toggles** — hitting `p` to hide peek used to drop the scroll buffer, so toggling back on showed an empty feed until new activity arrived. The buffer now survives toggles, so you immediately see the latest state on re-enable.
+- **Double-slash in shortened paths** — `_shorten_path` now correctly handles absolute paths outside `$HOME` (e.g. `/usr/local/...`), producing `/…/file.py` instead of `//…/file.py` in the activity feed.
+
+---
+
 ## 0.4.0b1 — 2026-04-08
 
 ### Added
