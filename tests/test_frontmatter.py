@@ -109,6 +109,33 @@ class TestParseFrontmatter:
         _, body = parse_frontmatter(text)
         assert body == "Before  after"
 
+    def test_html_comment_inside_fenced_code_block_preserved(self):
+        """HTML comments inside fenced code blocks must NOT be stripped —
+        they are part of the code example, not hidden notes."""
+        text = (
+            "---\nagent: claude\n---\n"
+            "Here is code:\n\n"
+            "```html\n"
+            "<div><!-- keep me --><span>hi</span></div>\n"
+            "```\n\n"
+            "<!-- strip me -->\n"
+            "Done."
+        )
+        _, body = parse_frontmatter(text)
+        assert "<!-- keep me -->" in body
+        assert "<!-- strip me -->" not in body
+
+    def test_html_comment_inside_tilde_fence_preserved(self):
+        """Tilde-fenced code blocks must also protect HTML comments."""
+        text = (
+            "---\nagent: claude\n---\n"
+            "~~~\n<!-- preserved -->\n~~~\n"
+            "<!-- removed -->"
+        )
+        _, body = parse_frontmatter(text)
+        assert "<!-- preserved -->" in body
+        assert "<!-- removed -->" not in body
+
     def test_invalid_yaml_raises_value_error(self):
         text = "---\n: invalid: yaml: [unclosed\n---\nBody"
         with pytest.raises(ValueError, match="Invalid YAML"):

@@ -48,8 +48,21 @@ VALID_NAME_CHARS_MSG = (
 # UTF-8 BOM character — files saved on Windows may start with this.
 _UTF8_BOM = "\ufeff"
 
-# Pre-compiled pattern to strip HTML comments from body text.
-_HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+# Matches fenced code blocks (``` or ~~~, captured in group 1) OR HTML
+# comments.  Used by _strip_html_comments to remove comments while
+# preserving any that appear inside code fences.
+_FENCE_OR_COMMENT_RE = re.compile(
+    r"(```.*?```|~~~.*?~~~)|<!--.*?-->",
+    re.DOTALL,
+)
+
+
+def _strip_html_comments(body: str) -> str:
+    """Remove HTML comments from *body*, preserving those inside fenced code blocks."""
+    return _FENCE_OR_COMMENT_RE.sub(
+        lambda m: m.group(1) if m.group(1) else "",
+        body,
+    )
 
 
 def _extract_frontmatter_block(text: str) -> tuple[str, str]:
@@ -99,7 +112,7 @@ def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
             )
     else:
         frontmatter = {}
-    body = _HTML_COMMENT_RE.sub("", body).strip()
+    body = _strip_html_comments(body).strip()
     return frontmatter, body
 
 
