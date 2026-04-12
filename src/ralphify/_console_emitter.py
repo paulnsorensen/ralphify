@@ -260,28 +260,18 @@ def _tool_style_for(name: str) -> tuple[str, str]:
     return _TOOL_STYLES.get(name, _DEFAULT_TOOL_STYLE)
 
 
-class _IterationPanel:
-    """Rich renderable for the live peek panel.
+class _LivePanelBase:
+    """Shared scroll-buffer state for iteration Live renderables.
 
-    Shows a bordered Rich :class:`Panel` whose title carries elapsed time
-    and token counts, body holds the most recent activity rows, and
-    footer holds a spinner + tool counters + model name.
-
-    The activity feed is the centerpiece — each row shows a colored tool
-    name (color-coded by intent: blue for read/search, orange for
-    mutating, green for execution, lavender for web) followed by its
-    primary argument (file path, pattern, command) in dim text.
+    Both :class:`_IterationPanel` (Claude structured output) and
+    :class:`_IterationSpinner` (raw agent output) need the same scroll
+    buffer, peek visibility toggle, and body-rendering logic.  This base
+    class provides all of that so neither subclass has to duplicate it.
     """
 
     def __init__(self) -> None:
         self._spinner = Spinner("dots", style=f"bold {_brand.PURPLE}")
         self._start = time.monotonic()
-        self._model: str = ""
-        self._tool_count: int = 0
-        self._tool_categories: dict[str, int] = {}
-        self._input_tokens: int = 0
-        self._output_tokens: int = 0
-        self._cache_read_tokens: int = 0
         self._scroll_lines: list[Text] = []
         self._peek_message: Text | None = None
         # Visibility flag controlled by toggle_peek.  Buffering keeps
@@ -308,6 +298,53 @@ class _IterationPanel:
     def set_peek_visible(self, visible: bool) -> None:
         """Show or hide the scroll feed without touching the buffer."""
         self._peek_visible = visible
+
+    # ── Shared rendering ─────────────────────────────────────────────
+
+    def _build_footer(self) -> Table:
+        """Subclasses must override to provide the footer summary row."""
+        raise NotImplementedError
+
+    def _build_body(self) -> Group:
+        """Body group: scroll lines (or peek message) + spacer + footer."""
+        rows: list[Any] = []
+        if self._peek_visible:
+            visible = self._scroll_lines[-_MAX_VISIBLE_SCROLL:]
+            if visible:
+                for line in visible:
+                    line.no_wrap = True
+                    line.overflow = "ellipsis"
+                    rows.append(line)
+            elif self._peek_message is not None:
+                rows.append(self._peek_message)
+        elif self._peek_message is not None:
+            rows.append(self._peek_message)
+        rows.append(Text(""))  # spacer above footer
+        rows.append(self._build_footer())
+        return Group(*rows)
+
+
+class _IterationPanel(_LivePanelBase):
+    """Rich renderable for the live peek panel.
+
+    Shows a bordered Rich :class:`Panel` whose title carries elapsed time
+    and token counts, body holds the most recent activity rows, and
+    footer holds a spinner + tool counters + model name.
+
+    The activity feed is the centerpiece — each row shows a colored tool
+    name (color-coded by intent: blue for read/search, orange for
+    mutating, green for execution, lavender for web) followed by its
+    primary argument (file path, pattern, command) in dim text.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._model: str = ""
+        self._tool_count: int = 0
+        self._tool_categories: dict[str, int] = {}
+        self._input_tokens: int = 0
+        self._output_tokens: int = 0
+        self._cache_read_tokens: int = 0
 
     # ── Stream-json processing ───────────────────────────────────────
 
@@ -494,24 +531,6 @@ class _IterationPanel:
         grid.add_row(self._spinner, summary, hint)
         return grid
 
-    def _build_body(self) -> Group:
-        """Body group: scroll lines (or peek message) + spacer + footer."""
-        rows: list[Any] = []
-        if self._peek_visible:
-            visible = self._scroll_lines[-_MAX_VISIBLE_SCROLL:]
-            if visible:
-                for line in visible:
-                    line.no_wrap = True
-                    line.overflow = "ellipsis"
-                    rows.append(line)
-            elif self._peek_message is not None:
-                rows.append(self._peek_message)
-        elif self._peek_message is not None:
-            rows.append(self._peek_message)
-        rows.append(Text(""))  # spacer above footer
-        rows.append(self._build_footer())
-        return Group(*rows)
-
     def __rich_console__(
         self, console: Console, options: ConsoleOptions
     ) -> RenderResult:
@@ -540,8 +559,8 @@ _FULLSCREEN_MIN_VISIBLE = 5
 class _FullscreenPeek:
     """Scrollable alt-screen view of the activity buffer.
 
-    Reads ``_scroll_lines`` from a source :class:`_IterationPanel` or
-    :class:`_IterationSpinner` (they both expose the same attribute).
+    Reads ``_scroll_lines`` from a source :class:`_LivePanelBase` subclass
+    (either :class:`_IterationPanel` or :class:`_IterationSpinner`).
     The source keeps receiving agent events in the background, so as new
     lines land the view follows the tail when ``_auto_scroll`` is set.
 
@@ -551,7 +570,7 @@ class _FullscreenPeek:
     auto-scroll just means "keep offset at 0".
     """
 
-    def __init__(self, source: _IterationPanel | _IterationSpinner) -> None:
+    def __init__(self, source: _LivePanelBase) -> None:
         self._source = source
         self._offset: int = 0
         self._auto_scroll: bool = True
@@ -929,7 +948,7 @@ class ConsoleEmitter:
         with self._console_lock:
             if self._fullscreen_view is not None:
                 return True  # already active — no-op
-            source: _IterationPanel | _IterationSpinner | None = (
+            source: _LivePanelBase | None = (
                 self._iteration_panel or self._iteration_spinner
             )
             if source is None:
@@ -978,7 +997,7 @@ class ConsoleEmitter:
         an iteration is still running.  No-op when the iteration has
         already ended.
         """
-        source: _IterationPanel | _IterationSpinner | None = (
+        source: _LivePanelBase | None = (
             self._iteration_panel or self._iteration_spinner
         )
         if source is None:
@@ -1133,38 +1152,13 @@ class ConsoleEmitter:
             self._console.print(f"[bold {_brand.GREEN}]Done:[/] {summary}")
 
 
-class _IterationSpinner:
+class _IterationSpinner(_LivePanelBase):
     """Rich renderable for non-Claude agents that emit raw stdout.
 
     Same panel chrome as :class:`_IterationPanel` so the visual feels
     consistent across agents — only the body content differs (raw text
     lines vs. structured tool rows).
     """
-
-    def __init__(self) -> None:
-        self._spinner = Spinner("dots", style=f"bold {_brand.PURPLE}")
-        self._start = time.monotonic()
-        self._scroll_lines: list[Text] = []
-        self._peek_message: Text | None = None
-        self._peek_visible: bool = True
-
-    def add_scroll_line(self, markup: str) -> None:
-        """Append a Rich-markup scroll line to the transient buffer."""
-        self._scroll_lines.append(Text.from_markup(markup))
-        if len(self._scroll_lines) > _MAX_SCROLL_LINES:
-            self._scroll_lines.pop(0)
-
-    def clear_scroll(self) -> None:
-        """Drop all buffered scroll lines."""
-        self._scroll_lines.clear()
-
-    def set_peek_message(self, markup: str) -> None:
-        """Set a transient status message shown inside the Live region."""
-        self._peek_message = Text.from_markup(markup)
-
-    def set_peek_visible(self, visible: bool) -> None:
-        """Show or hide the scroll feed without touching the buffer."""
-        self._peek_visible = visible
 
     def _build_title(self) -> Text:
         elapsed = time.monotonic() - self._start
@@ -1194,23 +1188,6 @@ class _IterationSpinner:
         grid.add_column(no_wrap=True, justify="right")
         grid.add_row(self._spinner, summary, hint)
         return grid
-
-    def _build_body(self) -> Group:
-        rows: list[Any] = []
-        if self._peek_visible:
-            visible = self._scroll_lines[-_MAX_VISIBLE_SCROLL:]
-            if visible:
-                for line in visible:
-                    line.no_wrap = True
-                    line.overflow = "ellipsis"
-                    rows.append(line)
-            elif self._peek_message is not None:
-                rows.append(self._peek_message)
-        elif self._peek_message is not None:
-            rows.append(self._peek_message)
-        rows.append(Text(""))
-        rows.append(self._build_footer())
-        return Group(*rows)
 
     def __rich_console__(
         self, console: Console, options: ConsoleOptions
