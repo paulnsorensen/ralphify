@@ -476,7 +476,7 @@ class _IterationPanel:
         summary = Text(no_wrap=True, overflow="ellipsis")
         if self._tool_count > 0:
             summary.append(
-                f"{self._tool_count} tool{'s' if self._tool_count != 1 else ''}",
+                _plural(self._tool_count, "tool"),
                 style=f"bold {_brand.PURPLE}",
             )
             cats = self._format_categories()
@@ -596,7 +596,7 @@ class _FullscreenPeek:
     def _build_header(self, total: int, visible: int) -> Text:
         header = Text(no_wrap=True, overflow="ellipsis")
         header.append(" Full peek ", style=f"bold {_brand.PURPLE}")
-        header.append(f"· {total} line{'s' if total != 1 else ''}", style="dim")
+        header.append(f"· {_plural(total, 'line')}", style="dim")
         if self._auto_scroll:
             header.append("  ·  ", style="dim")
             header.append("following", style=f"italic {_brand.GREEN}")
@@ -1180,7 +1180,7 @@ class _IterationSpinner:
         summary = Text(no_wrap=True, overflow="ellipsis")
         if line_count > 0:
             summary.append(
-                f"{line_count} line{'s' if line_count != 1 else ''}",
+                _plural(line_count, "line"),
                 style=f"bold {_brand.PURPLE}",
             )
             summary.append(" of agent output", style="dim")
