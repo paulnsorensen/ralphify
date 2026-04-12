@@ -15,6 +15,7 @@ from ralphify._console_emitter import (
     _format_run_info,
     _format_summary,
     _is_claude_command,
+    _scrollbar_metrics,
     _shorten_path,
 )
 from ralphify._events import Event, EventType
@@ -1616,6 +1617,61 @@ class TestFullscreenPeekView:
         console = Console(record=True, width=120, height=15, force_terminal=True)
         console.print(view)
         assert "waiting for activity" in console.export_text()
+
+
+class TestScrollbarMetrics:
+    """Unit tests for _scrollbar_metrics pure calculation."""
+
+    def test_no_scrollbar_when_buffer_fits(self):
+        sb = _scrollbar_metrics(total=10, visible=20, offset=0)
+        assert sb.show is False
+
+    def test_no_scrollbar_when_exact_fit(self):
+        sb = _scrollbar_metrics(total=20, visible=20, offset=0)
+        assert sb.show is False
+
+    def test_scrollbar_shown_when_buffer_exceeds_viewport(self):
+        sb = _scrollbar_metrics(total=100, visible=20, offset=0)
+        assert sb.show is True
+
+    def test_thumb_at_bottom_when_offset_zero(self):
+        sb = _scrollbar_metrics(total=100, visible=20, offset=0)
+        assert sb.show is True
+        # offset=0 means following tail; thumb should be at the bottom
+        # of the track (frac=1.0 → thumb_start = track_space).
+        track_space = 20 - sb.thumb_size
+        assert sb.thumb_start == track_space
+
+    def test_thumb_at_top_when_offset_at_max(self):
+        total, visible = 100, 20
+        max_offset = total - visible  # 80
+        sb = _scrollbar_metrics(total=total, visible=visible, offset=max_offset)
+        assert sb.show is True
+        assert sb.thumb_start == 0
+
+    def test_thumb_size_proportional_to_viewport(self):
+        sb = _scrollbar_metrics(total=100, visible=20, offset=0)
+        # thumb_size = max(1, 20*20 // 100) = 4
+        assert sb.thumb_size == 4
+
+    def test_thumb_size_minimum_one(self):
+        sb = _scrollbar_metrics(total=10000, visible=10, offset=0)
+        # 10*10 // 10000 = 0 → clamped to 1
+        assert sb.thumb_size == 1
+
+    def test_midpoint_offset(self):
+        total, visible = 200, 40
+        max_offset = total - visible  # 160
+        mid_offset = max_offset // 2  # 80
+        sb = _scrollbar_metrics(total=total, visible=visible, offset=mid_offset)
+        assert sb.show is True
+        # Thumb should be roughly in the middle of the track
+        track_space = visible - sb.thumb_size
+        assert 0 < sb.thumb_start < track_space
+
+    def test_empty_buffer(self):
+        sb = _scrollbar_metrics(total=0, visible=20, offset=0)
+        assert sb.show is False
 
 
 class TestFullscreenPeekEmitter:

@@ -575,6 +575,43 @@ _FULLSCREEN_CHROME_ROWS = 6
 _FULLSCREEN_MIN_VISIBLE = 5
 
 
+class _ScrollbarMetrics:
+    """Pure-data result of scrollbar geometry calculation.
+
+    ``show`` is ``False`` when the buffer fits in the viewport and no
+    scrollbar should be rendered.  ``thumb_start`` and ``thumb_size``
+    are row indices within the viewport, valid only when ``show`` is
+    ``True``.
+    """
+
+    __slots__ = ("show", "thumb_start", "thumb_size")
+
+    def __init__(self, show: bool, thumb_start: int, thumb_size: int) -> None:
+        self.show = show
+        self.thumb_start = thumb_start
+        self.thumb_size = thumb_size
+
+
+def _scrollbar_metrics(total: int, visible: int, offset: int) -> _ScrollbarMetrics:
+    """Compute scrollbar position and size for the fullscreen peek view.
+
+    *total* is the number of buffered lines, *visible* the viewport
+    height, and *offset* how many lines are hidden below the viewport
+    (0 = following the tail).
+
+    Returns a :class:`_ScrollbarMetrics` with ``show=False`` when the
+    buffer fits within the viewport.
+    """
+    if total <= visible:
+        return _ScrollbarMetrics(show=False, thumb_start=0, thumb_size=0)
+    thumb_size = max(1, visible * visible // total)
+    max_off = max(total - visible, 1)
+    frac = 1.0 - (offset / max_off)
+    track_space = visible - thumb_size
+    thumb_start = int(frac * track_space)
+    return _ScrollbarMetrics(show=True, thumb_start=thumb_start, thumb_size=thumb_size)
+
+
 class _FullscreenPeek:
     """Scrollable alt-screen view of the activity buffer.
 
@@ -674,16 +711,7 @@ class _FullscreenPeek:
         start = max(0, end - visible)
         window = lines[start:end]
 
-        # Scrollbar metrics
-        show_scrollbar = total > visible
-        thumb_start = 0
-        thumb_size = visible
-        if show_scrollbar:
-            thumb_size = max(1, visible * visible // total)
-            max_off_val = max(total - visible, 1)
-            frac = 1.0 - (self._offset / max_off_val)
-            track_space = visible - thumb_size
-            thumb_start = int(frac * track_space)
+        sb = _scrollbar_metrics(total, visible, self._offset)
 
         rows: list[Any] = []
         rows.append(self._build_header(total, visible))
@@ -692,7 +720,7 @@ class _FullscreenPeek:
         # Content area with optional scrollbar column
         content = Table.grid(expand=True)
         content.add_column(ratio=1, no_wrap=True, overflow="ellipsis")
-        if show_scrollbar:
+        if sb.show:
             content.add_column(width=1, no_wrap=True)
 
         for i in range(visible):
@@ -702,8 +730,8 @@ class _FullscreenPeek:
                 line.overflow = "ellipsis"
             else:
                 line = Text("")
-            if show_scrollbar:
-                in_thumb = thumb_start <= i < thumb_start + thumb_size
+            if sb.show:
+                in_thumb = sb.thumb_start <= i < sb.thumb_start + sb.thumb_size
                 bar = Text(
                     "█" if in_thumb else "│",
                     style=_brand.PURPLE if in_thumb else "dim",
@@ -712,7 +740,7 @@ class _FullscreenPeek:
             else:
                 content.add_row(line)
 
-        if not window and not show_scrollbar:
+        if not window and not sb.show:
             # Replace the empty grid with a waiting message
             rows.append(Text("  (waiting for activity…)", style="dim italic"))
             for _ in range(max(0, visible - 1)):
