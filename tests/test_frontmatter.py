@@ -132,6 +132,25 @@ class TestParseFrontmatter:
         assert "<!-- preserved -->" in body
         assert "<!-- removed -->" not in body
 
+    def test_html_comment_inside_four_backtick_fence_preserved(self):
+        """Four-backtick fences (used to embed ``` inside code) must
+        protect HTML comments inside them.
+
+        When a single ``` appears inside a ```` fence, the comment
+        between the ``` and the closing ```` must not be stripped."""
+        text = (
+            "---\nagent: claude\n---\n"
+            "````\n"
+            "```\n"
+            "code\n"
+            "<!-- keep this comment -->\n"
+            "````\n"
+            "<!-- strip this comment -->"
+        )
+        _, body = parse_frontmatter(text)
+        assert "<!-- keep this comment -->" in body
+        assert "<!-- strip this comment -->" not in body
+
     def test_invalid_yaml_raises_value_error(self):
         text = "---\n: invalid: yaml: [unclosed\n---\nBody"
         with pytest.raises(ValueError, match="Invalid YAML"):

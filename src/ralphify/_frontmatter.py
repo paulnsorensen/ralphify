@@ -51,8 +51,12 @@ _UTF8_BOM = "\ufeff"
 # Matches fenced code blocks (``` or ~~~, captured in group 1) OR HTML
 # comments.  Used by _strip_html_comments to remove comments while
 # preserving any that appear inside code fences.
+#
+# Backreferences (\2 / \3) ensure the closing fence has the same number
+# of characters as the opening, so a ```` fence is not broken by an
+# inner ``` — the inner ``` is treated as content, not a fence boundary.
 _FENCE_OR_COMMENT_RE = re.compile(
-    r"(```.*?```|~~~.*?~~~)|<!--.*?-->",
+    r"((`{3,}).*?\2|(~{3,}).*?\3)|<!--.*?-->",
     re.DOTALL,
 )
 
