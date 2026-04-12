@@ -151,6 +151,31 @@ class TestParseFrontmatter:
         assert "<!-- keep this comment -->" in body
         assert "<!-- strip this comment -->" not in body
 
+    def test_html_comment_after_longer_closing_fence_stripped(self):
+        """When the closing fence has more backticks than the opening, the
+        extra backticks must NOT be treated as a new opening fence.
+
+        In CommonMark, a closing fence need only have *at least* as many
+        backticks as the opening.  A 6-backtick line closes a 3-backtick
+        fence; everything after is normal text and comments should be
+        stripped.
+
+        Regression: the backreference in the fence regex consumed only as
+        many backticks as the opening, leaving the extras to be
+        misinterpreted as a second opening fence when followed by another
+        line of 3+ backticks later in the text."""
+        text = (
+            "---\nagent: claude\n---\n"
+            "```\n"
+            "code\n"
+            "``````\n"
+            "<!-- strip this -->\n"
+            "```\n"
+            "more text"
+        )
+        _, body = parse_frontmatter(text)
+        assert "<!-- strip this -->" not in body
+
     def test_html_comment_after_inline_backticks_inside_fence_preserved(self):
         """When a ``` fence contains inline ``` characters on a content
         line, the inline backticks must NOT be treated as the closing
