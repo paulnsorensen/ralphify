@@ -127,11 +127,7 @@ class TestParseFrontmatter:
 
     def test_html_comment_inside_tilde_fence_preserved(self):
         """Tilde-fenced code blocks must also protect HTML comments."""
-        text = (
-            "---\nagent: claude\n---\n"
-            "~~~\n<!-- preserved -->\n~~~\n"
-            "<!-- removed -->"
-        )
+        text = "---\nagent: claude\n---\n~~~\n<!-- preserved -->\n~~~\n<!-- removed -->"
         _, body = parse_frontmatter(text)
         assert "<!-- preserved -->" in body
         assert "<!-- removed -->" not in body
