@@ -54,7 +54,8 @@ _STDOUT: OutputStream = "stdout"
 _STDERR: OutputStream = "stderr"
 
 # Agent binary name that supports --output-format stream-json.
-_CLAUDE_BINARY = "claude"
+# Public because _console_emitter also needs this for display logic.
+CLAUDE_BINARY = "claude"
 
 # CLI flags appended when streaming mode is used.
 _OUTPUT_FORMAT_FLAG = "--output-format"
@@ -269,7 +270,7 @@ def _supports_stream_json(cmd: list[str]) -> bool:
     if not cmd:
         return False
     binary = Path(cmd[0]).stem
-    return binary == _CLAUDE_BINARY
+    return binary == CLAUDE_BINARY
 
 
 def _readline_pump(

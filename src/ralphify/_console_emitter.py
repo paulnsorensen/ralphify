@@ -40,6 +40,7 @@ from ralphify._events import (
     RunStoppedData,
 )
 from ralphify import _brand
+from ralphify._agent import CLAUDE_BINARY
 from ralphify._output import format_duration
 
 _ICON_SUCCESS = "✓"
@@ -94,8 +95,6 @@ _PEEK_OFF_MSG = (
 
 # ── Claude binary detection ───────────────────────────────────────────
 
-_CLAUDE_BINARY = "claude"
-
 
 def _is_claude_command(agent: str) -> bool:
     """Return True if *agent* is a Claude Code command."""
@@ -105,7 +104,7 @@ def _is_claude_command(agent: str) -> bool:
         return False
     if not parts:
         return False
-    return Path(parts[0]).stem == _CLAUDE_BINARY
+    return Path(parts[0]).stem == CLAUDE_BINARY
 
 
 # ── Tool argument abbreviation ────────────────────────────────────────
