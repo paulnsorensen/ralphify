@@ -564,6 +564,28 @@ class _IterationPanel(_LivePanelBase):
         return self._footer_grid(summary)
 
 
+class _IterationSpinner(_LivePanelBase):
+    """Rich renderable for non-Claude agents that emit raw stdout.
+
+    Same panel chrome as :class:`_IterationPanel` so the visual feels
+    consistent across agents — only the body content differs (raw text
+    lines vs. structured tool rows).
+    """
+
+    def _build_footer(self) -> Table:
+        line_count = len(self._scroll_lines)
+        summary = Text(no_wrap=True, overflow="ellipsis")
+        if line_count > 0:
+            summary.append(
+                _plural(line_count, "line"),
+                style=f"bold {_brand.PURPLE}",
+            )
+            summary.append(" of agent output", style="dim")
+        else:
+            summary.append("waiting for agent output…", style="dim italic")
+        return self._footer_grid(summary)
+
+
 # ── Full-screen peek ─────────────────────────────────────────────────
 
 # Chrome rows that the fullscreen peek reserves on top of its viewport:
@@ -1168,25 +1190,3 @@ class ConsoleEmitter:
             )
             self._console.print(f"\n[bold {_brand.BLUE}]{_RULE_HEAVY}[/]")
             self._console.print(f"[bold {_brand.GREEN}]Done:[/] {summary}")
-
-
-class _IterationSpinner(_LivePanelBase):
-    """Rich renderable for non-Claude agents that emit raw stdout.
-
-    Same panel chrome as :class:`_IterationPanel` so the visual feels
-    consistent across agents — only the body content differs (raw text
-    lines vs. structured tool rows).
-    """
-
-    def _build_footer(self) -> Table:
-        line_count = len(self._scroll_lines)
-        summary = Text(no_wrap=True, overflow="ellipsis")
-        if line_count > 0:
-            summary.append(
-                _plural(line_count, "line"),
-                style=f"bold {_brand.PURPLE}",
-            )
-            summary.append(" of agent output", style="dim")
-        else:
-            summary.append("waiting for agent output…", style="dim italic")
-        return self._footer_grid(summary)
