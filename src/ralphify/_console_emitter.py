@@ -859,6 +859,12 @@ class ConsoleEmitter:
         # always called regardless of this gate.
         return self._peek_enabled
 
+    def _peek_status_msg(self, enabled: bool) -> str:
+        """Return the peek status message for the given on/off state."""
+        if not enabled:
+            return _PEEK_OFF_MSG
+        return _PEEK_ON_MSG_STRUCTURED if self._structured_agent else _PEEK_ON_MSG_RAW
+
     def toggle_peek(self) -> bool:
         """Flip live-output rendering on or off.
 
@@ -870,14 +876,7 @@ class ConsoleEmitter:
         with self._console_lock:
             self._peek_enabled = not self._peek_enabled
             enabled = self._peek_enabled
-            if enabled:
-                msg = (
-                    _PEEK_ON_MSG_STRUCTURED
-                    if self._structured_agent
-                    else _PEEK_ON_MSG_RAW
-                )
-            else:
-                msg = _PEEK_OFF_MSG
+            msg = self._peek_status_msg(enabled)
 
             renderable = self._active_renderable
             if renderable is not None:
@@ -945,12 +944,7 @@ class ConsoleEmitter:
             if info:
                 self._console.print(f"  [dim]{info}[/]")
             if self._peek_enabled:
-                msg = (
-                    _PEEK_ON_MSG_STRUCTURED
-                    if self._structured_agent
-                    else _PEEK_ON_MSG_RAW
-                )
-                self._console.print(msg)
+                self._console.print(self._peek_status_msg(True))
 
     def _start_live_unlocked(self) -> None:
         """Start the iteration panel.  Caller must hold ``_console_lock``."""
