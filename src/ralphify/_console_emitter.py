@@ -156,6 +156,7 @@ def _format_params(tool_input: dict[str, Any], keys: list[str]) -> str:
 def _extract_file_path(i: dict[str, Any]) -> str:
     return _shorten_path(i.get("file_path", ""))
 
+
 _TOOL_ARG_EXTRACTORS: dict[str, Callable[[dict[str, Any]], str]] = {
     "Read": _extract_file_path,
     "Write": _extract_file_path,
@@ -787,6 +788,25 @@ class ConsoleEmitter:
             EventType.AGENT_ACTIVITY: self._on_agent_activity,
         }
 
+    @property
+    def _active_renderable(self) -> _LivePanelBase | None:
+        """The panel or spinner for the current iteration, or ``None``."""
+        return self._iteration_panel or self._iteration_spinner
+
+    def _refresh_live_unlocked(self, renderable: _LivePanelBase) -> None:
+        """Push updated state to whichever Live context is active.
+
+        Fullscreen takes priority — when active, the compact Live has been
+        stopped, so only the fullscreen Live needs a refresh.  Otherwise
+        the compact Live is updated.
+
+        Caller must hold ``_console_lock``.
+        """
+        if self._fullscreen_live is not None and self._fullscreen_view is not None:
+            self._fullscreen_live.update(self._fullscreen_view)
+        elif self._live is not None:
+            self._live.update(renderable)
+
     def wants_agent_output_lines(self) -> bool:
         # Returns the peek state so the engine still gets a "no, drop
         # raw line events" signal when peek is off.  This lets the
@@ -817,7 +837,7 @@ class ConsoleEmitter:
             else:
                 msg = _PEEK_OFF_MSG
 
-            renderable = self._iteration_panel or self._iteration_spinner
+            renderable = self._active_renderable
             if renderable is not None:
                 renderable.set_peek_visible(enabled)
                 renderable.set_peek_message(msg)
@@ -836,12 +856,7 @@ class ConsoleEmitter:
             spinner = self._iteration_spinner
             if spinner is not None:
                 spinner.add_scroll_line(f"[white]{line}[/]")
-                fs_live = self._fullscreen_live
-                fs_view = self._fullscreen_view
-                if fs_live is not None and fs_view is not None:
-                    fs_live.update(fs_view)
-                elif self._live is not None:
-                    self._live.update(spinner)
+                self._refresh_live_unlocked(spinner)
 
     def _on_agent_activity(self, data: AgentActivityData) -> None:
         """Handle structured agent activity events (Claude stream-json).
@@ -862,16 +877,7 @@ class ConsoleEmitter:
                 if panel is None:
                     return
                 panel.apply(data["raw"])
-                # Update whichever Live is currently on top.  Fullscreen
-                # wins — it gets the refresh so scroll-follow mode picks
-                # up new lines in real time.  Otherwise the compact Live
-                # re-renders with new counters + scroll lines.
-                fs_live = self._fullscreen_live
-                fs_view = self._fullscreen_view
-                if fs_live is not None and fs_view is not None:
-                    fs_live.update(fs_view)
-                elif self._live is not None:
-                    self._live.update(panel)
+                self._refresh_live_unlocked(panel)
             except Exception:
                 self._peek_broken = True
                 self._console.print(
@@ -964,9 +970,7 @@ class ConsoleEmitter:
         with self._console_lock:
             if self._fullscreen_view is not None:
                 return True  # already active — no-op
-            source: _LivePanelBase | None = (
-                self._iteration_panel or self._iteration_spinner
-            )
+            source = self._active_renderable
             if source is None:
                 self._console.print("[dim]Full peek: no active iteration yet[/]")
                 return False
@@ -1013,9 +1017,7 @@ class ConsoleEmitter:
         an iteration is still running.  No-op when the iteration has
         already ended.
         """
-        source: _LivePanelBase | None = (
-            self._iteration_panel or self._iteration_spinner
-        )
+        source = self._active_renderable
         if source is None:
             return
         self._live = Live(
