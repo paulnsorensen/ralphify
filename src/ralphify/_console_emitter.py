@@ -157,28 +157,11 @@ def _extract_file_path(i: dict[str, Any]) -> str:
     return _shorten_path(i.get("file_path", ""))
 
 
-_TOOL_ARG_EXTRACTORS: dict[str, Callable[[dict[str, Any]], str]] = {
-    "Read": _extract_file_path,
-    "Write": _extract_file_path,
-    "Edit": _extract_file_path,
-    "MultiEdit": _extract_file_path,
-    "Glob": lambda i: i.get("pattern", ""),
-    "Grep": lambda i: i.get("pattern", ""),
-    "Bash": lambda i: i.get("command", ""),
-    "Task": lambda i: _format_params(i, ["description", "prompt"]),
-    "WebFetch": lambda i: i.get("url", ""),
-    "WebSearch": lambda i: i.get("query", ""),
-    "TodoWrite": lambda i: f"{len(i.get('todos', []))} todos",
-    "Agent": lambda i: _format_params(i, ["description", "prompt"]),
-    "ToolSearch": lambda i: _format_params(i, ["query", "max_results"]),
-}
-
-
 def _extract_tool_arg(name: str, tool_input: dict[str, Any]) -> str:
     """Return the most relevant argument string for a tool call."""
-    extractor = _TOOL_ARG_EXTRACTORS.get(name)
-    if extractor is not None:
-        return extractor(tool_input)
+    cfg = _TOOL_REGISTRY.get(name)
+    if cfg is not None and cfg.extract_arg is not None:
+        return cfg.extract_arg(tool_input)
     return ", ".join(sorted(tool_input.keys()))
 
 
@@ -227,25 +210,48 @@ def _format_run_info(
     return " · ".join(parts)
 
 
-# ── Iteration panel ──────────────────────────────────────────────────
+# ── Tool registry ───────────────────────────────────────────────────
+#
+# Single source of truth for tool display config in the activity feed.
+# Each entry defines the color (applied to the tool name), the category
+# bucket (shown in the footer counter), and an optional argument
+# extractor (picks the most relevant arg for the scroll line).
+#
+# Color intent: blue=read/search, orange=mutate, green=execute,
+# lavender=web, violet=delegate, purple=meta.
 
-# (color, category) for each known tool.  Color is applied to the tool
-# name in scroll lines so the activity feed scans visually by intent —
-# blue=read/search, orange=mutate, green=execute, lavender=web, etc.
-# Category is the bucket used in the footer's compact tool counter.
-_TOOL_STYLES: dict[str, tuple[str, str]] = {
-    "Read": (_brand.BLUE, "read"),
-    "Glob": (_brand.BLUE, "glob"),
-    "Grep": (_brand.BLUE, "grep"),
-    "Edit": (_brand.ORANGE, "edit"),
-    "MultiEdit": (_brand.ORANGE, "edit"),
-    "Write": (_brand.ORANGE, "write"),
-    "Bash": (_brand.GREEN, "bash"),
-    "BashOutput": (_brand.GREEN, "bash"),
-    "WebFetch": (_brand.LAVENDER, "web"),
-    "WebSearch": (_brand.LAVENDER, "web"),
-    "Task": (_brand.VIOLET, "task"),
-    "TodoWrite": (_brand.PURPLE, "todo"),
+
+class _ToolConfig:
+    """Visual and extraction config for a known tool."""
+
+    __slots__ = ("color", "category", "extract_arg")
+
+    def __init__(
+        self,
+        color: str,
+        category: str,
+        extract_arg: Callable[[dict[str, Any]], str] | None = None,
+    ) -> None:
+        self.color = color
+        self.category = category
+        self.extract_arg = extract_arg
+
+
+_TOOL_REGISTRY: dict[str, _ToolConfig] = {
+    "Read": _ToolConfig(_brand.BLUE, "read", _extract_file_path),
+    "Glob": _ToolConfig(_brand.BLUE, "glob", lambda i: i.get("pattern", "")),
+    "Grep": _ToolConfig(_brand.BLUE, "grep", lambda i: i.get("pattern", "")),
+    "Edit": _ToolConfig(_brand.ORANGE, "edit", _extract_file_path),
+    "MultiEdit": _ToolConfig(_brand.ORANGE, "edit", _extract_file_path),
+    "Write": _ToolConfig(_brand.ORANGE, "write", _extract_file_path),
+    "Bash": _ToolConfig(_brand.GREEN, "bash", lambda i: i.get("command", "")),
+    "BashOutput": _ToolConfig(_brand.GREEN, "bash"),
+    "WebFetch": _ToolConfig(_brand.LAVENDER, "web", lambda i: i.get("url", "")),
+    "WebSearch": _ToolConfig(_brand.LAVENDER, "web", lambda i: i.get("query", "")),
+    "Task": _ToolConfig(_brand.VIOLET, "task", lambda i: _format_params(i, ["description", "prompt"])),
+    "Agent": _ToolConfig(_brand.VIOLET, "agent", lambda i: _format_params(i, ["description", "prompt"])),
+    "ToolSearch": _ToolConfig(_brand.BLUE, "other", lambda i: _format_params(i, ["query", "max_results"])),
+    "TodoWrite": _ToolConfig(_brand.PURPLE, "todo", lambda i: f"{len(i.get('todos', []))} todos"),
 }
 
 _DEFAULT_TOOL_STYLE: tuple[str, str] = ("white", "other")
@@ -257,7 +263,8 @@ _TOOL_NAME_COL = 9
 
 
 def _tool_style_for(name: str) -> tuple[str, str]:
-    return _TOOL_STYLES.get(name, _DEFAULT_TOOL_STYLE)
+    cfg = _TOOL_REGISTRY.get(name)
+    return (cfg.color, cfg.category) if cfg is not None else _DEFAULT_TOOL_STYLE
 
 
 class _LivePanelBase:
