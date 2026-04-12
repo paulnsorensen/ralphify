@@ -55,8 +55,12 @@ _UTF8_BOM = "\ufeff"
 # Backreferences (\2 / \3) ensure the closing fence has the same number
 # of characters as the opening, so a ```` fence is not broken by an
 # inner ``` — the inner ``` is treated as content, not a fence boundary.
+# The ``\n`` before each backreference requires the closing fence to
+# start on a new line, preventing inline backticks/tildes from being
+# mistaken for a closing fence (matching CommonMark's rule that closing
+# code fences must be on their own line).
 _FENCE_OR_COMMENT_RE = re.compile(
-    r"((`{3,}).*?\2|(~{3,}).*?\3)|<!--.*?-->",
+    r"((`{3,}).*?\n[ \t]*\2|(~{3,}).*?\n[ \t]*\3)|<!--.*?-->",
     re.DOTALL,
 )
 
