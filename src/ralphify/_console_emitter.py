@@ -153,11 +153,14 @@ def _format_params(tool_input: dict[str, Any], keys: list[str]) -> str:
     return " · ".join(parts) if parts else ""
 
 
+def _extract_file_path(i: dict[str, Any]) -> str:
+    return _shorten_path(i.get("file_path", ""))
+
 _TOOL_ARG_EXTRACTORS: dict[str, Callable[[dict[str, Any]], str]] = {
-    "Read": lambda i: _shorten_path(i.get("file_path", "")),
-    "Write": lambda i: _shorten_path(i.get("file_path", "")),
-    "Edit": lambda i: _shorten_path(i.get("file_path", "")),
-    "MultiEdit": lambda i: _shorten_path(i.get("file_path", "")),
+    "Read": _extract_file_path,
+    "Write": _extract_file_path,
+    "Edit": _extract_file_path,
+    "MultiEdit": _extract_file_path,
     "Glob": lambda i: i.get("pattern", ""),
     "Grep": lambda i: i.get("pattern", ""),
     "Bash": lambda i: i.get("command", ""),
@@ -170,13 +173,17 @@ _TOOL_ARG_EXTRACTORS: dict[str, Callable[[dict[str, Any]], str]] = {
 }
 
 
-def _format_tool_summary(name: str, tool_input: dict[str, Any]) -> str:
-    """Return a compact one-liner describing a tool call."""
+def _extract_tool_arg(name: str, tool_input: dict[str, Any]) -> str:
+    """Return the most relevant argument string for a tool call."""
     extractor = _TOOL_ARG_EXTRACTORS.get(name)
     if extractor is not None:
-        arg = extractor(tool_input)
-    else:
-        arg = ", ".join(sorted(tool_input.keys()))
+        return extractor(tool_input)
+    return ", ".join(sorted(tool_input.keys()))
+
+
+def _format_tool_summary(name: str, tool_input: dict[str, Any]) -> str:
+    """Return a compact one-liner describing a tool call."""
+    arg = _extract_tool_arg(name, tool_input)
     if arg:
         return f"{name}  {arg}"
     return name
@@ -418,10 +425,7 @@ class _IterationPanel(_LivePanelBase):
                 color, cat = _tool_style_for(name)
                 self._tool_categories[cat] = self._tool_categories.get(cat, 0) + 1
 
-                if _TOOL_ARG_EXTRACTORS.get(name) is not None:
-                    arg = _TOOL_ARG_EXTRACTORS[name](tool_input)
-                else:
-                    arg = ", ".join(sorted(tool_input.keys()))
+                arg = _extract_tool_arg(name, tool_input)
 
                 # Pad short names to a fixed column so arguments line up;
                 # longer names get a guaranteed two-space gap so the arg
