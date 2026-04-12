@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import json
 import os
-import queue as _queue
+import queue
 import signal
 import subprocess
 import threading
@@ -275,7 +275,7 @@ def _supports_stream_json(cmd: list[str]) -> bool:
 
 def _readline_pump(
     stdout: IO[str],
-    line_queue: _queue.Queue[str | None],
+    line_queue: queue.Queue[str | None],
 ) -> None:
     """Read *stdout* line-by-line and put each line into *line_queue*.
 
@@ -326,7 +326,7 @@ def _read_agent_stream(
     stdout_lines: list[str] = []
     result_text: str | None = None
 
-    line_q: _queue.Queue[str | None] = _queue.Queue()
+    line_q: queue.Queue[str | None] = queue.Queue()
     reader = threading.Thread(target=_readline_pump, args=(stdout, line_q), daemon=True)
     reader.start()
 
@@ -344,7 +344,7 @@ def _read_agent_stream(
 
         try:
             line = line_q.get(timeout=get_timeout)
-        except _queue.Empty:
+        except queue.Empty:
             # Deadline expired while waiting for a line.
             return _StreamResult(
                 stdout_lines=stdout_lines,
