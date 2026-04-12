@@ -16,7 +16,7 @@ from pathlib import Path
 from ralphify._output import SUBPROCESS_TEXT_KWARGS, ProcessResult, collect_output
 
 
-@dataclass
+@dataclass(slots=True)
 class RunResult(ProcessResult):
     """Result of running a command or script."""
 

@@ -222,7 +222,7 @@ def _deliver_prompt(proc: subprocess.Popen[Any], prompt: str) -> None:
             pass
 
 
-@dataclass
+@dataclass(slots=True)
 class AgentResult(ProcessResult):
     """Result of running the agent subprocess."""
 
@@ -233,7 +233,7 @@ class AgentResult(ProcessResult):
     captured_stderr: str | None = None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _StreamResult:
     """Accumulated output from reading the agent's JSON stream."""
 

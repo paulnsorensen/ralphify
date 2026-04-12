@@ -174,7 +174,7 @@ EventData = (
 """Union of all typed event data payloads."""
 
 
-@dataclass
+@dataclass(slots=True)
 class Event:
     """A structured event emitted by the run loop."""
 

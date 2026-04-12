@@ -29,7 +29,7 @@ SUBPROCESS_TEXT_KWARGS: dict[str, Any] = {
 SESSION_KWARGS: dict[str, Any] = {} if IS_WINDOWS else {"start_new_session": True}
 
 
-@dataclass
+@dataclass(slots=True)
 class ProcessResult:
     """Base result for any subprocess execution.
 

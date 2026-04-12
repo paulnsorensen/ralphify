@@ -14,7 +14,7 @@ from ralphify._run_types import RunConfig, RunState, generate_run_id
 from ralphify.engine import run_loop
 
 
-@dataclass
+@dataclass(slots=True)
 class ManagedRun:
     """A run bundled with its background thread and event queue.
 

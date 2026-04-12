@@ -67,7 +67,7 @@ _STATUS_REASONS: dict[RunStatus, StopReason] = {
 }
 
 
-@dataclass
+@dataclass(slots=True)
 class Command:
     """A named command from RALPH.md frontmatter."""
 
@@ -76,7 +76,7 @@ class Command:
     timeout: float = DEFAULT_COMMAND_TIMEOUT
 
 
-@dataclass
+@dataclass(slots=True)
 class RunConfig:
     """All settings for a single run.
 
@@ -99,7 +99,7 @@ class RunConfig:
     credit: bool = True
 
 
-@dataclass
+@dataclass(slots=True)
 class RunState:
     """Observable state for a run.
 
