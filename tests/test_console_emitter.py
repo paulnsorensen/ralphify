@@ -587,8 +587,8 @@ class TestStructuredPeek:
         assert any("fix the bug" in line.plain for line in panel._scroll_lines)
         emitter._stop_live()
 
-    def test_thinking_does_not_scroll(self):
-        """Thinking events update the panel status but don't produce scroll output."""
+    def test_thinking_produces_scroll_lines(self):
+        """Thinking blocks appear in the scroll buffer as dim italic text."""
         emitter, console = self._make_structured_emitter()
         emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
         emitter.emit(
@@ -605,7 +605,8 @@ class TestStructuredPeek:
         )
         panel = emitter._iteration_panel
         assert panel is not None
-        assert len(panel._scroll_lines) == 0
+        assert len(panel._scroll_lines) == 1
+        assert "let me think..." in panel._scroll_lines[0].plain
         emitter._stop_live()
 
     def test_rate_limit_scroll_line(self):
@@ -1348,7 +1349,7 @@ class TestIterationPanel:
 
     def test_apply_tool_use_updates_counters(self):
         panel = _IterationPanel()
-        result = panel.apply(
+        panel.apply(
             {
                 "type": "assistant",
                 "message": {
@@ -1362,17 +1363,16 @@ class TestIterationPanel:
                 },
             }
         )
-        assert result is not None
-        assert "Read" in result
         assert panel._tool_count == 1
         assert panel._tool_categories.get("read") == 1
+        assert len(panel._scroll_lines) == 1
+        assert "Read" in panel._scroll_lines[0].plain
 
     def test_apply_system_init_sets_model(self):
         panel = _IterationPanel()
-        result = panel.apply(
+        panel.apply(
             {"type": "system", "subtype": "init", "model": "claude-opus-4-6"}
         )
-        assert result is None
         assert panel._model == "claude-opus-4-6"
 
     def test_apply_usage_updates_tokens(self):
@@ -1401,15 +1401,15 @@ class TestIterationPanel:
     def test_format_tokens_does_not_double_count_cached_input(self):
         """The Anthropic API's input_tokens already includes cache_read_input_tokens
         as a subset.  _format_tokens must not add them again — that would inflate
-        the displayed total (e.g. 1000 input + 800 cached → wrong ↑1.8k instead
-        of correct ↑1.0k)."""
+        the displayed total (e.g. 1000 input + 800 cached → wrong ctx 1.8k instead
+        of correct ctx 1.0k)."""
         panel = _IterationPanel()
         panel._input_tokens = 1000
         panel._cache_read_tokens = 800
         panel._output_tokens = 200
         result = panel._format_tokens()
-        assert "↑1.0k" in result, (
-            f"Expected ↑1.0k (input_tokens already includes cache), got: {result!r}"
+        assert "ctx 1.0k" in result, (
+            f"Expected ctx 1.0k (input_tokens already includes cache), got: {result!r}"
         )
 
     def test_format_count(self):

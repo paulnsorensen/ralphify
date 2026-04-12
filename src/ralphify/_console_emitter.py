@@ -144,6 +144,16 @@ def _shorten_path(path: str, max_len: int = 48) -> str:
     return "…/" + tail[-(max_len - 2) :]
 
 
+def _format_params(tool_input: dict[str, Any], keys: list[str]) -> str:
+    """Format specified tool parameters as ``key: value`` pairs."""
+    parts = []
+    for key in keys:
+        val = tool_input.get(key)
+        if val is not None:
+            parts.append(f"{key}: {val}")
+    return " · ".join(parts) if parts else ""
+
+
 _TOOL_ARG_EXTRACTORS: dict[str, Callable[[dict[str, Any]], str]] = {
     "Read": lambda i: _shorten_path(i.get("file_path", "")),
     "Write": lambda i: _shorten_path(i.get("file_path", "")),
@@ -151,11 +161,13 @@ _TOOL_ARG_EXTRACTORS: dict[str, Callable[[dict[str, Any]], str]] = {
     "MultiEdit": lambda i: _shorten_path(i.get("file_path", "")),
     "Glob": lambda i: i.get("pattern", ""),
     "Grep": lambda i: i.get("pattern", ""),
-    "Bash": lambda i: _truncate(i.get("command", ""), 80),
-    "Task": lambda i: _truncate(i.get("description", i.get("prompt", "")), 80),
+    "Bash": lambda i: i.get("command", ""),
+    "Task": lambda i: _format_params(i, ["description", "prompt"]),
     "WebFetch": lambda i: i.get("url", ""),
     "WebSearch": lambda i: i.get("query", ""),
     "TodoWrite": lambda i: f"{len(i.get('todos', []))} todos",
+    "Agent": lambda i: _format_params(i, ["description", "prompt"]),
+    "ToolSearch": lambda i: _format_params(i, ["query", "max_results"]),
 }
 
 
@@ -300,41 +312,31 @@ class _IterationPanel:
 
     # ── Stream-json processing ───────────────────────────────────────
 
-    def apply(self, raw: dict[str, Any]) -> str | None:
+    def apply(self, raw: dict[str, Any]) -> None:
         """Update panel state from a parsed stream-json dict.
 
-        Returns the scroll-line markup string (or ``None``).  The line is
-        also appended to the internal scroll buffer so it renders inside
-        the Live region.
+        Each handler appends its own scroll lines to the buffer so that
+        multi-line blocks (thinking, long text) can produce several rows.
         """
         event_type = raw.get("type")
 
         if event_type == "system" and raw.get("subtype") == "init":
             self._model = raw.get("model", "")
-            return None
-
-        scroll_line: str | None = None
-
-        if event_type == "assistant":
-            scroll_line = self._apply_assistant(raw)
+        elif event_type == "assistant":
+            self._apply_assistant(raw)
         elif event_type == "user":
-            scroll_line = self._apply_user(raw)
+            self._apply_user(raw)
         elif event_type == "rate_limit_event":
             info = raw.get("rate_limit_info", {})
             status = info.get("status", "")
             resets = info.get("resetsAt", "")
-            scroll_line = (
+            self.add_scroll_line(
                 f"[bold {_brand.PEACH}]⚠ rate limit:[/]"
                 f" [dim]{escape_markup(str(status))}"
                 f", resets {escape_markup(str(resets))}[/]"
             )
 
-        if scroll_line is not None:
-            self.add_scroll_line(scroll_line)
-
-        return scroll_line
-
-    def _apply_assistant(self, raw: dict[str, Any]) -> str | None:
+    def _apply_assistant(self, raw: dict[str, Any]) -> None:
         msg = raw.get("message", {})
 
         # Update token counts from usage
@@ -348,21 +350,30 @@ class _IterationPanel:
 
         content = msg.get("content", [])
         if not isinstance(content, list):
-            return None
+            return
 
-        scroll_line: str | None = None
         for block in content:
             if not isinstance(block, dict):
                 continue
             block_type = block.get("type")
 
-            if block_type == "text":
+            if block_type == "thinking":
+                text = block.get("thinking", "")
+                if text:
+                    for tline in text.split("\n"):
+                        self.add_scroll_line(
+                            f"[dim italic]{escape_markup(tline)}[/]"
+                        )
+
+            elif block_type == "text":
                 text = block.get("text", "")
-                preview = _truncate(text.replace("\n", " "), 100)
-                if preview:
-                    scroll_line = (
-                        f"[italic {_brand.LAVENDER}]“{escape_markup(preview)}”[/]"
-                    )
+                if text:
+                    for tline in text.split("\n"):
+                        if tline.strip():
+                            self.add_scroll_line(
+                                f"[italic {_brand.LAVENDER}]"
+                                f"\"{escape_markup(tline)}\"[/]"
+                            )
 
             elif block_type == "tool_use":
                 name = block.get("name", "?")
@@ -387,40 +398,40 @@ class _IterationPanel:
                 else:
                     name_col = f"{name}  "
                 if arg:
-                    scroll_line = (
+                    self.add_scroll_line(
                         f"[bold {color}]{escape_markup(name_col)}[/]"
                         f"[dim]{escape_markup(arg)}[/]"
                     )
                 else:
-                    scroll_line = f"[bold {color}]{escape_markup(name)}[/]"
+                    self.add_scroll_line(
+                        f"[bold {color}]{escape_markup(name)}[/]"
+                    )
 
-        return scroll_line
-
-    def _apply_user(self, raw: dict[str, Any]) -> str | None:
+    def _apply_user(self, raw: dict[str, Any]) -> None:
         msg = raw.get("message", {})
         content = msg.get("content", [])
         if not isinstance(content, list):
-            return None
+            return
         for block in content:
             if not isinstance(block, dict):
                 continue
             if block.get("type") == "tool_result" and block.get("is_error"):
                 snippet = _truncate(str(block.get("content", "")), 100)
-                return (
+                self.add_scroll_line(
                     f"[bold {_brand.DEEP_ORANGE}]{_ICON_FAILURE} tool error:[/]"
                     f" [dim]{escape_markup(snippet)}[/]"
                 )
-        return None
+                return
 
     def _format_tokens(self) -> str:
-        """Format token counts as compact ↑in ↓out string."""
+        """Format token counts as compact ctx/out string."""
         parts: list[str] = []
         total_in = self._input_tokens
         if total_in > 0:
-            parts.append(f"↑{self._format_count(total_in)}")
+            parts.append(f"ctx {self._format_count(total_in)}")
         if self._output_tokens > 0:
-            parts.append(f"↓{self._format_count(self._output_tokens)}")
-        return " ".join(parts)
+            parts.append(f"out {self._format_count(self._output_tokens)}")
+        return " · ".join(parts)
 
     @staticmethod
     def _format_count(n: int) -> str:
@@ -466,7 +477,7 @@ class _IterationPanel:
         return sub
 
     def _build_footer(self) -> Table:
-        """Bottom row of the panel: spinner + tool counts."""
+        """Bottom row of the panel: spinner + tool counts + peek hint."""
         summary = Text(no_wrap=True, overflow="ellipsis")
         if self._tool_count > 0:
             summary.append(
@@ -480,10 +491,13 @@ class _IterationPanel:
         else:
             summary.append("waiting for first tool call…", style="dim italic")
 
+        hint = Text("Shift+P full screen", style="dim", no_wrap=True)
+
         grid = Table.grid(expand=True)
         grid.add_column(width=2, no_wrap=True)
         grid.add_column(ratio=1, no_wrap=True, overflow="ellipsis")
-        grid.add_row(self._spinner, summary)
+        grid.add_column(no_wrap=True, justify="right")
+        grid.add_row(self._spinner, summary, hint)
         return grid
 
     def _build_body(self) -> Group:
@@ -601,7 +615,8 @@ class _FullscreenPeek:
     def _build_footer(self) -> Text:
         hint = Text(no_wrap=True, overflow="ellipsis")
         hint.append(
-            " ↑/k up · ↓/j down · b/space page · g/G top/bottom · q/", style="dim"
+            " ↑/k up · ↓/j down · b page up · space page down · g/G top/bottom · q/",
+            style="dim",
         )
         hint.append(FULLSCREEN_PEEK_KEY, style=f"bold {_brand.PURPLE}")
         hint.append(" exit ", style="dim")
@@ -627,21 +642,52 @@ class _FullscreenPeek:
         start = max(0, end - visible)
         window = lines[start:end]
 
+        # Scrollbar metrics
+        show_scrollbar = total > visible
+        thumb_start = 0
+        thumb_size = visible
+        if show_scrollbar:
+            thumb_size = max(1, visible * visible // total)
+            max_off_val = max(total - visible, 1)
+            frac = 1.0 - (self._offset / max_off_val)
+            track_space = visible - thumb_size
+            thumb_start = int(frac * track_space)
+
         rows: list[Any] = []
         rows.append(self._build_header(total, visible))
         rows.append(Text(""))
-        if window:
-            for line in window:
+
+        # Content area with optional scrollbar column
+        content = Table.grid(expand=True)
+        content.add_column(ratio=1, no_wrap=True, overflow="ellipsis")
+        if show_scrollbar:
+            content.add_column(width=1, no_wrap=True)
+
+        for i in range(visible):
+            if i < len(window):
+                line = window[i]
                 line.no_wrap = True
                 line.overflow = "ellipsis"
-                rows.append(line)
-        else:
+            else:
+                line = Text("")
+            if show_scrollbar:
+                in_thumb = thumb_start <= i < thumb_start + thumb_size
+                bar = Text(
+                    "█" if in_thumb else "│",
+                    style=_brand.PURPLE if in_thumb else "dim",
+                )
+                content.add_row(line, bar)
+            else:
+                content.add_row(line)
+
+        if not window and not show_scrollbar:
+            # Replace the empty grid with a waiting message
             rows.append(Text("  (waiting for activity…)", style="dim italic"))
-        # Pad the body so the footer hugs the bottom border even when
-        # the buffer is shorter than the viewport.
-        padding = visible - len(window)
-        for _ in range(max(0, padding)):
-            rows.append(Text(""))
+            for _ in range(max(0, visible - 1)):
+                rows.append(Text(""))
+        else:
+            rows.append(content)
+
         rows.append(Text(""))
         rows.append(self._build_footer())
 
@@ -1145,10 +1191,14 @@ class _IterationSpinner:
             summary.append(" of agent output", style="dim")
         else:
             summary.append("waiting for agent output…", style="dim italic")
+
+        hint = Text("Shift+P full screen", style="dim", no_wrap=True)
+
         grid = Table.grid(expand=True)
         grid.add_column(width=2, no_wrap=True)
         grid.add_column(ratio=1, no_wrap=True, overflow="ellipsis")
-        grid.add_row(self._spinner, summary)
+        grid.add_column(no_wrap=True, justify="right")
+        grid.add_row(self._spinner, summary, hint)
         return grid
 
     def _build_body(self) -> Group:
