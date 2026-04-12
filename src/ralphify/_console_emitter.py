@@ -308,9 +308,32 @@ class _LivePanelBase:
 
     # ── Shared rendering ─────────────────────────────────────────────
 
+    def _build_title(self) -> Text:
+        """Title bar text: elapsed time.  Subclasses may override."""
+        elapsed = time.monotonic() - self._start
+        title = Text()
+        title.append(" ⏱ ", style=_brand.PURPLE)
+        title.append(format_duration(elapsed), style=f"bold {_brand.PURPLE}")
+        title.append(" ", style="dim")
+        return title
+
+    def _build_subtitle(self) -> Text | None:
+        """Subtitle text.  Returns ``None`` by default."""
+        return None
+
     def _build_footer(self) -> Table:
         """Subclasses must override to provide the footer summary row."""
         raise NotImplementedError
+
+    def _footer_grid(self, summary: Text) -> Table:
+        """Three-column footer row: spinner | summary | peek hint."""
+        hint = Text("Shift+P full screen", style="dim", no_wrap=True)
+        grid = Table.grid(expand=True)
+        grid.add_column(width=2, no_wrap=True)
+        grid.add_column(ratio=1, no_wrap=True, overflow="ellipsis")
+        grid.add_column(no_wrap=True, justify="right")
+        grid.add_row(self._spinner, summary, hint)
+        return grid
 
     def _build_body(self) -> Group:
         """Body group: scroll lines (or peek message) + spacer + footer."""
@@ -329,6 +352,21 @@ class _LivePanelBase:
         rows.append(Text(""))  # spacer above footer
         rows.append(self._build_footer())
         return Group(*rows)
+
+    def __rich_console__(
+        self, console: Console, options: ConsoleOptions
+    ) -> RenderResult:
+        panel = Panel(
+            self._build_body(),
+            box=box.ROUNDED,
+            title=self._build_title(),
+            title_align="left",
+            subtitle=self._build_subtitle(),
+            subtitle_align="right",
+            border_style=_brand.PURPLE,
+            padding=(0, 2),
+        )
+        yield panel
 
 
 class _IterationPanel(_LivePanelBase):
@@ -490,15 +528,12 @@ class _IterationPanel(_LivePanelBase):
 
     def _build_title(self) -> Text:
         """Title bar text: elapsed time + token usage."""
-        elapsed = time.monotonic() - self._start
-        title = Text()
-        title.append(" ⏱ ", style=_brand.PURPLE)
-        title.append(format_duration(elapsed), style=f"bold {_brand.PURPLE}")
+        title = super()._build_title()
         tokens = self._format_tokens()
         if tokens:
-            title.append("   ", style="dim")
+            title.append("  ", style="dim")
             title.append(tokens, style=f"bold {_brand.LAVENDER}")
-        title.append(" ", style="dim")
+            title.append(" ", style="dim")
         return title
 
     def _build_subtitle(self) -> Text | None:
@@ -525,30 +560,7 @@ class _IterationPanel(_LivePanelBase):
                 summary.append(cats, style="dim")
         else:
             summary.append("waiting for first tool call…", style="dim italic")
-
-        hint = Text("Shift+P full screen", style="dim", no_wrap=True)
-
-        grid = Table.grid(expand=True)
-        grid.add_column(width=2, no_wrap=True)
-        grid.add_column(ratio=1, no_wrap=True, overflow="ellipsis")
-        grid.add_column(no_wrap=True, justify="right")
-        grid.add_row(self._spinner, summary, hint)
-        return grid
-
-    def __rich_console__(
-        self, console: Console, options: ConsoleOptions
-    ) -> RenderResult:
-        panel = Panel(
-            self._build_body(),
-            box=box.ROUNDED,
-            title=self._build_title(),
-            title_align="left",
-            subtitle=self._build_subtitle(),
-            subtitle_align="right",
-            border_style=_brand.PURPLE,
-            padding=(0, 2),
-        )
-        yield panel
+        return self._footer_grid(summary)
 
 
 # ── Full-screen peek ─────────────────────────────────────────────────
@@ -1164,14 +1176,6 @@ class _IterationSpinner(_LivePanelBase):
     lines vs. structured tool rows).
     """
 
-    def _build_title(self) -> Text:
-        elapsed = time.monotonic() - self._start
-        title = Text()
-        title.append(" ⏱ ", style=_brand.PURPLE)
-        title.append(format_duration(elapsed), style=f"bold {_brand.PURPLE}")
-        title.append(" ", style="dim")
-        return title
-
     def _build_footer(self) -> Table:
         line_count = len(self._scroll_lines)
         summary = Text(no_wrap=True, overflow="ellipsis")
@@ -1183,25 +1187,4 @@ class _IterationSpinner(_LivePanelBase):
             summary.append(" of agent output", style="dim")
         else:
             summary.append("waiting for agent output…", style="dim italic")
-
-        hint = Text("Shift+P full screen", style="dim", no_wrap=True)
-
-        grid = Table.grid(expand=True)
-        grid.add_column(width=2, no_wrap=True)
-        grid.add_column(ratio=1, no_wrap=True, overflow="ellipsis")
-        grid.add_column(no_wrap=True, justify="right")
-        grid.add_row(self._spinner, summary, hint)
-        return grid
-
-    def __rich_console__(
-        self, console: Console, options: ConsoleOptions
-    ) -> RenderResult:
-        panel = Panel(
-            self._build_body(),
-            box=box.ROUNDED,
-            title=self._build_title(),
-            title_align="left",
-            border_style=_brand.PURPLE,
-            padding=(0, 2),
-        )
-        yield panel
+        return self._footer_grid(summary)
