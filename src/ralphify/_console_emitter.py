@@ -158,6 +158,17 @@ def _extract_file_path(i: dict[str, Any]) -> str:
     return _shorten_path(i.get("file_path", ""))
 
 
+def _extract_key(key: str) -> Callable[[dict[str, Any]], str]:
+    """Factory for extractors that pull a single key from tool input."""
+    return lambda i: i.get(key, "")
+
+
+def _extract_params(*keys: str) -> Callable[[dict[str, Any]], str]:
+    """Factory for extractors that format multiple keys as ``key: value`` pairs."""
+    key_list = list(keys)
+    return lambda i: _format_params(i, key_list)
+
+
 def _extract_tool_arg(name: str, tool_input: dict[str, Any]) -> str:
     """Return the most relevant argument string for a tool call."""
     cfg = _TOOL_REGISTRY.get(name)
@@ -233,24 +244,18 @@ class _ToolConfig:
 
 _TOOL_REGISTRY: dict[str, _ToolConfig] = {
     "Read": _ToolConfig(_brand.BLUE, "read", _extract_file_path),
-    "Glob": _ToolConfig(_brand.BLUE, "glob", lambda i: i.get("pattern", "")),
-    "Grep": _ToolConfig(_brand.BLUE, "grep", lambda i: i.get("pattern", "")),
+    "Glob": _ToolConfig(_brand.BLUE, "glob", _extract_key("pattern")),
+    "Grep": _ToolConfig(_brand.BLUE, "grep", _extract_key("pattern")),
     "Edit": _ToolConfig(_brand.ORANGE, "edit", _extract_file_path),
     "MultiEdit": _ToolConfig(_brand.ORANGE, "edit", _extract_file_path),
     "Write": _ToolConfig(_brand.ORANGE, "write", _extract_file_path),
-    "Bash": _ToolConfig(_brand.GREEN, "bash", lambda i: i.get("command", "")),
+    "Bash": _ToolConfig(_brand.GREEN, "bash", _extract_key("command")),
     "BashOutput": _ToolConfig(_brand.GREEN, "bash"),
-    "WebFetch": _ToolConfig(_brand.LAVENDER, "web", lambda i: i.get("url", "")),
-    "WebSearch": _ToolConfig(_brand.LAVENDER, "web", lambda i: i.get("query", "")),
-    "Task": _ToolConfig(
-        _brand.VIOLET, "task", lambda i: _format_params(i, ["description", "prompt"])
-    ),
-    "Agent": _ToolConfig(
-        _brand.VIOLET, "agent", lambda i: _format_params(i, ["description", "prompt"])
-    ),
-    "ToolSearch": _ToolConfig(
-        _brand.BLUE, "other", lambda i: _format_params(i, ["query", "max_results"])
-    ),
+    "WebFetch": _ToolConfig(_brand.LAVENDER, "web", _extract_key("url")),
+    "WebSearch": _ToolConfig(_brand.LAVENDER, "web", _extract_key("query")),
+    "Task": _ToolConfig(_brand.VIOLET, "task", _extract_params("description", "prompt")),
+    "Agent": _ToolConfig(_brand.VIOLET, "agent", _extract_params("description", "prompt")),
+    "ToolSearch": _ToolConfig(_brand.BLUE, "other", _extract_params("query", "max_results")),
     "TodoWrite": _ToolConfig(
         _brand.PURPLE, "todo", lambda i: f"{len(i.get('todos', []))} todos"
     ),
