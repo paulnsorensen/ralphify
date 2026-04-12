@@ -11,6 +11,7 @@ import sys
 import threading
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 from typing import Any
@@ -221,20 +222,13 @@ def _format_run_info(
 # lavender=web, violet=delegate, purple=meta.
 
 
+@dataclass(slots=True)
 class _ToolConfig:
     """Visual and extraction config for a known tool."""
 
-    __slots__ = ("color", "category", "extract_arg")
-
-    def __init__(
-        self,
-        color: str,
-        category: str,
-        extract_arg: Callable[[dict[str, Any]], str] | None = None,
-    ) -> None:
-        self.color = color
-        self.category = category
-        self.extract_arg = extract_arg
+    color: str
+    category: str
+    extract_arg: Callable[[dict[str, Any]], str] | None = None
 
 
 _TOOL_REGISTRY: dict[str, _ToolConfig] = {
@@ -248,10 +242,18 @@ _TOOL_REGISTRY: dict[str, _ToolConfig] = {
     "BashOutput": _ToolConfig(_brand.GREEN, "bash"),
     "WebFetch": _ToolConfig(_brand.LAVENDER, "web", lambda i: i.get("url", "")),
     "WebSearch": _ToolConfig(_brand.LAVENDER, "web", lambda i: i.get("query", "")),
-    "Task": _ToolConfig(_brand.VIOLET, "task", lambda i: _format_params(i, ["description", "prompt"])),
-    "Agent": _ToolConfig(_brand.VIOLET, "agent", lambda i: _format_params(i, ["description", "prompt"])),
-    "ToolSearch": _ToolConfig(_brand.BLUE, "other", lambda i: _format_params(i, ["query", "max_results"])),
-    "TodoWrite": _ToolConfig(_brand.PURPLE, "todo", lambda i: f"{len(i.get('todos', []))} todos"),
+    "Task": _ToolConfig(
+        _brand.VIOLET, "task", lambda i: _format_params(i, ["description", "prompt"])
+    ),
+    "Agent": _ToolConfig(
+        _brand.VIOLET, "agent", lambda i: _format_params(i, ["description", "prompt"])
+    ),
+    "ToolSearch": _ToolConfig(
+        _brand.BLUE, "other", lambda i: _format_params(i, ["query", "max_results"])
+    ),
+    "TodoWrite": _ToolConfig(
+        _brand.PURPLE, "todo", lambda i: f"{len(i.get('todos', []))} todos"
+    ),
 }
 
 _DEFAULT_TOOL_STYLE: tuple[str, str] = ("white", "other")
@@ -582,6 +584,7 @@ _FULLSCREEN_CHROME_ROWS = 6
 _FULLSCREEN_MIN_VISIBLE = 5
 
 
+@dataclass(slots=True)
 class _ScrollbarMetrics:
     """Pure-data result of scrollbar geometry calculation.
 
@@ -591,12 +594,9 @@ class _ScrollbarMetrics:
     ``True``.
     """
 
-    __slots__ = ("show", "thumb_start", "thumb_size")
-
-    def __init__(self, show: bool, thumb_start: int, thumb_size: int) -> None:
-        self.show = show
-        self.thumb_start = thumb_start
-        self.thumb_size = thumb_size
+    show: bool
+    thumb_start: int
+    thumb_size: int
 
 
 def _scrollbar_metrics(total: int, visible: int, offset: int) -> _ScrollbarMetrics:
