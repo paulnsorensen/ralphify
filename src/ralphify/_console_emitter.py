@@ -361,9 +361,7 @@ class _IterationPanel:
                 text = block.get("thinking", "")
                 if text:
                     for tline in text.split("\n"):
-                        self.add_scroll_line(
-                            f"[dim italic]{escape_markup(tline)}[/]"
-                        )
+                        self.add_scroll_line(f"[dim italic]{escape_markup(tline)}[/]")
 
             elif block_type == "text":
                 text = block.get("text", "")
@@ -371,8 +369,7 @@ class _IterationPanel:
                     for tline in text.split("\n"):
                         if tline.strip():
                             self.add_scroll_line(
-                                f"[italic {_brand.LAVENDER}]"
-                                f"\"{escape_markup(tline)}\"[/]"
+                                f'[italic {_brand.LAVENDER}]"{escape_markup(tline)}"[/]'
                             )
 
             elif block_type == "tool_use":
@@ -403,9 +400,7 @@ class _IterationPanel:
                         f"[dim]{escape_markup(arg)}[/]"
                     )
                 else:
-                    self.add_scroll_line(
-                        f"[bold {color}]{escape_markup(name)}[/]"
-                    )
+                    self.add_scroll_line(f"[bold {color}]{escape_markup(name)}[/]")
 
     def _apply_user(self, raw: dict[str, Any]) -> None:
         msg = raw.get("message", {})

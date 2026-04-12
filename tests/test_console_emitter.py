@@ -1370,9 +1370,7 @@ class TestIterationPanel:
 
     def test_apply_system_init_sets_model(self):
         panel = _IterationPanel()
-        panel.apply(
-            {"type": "system", "subtype": "init", "model": "claude-opus-4-6"}
-        )
+        panel.apply({"type": "system", "subtype": "init", "model": "claude-opus-4-6"})
         assert panel._model == "claude-opus-4-6"
 
     def test_apply_usage_updates_tokens(self):

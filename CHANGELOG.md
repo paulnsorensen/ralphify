@@ -2,6 +2,23 @@
 
 All notable changes to ralphify are documented here.
 
+## 0.4.0b3 — 2026-04-12
+
+### Improved
+
+- **Full-screen peek scrollbar** — a scrollbar on the right edge of the full-screen peek view shows your position in the activity log, so you always know where you are in a long session.
+- **Thinking traces visible** — agent reasoning (thinking blocks) now appears in the activity feed as dim italic text instead of being silently dropped. Long thinking traces are split by newline so you can scroll through the full reasoning.
+- **Full text and tool args** — assistant text output is no longer truncated to 100 characters, and tool parameters for Agent and ToolSearch now show their actual values (description, prompt, query, max_results) instead of just listing parameter names.
+- **Context token display** — token counts in the panel title now show as `ctx 156k · out 3.2k` instead of `↑156k ↓3.2k`, making context window usage immediately clear.
+- **Persistent Shift+P hint** — the compact panel footer now always shows "Shift+P full screen" so new users discover full-screen peek without reading docs.
+- **Clearer page navigation labels** — the full-screen footer now says `b page up · space page down` instead of the ambiguous `b/space page`.
+
+### Fixed
+
+- **HTML comments in code blocks** — `<!-- -->` comments inside fenced code blocks in RALPH.md files no longer break prompt assembly.
+
+---
+
 ## 0.4.0b2 — 2026-04-12
 
 ### Added
