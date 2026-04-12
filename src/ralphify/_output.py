@@ -87,6 +87,28 @@ def warn(message: str) -> None:
     print(f"ralphify: warning: {message}", file=sys.stderr)
 
 
+def format_count(n: int) -> str:
+    """Format *n* as a compact human-readable count string.
+
+    Returns ``"500"`` for sub-thousand, ``"1.5k"`` for sub-million,
+    and ``"1.5M"`` for larger values.  Used in console rendering for
+    token counts and similar metrics.
+
+    Handles the boundary where rounding ``k`` crosses into ``M`` —
+    e.g. 999_950 → ``"1.0M"`` instead of ``"1000.0k"`` (same guard
+    as :func:`format_duration`'s 59.95 → ``"1m 0s"``).
+    """
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.1f}M"
+    if n >= 1_000:
+        # Use rounded value to avoid "1000.0k" when rounding crosses
+        # into the next unit (same guard as format_duration's 59.95→1m).
+        if round(n / 1_000, 1) >= 1_000:
+            return f"{n / 1_000_000:.1f}M"
+        return f"{n / 1_000:.1f}k"
+    return str(n)
+
+
 _SECONDS_PER_MINUTE = 60
 _MINUTES_PER_HOUR = 60
 

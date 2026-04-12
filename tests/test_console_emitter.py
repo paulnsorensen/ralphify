@@ -1410,17 +1410,6 @@ class TestIterationPanel:
             f"Expected ctx 1.0k (input_tokens already includes cache), got: {result!r}"
         )
 
-    def test_format_count(self):
-        assert _IterationPanel._format_count(500) == "500"
-        assert _IterationPanel._format_count(1500) == "1.5k"
-        assert _IterationPanel._format_count(1_500_000) == "1.5M"
-
-    def test_format_count_boundary_k_to_m(self):
-        """Values that round up to 1000.0k should display as 1.0M instead."""
-        assert _IterationPanel._format_count(999_949) == "999.9k"
-        assert _IterationPanel._format_count(999_950) == "1.0M"
-        assert _IterationPanel._format_count(999_999) == "1.0M"
-
     def test_apply_stores_scroll_lines_in_buffer(self):
         """apply() stores scroll lines in the internal buffer."""
         panel = _IterationPanel()

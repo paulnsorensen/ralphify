@@ -1,8 +1,14 @@
-"""Tests for ralphify._output — ProcessResult, output collection, and duration formatting."""
+"""Tests for ralphify._output — ProcessResult, output collection, and formatting utilities."""
 
 import pytest
 
-from ralphify._output import ProcessResult, collect_output, ensure_str, format_duration
+from ralphify._output import (
+    ProcessResult,
+    collect_output,
+    ensure_str,
+    format_count,
+    format_duration,
+)
 
 
 class TestProcessResult:
@@ -136,3 +142,25 @@ class TestFormatDuration:
 
     def test_multi_day(self):
         assert format_duration(90000) == "25h 0m"
+
+
+class TestFormatCount:
+    def test_sub_thousand(self):
+        assert format_count(0) == "0"
+        assert format_count(500) == "500"
+        assert format_count(999) == "999"
+
+    def test_thousands(self):
+        assert format_count(1000) == "1.0k"
+        assert format_count(1500) == "1.5k"
+        assert format_count(10_000) == "10.0k"
+
+    def test_millions(self):
+        assert format_count(1_000_000) == "1.0M"
+        assert format_count(1_500_000) == "1.5M"
+
+    def test_boundary_k_to_m(self):
+        """Values that round up to 1000.0k should display as 1.0M instead."""
+        assert format_count(999_949) == "999.9k"
+        assert format_count(999_950) == "1.0M"
+        assert format_count(999_999) == "1.0M"

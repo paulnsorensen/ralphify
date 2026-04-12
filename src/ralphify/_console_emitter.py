@@ -41,7 +41,7 @@ from ralphify._events import (
 )
 from ralphify import _brand
 from ralphify._agent import CLAUDE_BINARY
-from ralphify._output import format_duration
+from ralphify._output import format_count, format_duration
 
 _ICON_SUCCESS = "✓"
 _ICON_FAILURE = "✗"
@@ -180,14 +180,6 @@ def _extract_tool_arg(name: str, tool_input: dict[str, Any]) -> str:
     if extractor is not None:
         return extractor(tool_input)
     return ", ".join(sorted(tool_input.keys()))
-
-
-def _format_tool_summary(name: str, tool_input: dict[str, Any]) -> str:
-    """Return a compact one-liner describing a tool call."""
-    arg = _extract_tool_arg(name, tool_input)
-    if arg:
-        return f"{name}  {arg}"
-    return name
 
 
 # ── Helpers ───────────────────────────────────────────────────────────
@@ -502,22 +494,10 @@ class _IterationPanel(_LivePanelBase):
         parts: list[str] = []
         total_in = self._input_tokens
         if total_in > 0:
-            parts.append(f"ctx {self._format_count(total_in)}")
+            parts.append(f"ctx {format_count(total_in)}")
         if self._output_tokens > 0:
-            parts.append(f"out {self._format_count(self._output_tokens)}")
+            parts.append(f"out {format_count(self._output_tokens)}")
         return " · ".join(parts)
-
-    @staticmethod
-    def _format_count(n: int) -> str:
-        if n >= 1_000_000:
-            return f"{n / 1_000_000:.1f}M"
-        if n >= 1_000:
-            # Use rounded value to avoid "1000.0k" when rounding crosses
-            # into the next unit (same guard as format_duration's 59.95→1m).
-            if round(n / 1_000, 1) >= 1_000:
-                return f"{n / 1_000_000:.1f}M"
-            return f"{n / 1_000:.1f}k"
-        return str(n)
 
     def _format_categories(self) -> str:
         if not self._tool_categories:
