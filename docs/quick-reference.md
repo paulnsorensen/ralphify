@@ -78,6 +78,8 @@ Your instructions here. Use {{ args.dir }} for user arguments. <!-- (6) -->
 | `commands` | list | no | Commands to run each iteration |
 | `args` | list | no | User argument names. Letters, digits, hyphens, and underscores only. |
 | `credit` | bool | no | Append co-author trailer instruction to prompt (default: `true`) |
+| `completion_signal` | string | no | String to detect in agent output/result for explicit completion (default: `RALPH_PROMISE_COMPLETE`) |
+| `stop_on_completion_signal` | bool | no | Stop the loop early when `completion_signal` is detected (default: `false`) |
 
 ### Command fields
 
@@ -160,6 +162,7 @@ Each iteration:
 | `P` (shift+p) | Open full-screen peek — scroll the entire activity buffer. `j/k` line, `space/b` page, `g/G` top/bottom, `q` or `P` exits |
 | `-n` limit reached | Stops after the specified number of iterations |
 | `--stop-on-error` | Stops if agent exits non-zero or times out |
+| `completion_signal` detected | Stops early only when `stop_on_completion_signal: true` and the configured string is found in agent output/result |
 
 ## Live editing
 

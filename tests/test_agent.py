@@ -443,6 +443,78 @@ class TestExecuteAgentStreaming:
     """Tests for the streaming execution path (_run_agent_streaming)."""
 
     @patch(MOCK_SUBPROCESS)
+    def test_streaming_result_event_populates_result_text(self, mock_popen):
+        mock_popen.return_value = make_mock_popen(
+            stdout_lines='{"type": "result", "result": "early done"}\n',
+            returncode=0,
+        )
+        result = _run_agent_streaming(
+            ["claude", "-p"],
+            "prompt",
+            timeout=10,
+            log_dir=None,
+            iteration=1,
+        )
+        assert result.result_text == "early done"
+        assert result.returncode == 0
+        assert result.timed_out is False
+
+    @patch(MOCK_SUBPROCESS)
+    def test_blocking_result_event_populates_result_text_when_captured(
+        self, mock_popen, tmp_path
+    ):
+        mock_popen.return_value = make_mock_popen(
+            stdout_lines='{"type": "result", "result": "early done"}\n',
+            returncode=0,
+        )
+        result = _run_agent_blocking(
+            ["claude", "-p"],
+            "prompt",
+            timeout=10,
+            log_dir=tmp_path,
+            iteration=1,
+        )
+
+        assert result.result_text == "early done"
+        assert result.returncode == 0
+        assert result.timed_out is False
+
+    @patch(MOCK_SUBPROCESS)
+    def test_result_text_absent_when_no_result_event(self, mock_popen):
+        mock_popen.return_value = make_mock_popen(
+            stdout_lines="status: working\n",
+            returncode=0,
+        )
+        result = _run_agent_streaming(
+            ["claude", "-p"],
+            "prompt",
+            timeout=10,
+            log_dir=None,
+            iteration=1,
+        )
+        assert result.result_text is None
+        assert result.returncode == 0
+        assert result.timed_out is False
+
+    @patch(MOCK_SUBPROCESS)
+    def test_last_result_event_wins(self, mock_popen):
+        mock_popen.return_value = make_mock_popen(
+            stdout_lines='{"type": "result", "result": "first"}\n{"type": "result", "result": "second"}\n',
+            returncode=0,
+        )
+        result = _run_agent_streaming(
+            ["claude", "-p"],
+            "prompt",
+            timeout=10,
+            log_dir=None,
+            iteration=1,
+        )
+        assert result.result_text == "second"
+        assert result.returncode == 0
+        assert result.timed_out is False
+
+
+    @patch(MOCK_SUBPROCESS)
     def test_success(self, mock_popen):
         mock_popen.return_value = make_mock_popen(
             stdout_lines='{"type": "status", "msg": "working"}\n',

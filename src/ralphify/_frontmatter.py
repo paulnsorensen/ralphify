@@ -26,6 +26,8 @@ FIELD_COMMANDS = "commands"
 FIELD_ARGS = "args"
 FIELD_CREDIT = "credit"
 FIELD_RALPH = "ralph"
+FIELD_COMPLETION_SIGNAL = "completion_signal"
+FIELD_STOP_ON_COMPLETION_SIGNAL = "stop_on_completion_signal"
 
 # Sub-field names within each command mapping.
 CMD_FIELD_NAME = "name"

@@ -251,6 +251,16 @@ The agent's output streams live to your terminal between the iteration markers â
 
 If the agent breaks a test, the next iteration sees the failure output via `{{ commands.tests }}` and fixes it automatically.
 
+!!! tip "Optional: stop when the task is fully complete"
+    Add these frontmatter fields if you want the loop to stop on an explicit completion marker:
+
+    ```yaml
+    completion_signal: RALPH_PROMISE_COMPLETE
+    stop_on_completion_signal: true
+    ```
+
+    `completion_signal` defaults to `RALPH_PROMISE_COMPLETE`. The loop only exits early when `stop_on_completion_signal` is enabled and that string is detected in agent output or captured result text. Exit code `0` still only means the agent process succeeded.
+
 Once you're confident the loop works, drop the `-n 3` to let it run indefinitely. Press `Ctrl+C` to stop.
 
 ## Step 7: Steer while it runs
@@ -274,7 +284,7 @@ Read TODO.md and focus only on the API module.
 This is the most powerful part of ralph loops â€” you're steering a running agent with a text file.
 
 !!! warning "Frontmatter changes need a restart"
-    Only the **prompt body** is re-read each iteration. Frontmatter fields (`agent`, `commands`, `args`) are parsed once at startup. If you add a new command or change the agent, stop the loop with `Ctrl+C` and restart it.
+    Only the **prompt body** is re-read each iteration. Frontmatter is parsed once at startup. If you add a new command, change the agent, or change completion settings, stop the loop with `Ctrl+C` and restart it.
 
 ## Next steps
 

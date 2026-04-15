@@ -95,6 +95,53 @@ class TestRun:
         assert result.exit_code == 1
         assert "malformed" in result.output.lower()
 
+    def test_run_uses_default_completion_signal_config(
+        self, mock_which, tmp_path, monkeypatch
+    ):
+        monkeypatch.chdir(tmp_path)
+        ralph_dir = make_ralph(tmp_path)
+        captured = {}
+
+        def fake_run_loop(config, state, emitter=None):
+            captured["completion_signal"] = config.completion_signal
+            captured["stop_on_completion_signal"] = config.stop_on_completion_signal
+            captured["max_iterations"] = config.max_iterations
+
+        with patch("ralphify.cli.run_loop", side_effect=fake_run_loop):
+            result = runner.invoke(app, ["run", str(ralph_dir), "-n", "3"])
+
+        assert result.exit_code == 0
+        assert captured["completion_signal"] == "RALPH_PROMISE_COMPLETE"
+        assert captured["stop_on_completion_signal"] is False
+        assert captured["max_iterations"] == 3
+
+    def test_run_passes_completion_signal_frontmatter_to_config(
+        self, mock_which, tmp_path, monkeypatch
+    ):
+        monkeypatch.chdir(tmp_path)
+        ralph_dir = tmp_path / "my-ralph"
+        ralph_dir.mkdir()
+        (ralph_dir / RALPH_MARKER).write_text(
+            "---\n"
+            "agent: claude -p --dangerously-skip-permissions\n"
+            "completion_signal: CUSTOM_DONE\n"
+            "stop_on_completion_signal: true\n"
+            "---\n"
+            "go"
+        )
+        captured = {}
+
+        def fake_run_loop(config, state, emitter=None):
+            captured["completion_signal"] = config.completion_signal
+            captured["stop_on_completion_signal"] = config.stop_on_completion_signal
+
+        with patch("ralphify.cli.run_loop", side_effect=fake_run_loop):
+            result = runner.invoke(app, ["run", str(ralph_dir), "-n", "2"])
+
+        assert result.exit_code == 0
+        assert captured["completion_signal"] == "CUSTOM_DONE"
+        assert captured["stop_on_completion_signal"] is True
+
     @pytest.mark.parametrize(
         "frontmatter, expected_error",
         [

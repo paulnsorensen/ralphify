@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import shlex
 import traceback
+from typing import Any
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -162,15 +163,20 @@ def _assemble_prompt(
     return prompt
 
 
+def _has_completion_signal(text: str | None, signal: str) -> bool:
+    """Return True when *text* contains the configured completion signal."""
+    return bool(text) and signal in text
+
+
 def _run_agent_phase(
     prompt: str,
     config: RunConfig,
     state: RunState,
     emit: BoundEmitter,
-) -> bool:
+) -> tuple[bool, bool]:
     """Run the agent subprocess, update state counters, and emit the result event.
 
-    Returns ``True`` when the agent exited successfully (code 0, no timeout).
+    Returns ``(agent_succeeded, stop_for_completion_signal)``.
     """
     try:
         cmd = shlex.split(config.agent)
@@ -179,10 +185,13 @@ def _run_agent_phase(
             f"Invalid agent command syntax: {config.agent!r}. {_field_hint(FIELD_AGENT)}"
         ) from exc
 
-    # Option C: recheck per-line so mid-iteration peek toggle takes effect.
-    # When neither peek nor logging needs output, pass None so the blocking
-    # path can inherit file descriptors (critical-01 contract).
+    completion_signal = config.completion_signal
+    completion_detected = False
+
     def _on_output_line(line: str, stream: OutputStream) -> None:
+        nonlocal completion_detected
+        if completion_signal in line:
+            completion_detected = True
         if emit.wants_agent_output_lines():
             emit.agent_output_line(line, stream, state.iteration)
 
@@ -192,17 +201,21 @@ def _run_agent_phase(
         on_output_line = None
 
     try:
+        def on_activity(data: dict[str, Any]) -> None:
+            emit(
+                EventType.AGENT_ACTIVITY,
+                AgentActivityData(raw=data, iteration=state.iteration),
+            )
+
         agent = execute_agent(
             cmd,
             prompt,
             timeout=config.timeout,
             log_dir=config.log_dir,
             iteration=state.iteration,
-            on_activity=lambda data: emit(
-                EventType.AGENT_ACTIVITY,
-                AgentActivityData(raw=data, iteration=state.iteration),
-            ),
+            on_activity=on_activity,
             on_output_line=on_output_line,
+            capture_result_text=config.stop_on_completion_signal,
         )
     except FileNotFoundError as exc:
         raise FileNotFoundError(
@@ -210,6 +223,15 @@ def _run_agent_phase(
         ) from exc
 
     duration = format_duration(agent.elapsed)
+    promise_completed = agent.success and (
+        completion_detected
+        or _has_completion_signal(agent.result_text, completion_signal)
+        or _has_completion_signal(agent.captured_stdout, completion_signal)
+        or _has_completion_signal(agent.captured_stderr, completion_signal)
+    )
+    if promise_completed:
+        state.promise_completed = True
+        config.promise_completed = True
 
     if agent.timed_out:
         state.mark_timed_out()
@@ -218,7 +240,10 @@ def _run_agent_phase(
     elif agent.success:
         state.mark_completed()
         event_type = EventType.ITERATION_COMPLETED
-        state_detail = f"completed ({duration})"
+        if promise_completed:
+            state_detail = f"completed via signal {completion_signal!r} ({duration})"
+        else:
+            state_detail = f"completed ({duration})"
     else:
         state.mark_failed()
         event_type = EventType.ITERATION_FAILED
@@ -241,18 +266,19 @@ def _run_agent_phase(
         ended_data["echo_stderr"] = agent.captured_stderr
 
     emit(event_type, ended_data)
-    return agent.success
+    return agent.success, promise_completed and config.stop_on_completion_signal
 
 
 def _run_iteration(
     config: RunConfig,
     state: RunState,
     emit: BoundEmitter,
-) -> bool:
+) -> tuple[bool, bool]:
     """Execute one iteration of the agent loop.
 
-    Returns ``True`` if the loop should continue, ``False`` when
-    ``--stop-on-error`` triggers.
+    Returns (should_continue, stop_for_completion_signal):
+      - should_continue: True if the loop should continue, False to break
+      - stop_for_completion_signal: True if a completion signal ended the run early
     """
     iteration = state.iteration
 
@@ -287,14 +313,16 @@ def _run_iteration(
     )
 
     # Run agent
-    agent_succeeded = _run_agent_phase(prompt, config, state, emit)
+    agent_succeeded, stop_for_completion_signal = _run_agent_phase(
+        prompt, config, state, emit
+    )
 
     if not agent_succeeded and config.stop_on_error:
         state.status = RunStatus.FAILED
         emit.log_error("Stopping due to --stop-on-error.")
-        return False
+        return False, stop_for_completion_signal
 
-    return True
+    return True, stop_for_completion_signal
 
 
 def _delay_if_needed(config: RunConfig, state: RunState, emit: BoundEmitter) -> None:
@@ -346,14 +374,19 @@ def run_loop(
             if not _handle_control_signals(state, emit):
                 break
 
-            state.iteration += 1
             if (
                 config.max_iterations is not None
-                and state.iteration > config.max_iterations
+                and state.iteration >= config.max_iterations
             ):
                 break
+            state.iteration += 1
 
-            should_continue = _run_iteration(config, state, emit)
+            should_continue, stop_for_completion_signal = _run_iteration(
+                config, state, emit
+            )
+            if stop_for_completion_signal:
+                state.status = RunStatus.COMPLETED
+                break
             if not should_continue:
                 break
 

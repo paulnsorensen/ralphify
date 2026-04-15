@@ -113,6 +113,7 @@ The loop also stops automatically when:
 
 - All `-n` iterations have completed
 - `--stop-on-error` is set and the agent exits non-zero or times out
+- `stop_on_completion_signal: true` is set in frontmatter and the configured `completion_signal` is detected in agent output or captured result text
 
 ### Peeking at live agent output
 
@@ -190,6 +191,10 @@ Your instructions here. Reference args with {{ args.dir }}.
 | `commands` | list | no | Commands to run each iteration (each has `name` and `run`) |
 | `args` | list of strings | no | Declared argument names for user arguments. Letters, digits, hyphens, and underscores only. |
 | `credit` | bool | no | Append co-author trailer instruction to prompt (default: `true`) |
+| `completion_signal` | string | no | String to detect in agent output/result for explicit completion (default: `RALPH_PROMISE_COMPLETE`) |
+| `stop_on_completion_signal` | bool | no | Stop the loop early when `completion_signal` is detected (default: `false`) |
+
+Exit code `0` still only means the agent process succeeded. Promise completion is frontmatter-driven and only stops the loop when `stop_on_completion_signal` is enabled.
 
 ### Commands
 

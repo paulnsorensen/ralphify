@@ -20,6 +20,9 @@ from ralphify._events import STOP_COMPLETED, STOP_ERROR, STOP_USER_REQUESTED, St
 DEFAULT_COMMAND_TIMEOUT: float = 60
 """Default timeout in seconds for commands defined in RALPH.md frontmatter."""
 
+DEFAULT_COMPLETION_SIGNAL = "RALPH_PROMISE_COMPLETE"
+"""Default signal string that marks promise completion."""
+
 RUN_ID_LENGTH: int = 12
 """Number of hex characters used for generated run IDs."""
 
@@ -97,6 +100,9 @@ class RunConfig:
     log_dir: Path | None = None
     project_root: Path = field(default=Path("."))
     credit: bool = True
+    completion_signal: str = DEFAULT_COMPLETION_SIGNAL
+    stop_on_completion_signal: bool = False
+    promise_completed: bool = False  # Tracks if promise completion has occurred
 
 
 @dataclass(slots=True)
@@ -120,6 +126,7 @@ class RunState:
     failed: int = 0
     timed_out_count: int = 0
     started_at: datetime | None = None
+    promise_completed: bool = False  # Tracks if promise completion has occurred
 
     _stop_event: threading.Event = field(
         default_factory=threading.Event, init=False, repr=False, compare=False

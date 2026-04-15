@@ -32,6 +32,8 @@ from ralphify._frontmatter import (
     FIELD_ARGS,
     FIELD_COMMANDS,
     FIELD_CREDIT,
+    FIELD_COMPLETION_SIGNAL,
+    FIELD_STOP_ON_COMPLETION_SIGNAL,
     RALPH_MARKER,
     VALID_NAME_CHARS_MSG,
     parse_frontmatter,
@@ -39,6 +41,7 @@ from ralphify._frontmatter import (
 from ralphify._output import IS_WINDOWS
 from ralphify._run_types import (
     Command,
+    DEFAULT_COMPLETION_SIGNAL,
     DEFAULT_COMMAND_TIMEOUT,
     RunConfig,
     RunState,
@@ -422,6 +425,26 @@ def _validate_credit(raw_credit: Any) -> bool:
     return raw_credit
 
 
+def _validate_completion_signal(raw_signal: Any) -> str:
+    """Validate the completion signal frontmatter field."""
+    if raw_signal is None:
+        return DEFAULT_COMPLETION_SIGNAL
+    if not _is_nonempty_string(raw_signal):
+        _exit_error(f"'{FIELD_COMPLETION_SIGNAL}' must be a non-empty string.")
+    return raw_signal
+
+
+def _validate_stop_on_completion_signal(raw_value: Any) -> bool:
+    """Validate the stop-on-completion-signal frontmatter field."""
+    if raw_value is None:
+        return False
+    if not isinstance(raw_value, bool):
+        _exit_error(
+            f"'{FIELD_STOP_ON_COMPLETION_SIGNAL}' must be true or false, got {raw_value!r}."
+        )
+    return raw_value
+
+
 def _validate_run_options(
     max_iterations: int | None,
     delay: float,
@@ -465,6 +488,10 @@ def _build_run_config(
         ralph_args = _parse_user_args(extra_args, declared_names)
 
     credit = _validate_credit(fm.get(FIELD_CREDIT))
+    completion_signal = _validate_completion_signal(fm.get(FIELD_COMPLETION_SIGNAL))
+    stop_on_completion_signal = _validate_stop_on_completion_signal(
+        fm.get(FIELD_STOP_ON_COMPLETION_SIGNAL)
+    )
 
     return RunConfig(
         agent=agent,
@@ -479,6 +506,8 @@ def _build_run_config(
         log_dir=Path(log_dir) if log_dir else None,
         project_root=Path.cwd(),
         credit=credit,
+        completion_signal=completion_signal,
+        stop_on_completion_signal=stop_on_completion_signal,
     )
 
 
