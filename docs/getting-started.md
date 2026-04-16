@@ -50,9 +50,10 @@ ralph scaffold my-ralph
 ```text
 Created my-ralph/RALPH.md
 Edit the file, then run: ralph run my-ralph
+Optional early exit: uncomment completion_signal + stop_on_completion_signal and emit <promise>COMPLETE</promise>.
 ```
 
-This creates `my-ralph/RALPH.md` with a ready-to-customize template including an example command, arg, and prompt. Edit the task section, [test it](#step-3-do-a-test-run), then follow [Step 4](#step-4-add-a-test-command) to add a test command — test feedback is what makes the loop self-healing.
+This creates `my-ralph/RALPH.md` with a ready-to-customize template including an example command, arg, prompt, and a commented promise-completion example. If you want the loop to stop before its iteration budget, uncomment `completion_signal` and `stop_on_completion_signal`, then tell the agent to emit the matching `<promise>...</promise>` tag when it is done. Edit the task section, [test it](#step-3-do-a-test-run), then follow [Step 4](#step-4-add-a-test-command) to add a test command — test feedback is what makes the loop self-healing.
 
 Or create the file manually as shown below.
 

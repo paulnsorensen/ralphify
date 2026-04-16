@@ -24,6 +24,24 @@ from ralphify.cli import app, _parse_command_items, _parse_user_args
 runner = CliRunner()
 
 
+class TestHelp:
+    def test_scaffold_help_mentions_promise_completion(self):
+        result = runner.invoke(app, ["scaffold", "--help"])
+
+        assert result.exit_code == 0
+        assert "completion_signal" in result.output
+        assert "stop_on_completion_signal" in result.output
+        assert "<promise>...</promise>" in result.output
+
+    def test_run_help_mentions_promise_completion(self):
+        result = runner.invoke(app, ["run", "--help"])
+
+        assert result.exit_code == 0
+        assert "completion_signal" in result.output
+        assert "stop_on_completion_signal" in result.output
+        assert "<promise>...</promise>" in result.output
+
+
 class TestVersion:
     @pytest.mark.parametrize("flag", ["--version", "-V"])
     def test_version_flag(self, flag):
@@ -614,6 +632,16 @@ class TestScaffold:
         assert ralph_file.exists()
         assert "Created" in result.output
 
+    def test_scaffold_output_mentions_promise_completion(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+
+        result = runner.invoke(app, ["scaffold", "my-task"])
+
+        assert result.exit_code == 0
+        assert "completion_signal" in result.output
+        assert "stop_on_completion_signal" in result.output
+        assert "<promise>COMPLETE</promise>" in result.output
+
     def test_creates_ralph_in_cwd(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         result = runner.invoke(app, ["scaffold"])
@@ -652,6 +680,16 @@ class TestScaffold:
         assert isinstance(fm["args"], list)
         assert "{{ commands.git-log }}" in body
         assert "{{ args.focus }}" in body
+
+    def test_template_mentions_promise_completion_path(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+
+        runner.invoke(app, ["scaffold", "my-task"])
+        content = (tmp_path / "my-task" / RALPH_MARKER).read_text()
+
+        assert "# completion_signal: COMPLETE" in content
+        assert "# stop_on_completion_signal: true" in content
+        assert "<promise>COMPLETE</promise>" in content
 
 
 class TestParseUserArgs:

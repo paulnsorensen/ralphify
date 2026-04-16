@@ -117,6 +117,10 @@ commands:
     run: git log --oneline -5
 args:
   - focus
+# Optional early exit: uncomment both lines and have the agent emit
+# <promise>COMPLETE</promise> when the task is done.
+# completion_signal: COMPLETE
+# stop_on_completion_signal: true
 ---
 
 You are an autonomous coding agent running in a loop. Each iteration
@@ -135,6 +139,7 @@ starts with a fresh context. Your progress lives in the code and git.
 <!-- Replace this section with your task description -->
 
 - Implement one thing per iteration
+- If you enable promise completion above, emit <promise>COMPLETE</promise> and exit
 - Run tests and fix failures before committing
 - Commit with a descriptive message and push
 """
@@ -191,7 +196,13 @@ def scaffold(
         help="Directory name. If omitted, creates RALPH.md in the current directory.",
     ),
 ) -> None:
-    """Scaffold a new ralph with a ready-to-customize template."""
+    """Scaffold a new ralph with a ready-to-customize template.
+
+    The template includes example commands and args plus an optional
+    completion-signal path you can enable with ``completion_signal`` and
+    ``stop_on_completion_signal`` when the agent should stop early by
+    emitting a matching ``<promise>...</promise>`` tag.
+    """
     if name:
         target_dir = Path.cwd() / name
         target_dir.mkdir(exist_ok=True)
@@ -207,6 +218,13 @@ def scaffold(
     _console.print(f"[green]Created[/] {escape_markup(str(rel))}")
     _console.print(
         f"[dim]Edit the file, then run:[/] ralph run {escape_markup(name or '.')}"
+    )
+    _console.print(
+        "[dim]Optional early exit:[/] uncomment "
+        f"{escape_markup(FIELD_COMPLETION_SIGNAL)} + "
+        f"{escape_markup(FIELD_STOP_ON_COMPLETION_SIGNAL)} "
+        "and emit "
+        f"{escape_markup('<promise>COMPLETE</promise>')}."
     )
 
 
@@ -564,6 +582,10 @@ def run(
     Extra flags (--name value) and positional args after the path are
     passed as user arguments.  Use {{ args.name }} placeholders in
     RALPH.md to reference them.
+
+    To stop before the iteration budget, set ``completion_signal`` and
+    ``stop_on_completion_signal`` in frontmatter and have the agent emit
+    the matching ``<promise>...</promise>`` tag.
 
     Keybindings (interactive terminal):
       p         Toggle live peek of agent output (on by default)

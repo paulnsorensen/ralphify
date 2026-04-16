@@ -153,7 +153,7 @@ ralph scaffold              # Creates RALPH.md in the current directory
 |---|---|---|
 | `[NAME]` | none | Directory name. If omitted, creates RALPH.md in the current directory |
 
-The generated template includes an example command (`git-log`), an example arg (`focus`), and a prompt body with placeholders for both. Edit it, then run [`ralph run`](#ralph-run). See [Getting Started](getting-started.md) for a full walkthrough.
+The generated template includes an example command (`git-log`), an example arg (`focus`), a prompt body with placeholders for both, and commented `completion_signal` / `stop_on_completion_signal` lines showing the promise-completion path. Uncomment them if you want the agent to stop early by emitting a matching `<promise>...</promise>` tag. Then run [`ralph run`](#ralph-run). See [Getting Started](getting-started.md) for a full walkthrough.
 
 Errors if `RALPH.md` already exists at the target location.
 
