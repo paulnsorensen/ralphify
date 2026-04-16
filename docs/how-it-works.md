@@ -70,7 +70,7 @@ echo "<assembled prompt>" | claude -p --dangerously-skip-permissions
 
 The agent reads the prompt, does work in the current directory (edits files, runs commands, makes commits), and exits. Ralphify waits for the agent process to finish.
 
-Exit codes still mean process success or failure. Promise completion is separate: ralphify can also look for the configured `completion_signal` (default: `RALPH_PROMISE_COMPLETE`) in agent output or captured result text, and only stops early on it when `stop_on_completion_signal` is `true`.
+Exit codes still mean process success or failure. Promise completion is separate: `completion_signal` is the inner promise text (default: `RALPH_PROMISE_COMPLETE`), so ralphify only stops early when `stop_on_completion_signal` is `true` and the agent emits the matching `<promise>...</promise>` tag in output or captured result text. This aligns the promise format with Ralph-Wiggum, but ralphify still uses its own command/prompt loop architecture.
 
 When the agent command starts with `claude`, ralphify automatically adds `--output-format stream-json --verbose` to enable structured streaming. This lets ralphify track agent activity in real time — you don't need to configure this yourself.
 
@@ -181,7 +181,7 @@ The loop continues until one of these happens:
 | `Ctrl+C` (first) | Gracefully finishes the current iteration, then stops the loop. The agent completes its work and the iteration result is recorded. |
 | `Ctrl+C` (second) | Force-stops immediately — kills the agent process and exits. Use when you don't want to wait for the current iteration to finish. |
 | `-n` limit reached | Loop stops after completing the specified number of iterations |
-| `stop_on_completion_signal: true` and `completion_signal` detected | Loop stops after the current iteration |
+| `stop_on_completion_signal: true` and matching `<promise>...</promise>` tag detected | Loop stops after the current iteration |
 | `--stop-on-error` and agent exits non-zero or times out | Loop stops after the current iteration |
 | `--timeout` exceeded | Agent process is killed, iteration is marked as timed out, loop continues (unless `--stop-on-error`) |
 

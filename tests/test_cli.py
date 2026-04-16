@@ -100,20 +100,15 @@ class TestRun:
     ):
         monkeypatch.chdir(tmp_path)
         ralph_dir = make_ralph(tmp_path)
-        captured = {}
-
-        def fake_run_loop(config, state, emitter=None):
-            captured["completion_signal"] = config.completion_signal
-            captured["stop_on_completion_signal"] = config.stop_on_completion_signal
-            captured["max_iterations"] = config.max_iterations
-
-        with patch("ralphify.cli.run_loop", side_effect=fake_run_loop):
+        with patch("ralphify.cli.run_loop") as mock_run_loop:
             result = runner.invoke(app, ["run", str(ralph_dir), "-n", "3"])
 
         assert result.exit_code == 0
-        assert captured["completion_signal"] == "RALPH_PROMISE_COMPLETE"
-        assert captured["stop_on_completion_signal"] is False
-        assert captured["max_iterations"] == 3
+        mock_run_loop.assert_called_once()
+        config = mock_run_loop.call_args.args[0]
+        assert config.completion_signal == "RALPH_PROMISE_COMPLETE"
+        assert config.stop_on_completion_signal is False
+        assert config.max_iterations == 3
 
     def test_run_passes_completion_signal_frontmatter_to_config(
         self, mock_which, tmp_path, monkeypatch
@@ -129,18 +124,73 @@ class TestRun:
             "---\n"
             "go"
         )
-        captured = {}
-
-        def fake_run_loop(config, state, emitter=None):
-            captured["completion_signal"] = config.completion_signal
-            captured["stop_on_completion_signal"] = config.stop_on_completion_signal
-
-        with patch("ralphify.cli.run_loop", side_effect=fake_run_loop):
+        with patch("ralphify.cli.run_loop") as mock_run_loop:
             result = runner.invoke(app, ["run", str(ralph_dir), "-n", "2"])
 
         assert result.exit_code == 0
-        assert captured["completion_signal"] == "CUSTOM_DONE"
-        assert captured["stop_on_completion_signal"] is True
+        mock_run_loop.assert_called_once()
+        config = mock_run_loop.call_args.args[0]
+        assert config.completion_signal == "CUSTOM_DONE"
+        assert config.stop_on_completion_signal is True
+
+    @pytest.mark.parametrize(
+        ("frontmatter_line", "expected_error"),
+        [
+            ("completion_signal: 0", "must be a non-empty string"),
+            (
+                'completion_signal: " CUSTOM_DONE "',
+                "must not include leading or trailing whitespace",
+            ),
+            (
+                'completion_signal: "<promise>CUSTOM_DONE</promise>"',
+                "must be the text inside <promise>...</promise>",
+            ),
+        ],
+        ids=["wrong-type", "surrounding-whitespace", "markup-instead-of-text"],
+    )
+    def test_run_rejects_invalid_completion_signal_frontmatter(
+        self, mock_which, tmp_path, monkeypatch, frontmatter_line, expected_error
+    ):
+        monkeypatch.chdir(tmp_path)
+        ralph_dir = tmp_path / "my-ralph"
+        ralph_dir.mkdir()
+        (ralph_dir / RALPH_MARKER).write_text(
+            "---\n"
+            "agent: claude -p --dangerously-skip-permissions\n"
+            f"{frontmatter_line}\n"
+            "---\n"
+            "go"
+        )
+
+        with patch("ralphify.cli.run_loop") as mock_run_loop:
+            result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
+
+        assert result.exit_code == 1
+        assert "completion_signal" in result.output.lower()
+        assert expected_error in result.output.lower()
+        mock_run_loop.assert_not_called()
+
+    def test_run_rejects_non_boolean_stop_on_completion_signal(
+        self, mock_which, tmp_path, monkeypatch
+    ):
+        monkeypatch.chdir(tmp_path)
+        ralph_dir = tmp_path / "my-ralph"
+        ralph_dir.mkdir()
+        (ralph_dir / RALPH_MARKER).write_text(
+            "---\n"
+            "agent: claude -p --dangerously-skip-permissions\n"
+            'stop_on_completion_signal: "maybe"\n'
+            "---\n"
+            "go"
+        )
+
+        with patch("ralphify.cli.run_loop") as mock_run_loop:
+            result = runner.invoke(app, ["run", str(ralph_dir), "-n", "1"])
+
+        assert result.exit_code == 1
+        assert "stop_on_completion_signal" in result.output.lower()
+        assert "must be true or false" in result.output.lower()
+        mock_run_loop.assert_not_called()
 
     @pytest.mark.parametrize(
         "frontmatter, expected_error",

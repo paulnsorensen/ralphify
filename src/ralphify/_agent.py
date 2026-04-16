@@ -82,6 +82,26 @@ _THREAD_JOIN_TIMEOUT = 5.0
 _PROCESS_WAIT_TIMEOUT = 5.0
 
 
+def _extract_result_text_from_lines(lines: list[str] | None) -> str | None:
+    """Return the last string payload from any JSON ``result`` event in *lines*."""
+    if lines is None:
+        return None
+
+    result_text = None
+    for line in lines:
+        try:
+            parsed = json.loads(line.strip())
+        except json.JSONDecodeError:
+            continue
+        if (
+            isinstance(parsed, dict)
+            and parsed.get("type") == _RESULT_EVENT_TYPE
+            and isinstance(parsed.get(_RESULT_FIELD), str)
+        ):
+            result_text = parsed[_RESULT_FIELD]
+    return result_text
+
+
 def _try_graceful_group_kill(proc: subprocess.Popen[Any]) -> bool:
     """Attempt to kill the process via its POSIX process group.
 
@@ -237,7 +257,7 @@ class AgentResult(ProcessResult):
 class _StreamResult:
     """Accumulated output from reading the agent's JSON stream."""
 
-    stdout_lines: list[str]
+    stdout_lines: list[str] | None
     result_text: str | None
     timed_out: bool
 
@@ -298,6 +318,8 @@ def _read_agent_stream(
     deadline: float | None,
     on_activity: ActivityCallback | None,
     on_output_line: OutputLineCallback | None = None,
+    *,
+    capture_stdout: bool = True,
 ) -> _StreamResult:
     """Read the agent's JSON stream line-by-line until EOF or timeout.
 
@@ -322,8 +344,12 @@ def _read_agent_stream(
 
     Returns early with ``timed_out=True`` when the deadline is exceeded,
     leaving the caller responsible for killing the subprocess.
+
+    When *capture_stdout* is ``False``, stdout is still drained and parsed but
+    not retained in memory.  This keeps the streaming path lightweight when no
+    later completion-signal parsing or log writing needs the raw bytes.
     """
-    stdout_lines: list[str] = []
+    stdout_lines: list[str] | None = [] if capture_stdout else None
     result_text: str | None = None
 
     line_q: queue.Queue[str | None] = queue.Queue()
@@ -359,7 +385,8 @@ def _read_agent_stream(
                 timed_out=False,
             )
 
-        stdout_lines.append(line)
+        if stdout_lines is not None:
+            stdout_lines.append(line)
         if on_output_line is not None:
             try:
                 on_output_line(line.rstrip("\r\n"), _STDOUT)
@@ -421,30 +448,37 @@ def _run_agent_streaming(
     start = time.monotonic()
     deadline = (start + timeout) if timeout is not None else None
 
+    capture_stdout_text = log_dir is not None or capture_result_text
+    pipe_stderr = log_dir is not None or on_output_line is not None
+    capture_stderr_text = log_dir is not None
+
     writer_thread: threading.Thread | None = None
-    stderr_lines: list[str] = []
+    stderr_lines: list[str] | None = [] if capture_stderr_text else None
     stderr_thread: threading.Thread | None = None
 
     proc = subprocess.Popen(
         stream_cmd,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.PIPE if pipe_stderr else None,
         **SUBPROCESS_TEXT_KWARGS,
         **SESSION_KWARGS,
     )
     try:
         # Popen with PIPE guarantees non-None streams; guard explicitly
         # so the type checker narrows and -O mode cannot skip the check.
-        if proc.stdin is None or proc.stdout is None or proc.stderr is None:
+        if proc.stdin is None or proc.stdout is None:
             raise RuntimeError("subprocess.Popen failed to create PIPE streams")
+        if pipe_stderr and proc.stderr is None:
+            raise RuntimeError("subprocess.Popen failed to create PIPE stderr")
 
         # Start the stderr pump BEFORE writing stdin so large prompts can't
         # deadlock against an agent that writes substantial diagnostics to
         # stderr while still reading its stdin.
-        stderr_thread = _start_pump_thread(
-            proc.stderr, stderr_lines, _STDERR, on_output_line
-        )
+        if proc.stderr is not None:
+            stderr_thread = _start_pump_thread(
+                proc.stderr, stderr_lines, _STDERR, on_output_line
+            )
 
         # Deliver the prompt on a background thread so that a blocked write
         # (child not reading stdin, pipe buffer full) cannot prevent
@@ -453,7 +487,13 @@ def _run_agent_streaming(
         # _deliver_prompt already swallows.
         writer_thread = _start_writer_thread(proc, prompt)
 
-        stream = _read_agent_stream(proc.stdout, deadline, on_activity, on_output_line)
+        stream = _read_agent_stream(
+            proc.stdout,
+            deadline,
+            on_activity,
+            on_output_line,
+            capture_stdout=capture_stdout_text,
+        )
 
         if stream.timed_out:
             _kill_process_group(proc)
@@ -461,8 +501,8 @@ def _run_agent_streaming(
     finally:
         _cleanup_agent(proc, stderr_thread, writer_thread)
 
-    stdout = "".join(stream.stdout_lines)
-    stderr = "".join(stderr_lines)
+    stdout = "".join(stream.stdout_lines) if stream.stdout_lines is not None else None
+    stderr = "".join(stderr_lines) if stderr_lines is not None else None
 
     log_file = _write_log(log_dir, iteration, stdout, stderr)
 
@@ -472,8 +512,8 @@ def _run_agent_streaming(
         log_file=log_file,
         result_text=stream.result_text,
         timed_out=stream.timed_out,
-        captured_stdout=stdout if log_dir is not None or capture_result_text else None,
-        captured_stderr=stderr if log_dir is not None or capture_result_text else None,
+        captured_stdout=stdout if capture_stdout_text else None,
+        captured_stderr=stderr if capture_stderr_text else None,
     )
 
 
@@ -615,9 +655,9 @@ def _run_agent_blocking(
     - **Callback only** (``on_output_line`` set, no log dir) — reader
       threads forward lines to the callback without accumulating them,
       avoiding unbounded memory growth.
-    - **Log capture** (``log_dir`` set) — reader threads accumulate
-      lines into lists for log writing; lines are also forwarded to the
-      callback if provided.
+    - **Buffered capture** (``log_dir`` or ``capture_result_text`` set) —
+      reader threads accumulate lines for log writing or later completion
+      parsing; lines are also forwarded to the callback if provided.
 
     The subprocess is started in its own process group so that on
     ``KeyboardInterrupt`` or timeout the entire child tree can be killed
@@ -627,9 +667,10 @@ def _run_agent_blocking(
     Raises ``FileNotFoundError`` if the command binary does not exist.
     """
     start = time.monotonic()
-    capture = (
-        log_dir is not None or on_output_line is not None or capture_result_text
-    )
+    capture_stdout_text = log_dir is not None or capture_result_text
+    capture_stderr_text = log_dir is not None
+    pipe_stdout = capture_stdout_text or on_output_line is not None
+    pipe_stderr = capture_stderr_text or on_output_line is not None
 
     # When no subscriber needs the bytes, stdout/stderr are left
     # un-piped so the child writes directly to the terminal.  When
@@ -642,27 +683,29 @@ def _run_agent_blocking(
     writer_thread: threading.Thread | None = None
     stdout_thread: threading.Thread | None = None
     stderr_thread: threading.Thread | None = None
-    stdout_lines: list[str] | None = [] if log_dir is not None or capture_result_text else None
-    stderr_lines: list[str] | None = [] if log_dir is not None or capture_result_text else None
+    stdout_lines: list[str] | None = [] if capture_stdout_text else None
+    stderr_lines: list[str] | None = [] if capture_stderr_text else None
 
-    pipe = subprocess.PIPE if capture else None
     proc = subprocess.Popen(
         cmd,
         stdin=subprocess.PIPE,
-        stdout=pipe,
-        stderr=pipe,
+        stdout=subprocess.PIPE if pipe_stdout else None,
+        stderr=subprocess.PIPE if pipe_stderr else None,
         **SUBPROCESS_TEXT_KWARGS,
         **SESSION_KWARGS,
     )
     try:
         if proc.stdin is None:
             raise RuntimeError("subprocess.Popen failed to create PIPE stdin")
-        if capture:
-            if proc.stdout is None or proc.stderr is None:
-                raise RuntimeError("subprocess.Popen failed to create PIPE streams")
+        if pipe_stdout:
+            if proc.stdout is None:
+                raise RuntimeError("subprocess.Popen failed to create PIPE stdout")
             stdout_thread = _start_pump_thread(
                 proc.stdout, stdout_lines, _STDOUT, on_output_line
             )
+        if pipe_stderr:
+            if proc.stderr is None:
+                raise RuntimeError("subprocess.Popen failed to create PIPE stderr")
             stderr_thread = _start_pump_thread(
                 proc.stderr, stderr_lines, _STDERR, on_output_line
             )
@@ -681,28 +724,15 @@ def _run_agent_blocking(
     stderr = "".join(stderr_lines) if stderr_lines is not None else None
     log_file = _write_log(log_dir, iteration, stdout, stderr)
 
-    # Try to extract result_text from stdout if present (for early completion via promise)
-    result_text = None
-    if stdout is not None:
-        for line in stdout.splitlines():
-            try:
-                parsed = json.loads(line.strip())
-            except json.JSONDecodeError:
-                continue
-            if (
-                isinstance(parsed, dict)
-                and parsed.get("type") == _RESULT_EVENT_TYPE
-                and isinstance(parsed.get(_RESULT_FIELD), str)
-            ):
-                result_text = parsed[_RESULT_FIELD]
+    result_text = _extract_result_text_from_lines(stdout_lines)
     return AgentResult(
         returncode=None if timed_out else returncode,
         elapsed=time.monotonic() - start,
         log_file=log_file,
         result_text=result_text,
         timed_out=timed_out,
-        captured_stdout=stdout,
-        captured_stderr=stderr,
+        captured_stdout=stdout if capture_stdout_text else None,
+        captured_stderr=stderr if capture_stderr_text else None,
     )
 
 

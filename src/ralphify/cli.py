@@ -59,13 +59,11 @@ app = typer.Typer()
 
 
 def _exit_error(msg: str) -> NoReturn:
-    """Print an error in red and exit with code 1."""
     _console.print(f"[red]{escape_markup(msg)}[/]")
     raise typer.Exit(1)
 
 
 def _is_nonempty_string(value: Any) -> bool:
-    """Return True if *value* is a non-empty string (after stripping whitespace)."""
     return isinstance(value, str) and bool(value.strip())
 
 
@@ -426,11 +424,21 @@ def _validate_credit(raw_credit: Any) -> bool:
 
 
 def _validate_completion_signal(raw_signal: Any) -> str:
-    """Validate the completion signal frontmatter field."""
+    """Validate the inner ``<promise>...</promise>`` text from frontmatter."""
     if raw_signal is None:
         return DEFAULT_COMPLETION_SIGNAL
     if not _is_nonempty_string(raw_signal):
         _exit_error(f"'{FIELD_COMPLETION_SIGNAL}' must be a non-empty string.")
+    if raw_signal != raw_signal.strip():
+        _exit_error(
+            f"'{FIELD_COMPLETION_SIGNAL}' must not include leading or trailing whitespace."
+        )
+    if "<" in raw_signal or ">" in raw_signal:
+        _exit_error(
+            f"'{FIELD_COMPLETION_SIGNAL}' must be the text inside "
+            "<promise>...</promise>, not markup or a raw output fragment. "
+            "Example: completion_signal: COMPLETE"
+        )
     return raw_signal
 
 

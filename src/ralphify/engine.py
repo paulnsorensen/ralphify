@@ -11,9 +11,9 @@ from __future__ import annotations
 
 import shlex
 import traceback
-from typing import Any
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from ralphify._agent import execute_agent
 from ralphify._events import (
@@ -38,6 +38,7 @@ from ralphify._frontmatter import (
     parse_frontmatter,
 )
 from ralphify._output import format_duration
+from ralphify._promise import has_promise_completion
 from ralphify._run_types import (
     Command,
     RunConfig,
@@ -53,7 +54,6 @@ _RELATIVE_CMD_PREFIX = "./"  # commands starting with this run from the ralph di
 
 
 def _field_hint(field_name: str) -> str:
-    """Return a user-facing hint pointing to a frontmatter field."""
     return f"Check the '{field_name}' field in your {RALPH_MARKER} frontmatter."
 
 
@@ -104,8 +104,6 @@ def _run_commands(
     quoted_args = {k: shlex.quote(v) for k, v in user_args.items()}
     for cmd in commands:
         run_str = resolve_args(cmd.run, quoted_args)
-        # Determine working directory: if the command starts with ./ it's
-        # relative to the ralph directory, otherwise use project root.
         if run_str.lstrip().startswith(_RELATIVE_CMD_PREFIX):
             cwd = ralph_dir
         else:
@@ -163,11 +161,6 @@ def _assemble_prompt(
     return prompt
 
 
-def _has_completion_signal(text: str | None, signal: str) -> bool:
-    """Return True when *text* contains the configured completion signal."""
-    return bool(text) and signal in text
-
-
 def _run_agent_phase(
     prompt: str,
     config: RunConfig,
@@ -186,12 +179,8 @@ def _run_agent_phase(
         ) from exc
 
     completion_signal = config.completion_signal
-    completion_detected = False
 
     def _on_output_line(line: str, stream: OutputStream) -> None:
-        nonlocal completion_detected
-        if completion_signal in line:
-            completion_detected = True
         if emit.wants_agent_output_lines():
             emit.agent_output_line(line, stream, state.iteration)
 
@@ -215,7 +204,7 @@ def _run_agent_phase(
             iteration=state.iteration,
             on_activity=on_activity,
             on_output_line=on_output_line,
-            capture_result_text=config.stop_on_completion_signal,
+            capture_result_text=True,
         )
     except FileNotFoundError as exc:
         raise FileNotFoundError(
@@ -223,15 +212,14 @@ def _run_agent_phase(
         ) from exc
 
     duration = format_duration(agent.elapsed)
-    promise_completed = agent.success and (
-        completion_detected
-        or _has_completion_signal(agent.result_text, completion_signal)
-        or _has_completion_signal(agent.captured_stdout, completion_signal)
-        or _has_completion_signal(agent.captured_stderr, completion_signal)
+    completion_text = (
+        agent.result_text if agent.result_text is not None else agent.captured_stdout
+    )
+    promise_completed = agent.success and has_promise_completion(
+        completion_text, completion_signal
     )
     if promise_completed:
         state.promise_completed = True
-        config.promise_completed = True
 
     if agent.timed_out:
         state.mark_timed_out()
@@ -241,7 +229,10 @@ def _run_agent_phase(
         state.mark_completed()
         event_type = EventType.ITERATION_COMPLETED
         if promise_completed:
-            state_detail = f"completed via signal {completion_signal!r} ({duration})"
+            state_detail = (
+                "completed via promise tag "
+                f"<promise>{completion_signal}</promise> ({duration})"
+            )
         else:
             state_detail = f"completed ({duration})"
     else:
@@ -258,12 +249,16 @@ def _run_agent_phase(
         log_file=str(agent.log_file) if agent.log_file else None,
         result_text=agent.result_text,
     )
-    # When logging captured output and peek was off (lines were not rendered
-    # live), include captured output so the emitter can echo it after
-    # stopping the Live spinner.  When peek was on, lines were already shown.
-    if not emit.wants_agent_output_lines() and config.log_dir is not None:
-        ended_data["echo_stdout"] = agent.captured_stdout
-        ended_data["echo_stderr"] = agent.captured_stderr
+    if not emit.wants_agent_output_lines():
+        # When peek was off, echo any captured raw output after the spinner
+        # stops so blocking agents do not appear silent. Structured agents
+        # already surface their parsed result_text, so avoid echoing raw JSON
+        # unless we explicitly captured logs.
+        if config.log_dir is not None:
+            ended_data["echo_stdout"] = agent.captured_stdout
+            ended_data["echo_stderr"] = agent.captured_stderr
+        elif agent.result_text is None and agent.captured_stdout is not None:
+            ended_data["echo_stdout"] = agent.captured_stdout
 
     emit(event_type, ended_data)
     return agent.success, promise_completed and config.stop_on_completion_signal
@@ -284,7 +279,6 @@ def _run_iteration(
 
     emit(EventType.ITERATION_STARTED, IterationStartedData(iteration=iteration))
 
-    # Run commands and collect outputs for placeholder resolution
     command_outputs: dict[str, str] = {}
     if config.commands:
         emit(
@@ -305,14 +299,12 @@ def _run_iteration(
             ),
         )
 
-    # Assemble prompt
     prompt = _assemble_prompt(config, state, command_outputs)
     emit(
         EventType.PROMPT_ASSEMBLED,
         PromptAssembledData(iteration=iteration, prompt_length=len(prompt)),
     )
 
-    # Run agent
     agent_succeeded, stop_for_completion_signal = _run_agent_phase(
         prompt, config, state, emit
     )

@@ -255,11 +255,11 @@ If the agent breaks a test, the next iteration sees the failure output via `{{ c
     Add these frontmatter fields if you want the loop to stop on an explicit completion marker:
 
     ```yaml
-    completion_signal: RALPH_PROMISE_COMPLETE
+    completion_signal: COMPLETE
     stop_on_completion_signal: true
     ```
 
-    `completion_signal` defaults to `RALPH_PROMISE_COMPLETE`. The loop only exits early when `stop_on_completion_signal` is enabled and that string is detected in agent output or captured result text. Exit code `0` still only means the agent process succeeded.
+    `completion_signal` is the inner promise text. With `completion_signal: COMPLETE`, the agent must emit `<promise>COMPLETE</promise>`. If you omit it, the default promise tag is `<promise>RALPH_PROMISE_COMPLETE</promise>`. The loop only exits early when `stop_on_completion_signal` is enabled and that tag is detected in agent output or captured result text. Exit code `0` still only means the agent process succeeded.
 
 Once you're confident the loop works, drop the `-n 3` to let it run indefinitely. Press `Ctrl+C` to stop.
 

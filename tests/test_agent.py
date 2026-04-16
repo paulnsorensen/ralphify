@@ -365,6 +365,32 @@ class TestExecuteAgentBlocking:
         assert result.captured_stdout == "partial stdout"
         assert result.captured_stderr == "partial stderr"
 
+    @patch(MOCK_SUBPROCESS)
+    def test_capture_result_text_keeps_blocking_output_without_log_dir(
+        self, mock_popen
+    ):
+        mock_popen.return_value = ok_proc(
+            stdout_text="<promise>done</promise>\n",
+            stderr_text="some stderr\n",
+        )
+        result = _run_agent_blocking(
+            ["echo"],
+            "prompt",
+            timeout=None,
+            log_dir=None,
+            iteration=1,
+            capture_result_text=True,
+        )
+
+        assert result.captured_stdout == "<promise>done</promise>\n"
+        assert result.captured_stderr is None
+        assert result.result_text is None
+
+        call_kwargs = mock_popen.call_args[1]
+        assert call_kwargs.get("stdin") == subprocess.PIPE
+        assert call_kwargs.get("stdout") == subprocess.PIPE
+        assert call_kwargs.get("stderr") is None
+
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_no_log_when_dir_not_set(self, mock_popen):
         result = execute_agent(
@@ -400,19 +426,22 @@ class TestAgentResult:
         assert result.timed_out is True
         assert result.returncode is None
 
-    def test_success_when_zero_exit(self):
-        result = AgentResult(returncode=0, elapsed=1.0, log_file=None)
-        assert result.success is True
-
-    def test_not_success_when_nonzero_exit(self):
-        result = AgentResult(returncode=1, elapsed=1.0, log_file=None)
-        assert result.success is False
-
-    def test_not_success_when_timed_out(self):
-        result = AgentResult(
-            returncode=None, elapsed=5.0, log_file=None, timed_out=True
-        )
-        assert result.success is False
+    @pytest.mark.parametrize(
+        ("result", "expected"),
+        [
+            (AgentResult(returncode=0, elapsed=1.0, log_file=None), True),
+            (AgentResult(returncode=1, elapsed=1.0, log_file=None), False),
+            (
+                AgentResult(
+                    returncode=None, elapsed=5.0, log_file=None, timed_out=True
+                ),
+                False,
+            ),
+        ],
+        ids=["zero-exit", "nonzero-exit", "timed-out"],
+    )
+    def test_success(self, result, expected):
+        assert result.success is expected
 
 
 class TestExecuteAgentDispatch:
@@ -437,6 +466,67 @@ class TestExecuteAgentDispatch:
         assert result.returncode == 0
         assert result.result_text == "done"
         mock_popen.assert_called_once()
+
+    def test_execute_agent_passes_capture_result_text_to_streaming_helper(
+        self, monkeypatch
+    ):
+        on_activity = MagicMock()
+        on_output_line = MagicMock()
+        fake_streaming = MagicMock(return_value=AgentResult(returncode=0, elapsed=0.01))
+
+        monkeypatch.setattr("ralphify._agent._supports_stream_json", lambda cmd: True)
+        monkeypatch.setattr("ralphify._agent._run_agent_streaming", fake_streaming)
+
+        execute_agent(
+            ["claude", "-p"],
+            "prompt",
+            timeout=None,
+            log_dir=None,
+            iteration=1,
+            on_activity=on_activity,
+            on_output_line=on_output_line,
+            capture_result_text=True,
+        )
+
+        fake_streaming.assert_called_once_with(
+            ["claude", "-p"],
+            "prompt",
+            None,
+            None,
+            1,
+            on_activity=on_activity,
+            on_output_line=on_output_line,
+            capture_result_text=True,
+        )
+
+    def test_execute_agent_passes_capture_result_text_to_blocking_helper(
+        self, monkeypatch
+    ):
+        on_output_line = MagicMock()
+        fake_blocking = MagicMock(return_value=AgentResult(returncode=0, elapsed=0.01))
+
+        monkeypatch.setattr("ralphify._agent._supports_stream_json", lambda cmd: False)
+        monkeypatch.setattr("ralphify._agent._run_agent_blocking", fake_blocking)
+
+        execute_agent(
+            ["echo"],
+            "prompt",
+            timeout=None,
+            log_dir=None,
+            iteration=1,
+            on_output_line=on_output_line,
+            capture_result_text=True,
+        )
+
+        fake_blocking.assert_called_once_with(
+            ["echo"],
+            "prompt",
+            None,
+            None,
+            1,
+            on_output_line=on_output_line,
+            capture_result_text=True,
+        )
 
 
 class TestExecuteAgentStreaming:
@@ -637,6 +727,39 @@ class TestExecuteAgentStreaming:
 
         assert result.captured_stdout == "agent output\n"
         assert result.captured_stderr == "some stderr\n"
+
+    @patch(MOCK_SUBPROCESS)
+    def test_capture_result_text_keeps_stream_output_without_log_dir(self, mock_popen):
+        mock_popen.return_value = make_mock_popen(
+            stdout_lines="<promise>done</promise>\n",
+            stderr_text="some stderr\n",
+            returncode=0,
+        )
+        result = _run_agent_streaming(
+            ["claude", "-p"],
+            "prompt",
+            timeout=None,
+            log_dir=None,
+            iteration=1,
+            capture_result_text=True,
+        )
+
+        assert result.captured_stdout == "<promise>done</promise>\n"
+        assert result.captured_stderr is None
+        assert result.result_text is None
+
+        call_args = mock_popen.call_args
+        assert call_args.args[0] == [
+            "claude",
+            "-p",
+            "--output-format",
+            "stream-json",
+            "--verbose",
+        ]
+        call_kwargs = call_args[1]
+        assert call_kwargs.get("stdin") == subprocess.PIPE
+        assert call_kwargs.get("stdout") == subprocess.PIPE
+        assert call_kwargs.get("stderr") is None
 
     @patch(MOCK_SUBPROCESS)
     def test_no_log_when_dir_not_set(self, mock_popen):

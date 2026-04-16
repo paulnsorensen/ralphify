@@ -34,11 +34,6 @@ from ralphify.engine import (
 )
 
 
-class PeekQueueEmitter(QueueEmitter):
-    def wants_agent_output_lines(self) -> bool:
-        return True
-
-
 class TestRunLoop:
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_single_iteration(self, mock_run, tmp_path):
@@ -134,33 +129,17 @@ class TestRunLoop:
 
 class TestPromiseCompletionSignals:
     @patch("ralphify.engine.execute_agent")
-    def test_completion_signal_in_output_does_not_stop_by_default(
+    def test_tagged_promise_does_not_stop_by_default(
         self, mock_execute_agent, tmp_path
     ):
         config = make_config(tmp_path, max_iterations=3)
         state = make_state()
-        emitter = PeekQueueEmitter()
-
-        def fake_execute_agent(
-            _cmd,
-            _prompt,
-            timeout=None,
-            log_dir=None,
-            iteration=None,
-            on_activity=None,
-            on_output_line=None,
-            capture_result_text=None,
-        ):
-            assert on_output_line is not None
-            on_output_line("working\n", "stdout")
-            on_output_line("RALPH_PROMISE_COMPLETE\n", "stdout")
-            return AgentResult(
-                returncode=0,
-                elapsed=0.01,
-                result_text="finished RALPH_PROMISE_COMPLETE",
-            )
-
-        mock_execute_agent.side_effect = fake_execute_agent
+        emitter = NullEmitter()
+        mock_execute_agent.return_value = AgentResult(
+            returncode=0,
+            elapsed=0.01,
+            captured_stdout="<promise>RALPH_PROMISE_COMPLETE</promise>\n",
+        )
 
         run_loop(config, state, emitter)
 
@@ -168,17 +147,17 @@ class TestPromiseCompletionSignals:
         assert state.completed == 3
         assert state.failed == 0
         assert state.status == RunStatus.COMPLETED
-
-        events = drain_events(emitter)
-        assert len(events_of_type(events, EventType.ITERATION_COMPLETED)) == 3
-        stop_event = events_of_type(events, EventType.RUN_STOPPED)[0]
-        assert stop_event.data["reason"] == "completed"
-        assert stop_event.data["total"] == 3
-        assert stop_event.data["completed"] == 3
-        assert stop_event.data["failed"] == 0
+        assert state.promise_completed is True
+        assert [
+            call.kwargs["on_output_line"] for call in mock_execute_agent.call_args_list
+        ] == [None, None, None]
+        assert [
+            call.kwargs["capture_result_text"]
+            for call in mock_execute_agent.call_args_list
+        ] == [True, True, True]
 
     @patch("ralphify.engine.execute_agent")
-    def test_completion_signal_in_output_stops_early_when_enabled(
+    def test_tagged_promise_stops_early_when_enabled(
         self, mock_execute_agent, tmp_path
     ):
         config = make_config(
@@ -187,32 +166,24 @@ class TestPromiseCompletionSignals:
             stop_on_completion_signal=True,
         )
         state = make_state()
-        emitter = PeekQueueEmitter()
-
-        def fake_execute_agent(
-            _cmd,
-            _prompt,
-            timeout=None,
-            log_dir=None,
-            iteration=None,
-            on_activity=None,
-            on_output_line=None,
-            capture_result_text=None,
-        ):
-            assert on_output_line is not None
-            on_output_line("RALPH_PROMISE_COMPLETE\n", "stdout")
-            return AgentResult(returncode=0, elapsed=0.01, result_text="done")
-
-        mock_execute_agent.side_effect = fake_execute_agent
+        emitter = QueueEmitter()
+        emitter.wants_agent_output_lines = lambda: True
+        mock_execute_agent.return_value = AgentResult(
+            returncode=0,
+            elapsed=0.01,
+            result_text="<promise>RALPH_PROMISE_COMPLETE</promise>",
+        )
 
         run_loop(config, state, emitter)
 
-        assert mock_execute_agent.call_count == 1
+        mock_execute_agent.assert_called_once()
+        assert mock_execute_agent.call_args.kwargs["capture_result_text"] is True
         assert state.iteration == 1
         assert state.completed == 1
         assert state.failed == 0
         assert state.total == 1
         assert state.status == RunStatus.COMPLETED
+        assert state.promise_completed is True
 
         events = drain_events(emitter)
         completed_events = events_of_type(events, EventType.ITERATION_COMPLETED)
@@ -225,7 +196,7 @@ class TestPromiseCompletionSignals:
         assert stop_event.data["timed_out_count"] == 0
 
     @patch("ralphify.engine.execute_agent")
-    def test_custom_completion_signal_in_result_text_stops_early(
+    def test_custom_promise_text_matches_inner_tag_text(
         self, mock_execute_agent, tmp_path
     ):
         config = make_config(
@@ -236,34 +207,20 @@ class TestPromiseCompletionSignals:
         )
         state = make_state()
         emitter = QueueEmitter()
-
-        def fake_execute_agent(
-            _cmd,
-            _prompt,
-            timeout=None,
-            log_dir=None,
-            iteration=None,
-            on_activity=None,
-            on_output_line=None,
-            capture_result_text=None,
-        ):
-            return AgentResult(
-                returncode=0,
-                elapsed=0.01,
-                result_text="final status CUSTOM_DONE",
-            )
-
-        mock_execute_agent.side_effect = fake_execute_agent
+        mock_execute_agent.return_value = AgentResult(
+            returncode=0,
+            elapsed=0.01,
+            result_text="<promise>CUSTOM_DONE</promise>",
+        )
 
         run_loop(config, state, emitter)
 
-        assert mock_execute_agent.call_count == 1
+        mock_execute_agent.assert_called_once()
         assert state.iteration == 1
         assert state.completed == 1
         assert state.failed == 0
         assert state.status == RunStatus.COMPLETED
         assert state.promise_completed is True
-        assert config.promise_completed is True
 
         events = drain_events(emitter)
         stop_event = events_of_type(events, EventType.RUN_STOPPED)[0]
@@ -272,7 +229,35 @@ class TestPromiseCompletionSignals:
         assert stop_event.data["completed"] == 1
 
     @patch("ralphify.engine.execute_agent")
-    def test_stop_on_completion_signal_without_signal_keeps_running(
+    def test_promise_tag_normalizes_inner_whitespace_before_matching(
+        self, mock_execute_agent, tmp_path
+    ):
+        config = make_config(
+            tmp_path,
+            max_iterations=4,
+            completion_signal="CUSTOM DONE",
+            stop_on_completion_signal=True,
+        )
+        state = make_state()
+
+        mock_execute_agent.return_value = AgentResult(
+            returncode=0,
+            elapsed=0.01,
+            result_text="<promise>\n  CUSTOM\tDONE  \n</promise>",
+        )
+
+        run_loop(config, state, NullEmitter())
+
+        assert mock_execute_agent.call_count == 1
+        assert state.iteration == 1
+        assert state.completed == 1
+        assert state.failed == 0
+        assert state.total == 1
+        assert state.status == RunStatus.COMPLETED
+        assert state.promise_completed is True
+
+    @patch("ralphify.engine.execute_agent")
+    def test_untagged_raw_text_does_not_match_completion_signal(
         self, mock_execute_agent, tmp_path
     ):
         config = make_config(
@@ -285,7 +270,7 @@ class TestPromiseCompletionSignals:
         mock_execute_agent.return_value = AgentResult(
             returncode=0,
             elapsed=0.01,
-            result_text="done without completion marker",
+            result_text="done RALPH_PROMISE_COMPLETE without promise tags",
         )
 
         run_loop(config, state, NullEmitter())
@@ -294,6 +279,80 @@ class TestPromiseCompletionSignals:
         assert state.completed == 3
         assert state.failed == 0
         assert state.status == RunStatus.COMPLETED
+        assert state.promise_completed is False
+
+    @patch("ralphify.engine.execute_agent")
+    def test_different_tagged_promise_text_does_not_match(
+        self, mock_execute_agent, tmp_path
+    ):
+        config = make_config(
+            tmp_path,
+            max_iterations=3,
+            completion_signal="CUSTOM_DONE",
+            stop_on_completion_signal=True,
+        )
+        state = make_state()
+
+        mock_execute_agent.return_value = AgentResult(
+            returncode=0,
+            elapsed=0.01,
+            result_text="<promise>CUSTOM_DONE_NOW</promise>",
+        )
+
+        run_loop(config, state, NullEmitter())
+
+        assert mock_execute_agent.call_count == 3
+        assert state.completed == 3
+        assert state.failed == 0
+        assert state.status == RunStatus.COMPLETED
+        assert state.promise_completed is False
+
+    @patch("ralphify.engine.execute_agent")
+    def test_structured_agents_ignore_raw_stdout_for_promise_detection(
+        self, mock_execute_agent, tmp_path
+    ):
+        config = make_config(
+            tmp_path,
+            max_iterations=2,
+            stop_on_completion_signal=True,
+        )
+        state = make_state()
+
+        mock_execute_agent.return_value = AgentResult(
+            returncode=0,
+            elapsed=0.01,
+            result_text="done without promise tag",
+            captured_stdout='{"type":"status","message":"<promise>RALPH_PROMISE_COMPLETE</promise>"}\n',
+        )
+
+        run_loop(config, state, NullEmitter())
+
+        assert mock_execute_agent.call_count == 2
+        assert state.completed == 2
+        assert state.failed == 0
+        assert state.status == RunStatus.COMPLETED
+        assert state.promise_completed is False
+
+    @patch("ralphify.engine.execute_agent")
+    def test_blocking_captured_stdout_is_echoed_when_peek_is_off(
+        self, mock_execute_agent, tmp_path
+    ):
+        config = make_config(tmp_path, max_iterations=1)
+        state = make_state()
+        emitter = QueueEmitter()
+
+        mock_execute_agent.return_value = AgentResult(
+            returncode=0,
+            elapsed=0.01,
+            captured_stdout="plain blocking output\n",
+        )
+
+        run_loop(config, state, emitter)
+
+        completed_event = events_of_type(
+            drain_events(emitter), EventType.ITERATION_COMPLETED
+        )[0]
+        assert completed_event.data["echo_stdout"] == "plain blocking output\n"
 
 
 class TestRunLoopDefaults:
