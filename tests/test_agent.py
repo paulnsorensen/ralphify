@@ -366,7 +366,7 @@ class TestExecuteAgentBlocking:
         assert result.captured_stderr == "partial stderr"
 
     @patch(MOCK_SUBPROCESS)
-    def test_capture_result_text_keeps_blocking_output_without_log_dir(
+    def test_capture_result_text_does_not_buffer_blocking_output_without_log_dir(
         self, mock_popen
     ):
         mock_popen.return_value = ok_proc(
@@ -382,7 +382,7 @@ class TestExecuteAgentBlocking:
             capture_result_text=True,
         )
 
-        assert result.captured_stdout == "<promise>done</promise>\n"
+        assert result.captured_stdout is None
         assert result.captured_stderr is None
         assert result.result_text is None
 
@@ -497,6 +497,7 @@ class TestExecuteAgentDispatch:
             on_activity=on_activity,
             on_output_line=on_output_line,
             capture_result_text=True,
+            capture_stdout=False,
         )
 
     def test_execute_agent_passes_capture_result_text_to_blocking_helper(
@@ -526,6 +527,7 @@ class TestExecuteAgentDispatch:
             1,
             on_output_line=on_output_line,
             capture_result_text=True,
+            capture_stdout=False,
         )
 
 
@@ -602,7 +604,6 @@ class TestExecuteAgentStreaming:
         assert result.result_text == "second"
         assert result.returncode == 0
         assert result.timed_out is False
-
 
     @patch(MOCK_SUBPROCESS)
     def test_success(self, mock_popen):
@@ -729,7 +730,9 @@ class TestExecuteAgentStreaming:
         assert result.captured_stderr == "some stderr\n"
 
     @patch(MOCK_SUBPROCESS)
-    def test_capture_result_text_keeps_stream_output_without_log_dir(self, mock_popen):
+    def test_capture_result_text_does_not_buffer_stream_output_without_log_dir(
+        self, mock_popen
+    ):
         mock_popen.return_value = make_mock_popen(
             stdout_lines="<promise>done</promise>\n",
             stderr_text="some stderr\n",
@@ -744,7 +747,7 @@ class TestExecuteAgentStreaming:
             capture_result_text=True,
         )
 
-        assert result.captured_stdout == "<promise>done</promise>\n"
+        assert result.captured_stdout is None
         assert result.captured_stderr is None
         assert result.result_text is None
 

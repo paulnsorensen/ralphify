@@ -89,17 +89,25 @@ def _extract_result_text_from_lines(lines: list[str] | None) -> str | None:
 
     result_text = None
     for line in lines:
-        try:
-            parsed = json.loads(line.strip())
-        except json.JSONDecodeError:
-            continue
-        if (
-            isinstance(parsed, dict)
-            and parsed.get("type") == _RESULT_EVENT_TYPE
-            and isinstance(parsed.get(_RESULT_FIELD), str)
-        ):
-            result_text = parsed[_RESULT_FIELD]
+        extracted = _extract_result_text_from_line(line)
+        if extracted is not None:
+            result_text = extracted
     return result_text
+
+
+def _extract_result_text_from_line(line: str) -> str | None:
+    """Return the string payload from a single JSON ``result`` event line."""
+    try:
+        parsed = json.loads(line.strip())
+    except json.JSONDecodeError:
+        return None
+    if (
+        isinstance(parsed, dict)
+        and parsed.get("type") == _RESULT_EVENT_TYPE
+        and isinstance(parsed.get(_RESULT_FIELD), str)
+    ):
+        return parsed[_RESULT_FIELD]
+    return None
 
 
 def _try_graceful_group_kill(proc: subprocess.Popen[Any]) -> bool:
@@ -432,6 +440,7 @@ def _run_agent_streaming(
     on_activity: ActivityCallback | None = None,
     on_output_line: OutputLineCallback | None = None,
     capture_result_text: bool = False,
+    capture_stdout: bool = False,
 ) -> AgentResult:
     """Run the agent subprocess with line-by-line streaming of JSON output.
 
@@ -448,7 +457,7 @@ def _run_agent_streaming(
     start = time.monotonic()
     deadline = (start + timeout) if timeout is not None else None
 
-    capture_stdout_text = log_dir is not None or capture_result_text
+    capture_stdout_text = log_dir is not None or capture_stdout
     pipe_stderr = log_dir is not None or on_output_line is not None
     capture_stderr_text = log_dir is not None
 
@@ -643,6 +652,7 @@ def _run_agent_blocking(
     iteration: int,
     on_output_line: OutputLineCallback | None = None,
     capture_result_text: bool = False,
+    capture_stdout: bool = False,
 ) -> AgentResult:
     """Run the agent subprocess and return the result.
 
@@ -655,9 +665,9 @@ def _run_agent_blocking(
     - **Callback only** (``on_output_line`` set, no log dir) — reader
       threads forward lines to the callback without accumulating them,
       avoiding unbounded memory growth.
-    - **Buffered capture** (``log_dir`` or ``capture_result_text`` set) —
-      reader threads accumulate lines for log writing or later completion
-      parsing; lines are also forwarded to the callback if provided.
+    - **Buffered capture** (``log_dir`` or ``capture_stdout`` set) —
+       reader threads accumulate lines for log writing or later completion
+       parsing; lines are also forwarded to the callback if provided.
 
     The subprocess is started in its own process group so that on
     ``KeyboardInterrupt`` or timeout the entire child tree can be killed
@@ -667,9 +677,11 @@ def _run_agent_blocking(
     Raises ``FileNotFoundError`` if the command binary does not exist.
     """
     start = time.monotonic()
-    capture_stdout_text = log_dir is not None or capture_result_text
+    capture_stdout_text = log_dir is not None or capture_stdout
     capture_stderr_text = log_dir is not None
-    pipe_stdout = capture_stdout_text or on_output_line is not None
+    pipe_stdout = (
+        capture_stdout_text or on_output_line is not None or capture_result_text
+    )
     pipe_stderr = capture_stderr_text or on_output_line is not None
 
     # When no subscriber needs the bytes, stdout/stderr are left
@@ -685,6 +697,16 @@ def _run_agent_blocking(
     stderr_thread: threading.Thread | None = None
     stdout_lines: list[str] | None = [] if capture_stdout_text else None
     stderr_lines: list[str] | None = [] if capture_stderr_text else None
+    result_text: str | None = None
+
+    def _on_output_line(line: str, stream_name: OutputStream) -> None:
+        nonlocal result_text
+        if capture_result_text and stream_name == _STDOUT:
+            extracted = _extract_result_text_from_line(line)
+            if extracted is not None:
+                result_text = extracted
+        if on_output_line is not None:
+            on_output_line(line, stream_name)
 
     proc = subprocess.Popen(
         cmd,
@@ -701,13 +723,13 @@ def _run_agent_blocking(
             if proc.stdout is None:
                 raise RuntimeError("subprocess.Popen failed to create PIPE stdout")
             stdout_thread = _start_pump_thread(
-                proc.stdout, stdout_lines, _STDOUT, on_output_line
+                proc.stdout, stdout_lines, _STDOUT, _on_output_line
             )
         if pipe_stderr:
             if proc.stderr is None:
                 raise RuntimeError("subprocess.Popen failed to create PIPE stderr")
             stderr_thread = _start_pump_thread(
-                proc.stderr, stderr_lines, _STDERR, on_output_line
+                proc.stderr, stderr_lines, _STDERR, _on_output_line
             )
 
         writer_thread = _start_writer_thread(proc, prompt)
@@ -724,12 +746,11 @@ def _run_agent_blocking(
     stderr = "".join(stderr_lines) if stderr_lines is not None else None
     log_file = _write_log(log_dir, iteration, stdout, stderr)
 
-    result_text = _extract_result_text_from_lines(stdout_lines)
     return AgentResult(
         returncode=None if timed_out else returncode,
         elapsed=time.monotonic() - start,
         log_file=log_file,
-        result_text=result_text,
+        result_text=result_text or _extract_result_text_from_lines(stdout_lines),
         timed_out=timed_out,
         captured_stdout=stdout if capture_stdout_text else None,
         captured_stderr=stderr if capture_stderr_text else None,
@@ -746,6 +767,7 @@ def execute_agent(
     on_activity: ActivityCallback | None = None,
     on_output_line: OutputLineCallback | None = None,
     capture_result_text: bool = False,
+    capture_stdout: bool | None = None,
 ) -> AgentResult:
     """Run the agent subprocess, auto-selecting streaming or blocking mode.
 
@@ -758,7 +780,13 @@ def execute_agent(
     This is the single entry point the engine should use — callers don't need
     to know which execution mode is selected.
     """
-    if _supports_stream_json(cmd):
+    supports_stream_json = _supports_stream_json(cmd)
+    if capture_stdout is None:
+        capture_stdout = log_dir is not None or (
+            not supports_stream_json and on_output_line is None and capture_result_text
+        )
+
+    if supports_stream_json:
         return _run_agent_streaming(
             cmd,
             prompt,
@@ -768,6 +796,7 @@ def execute_agent(
             on_activity=on_activity,
             on_output_line=on_output_line,
             capture_result_text=capture_result_text,
+            capture_stdout=capture_stdout,
         )
     return _run_agent_blocking(
         cmd,
@@ -777,4 +806,5 @@ def execute_agent(
         iteration,
         on_output_line=on_output_line,
         capture_result_text=capture_result_text,
+        capture_stdout=capture_stdout,
     )

@@ -9,6 +9,7 @@ The loop: run commands → assemble prompt → pipe to agent → repeat.
 
 from __future__ import annotations
 
+import json
 import shlex
 import traceback
 from datetime import datetime, timezone
@@ -179,10 +180,31 @@ def _run_agent_phase(
         ) from exc
 
     completion_signal = config.completion_signal
+    promise_completed_from_output = False
+    promise_scan_tail = ""
+    promise_scan_limit = max(4096, len(completion_signal) * 4 + 64)
+
+    def _record_promise_fragment(fragment: str) -> None:
+        nonlocal promise_completed_from_output, promise_scan_tail
+        if promise_completed_from_output or not fragment:
+            return
+        promise_scan_tail = (promise_scan_tail + fragment)[-promise_scan_limit:]
+        promise_completed_from_output = has_promise_completion(
+            promise_scan_tail, completion_signal
+        )
 
     def _on_output_line(line: str, stream: OutputStream) -> None:
         if emit.wants_agent_output_lines():
             emit.agent_output_line(line, stream, state.iteration)
+        if stream != "stdout":
+            return
+        stripped = line.strip()
+        if not stripped:
+            return
+        try:
+            json.loads(stripped)
+        except json.JSONDecodeError:
+            _record_promise_fragment(f"{line}\n")
 
     if emit.wants_agent_output_lines() or config.log_dir is not None:
         on_output_line = _on_output_line
@@ -190,6 +212,7 @@ def _run_agent_phase(
         on_output_line = None
 
     try:
+
         def on_activity(data: dict[str, Any]) -> None:
             emit(
                 EventType.AGENT_ACTIVITY,
@@ -215,8 +238,9 @@ def _run_agent_phase(
     completion_text = (
         agent.result_text if agent.result_text is not None else agent.captured_stdout
     )
-    promise_completed = agent.success and has_promise_completion(
-        completion_text, completion_signal
+    promise_completed = agent.success and (
+        promise_completed_from_output
+        or has_promise_completion(completion_text, completion_signal)
     )
     if promise_completed:
         state.promise_completed = True
