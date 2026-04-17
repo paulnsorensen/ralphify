@@ -122,14 +122,20 @@ def _is_claude_command(agent: str) -> bool:
 
 # ── Tool argument abbreviation ────────────────────────────────────────
 
+_TRUNCATE_DEFAULT = 80
+_TRUNCATE_PATH_DEFAULT = 48
+# Tool error snippets get more room than generic text so the failure
+# reason remains readable in the activity feed.
+_TRUNCATE_TOOL_ERROR = 100
 
-def _truncate(text: str, maxlen: int = 80) -> str:
+
+def _truncate(text: str, maxlen: int = _TRUNCATE_DEFAULT) -> str:
     if len(text) <= maxlen:
         return text
     return text[: maxlen - 1] + "…"
 
 
-def _shorten_path(path: str, max_len: int = 48) -> str:
+def _shorten_path(path: str, max_len: int = _TRUNCATE_PATH_DEFAULT) -> str:
     """Make a file path readable in the activity feed.
 
     Collapses $HOME → ``~`` and, when still too long, drops middle path
@@ -536,7 +542,7 @@ class _IterationPanel(_LivePanelBase):
             if not isinstance(block, dict):
                 continue
             if block.get("type") == "tool_result" and block.get("is_error"):
-                snippet = _truncate(str(block.get("content", "")), 100)
+                snippet = _truncate(str(block.get("content", "")), _TRUNCATE_TOOL_ERROR)
                 self.add_scroll_line(
                     f"[bold {_brand.DEEP_ORANGE}]{_ICON_FAILURE} tool error:[/]"
                     f" [dim]{escape_markup(snippet)}[/]"
