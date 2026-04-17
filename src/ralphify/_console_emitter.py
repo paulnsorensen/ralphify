@@ -996,13 +996,22 @@ class ConsoleEmitter:
             EventType.RUN_STARTED: self._on_run_started,
             EventType.ITERATION_STARTED: self._on_iteration_started,
             EventType.ITERATION_COMPLETED: partial(
-                self._on_iteration_ended, color="green", icon=_ICON_SUCCESS
+                self._on_iteration_ended,
+                color="green",
+                icon=_ICON_SUCCESS,
+                outcome="completed",
             ),
             EventType.ITERATION_FAILED: partial(
-                self._on_iteration_ended, color="red", icon=_ICON_FAILURE
+                self._on_iteration_ended,
+                color="red",
+                icon=_ICON_FAILURE,
+                outcome="failed",
             ),
             EventType.ITERATION_TIMED_OUT: partial(
-                self._on_iteration_ended, color="yellow", icon=_ICON_TIMEOUT
+                self._on_iteration_ended,
+                color="yellow",
+                icon=_ICON_TIMEOUT,
+                outcome="timed out",
             ),
             EventType.COMMANDS_COMPLETED: self._on_commands_completed,
             EventType.LOG_MESSAGE: self._on_log_message,
@@ -1501,14 +1510,8 @@ class ConsoleEmitter:
             if not text.endswith("\n"):
                 self._console.print()
 
-    _ICON_TO_OUTCOME = {
-        _ICON_SUCCESS: "completed",
-        _ICON_FAILURE: "failed",
-        _ICON_TIMEOUT: "timed out",
-    }
-
     def _on_iteration_ended(
-        self, data: IterationEndedData, color: str, icon: str
+        self, data: IterationEndedData, color: str, icon: str, outcome: str
     ) -> None:
         iteration = data["iteration"]
         detail = data["detail"]
@@ -1516,7 +1519,6 @@ class ConsoleEmitter:
         result_text = data["result_text"]
         echo_stdout = data.get("echo_stdout")
         echo_stderr = data.get("echo_stderr")
-        outcome = self._ICON_TO_OUTCOME.get(icon, "ended")
         with self._console_lock:
             # Stop the compact Live (if any) before archiving — the
             # underlying panel is preserved in history for fullscreen
