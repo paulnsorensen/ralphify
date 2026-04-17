@@ -87,6 +87,12 @@ def warn(message: str) -> None:
     print(f"ralphify: warning: {message}", file=sys.stderr)
 
 
+_COUNT_THOUSANDS = 1_000
+_COUNT_MILLIONS = 1_000_000
+_SECONDS_PER_MINUTE = 60
+_MINUTES_PER_HOUR = 60
+
+
 def format_count(n: int) -> str:
     """Format *n* as a compact human-readable count string.
 
@@ -107,12 +113,6 @@ def format_count(n: int) -> str:
             return f"{n / _COUNT_MILLIONS:.1f}M"
         return f"{n / _COUNT_THOUSANDS:.1f}k"
     return str(n)
-
-
-_COUNT_THOUSANDS = 1_000
-_COUNT_MILLIONS = 1_000_000
-_SECONDS_PER_MINUTE = 60
-_MINUTES_PER_HOUR = 60
 
 
 def format_duration(seconds: float) -> str:
