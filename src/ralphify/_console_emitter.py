@@ -20,6 +20,7 @@ from rich import box
 from rich.console import Console, ConsoleOptions, Group, RenderResult
 from rich.live import Live
 from rich.markup import escape as escape_markup
+from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.rule import Rule
 from rich.spinner import Spinner
@@ -1539,8 +1540,6 @@ class ConsoleEmitter:
                         f"  [dim]{_ICON_ARROW} {escape_markup(log_file)}[/]"
                     )
                 if result_text:
-                    from rich.markdown import Markdown
-
                     self._console.print(Markdown(result_text))
 
             self._print_or_defer_unlocked(do_print)
