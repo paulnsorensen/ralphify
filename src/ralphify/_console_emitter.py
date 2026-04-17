@@ -10,7 +10,7 @@ import shlex
 import sys
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
@@ -307,6 +307,16 @@ def _tool_display(name: str, tool_input: dict[str, Any]) -> tuple[str, str, str]
     return color, category, arg
 
 
+def _iter_content_blocks(raw: dict[str, Any]) -> Iterator[dict[str, Any]]:
+    """Yield each dict block from ``raw["message"]["content"]``."""
+    content = raw.get("message", {}).get("content", [])
+    if not isinstance(content, list):
+        return
+    for block in content:
+        if isinstance(block, dict):
+            yield block
+
+
 class _LivePanelBase:
     """Shared scroll-buffer state for iteration Live renderables.
 
@@ -484,13 +494,7 @@ class _IterationPanel(_LivePanelBase):
                 "cache_read_input_tokens", self._cache_read_tokens
             )
 
-        content = msg.get("content", [])
-        if not isinstance(content, list):
-            return
-
-        for block in content:
-            if not isinstance(block, dict):
-                continue
+        for block in _iter_content_blocks(raw):
             block_type = block.get("type")
 
             if block_type == "thinking":
@@ -534,13 +538,7 @@ class _IterationPanel(_LivePanelBase):
                     self.add_scroll_line(f"[bold {color}]{escape_markup(name)}[/]")
 
     def _apply_user(self, raw: dict[str, Any]) -> None:
-        msg = raw.get("message", {})
-        content = msg.get("content", [])
-        if not isinstance(content, list):
-            return
-        for block in content:
-            if not isinstance(block, dict):
-                continue
+        for block in _iter_content_blocks(raw):
             if block.get("type") == "tool_result" and block.get("is_error"):
                 snippet = _truncate(str(block.get("content", "")), _TRUNCATE_TOOL_ERROR)
                 self.add_scroll_line(
