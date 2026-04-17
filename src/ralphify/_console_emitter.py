@@ -362,14 +362,11 @@ class _LivePanelBase:
         rows: list[Any] = []
         if self._peek_visible:
             visible = self._scroll_lines[-_MAX_VISIBLE_SCROLL:]
-            if visible:
-                for line in visible:
-                    line.no_wrap = True
-                    line.overflow = "ellipsis"
-                    rows.append(line)
-            elif self._peek_message is not None:
-                rows.append(self._peek_message)
-        elif self._peek_message is not None:
+            for line in visible:
+                line.no_wrap = True
+                line.overflow = "ellipsis"
+                rows.append(line)
+        if not rows and self._peek_message is not None:
             rows.append(self._peek_message)
         rows.append(Text(""))  # spacer above footer
         rows.append(self._build_footer())
@@ -596,10 +593,10 @@ class _IterationSpinner(_LivePanelBase):
 # ── Full-screen peek ─────────────────────────────────────────────────
 
 # Chrome rows that the fullscreen peek reserves on top of its viewport:
-# panel top border + header row + header gap + footer gap + footer row +
-# panel bottom border.  Used to size the visible viewport to the terminal.
-_FULLSCREEN_CHROME_ROWS = 6
-_FULLSCREEN_MIN_VISIBLE = 5
+# panel top border (1) + panel bottom border (1).  Header lives in the
+# panel title and footer in the subtitle, so they cost no extra rows.
+_FULLSCREEN_CHROME_ROWS = 2
+_FULLSCREEN_MIN_VISIBLE = 3
 
 
 @dataclass(slots=True)
@@ -704,12 +701,13 @@ class _FullscreenPeek:
             end = total - self._offset
             header.append("  ·  ", style="dim")
             header.append(f"lines {start}–{end}", style=f"italic {_brand.LAVENDER}")
+        header.append(" ", style="dim")
         return header
 
     def _build_footer(self) -> Text:
         hint = Text(no_wrap=True, overflow="ellipsis")
         hint.append(
-            " ↑/k up · ↓/j down · b page up · space page down · g/G top/bottom · q/",
+            " ↑/↓ scroll · space/b page · g/G top/bottom · q/",
             style="dim",
         )
         hint.append(FULLSCREEN_PEEK_KEY, style=f"bold {_brand.PURPLE}")
@@ -738,18 +736,20 @@ class _FullscreenPeek:
 
         sb = _scrollbar_metrics(total, visible, self._offset)
 
-        rows: list[Any] = []
-        rows.append(self._build_header(total, visible))
-        rows.append(Text(""))
-
-        # Content area with optional scrollbar column
+        # Body is exactly `visible` rows tall: a single Table.grid that
+        # always pads to the viewport height (with empty Text rows when
+        # the buffer is shorter than the viewport) so the panel's height
+        # never depends on how full the buffer is.
         content = Table.grid(expand=True)
         content.add_column(ratio=1, no_wrap=True, overflow="ellipsis")
         if sb.show:
             content.add_column(width=1, no_wrap=True)
 
+        show_waiting = not window and not sb.show
         for i in range(visible):
-            if i < len(window):
+            if show_waiting and i == 0:
+                line: Text = Text("  (waiting for activity…)", style="dim italic")
+            elif i < len(window):
                 line = window[i]
                 line.no_wrap = True
                 line.overflow = "ellipsis"
@@ -765,22 +765,16 @@ class _FullscreenPeek:
             else:
                 content.add_row(line)
 
-        if not window and not sb.show:
-            # Replace the empty grid with a waiting message
-            rows.append(Text("  (waiting for activity…)", style="dim italic"))
-            for _ in range(max(0, visible - 1)):
-                rows.append(Text(""))
-        else:
-            rows.append(content)
-
-        rows.append(Text(""))
-        rows.append(self._build_footer())
-
         panel = Panel(
-            Group(*rows),
+            content,
             box=box.ROUNDED,
+            title=self._build_header(total, visible),
+            title_align="left",
+            subtitle=self._build_footer(),
+            subtitle_align="left",
             border_style=_brand.PURPLE,
-            padding=(0, 2),
+            padding=(0, 1),
+            height=visible + _FULLSCREEN_CHROME_ROWS,
         )
         yield panel
 
@@ -1035,6 +1029,7 @@ class ConsoleEmitter:
                 console=self._console,
                 screen=True,
                 refresh_per_second=_LIVE_REFRESH_RATE,
+                vertical_overflow="crop",
             )
             try:
                 self._fullscreen_live.start()
@@ -1078,7 +1073,11 @@ class ConsoleEmitter:
         self._live.start()
 
     def _fullscreen_page_size(self) -> int:
-        """Lines to jump on space/b (page down/up)."""
+        """Lines to jump on space/b (page down/up).
+
+        One viewport minus a 2-line overlap so the user can keep their
+        place across page jumps.
+        """
         try:
             height = self._console.size.height
         except Exception:
@@ -1110,10 +1109,7 @@ class ConsoleEmitter:
             view = self._fullscreen_view
             if view is None:
                 return  # raced with exit
-            if key in ("q", FULLSCREEN_PEEK_KEY):
-                # Release lock before exit_fullscreen re-acquires it.
-                pass
-            else:
+            if key not in ("q", FULLSCREEN_PEEK_KEY):
                 page = self._fullscreen_page_size()
                 handled = True
                 if key == "j":

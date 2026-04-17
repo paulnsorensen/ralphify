@@ -1554,17 +1554,17 @@ class TestFullscreenPeekView:
     def test_scroll_up_clamped_to_top(self):
         source = self._make_source(30)
         view = _FullscreenPeek(source)
-        view._console_height = 40  # visible = 34 > 30, so max_offset = 0
+        view._console_height = 40  # visible = 38 > 30, so max_offset = 0
         view.scroll_up(100)
         assert view._offset == 0
 
     def test_scroll_to_top_clamps_to_max_offset(self):
         source = self._make_source(500)
         view = _FullscreenPeek(source)
-        view._console_height = 40  # visible = 34
+        view._console_height = 40  # visible = 38
         view.scroll_to_top()
-        # 500 total - 34 visible = 466
-        assert view._offset == 466
+        # 500 total - 38 visible = 462
+        assert view._offset == 462
         assert view._auto_scroll is False
 
     def test_scroll_to_bottom_re_enables_follow(self):
@@ -1582,8 +1582,8 @@ class TestFullscreenPeekView:
         console = Console(record=True, width=120, height=15, force_terminal=True)
         console.print(view)
         output = console.export_text()
-        # With height 15 and chrome 6, visible ≈ 9, so the last lines
-        # (0019, 0018, …) should appear.
+        # With height 15 and chrome 2, visible = 13, so the last lines
+        # (0019 down to 0007) should appear.
         assert "line 0019" in output
         assert "line 0000" not in output
 
