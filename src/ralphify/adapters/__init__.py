@@ -119,6 +119,20 @@ def select_adapter(cmd: list[str]) -> CLIAdapter:
     return GenericAdapter()
 
 
+def _register_builtin_adapters() -> None:
+    """Import concrete adapter modules so their ``ADAPTERS.append`` runs.
+
+    Keeps the registry populated without forcing callers to import every
+    adapter module manually.  Imports are deferred to the bottom of this
+    module (executed once at first package import) so cyclic-import risk
+    is contained.
+    """
+    from ralphify.adapters import claude, codex, copilot  # noqa: F401
+
+
+_register_builtin_adapters()
+
+
 __all__ = [
     "ADAPTERS",
     "AdapterEvent",

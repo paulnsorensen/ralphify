@@ -31,10 +31,21 @@ FIELD_RALPH = "ralph"
 FIELD_COMPLETION_SIGNAL = "completion_signal"
 FIELD_STOP_ON_COMPLETION_SIGNAL = "stop_on_completion_signal"
 
+# Per-iteration turn-cap configuration — see docs/specs/cli-adapter-layer.md.
+FIELD_MAX_TURNS = "max_turns"
+FIELD_MAX_TURNS_GRACE = "max_turns_grace"
+
+# User-subscribable lifecycle hooks (list of {event, run} mappings).
+FIELD_HOOKS = "hooks"
+
 # Sub-field names within each command mapping.
 CMD_FIELD_NAME = "name"
 CMD_FIELD_RUN = "run"
 CMD_FIELD_TIMEOUT = "timeout"
+
+# Sub-field names within each hook mapping.
+HOOK_FIELD_EVENT = "event"
+HOOK_FIELD_RUN = "run"
 
 # YAML frontmatter delimiter line.
 _FRONTMATTER_DELIMITER = "---"
