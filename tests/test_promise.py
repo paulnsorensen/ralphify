@@ -6,7 +6,9 @@ from ralphify._promise import has_promise_completion, parse_promise_tags
 
 
 class TestParsePromiseTags:
-    @pytest.mark.parametrize("raw_text", [None, "", "plain text", "<promise>missing close"])
+    @pytest.mark.parametrize(
+        "raw_text", [None, "", "plain text", "<promise>missing close"]
+    )
     def test_parse_promise_tags_invalid_input_returns_empty_list(self, raw_text):
         assert parse_promise_tags(raw_text) == []
 
@@ -34,11 +36,7 @@ class TestHasPromiseCompletion:
         assert has_promise_completion(text, "CUSTOM") is False
 
     def test_has_promise_completion_ignores_wrong_case_and_malformed_tags(self):
-        text = (
-            "<PROMISE>CUSTOM_DONE</PROMISE>"
-            "<promise>CUSTOM_DONE"
-            "</promise-ish>"
-        )
+        text = "<PROMISE>CUSTOM_DONE</PROMISE><promise>CUSTOM_DONE</promise-ish>"
 
         assert has_promise_completion(text, "CUSTOM_DONE") is False
 
