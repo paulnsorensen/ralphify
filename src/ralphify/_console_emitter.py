@@ -1208,7 +1208,7 @@ class ConsoleEmitter:
             if self._structured_agent:
                 return
             line = escape_markup(data["line"])
-            target = self._panel_for_event(data.get("iteration"))
+            target = self._panel_for_event(data["iteration"])
             if not isinstance(target, _IterationSpinner):
                 return
             target.add_scroll_line(f"[white]{line}[/]")
@@ -1229,7 +1229,7 @@ class ConsoleEmitter:
                 return
 
             try:
-                target = self._panel_for_event(data.get("iteration"))
+                target = self._panel_for_event(data["iteration"])
                 if not isinstance(target, _IterationPanel):
                     return
                 target.apply(data["raw"])
@@ -1247,7 +1247,7 @@ class ConsoleEmitter:
 
     def _on_run_started(self, data: RunStartedData) -> None:
         ralph_name = data["ralph_name"]
-        agent = data.get("agent", "")
+        agent = data["agent"]
         self._structured_agent = _is_claude_command(agent)
         with self._console_lock:
             self._console.print(
