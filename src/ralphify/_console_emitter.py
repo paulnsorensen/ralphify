@@ -14,7 +14,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 from rich import box
 from rich.console import Console, ConsoleOptions, Group, RenderResult
@@ -79,6 +79,17 @@ PEEK_TOGGLE_KEY = "p"
 # Shift+P enters full-screen peek mode — a scrollable view of the entire
 # activity buffer that takes over the terminal using Rich's alt-screen.
 FULLSCREEN_PEEK_KEY = "P"
+
+# In fullscreen, [ / ] move between iterations (older / newer).  Completed
+# iterations stay in a bounded ring buffer so the user can scroll back
+# through earlier iterations' activity without leaving fullscreen.
+PREV_ITERATION_KEY = "["
+NEXT_ITERATION_KEY = "]"
+
+# How many completed iterations to keep around for fullscreen browsing.
+# Each panel can buffer up to ``_MAX_SCROLL_LINES`` Text objects so the
+# upper bound on memory is roughly N × 5000 lines of formatted markup.
+_MAX_HISTORY_ITERATIONS = 20
 
 # Peek status messages shown when peek is toggled or at run startup.
 _PEEK_ON_MSG_STRUCTURED = (
@@ -307,6 +318,23 @@ class _LivePanelBase:
         # happening behind the scenes regardless — toggling peek back on
         # reveals the latest state with full catch-up.
         self._peek_visible: bool = True
+        # Set by ``freeze`` once the iteration ends so the elapsed timer
+        # stops ticking and the panel can advertise its outcome in
+        # fullscreen browsing mode.  ``None`` while the iteration is live.
+        self._end: float | None = None
+        self._outcome: str | None = None  # "completed" | "failed" | "timed out"
+
+    def freeze(self, outcome: str) -> None:
+        """Mark the iteration as ended and freeze its elapsed time.
+
+        Called when the iteration finishes — the panel keeps existing in
+        the history ring buffer so the user can browse it in fullscreen,
+        but elapsed time should stop advancing and the outcome should be
+        visible in the fullscreen header.
+        """
+        if self._end is None:
+            self._end = time.monotonic()
+        self._outcome = outcome
 
     # ── Scroll buffer management ─────────────────────────────────────
 
@@ -332,7 +360,8 @@ class _LivePanelBase:
 
     def _build_title(self) -> Text:
         """Title bar text: elapsed time.  Subclasses may override."""
-        elapsed = time.monotonic() - self._start
+        end = self._end if self._end is not None else time.monotonic()
+        elapsed = end - self._start
         title = Text()
         title.append(" ⏱ ", style=_brand.PURPLE)
         title.append(format_duration(elapsed), style=f"bold {_brand.PURPLE}")
@@ -634,13 +663,58 @@ def _scrollbar_metrics(total: int, visible: int, offset: int) -> _ScrollbarMetri
     return _ScrollbarMetrics(show=True, thumb_start=thumb_start, thumb_size=thumb_size)
 
 
+class _IterationNavigator(Protocol):
+    """Lookup interface :class:`_FullscreenPeek` uses to browse iterations.
+
+    Implemented by :class:`ConsoleEmitter` and by :class:`_SinglePanelNavigator`
+    (the latter exists for unit tests that only care about a single panel).
+    """
+
+    def iteration_ids(self) -> list[int]: ...
+
+    def panel_for(self, iteration_id: int) -> _LivePanelBase | None: ...
+
+    def is_live(self, iteration_id: int) -> bool: ...
+
+
+class _SinglePanelNavigator:
+    """Navigator wrapping one panel — used by isolated _FullscreenPeek tests.
+
+    Production code uses :class:`ConsoleEmitter` directly as the
+    navigator; this stub keeps the view testable in isolation without
+    spinning up the full emitter.
+    """
+
+    def __init__(
+        self, panel: _LivePanelBase, iteration_id: int = 1, live: bool = True
+    ) -> None:
+        self._panel = panel
+        self._iteration_id = iteration_id
+        self._live = live
+
+    def iteration_ids(self) -> list[int]:
+        return [self._iteration_id]
+
+    def panel_for(self, iteration_id: int) -> _LivePanelBase | None:
+        return self._panel if iteration_id == self._iteration_id else None
+
+    def is_live(self, iteration_id: int) -> bool:
+        return self._live and iteration_id == self._iteration_id
+
+
 class _FullscreenPeek:
     """Scrollable alt-screen view of the activity buffer.
 
-    Reads ``_scroll_lines`` from a source :class:`_LivePanelBase` subclass
-    (either :class:`_IterationPanel` or :class:`_IterationSpinner`).
-    The source keeps receiving agent events in the background, so as new
-    lines land the view follows the tail when ``_auto_scroll`` is set.
+    Reads ``_scroll_lines`` from the iteration panel that the navigator
+    returns for the currently-selected iteration id.  While the user is
+    in fullscreen they can move between iterations with
+    ``[`` / ``]`` — finished iterations live in the navigator's
+    history ring buffer so previous activity is browsable without
+    leaving fullscreen.
+
+    The source keeps receiving agent events in the background, so when
+    viewing the live iteration the view follows the tail when
+    ``_auto_scroll`` is set.
 
     The offset is anchored to the *bottom* of the buffer: ``_offset=0``
     shows the latest lines, ``_offset=1`` hides the newest line, and so
@@ -648,16 +722,29 @@ class _FullscreenPeek:
     auto-scroll just means "keep offset at 0".
     """
 
-    def __init__(self, source: _LivePanelBase) -> None:
-        self._source = source
+    def __init__(self, navigator: _IterationNavigator, iteration_id: int) -> None:
+        self._navigator = navigator
+        self._iteration_id = iteration_id
         self._offset: int = 0
         self._auto_scroll: bool = True
+
+    @property
+    def _source(self) -> _LivePanelBase | None:
+        """The panel being viewed, or ``None`` if its iteration was evicted."""
+        return self._navigator.panel_for(self._iteration_id)
+
+    @property
+    def iteration_id(self) -> int:
+        return self._iteration_id
 
     def _viewport_height(self, console_height: int) -> int:
         return max(_FULLSCREEN_MIN_VISIBLE, console_height - _FULLSCREEN_CHROME_ROWS)
 
     def _max_offset(self, visible: int) -> int:
-        return max(0, len(self._source._scroll_lines) - visible)
+        source = self._source
+        if source is None:
+            return 0
+        return max(0, len(source._scroll_lines) - visible)
 
     # ── Scroll commands ──────────────────────────────────────────────
 
@@ -685,6 +772,48 @@ class _FullscreenPeek:
         self._offset = 0
         self._auto_scroll = True
 
+    # ── Iteration navigation ─────────────────────────────────────────
+
+    def _reset_view(self) -> None:
+        """Snap to bottom + follow when switching iterations."""
+        self._offset = 0
+        self._auto_scroll = True
+
+    def prev_iteration(self) -> bool:
+        """Move to the iteration before the current one.  Returns ``True``
+        if the view changed; ``False`` when there is no older iteration."""
+        ids = self._navigator.iteration_ids()
+        if not ids:
+            return False
+        if self._iteration_id not in ids:
+            # Current iteration was evicted — snap to oldest available.
+            self._iteration_id = ids[0]
+            self._reset_view()
+            return True
+        idx = ids.index(self._iteration_id)
+        if idx == 0:
+            return False
+        self._iteration_id = ids[idx - 1]
+        self._reset_view()
+        return True
+
+    def next_iteration(self) -> bool:
+        """Move to the iteration after the current one.  Returns ``True``
+        if the view changed; ``False`` when already on the newest."""
+        ids = self._navigator.iteration_ids()
+        if not ids:
+            return False
+        if self._iteration_id not in ids:
+            self._iteration_id = ids[-1]
+            self._reset_view()
+            return True
+        idx = ids.index(self._iteration_id)
+        if idx >= len(ids) - 1:
+            return False
+        self._iteration_id = ids[idx + 1]
+        self._reset_view()
+        return True
+
     # ── Rendering ────────────────────────────────────────────────────
 
     _console_height: int = 40  # updated on every render
@@ -692,24 +821,49 @@ class _FullscreenPeek:
     def _build_header(self, total: int, visible: int) -> Text:
         header = Text(no_wrap=True, overflow="ellipsis")
         header.append(" Full peek ", style=f"bold {_brand.PURPLE}")
-        header.append(f"· {_plural(total, 'line')}", style="dim")
+        ids = self._navigator.iteration_ids()
+        if ids:
+            try:
+                pos = ids.index(self._iteration_id) + 1
+            except ValueError:
+                pos = 0
+            header.append(
+                f"· iter {self._iteration_id} ({pos} of {len(ids)})", style="dim"
+            )
+            if self._navigator.is_live(self._iteration_id):
+                header.append("  ·  ", style="dim")
+                header.append("live", style=f"italic {_brand.GREEN}")
+            else:
+                source = self._source
+                outcome = source._outcome if source is not None else None
+                if outcome:
+                    header.append("  ·  ", style="dim")
+                    header.append(outcome, style=f"italic {_brand.LAVENDER}")
+        header.append("  ·  ", style="dim")
+        header.append(f"{_plural(total, 'line')}", style="dim")
         if self._auto_scroll:
             header.append("  ·  ", style="dim")
             header.append("following", style=f"italic {_brand.GREEN}")
         else:
             start = max(0, total - self._offset - visible) + 1
-            end = total - self._offset
+            end_line = total - self._offset
             header.append("  ·  ", style="dim")
-            header.append(f"lines {start}–{end}", style=f"italic {_brand.LAVENDER}")
+            header.append(
+                f"lines {start}–{end_line}", style=f"italic {_brand.LAVENDER}"
+            )
         header.append(" ", style="dim")
         return header
 
     def _build_footer(self) -> Text:
         hint = Text(no_wrap=True, overflow="ellipsis")
         hint.append(
-            " ↑/↓ scroll · space/b page · g/G top/bottom · q/",
+            " ↑/↓ scroll · space/b page · g/G top/bottom · ",
             style="dim",
         )
+        hint.append(PREV_ITERATION_KEY, style=f"bold {_brand.PURPLE}")
+        hint.append("/", style="dim")
+        hint.append(NEXT_ITERATION_KEY, style=f"bold {_brand.PURPLE}")
+        hint.append(" iter · q/", style="dim")
         hint.append(FULLSCREEN_PEEK_KEY, style=f"bold {_brand.PURPLE}")
         hint.append(" exit ", style="dim")
         return hint
@@ -719,7 +873,8 @@ class _FullscreenPeek:
     ) -> RenderResult:
         self._console_height = options.max_height or console.size.height
         visible = self._viewport_height(self._console_height)
-        lines = self._source._scroll_lines
+        source = self._source
+        lines = source._scroll_lines if source is not None else []
         total = len(lines)
 
         # Clamp offset whenever the buffer shrinks (edge case) or the
@@ -748,7 +903,12 @@ class _FullscreenPeek:
         show_waiting = not window and not sb.show
         for i in range(visible):
             if show_waiting and i == 0:
-                line: Text = Text("  (waiting for activity…)", style="dim italic")
+                if source is None:
+                    line: Text = Text(
+                        "  (iteration no longer available)", style="dim italic"
+                    )
+                else:
+                    line = Text("  (waiting for activity…)", style="dim italic")
             elif i < len(window):
                 line = window[i]
                 line.no_wrap = True
@@ -806,13 +966,23 @@ class ConsoleEmitter:
         self._peek_broken: bool = False
         self._iteration_panel: _IterationPanel | None = None
         self._iteration_spinner: _IterationSpinner | None = None
+        # Iteration number of the currently-active panel (the one
+        # receiving events).  ``None`` between iterations.
+        self._current_iteration: int | None = None
+        # Bounded ring buffer of finished iteration panels, keyed by
+        # iteration number.  Insertion order is tracked separately so
+        # eviction is O(1).  Used by fullscreen peek for browsing.
+        self._iteration_history: dict[int, _LivePanelBase] = {}
+        self._iteration_order: list[int] = []
         # Fullscreen peek state — a second Live using Rich's alt-screen
-        # that shows the entire activity buffer with scroll navigation.
-        # When active, the compact ``_live`` is stopped; the underlying
-        # panel/spinner keeps buffering events so exiting fullscreen
-        # resumes the compact view with the latest state.
+        # that shows an iteration's full activity buffer with scroll +
+        # iteration-navigation controls.  While fullscreen is active the
+        # compact ``_live`` is stopped and console prints from event
+        # handlers are buffered into ``_deferred_renders`` so the user
+        # isn't dropped out of the alt screen on every iteration end.
         self._fullscreen_view: _FullscreenPeek | None = None
         self._fullscreen_live: Live | None = None
+        self._deferred_renders: list[Callable[[], None]] = []
         # Single lock that serialises every ``_console.print`` call and
         # protects ``_peek_enabled`` mutations so that reader-thread /
         # keypress-thread writes cannot interleave with main-thread event
@@ -841,6 +1011,120 @@ class ConsoleEmitter:
     def _active_renderable(self) -> _LivePanelBase | None:
         """The panel or spinner for the current iteration, or ``None``."""
         return self._iteration_panel or self._iteration_spinner
+
+    # ── _IterationNavigator implementation ───────────────────────────
+    #
+    # These three methods expose the emitter's iteration state to
+    # ``_FullscreenPeek`` so it can browse forward/back across
+    # completed iterations while staying inside the alt screen.
+
+    def iteration_ids(self) -> list[int]:
+        """Return all known iteration ids in ascending order.
+
+        Combines the history ring buffer with the currently-active
+        iteration (if any).  Used by ``_FullscreenPeek`` to drive
+        ``[`` / ``]`` navigation.
+        """
+        ids = list(self._iteration_history.keys())
+        if (
+            self._current_iteration is not None
+            and self._current_iteration not in self._iteration_history
+        ):
+            ids.append(self._current_iteration)
+        ids.sort()
+        return ids
+
+    def panel_for(self, iteration_id: int) -> _LivePanelBase | None:
+        """Look up the panel for *iteration_id* in history or active state."""
+        if (
+            self._current_iteration == iteration_id
+            and self._active_renderable is not None
+        ):
+            return self._active_renderable
+        return self._iteration_history.get(iteration_id)
+
+    def is_live(self, iteration_id: int) -> bool:
+        """Return True when *iteration_id* is the currently-active iteration."""
+        return (
+            self._current_iteration == iteration_id
+            and self._active_renderable is not None
+        )
+
+    # ── Deferred-print helpers ───────────────────────────────────────
+
+    def _print_or_defer_unlocked(self, render_fn: Callable[[], None]) -> None:
+        """Print now, or queue for replay if fullscreen is active.
+
+        While fullscreen is active the user sees the alt screen, not the
+        normal terminal.  Anything event handlers want to ``print`` is
+        queued and replayed when the user exits fullscreen so the
+        terminal scrollback shows the full picture instead of jumping
+        from "Iteration 1 started" straight to "Iteration 5 started".
+
+        Caller must hold ``_console_lock``.
+        """
+        if self._fullscreen_view is not None:
+            self._deferred_renders.append(render_fn)
+        else:
+            try:
+                render_fn()
+            except Exception:
+                pass
+
+    def _flush_deferred_unlocked(self) -> None:
+        """Replay all queued prints onto the normal console.
+
+        Caller must hold ``_console_lock``.
+        """
+        renders = self._deferred_renders
+        self._deferred_renders = []
+        for fn in renders:
+            try:
+                fn()
+            except Exception:
+                pass
+
+    def _archive_current_iteration_unlocked(self, outcome: str) -> None:
+        """Move the active panel into the history ring buffer.
+
+        Freezes the panel (stops elapsed time, records outcome) and
+        evicts the oldest history entry when the buffer is full.  Never
+        evicts an iteration the user is currently viewing in
+        fullscreen — that would yank the page out from under them.
+
+        Caller must hold ``_console_lock``.  No-op when no iteration is
+        active.
+        """
+        panel = self._active_renderable
+        if panel is None or self._current_iteration is None:
+            return
+        iteration_id = self._current_iteration
+        panel.freeze(outcome)
+        # Record (or refresh order of) the iteration in history.
+        if iteration_id in self._iteration_history:
+            self._iteration_order.remove(iteration_id)
+        self._iteration_history[iteration_id] = panel
+        self._iteration_order.append(iteration_id)
+        # Eviction: drop oldest until at or below the cap, but skip the
+        # iteration the user is currently viewing in fullscreen.
+        viewing = (
+            self._fullscreen_view._iteration_id
+            if self._fullscreen_view is not None
+            else None
+        )
+        while len(self._iteration_order) > _MAX_HISTORY_ITERATIONS:
+            for i, candidate in enumerate(self._iteration_order):
+                if candidate != viewing:
+                    self._iteration_order.pop(i)
+                    self._iteration_history.pop(candidate, None)
+                    break
+            else:
+                # All entries are the viewed iteration (impossible with
+                # one viewer) — bail to avoid an infinite loop.
+                break
+        self._iteration_panel = None
+        self._iteration_spinner = None
+        self._current_iteration = None
 
     def _refresh_live_unlocked(self, renderable: _LivePanelBase) -> None:
         """Push updated state to whichever Live context is active.
@@ -895,16 +1179,32 @@ class ConsoleEmitter:
                 self._console.print(msg)
         return enabled
 
+    def _panel_for_event(self, iteration: int | None) -> _LivePanelBase | None:
+        """Resolve the panel an incoming event should land in.
+
+        Falls back to the active renderable when the event omits an
+        ``iteration`` field or when the iteration matches the active
+        one.  History panels are also addressable so late-arriving
+        events for an already-archived iteration still hit the right
+        buffer.
+        """
+        if iteration is not None:
+            panel = self.panel_for(iteration)
+            if panel is not None:
+                return panel
+        return self._active_renderable
+
     def _on_agent_output_line(self, data: AgentOutputLineData) -> None:
         with self._console_lock:
             # When we have structured rendering, raw lines are redundant noise.
             if self._structured_agent:
                 return
             line = escape_markup(data["line"])
-            spinner = self._iteration_spinner
-            if spinner is not None:
-                spinner.add_scroll_line(f"[white]{line}[/]")
-                self._refresh_live_unlocked(spinner)
+            target = self._panel_for_event(data.get("iteration"))
+            if not isinstance(target, _IterationSpinner):
+                return
+            target.add_scroll_line(f"[white]{line}[/]")
+            self._refresh_live_unlocked(target)
 
     def _on_agent_activity(self, data: AgentActivityData) -> None:
         """Handle structured agent activity events (Claude stream-json).
@@ -921,11 +1221,11 @@ class ConsoleEmitter:
                 return
 
             try:
-                panel = self._iteration_panel
-                if panel is None:
+                target = self._panel_for_event(data.get("iteration"))
+                if not isinstance(target, _IterationPanel):
                     return
-                panel.apply(data["raw"])
-                self._refresh_live_unlocked(panel)
+                target.apply(data["raw"])
+                self._refresh_live_unlocked(target)
             except Exception:
                 self._peek_broken = True
                 self._console.print(
@@ -953,13 +1253,20 @@ class ConsoleEmitter:
             if self._peek_enabled:
                 self._console.print(self._peek_status_msg(True))
 
-    def _start_live_unlocked(self) -> None:
-        """Start the iteration panel.  Caller must hold ``_console_lock``."""
+    def _create_panel_unlocked(self) -> _LivePanelBase:
+        """Construct the iteration's panel/spinner without starting Live.
+
+        Splitting panel creation from Live startup means we can buffer
+        events into the panel even when fullscreen has suppressed the
+        compact Live for this iteration.
+
+        Caller must hold ``_console_lock``.
+        """
         if self._structured_agent:
             panel = _IterationPanel()
             self._iteration_panel = panel
             self._iteration_spinner = None
-            renderable = panel
+            renderable: _LivePanelBase = panel
         else:
             spinner = _IterationSpinner()
             self._iteration_panel = None
@@ -971,6 +1278,13 @@ class ConsoleEmitter:
         renderable.set_peek_visible(self._peek_enabled)
         if not self._peek_enabled:
             renderable.set_peek_message(_PEEK_OFF_MSG)
+        return renderable
+
+    def _start_compact_live_unlocked(self, renderable: _LivePanelBase) -> None:
+        """Start a transient compact Live for *renderable*.
+
+        Caller must hold ``_console_lock``.
+        """
         self._live = Live(
             renderable,
             console=self._console,
@@ -980,12 +1294,13 @@ class ConsoleEmitter:
         self._live.start()
 
     def _stop_live_unlocked(self) -> None:
-        """Stop the iteration panel/spinner.  Caller must hold ``_console_lock``.
+        """Tear down all Live regions and forget the active iteration.
 
-        Also tears down the fullscreen peek view if active — the
-        underlying buffer belongs to the iteration we're ending, so
-        leaving the user stuck in an alt screen showing stale data would
-        be worse than dropping them back to the normal terminal.
+        Used by ``_on_run_stopped`` and tests to fully reset the renderer
+        state.  Iteration-end uses :meth:`_archive_current_iteration_unlocked`
+        instead so finished iterations stay browsable.
+
+        Caller must hold ``_console_lock``.
         """
         if self._fullscreen_live is not None:
             self._fullscreen_live.stop()
@@ -996,6 +1311,7 @@ class ConsoleEmitter:
             self._live = None
         self._iteration_panel = None
         self._iteration_spinner = None
+        self._current_iteration = None
 
     def _stop_live(self) -> None:
         with self._console_lock:
@@ -1009,15 +1325,21 @@ class ConsoleEmitter:
         Returns ``True`` if fullscreen is now active, ``False`` if the
         caller tried to enter when no iteration was running (nothing to
         show) or when already in fullscreen.
+
+        Defaults the view to the currently-active iteration; if none is
+        active (e.g. between iterations) falls back to the most recently
+        finished iteration in history.
         """
         with self._console_lock:
             if self._fullscreen_view is not None:
                 return True  # already active — no-op
-            source = self._active_renderable
-            if source is None:
-                self._console.print("[dim]Full peek: no active iteration yet[/]")
+            initial_id: int | None = self._current_iteration
+            if initial_id is None and self._iteration_order:
+                initial_id = self._iteration_order[-1]
+            if initial_id is None or self.panel_for(initial_id) is None:
+                self._console.print("[dim]Full peek: no iterations yet[/]")
                 return False
-            view = _FullscreenPeek(source)
+            view = _FullscreenPeek(self, initial_id)
             self._fullscreen_view = view
             # Stop the compact Live before taking over the terminal so
             # the two Rich renderers don't fight for the same console.
@@ -1044,7 +1366,13 @@ class ConsoleEmitter:
             return True
 
     def exit_fullscreen(self) -> None:
-        """Exit fullscreen peek mode.  Safe to call from any thread."""
+        """Exit fullscreen peek mode.  Safe to call from any thread.
+
+        Replays any prints buffered during the fullscreen session so the
+        terminal scrollback gets the iteration rules and status lines
+        the user would otherwise have missed, then restarts the compact
+        Live for the currently-active iteration (if any).
+        """
         with self._console_lock:
             if self._fullscreen_view is None:
                 return
@@ -1052,6 +1380,7 @@ class ConsoleEmitter:
                 self._fullscreen_live.stop()
                 self._fullscreen_live = None
             self._fullscreen_view = None
+            self._flush_deferred_unlocked()
             self._restart_compact_unlocked()
 
     def _restart_compact_unlocked(self) -> None:
@@ -1064,13 +1393,7 @@ class ConsoleEmitter:
         source = self._active_renderable
         if source is None:
             return
-        self._live = Live(
-            source,
-            console=self._console,
-            transient=True,
-            refresh_per_second=_LIVE_REFRESH_RATE,
-        )
-        self._live.start()
+        self._start_compact_live_unlocked(source)
 
     def _fullscreen_page_size(self) -> int:
         """Lines to jump on space/b (page down/up).
@@ -1104,7 +1427,7 @@ class ConsoleEmitter:
             pass
 
     def _handle_fullscreen_key(self, key: str) -> None:
-        """Scroll navigation while fullscreen peek is active."""
+        """Scroll + iteration navigation while fullscreen peek is active."""
         with self._console_lock:
             view = self._fullscreen_view
             if view is None:
@@ -1124,6 +1447,10 @@ class ConsoleEmitter:
                     view.scroll_to_top()
                 elif key == "G":
                     view.scroll_to_bottom()
+                elif key == PREV_ITERATION_KEY:
+                    view.prev_iteration()
+                elif key == NEXT_ITERATION_KEY:
+                    view.next_iteration()
                 else:
                     handled = False
                 if handled and self._fullscreen_live is not None:
@@ -1136,16 +1463,34 @@ class ConsoleEmitter:
         iteration = data["iteration"]
         with self._console_lock:
             self._peek_broken = False
-            self._console.print()
-            self._console.print(
-                Rule(
-                    title=f"[bold {_brand.PURPLE}]Iteration {iteration}[/]",
-                    align="left",
-                    style=_brand.PURPLE,
-                    characters="─",
+            # Defensive: if a previous iteration didn't archive (engine
+            # error), evict it now so we don't leak panel state.
+            if self._active_renderable is not None:
+                self._archive_current_iteration_unlocked("interrupted")
+            self._current_iteration = iteration
+            renderable = self._create_panel_unlocked()
+
+            def do_print() -> None:
+                self._console.print()
+                self._console.print(
+                    Rule(
+                        title=f"[bold {_brand.PURPLE}]Iteration {iteration}[/]",
+                        align="left",
+                        style=_brand.PURPLE,
+                        characters="─",
+                    )
                 )
-            )
-            self._start_live_unlocked()
+
+            if self._fullscreen_view is not None:
+                # User is browsing fullscreen — defer the rule print
+                # and don't start a competing compact Live.  The new
+                # iteration becomes navigable via ``]`` immediately.
+                # ``exit_fullscreen`` later restarts the compact Live
+                # for whichever iteration is active at exit time.
+                self._deferred_renders.append(do_print)
+            else:
+                do_print()
+                self._start_compact_live_unlocked(renderable)
 
     def _echo_stream(self, text: str | None) -> None:
         """Print captured stream output, ensuring a trailing newline.
@@ -1157,6 +1502,12 @@ class ConsoleEmitter:
             if not text.endswith("\n"):
                 self._console.print()
 
+    _ICON_TO_OUTCOME = {
+        _ICON_SUCCESS: "completed",
+        _ICON_FAILURE: "failed",
+        _ICON_TIMEOUT: "timed out",
+    }
+
     def _on_iteration_ended(
         self, data: IterationEndedData, color: str, icon: str
     ) -> None:
@@ -1164,43 +1515,72 @@ class ConsoleEmitter:
         detail = data["detail"]
         log_file = data["log_file"]
         result_text = data["result_text"]
+        echo_stdout = data.get("echo_stdout")
+        echo_stderr = data.get("echo_stderr")
+        outcome = self._ICON_TO_OUTCOME.get(icon, "ended")
         with self._console_lock:
-            self._stop_live_unlocked()
-            # Echo captured output before the status line — Live is already
-            # stopped so this cannot tear the spinner.  Only present when
-            # peek was off and logging captured the output.
-            self._echo_stream(data.get("echo_stdout"))
-            self._echo_stream(data.get("echo_stderr"))
-            self._console.print(f"[{color}]{icon} Iteration {iteration} {detail}[/]")
-            if log_file:
-                self._console.print(
-                    f"  [dim]{_ICON_ARROW} {escape_markup(log_file)}[/]"
-                )
-            if result_text:
-                from rich.markdown import Markdown
+            # Stop the compact Live (if any) before archiving — the
+            # underlying panel is preserved in history for fullscreen
+            # browsing.  When fullscreen is active there is no compact
+            # Live to stop; the panel was buffering events directly.
+            if self._live is not None:
+                self._live.stop()
+                self._live = None
+            self._archive_current_iteration_unlocked(outcome)
 
-                self._console.print(Markdown(result_text))
+            def do_print() -> None:
+                self._echo_stream(echo_stdout)
+                self._echo_stream(echo_stderr)
+                self._console.print(
+                    f"[{color}]{icon} Iteration {iteration} {detail}[/]"
+                )
+                if log_file:
+                    self._console.print(
+                        f"  [dim]{_ICON_ARROW} {escape_markup(log_file)}[/]"
+                    )
+                if result_text:
+                    from rich.markdown import Markdown
+
+                    self._console.print(Markdown(result_text))
+
+            self._print_or_defer_unlocked(do_print)
 
     def _on_commands_completed(self, data: CommandsCompletedData) -> None:
         count = data["count"]
-        if count:
-            with self._console_lock:
-                self._console.print(f"  [bold]Commands:[/] {count} ran")
+        if not count:
+            return
+        with self._console_lock:
+            self._print_or_defer_unlocked(
+                lambda: self._console.print(f"  [bold]Commands:[/] {count} ran")
+            )
 
     def _on_log_message(self, data: LogMessageData) -> None:
         msg = escape_markup(data["message"])
         level = data["level"]
-        with self._console_lock:
+        traceback = data.get("traceback")
+
+        def do_print() -> None:
             if level == LOG_ERROR:
                 self._console.print(f"[red]{msg}[/]")
-                tb = data.get("traceback")
-                if tb:
-                    self._console.print(f"[dim]{escape_markup(tb)}[/]")
+                if traceback:
+                    self._console.print(f"[dim]{escape_markup(traceback)}[/]")
             else:
                 self._console.print(f"[dim]{msg}[/]")
 
+        with self._console_lock:
+            self._print_or_defer_unlocked(do_print)
+
     def _on_run_stopped(self, data: RunStoppedData) -> None:
         with self._console_lock:
+            # Tear down everything — the run is done.  If the user is
+            # still inside fullscreen, exit it first and replay buffered
+            # prints so the terminal scrollback shows the full history.
+            if self._fullscreen_view is not None:
+                if self._fullscreen_live is not None:
+                    self._fullscreen_live.stop()
+                    self._fullscreen_live = None
+                self._fullscreen_view = None
+                self._flush_deferred_unlocked()
             self._stop_live_unlocked()
             if data["reason"] != STOP_COMPLETED:
                 return
