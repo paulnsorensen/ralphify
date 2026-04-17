@@ -1114,15 +1114,16 @@ class ConsoleEmitter:
             else None
         )
         while len(self._iteration_order) > _MAX_HISTORY_ITERATIONS:
-            for i, candidate in enumerate(self._iteration_order):
-                if candidate != viewing:
-                    self._iteration_order.pop(i)
-                    self._iteration_history.pop(candidate, None)
-                    break
-            else:
-                # All entries are the viewed iteration (impossible with
-                # one viewer) — bail to avoid an infinite loop.
+            candidate = next(
+                (iid for iid in self._iteration_order if iid != viewing),
+                None,
+            )
+            if candidate is None:
+                # All remaining entries are the viewed iteration (impossible
+                # with one viewer) — bail to avoid an infinite loop.
                 break
+            self._iteration_order.remove(candidate)
+            self._iteration_history.pop(candidate, None)
         self._iteration_panel = None
         self._iteration_spinner = None
         self._current_iteration = None
