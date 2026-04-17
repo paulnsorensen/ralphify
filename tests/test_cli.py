@@ -1,6 +1,7 @@
 """Tests for the CLI."""
 
 import importlib
+import re
 import signal
 from unittest.mock import patch, MagicMock
 
@@ -24,22 +25,29 @@ from ralphify.cli import app, _parse_command_items, _parse_user_args
 runner = CliRunner()
 
 
+def _flatten_help(output: str) -> str:
+    no_ansi = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", output)
+    return re.sub(r"\s+", " ", no_ansi)
+
+
 class TestHelp:
     def test_scaffold_help_mentions_promise_completion(self):
         result = runner.invoke(app, ["scaffold", "--help"])
 
         assert result.exit_code == 0
-        assert "completion_signal" in result.output
-        assert "stop_on_completion_signal" in result.output
-        assert "<promise>...</promise>" in result.output
+        flat = _flatten_help(result.output)
+        assert "completion_signal" in flat
+        assert "stop_on_completion_signal" in flat
+        assert "<promise>...</promise>" in flat
 
     def test_run_help_mentions_promise_completion(self):
         result = runner.invoke(app, ["run", "--help"])
 
         assert result.exit_code == 0
-        assert "completion_signal" in result.output
-        assert "stop_on_completion_signal" in result.output
-        assert "<promise>...</promise>" in result.output
+        flat = _flatten_help(result.output)
+        assert "completion_signal" in flat
+        assert "stop_on_completion_signal" in flat
+        assert "<promise>...</promise>" in flat
 
 
 class TestVersion:
