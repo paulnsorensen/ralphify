@@ -1441,27 +1441,21 @@ class ConsoleEmitter:
                 return  # raced with exit
             if key not in ("q", FULLSCREEN_PEEK_KEY):
                 page = self._fullscreen_page_size()
-                handled = True
-                if key == "j":
-                    view.scroll_down(1)
-                elif key == "k":
-                    view.scroll_up(1)
-                elif key == " ":
-                    view.scroll_down(page)
-                elif key == "b":
-                    view.scroll_up(page)
-                elif key == "g":
-                    view.scroll_to_top()
-                elif key == "G":
-                    view.scroll_to_bottom()
-                elif key == PREV_ITERATION_KEY:
-                    view.prev_iteration()
-                elif key == NEXT_ITERATION_KEY:
-                    view.next_iteration()
-                else:
-                    handled = False
-                if handled and self._fullscreen_live is not None:
-                    self._fullscreen_live.update(view)
+                actions: dict[str, Callable[[], object]] = {
+                    "j": lambda: view.scroll_down(1),
+                    "k": lambda: view.scroll_up(1),
+                    " ": lambda: view.scroll_down(page),
+                    "b": lambda: view.scroll_up(page),
+                    "g": view.scroll_to_top,
+                    "G": view.scroll_to_bottom,
+                    PREV_ITERATION_KEY: view.prev_iteration,
+                    NEXT_ITERATION_KEY: view.next_iteration,
+                }
+                action = actions.get(key)
+                if action is not None:
+                    action()
+                    if self._fullscreen_live is not None:
+                        self._fullscreen_live.update(view)
                 return
         # Exit path runs outside the lock to avoid re-entry.
         self.exit_fullscreen()
