@@ -237,7 +237,7 @@ class AgentResult(ProcessResult):
 class _StreamResult:
     """Accumulated output from reading the agent's JSON stream."""
 
-    stdout_lines: list[str]
+    stdout_lines: tuple[str, ...]
     result_text: str | None
     timed_out: bool
 
@@ -347,14 +347,14 @@ def _read_agent_stream(
         except queue.Empty:
             # Deadline expired while waiting for a line.
             return _StreamResult(
-                stdout_lines=stdout_lines,
+                stdout_lines=tuple(stdout_lines),
                 result_text=result_text,
                 timed_out=True,
             )
 
         if line is None:  # EOF sentinel from reader thread
             return _StreamResult(
-                stdout_lines=stdout_lines,
+                stdout_lines=tuple(stdout_lines),
                 result_text=result_text,
                 timed_out=False,
             )
@@ -390,7 +390,7 @@ def _read_agent_stream(
         # past the deadline.
         if deadline is not None and time.monotonic() > deadline:
             return _StreamResult(
-                stdout_lines=stdout_lines,
+                stdout_lines=tuple(stdout_lines),
                 result_text=result_text,
                 timed_out=True,
             )
