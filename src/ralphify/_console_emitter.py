@@ -169,14 +169,6 @@ def _extract_params(*keys: str) -> Callable[[dict[str, Any]], str]:
     return lambda i: _format_params(i, key_list)
 
 
-def _extract_tool_arg(name: str, tool_input: dict[str, Any]) -> str:
-    """Return the most relevant argument string for a tool call."""
-    cfg = _TOOL_REGISTRY.get(name)
-    if cfg is not None and cfg.extract_arg is not None:
-        return cfg.extract_arg(tool_input)
-    return ", ".join(sorted(tool_input.keys()))
-
-
 # ── Helpers ───────────────────────────────────────────────────────────
 
 
@@ -253,9 +245,15 @@ _TOOL_REGISTRY: dict[str, _ToolConfig] = {
     "BashOutput": _ToolConfig(_brand.GREEN, "bash"),
     "WebFetch": _ToolConfig(_brand.LAVENDER, "web", _extract_key("url")),
     "WebSearch": _ToolConfig(_brand.LAVENDER, "web", _extract_key("query")),
-    "Task": _ToolConfig(_brand.VIOLET, "task", _extract_params("description", "prompt")),
-    "Agent": _ToolConfig(_brand.VIOLET, "agent", _extract_params("description", "prompt")),
-    "ToolSearch": _ToolConfig(_brand.BLUE, "other", _extract_params("query", "max_results")),
+    "Task": _ToolConfig(
+        _brand.VIOLET, "task", _extract_params("description", "prompt")
+    ),
+    "Agent": _ToolConfig(
+        _brand.VIOLET, "agent", _extract_params("description", "prompt")
+    ),
+    "ToolSearch": _ToolConfig(
+        _brand.BLUE, "other", _extract_params("query", "max_results")
+    ),
     "TodoWrite": _ToolConfig(
         _brand.PURPLE, "todo", lambda i: f"{len(i.get('todos', []))} todos"
     ),
@@ -269,9 +267,26 @@ _DEFAULT_TOOL_STYLE: tuple[str, str] = ("white", "other")
 _TOOL_NAME_COL = 9
 
 
-def _tool_style_for(name: str) -> tuple[str, str]:
+def _tool_display(name: str, tool_input: dict[str, Any]) -> tuple[str, str, str]:
+    """Return ``(color, category, arg)`` for a tool call in one registry lookup.
+
+    Unknown tools fall back to :data:`_DEFAULT_TOOL_STYLE` and a
+    sorted-keys arg.  Known tools without an ``extract_arg`` (e.g.
+    ``BashOutput``) also fall back to sorted keys so every tool call
+    gets *something* useful in its scroll line.
+    """
     cfg = _TOOL_REGISTRY.get(name)
-    return (cfg.color, cfg.category) if cfg is not None else _DEFAULT_TOOL_STYLE
+    if cfg is None:
+        color, category = _DEFAULT_TOOL_STYLE
+        extractor = None
+    else:
+        color, category = cfg.color, cfg.category
+        extractor = cfg.extract_arg
+    if extractor is not None:
+        arg = extractor(tool_input)
+    else:
+        arg = ", ".join(sorted(tool_input.keys()))
+    return color, category, arg
 
 
 class _LivePanelBase:
@@ -467,10 +482,8 @@ class _IterationPanel(_LivePanelBase):
                     tool_input = {}
 
                 self._tool_count += 1
-                color, cat = _tool_style_for(name)
+                color, cat, arg = _tool_display(name, tool_input)
                 self._tool_categories[cat] = self._tool_categories.get(cat, 0) + 1
-
-                arg = _extract_tool_arg(name, tool_input)
 
                 # Pad short names to a fixed column so arguments line up;
                 # longer names get a guaranteed two-space gap so the arg
