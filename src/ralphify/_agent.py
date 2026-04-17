@@ -381,14 +381,14 @@ def _read_agent_stream(
         except queue.Empty:
             # Deadline expired while waiting for a line.
             return _StreamResult(
-                stdout_lines=tuple(stdout_lines),
+                stdout_lines=tuple(stdout_lines) if stdout_lines is not None else None,
                 result_text=result_text,
                 timed_out=True,
             )
 
         if line is None:  # EOF sentinel from reader thread
             return _StreamResult(
-                stdout_lines=tuple(stdout_lines),
+                stdout_lines=tuple(stdout_lines) if stdout_lines is not None else None,
                 result_text=result_text,
                 timed_out=False,
             )
@@ -425,7 +425,7 @@ def _read_agent_stream(
         # past the deadline.
         if deadline is not None and time.monotonic() > deadline:
             return _StreamResult(
-                stdout_lines=tuple(stdout_lines),
+                stdout_lines=tuple(stdout_lines) if stdout_lines is not None else None,
                 result_text=result_text,
                 timed_out=True,
             )
