@@ -69,7 +69,7 @@ class TestPeekToggle:
                 iteration=1,
             )
         )
-        spinner = emitter._iteration_spinner
+        spinner = emitter._active_renderable
         assert spinner is not None
         assert any("visible line" in line.plain for line in spinner._scroll_lines)
         emitter._stop_live()
@@ -94,7 +94,7 @@ class TestPeekToggle:
                 iteration=1,
             )
         )
-        spinner = emitter._iteration_spinner
+        spinner = emitter._active_renderable
         assert spinner is not None
         # Buffer keeps recording even with peek off…
         assert any(
@@ -146,7 +146,7 @@ class TestPeekToggle:
         for t in threads:
             t.join()
 
-        spinner = emitter._iteration_spinner
+        spinner = emitter._active_renderable
         assert spinner is not None
         # Each worker adds ``iterations`` whole copies of its line to the
         # scroll buffer.  If the lock is working, both substrings appear
@@ -186,7 +186,7 @@ class TestPeekToggle:
                 iteration=1,
             )
         )
-        spinner = emitter._iteration_spinner
+        spinner = emitter._active_renderable
         assert spinner is not None
         assert any(
             "[bold red]not markup[/]" in line.plain for line in spinner._scroll_lines
@@ -425,7 +425,7 @@ class TestPeekToggle:
         # Toggle back on — both the original and the catch-up event are
         # in the buffer, so the user sees current state, not stale state.
         emitter.toggle_peek()
-        panel = emitter._iteration_panel
+        panel = emitter._active_renderable
         assert panel is not None
         plains = [line.plain for line in panel._scroll_lines]
         assert any("seen-while-on.py" in p for p in plains)
@@ -461,7 +461,7 @@ class TestPeekToggle:
                 iteration=1,
             )
         )
-        panel = emitter._iteration_panel
+        panel = emitter._active_renderable
         assert panel is not None
         assert len(panel._scroll_lines) == 1
         before = list(panel._scroll_lines)
@@ -482,7 +482,7 @@ class TestPeekToggle:
         emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
         # Toggle peek off — should set peek message on the spinner
         emitter.toggle_peek()
-        spinner = emitter._iteration_spinner
+        spinner = emitter._active_renderable
         assert spinner is not None
         assert spinner._peek_message is not None
         assert "peek off" in spinner._peek_message.plain
@@ -535,7 +535,7 @@ class TestStructuredPeek:
                 iteration=1,
             )
         )
-        spinner = emitter._iteration_spinner
+        spinner = emitter._active_renderable
         assert spinner is not None
         assert any("raw agent output" in line.plain for line in spinner._scroll_lines)
         emitter._stop_live()
@@ -563,7 +563,7 @@ class TestStructuredPeek:
                 iteration=1,
             )
         )
-        panel = emitter._iteration_panel
+        panel = emitter._active_renderable
         assert panel is not None
         assert len(panel._scroll_lines) == 1
         assert "Bash" in panel._scroll_lines[0].plain
@@ -586,7 +586,7 @@ class TestStructuredPeek:
                 iteration=1,
             )
         )
-        panel = emitter._iteration_panel
+        panel = emitter._active_renderable
         assert panel is not None
         assert any("fix the bug" in line.plain for line in panel._scroll_lines)
         emitter._stop_live()
@@ -607,7 +607,7 @@ class TestStructuredPeek:
                 iteration=1,
             )
         )
-        panel = emitter._iteration_panel
+        panel = emitter._active_renderable
         assert panel is not None
         assert len(panel._scroll_lines) == 1
         assert "let me think..." in panel._scroll_lines[0].plain
@@ -629,7 +629,7 @@ class TestStructuredPeek:
                 iteration=1,
             )
         )
-        panel = emitter._iteration_panel
+        panel = emitter._active_renderable
         assert panel is not None
         assert any("rate limit" in line.plain for line in panel._scroll_lines)
         assert any("rate_limited" in line.plain for line in panel._scroll_lines)
@@ -659,7 +659,7 @@ class TestStructuredPeek:
 
         # Monkeypatch the panel to raise
         with patch.object(
-            emitter._iteration_panel, "apply", side_effect=ValueError("parse boom")
+            emitter._active_renderable, "apply", side_effect=ValueError("parse boom")
         ):
             emitter.emit(
                 _make_event(
@@ -716,7 +716,7 @@ class TestStructuredPeek:
                 iteration=1,
             )
         )
-        panel = emitter._iteration_panel
+        panel = emitter._active_renderable
         assert panel is not None
         # Buffer captures activity even with peek off…
         assert len(panel._scroll_lines) == 1
@@ -749,7 +749,7 @@ class TestStructuredPeek:
                 iteration=1,
             )
         )
-        panel = emitter._iteration_panel
+        panel = emitter._active_renderable
         assert panel is not None
         assert any("tool error" in line.plain for line in panel._scroll_lines)
         assert any("File not found" in line.plain for line in panel._scroll_lines)
@@ -1693,7 +1693,7 @@ class TestFullscreenPeekEmitter:
             assert emitter.enter_fullscreen() is True
             assert emitter._fullscreen_view is not None
             assert emitter._fullscreen_live is not None
-            assert emitter._fullscreen_view._source is emitter._iteration_panel
+            assert emitter._fullscreen_view._source is emitter._active_renderable
             assert emitter._fullscreen_view.iteration_id == 1
         finally:
             emitter._stop_live()
@@ -1703,7 +1703,7 @@ class TestFullscreenPeekEmitter:
         try:
             assert emitter.enter_fullscreen() is True
             assert emitter._fullscreen_view is not None
-            assert emitter._fullscreen_view._source is emitter._iteration_spinner
+            assert emitter._fullscreen_view._source is emitter._active_renderable
         finally:
             emitter._stop_live()
 
@@ -1727,7 +1727,7 @@ class TestFullscreenPeekEmitter:
             assert emitter._fullscreen_live is None
             # Compact Live is back, still pointing at the same panel.
             assert emitter._live is not None
-            assert emitter._iteration_panel is not None
+            assert emitter._active_renderable is not None
         finally:
             emitter._stop_live()
 
@@ -1744,7 +1744,7 @@ class TestFullscreenPeekEmitter:
         emitter, _ = self._make_emitter_with_iteration(structured=True)
         try:
             emitter.enter_fullscreen()
-            panel_before = emitter._iteration_panel
+            panel_before = emitter._active_renderable
             assert panel_before is not None
             emitter.emit(
                 _make_event(
@@ -1759,7 +1759,7 @@ class TestFullscreenPeekEmitter:
             assert emitter._fullscreen_view is not None
             assert emitter._fullscreen_live is not None
             # Active iteration cleared, but the panel lives on in history.
-            assert emitter._iteration_panel is None
+            assert emitter._active_renderable is None
             assert emitter._current_iteration is None
             assert emitter._iteration_history.get(1) is panel_before
             # Frozen with the right outcome — surfaced in the header.
@@ -1931,7 +1931,7 @@ class TestFullscreenPeekEmitter:
     def test_handle_key_scroll_keys_move_offset(self):
         emitter, _ = self._make_emitter_with_iteration(structured=True)
         try:
-            panel = emitter._iteration_panel
+            panel = emitter._active_renderable
             assert panel is not None
             _populate_buffer(panel, 500)
             emitter.enter_fullscreen()

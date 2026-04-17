@@ -971,8 +971,7 @@ class ConsoleEmitter:
         self._peek_enabled = _interactive_default_peek(console)
         self._structured_agent: bool = False
         self._peek_broken: bool = False
-        self._iteration_panel: _IterationPanel | None = None
-        self._iteration_spinner: _IterationSpinner | None = None
+        self._active_renderable: _LivePanelBase | None = None
         # Iteration number of the currently-active panel (the one
         # receiving events).  ``None`` between iterations.
         self._current_iteration: int | None = None
@@ -1013,11 +1012,6 @@ class ConsoleEmitter:
             EventType.AGENT_OUTPUT_LINE: self._on_agent_output_line,
             EventType.AGENT_ACTIVITY: self._on_agent_activity,
         }
-
-    @property
-    def _active_renderable(self) -> _LivePanelBase | None:
-        """The panel or spinner for the current iteration, or ``None``."""
-        return self._iteration_panel or self._iteration_spinner
 
     # ── _IterationNavigator implementation ───────────────────────────
     #
@@ -1130,8 +1124,7 @@ class ConsoleEmitter:
                 break
             self._iteration_order.remove(candidate)
             self._iteration_history.pop(candidate, None)
-        self._iteration_panel = None
-        self._iteration_spinner = None
+        self._active_renderable = None
         self._current_iteration = None
 
     def _refresh_live_unlocked(self, renderable: _LivePanelBase) -> None:
@@ -1271,15 +1264,10 @@ class ConsoleEmitter:
         Caller must hold ``_console_lock``.
         """
         if self._structured_agent:
-            panel = _IterationPanel()
-            self._iteration_panel = panel
-            self._iteration_spinner = None
-            renderable: _LivePanelBase = panel
+            renderable: _LivePanelBase = _IterationPanel()
         else:
-            spinner = _IterationSpinner()
-            self._iteration_panel = None
-            self._iteration_spinner = spinner
-            renderable = spinner
+            renderable = _IterationSpinner()
+        self._active_renderable = renderable
         # Carry the current peek visibility into the new renderable so
         # an iteration that starts with peek already off doesn't flash
         # the empty scroll feed before the first event lands.
@@ -1317,8 +1305,7 @@ class ConsoleEmitter:
         if self._live is not None:
             self._live.stop()
             self._live = None
-        self._iteration_panel = None
-        self._iteration_spinner = None
+        self._active_renderable = None
         self._current_iteration = None
 
     def _stop_live(self) -> None:
