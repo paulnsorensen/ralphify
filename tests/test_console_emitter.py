@@ -7,11 +7,14 @@ from rich.console import Console
 
 from ralphify._console_emitter import (
     FULLSCREEN_PEEK_KEY,
+    NEXT_ITERATION_KEY,
     PEEK_TOGGLE_KEY,
+    PREV_ITERATION_KEY,
     ConsoleEmitter,
     _FullscreenPeek,
     _IterationPanel,
     _IterationSpinner,
+    _SinglePanelNavigator,
     _format_run_info,
     _format_summary,
     _is_claude_command,
@@ -66,7 +69,7 @@ class TestPeekToggle:
                 iteration=1,
             )
         )
-        spinner = emitter._iteration_spinner
+        spinner = emitter._active_renderable
         assert spinner is not None
         assert any("visible line" in line.plain for line in spinner._scroll_lines)
         emitter._stop_live()
@@ -91,7 +94,7 @@ class TestPeekToggle:
                 iteration=1,
             )
         )
-        spinner = emitter._iteration_spinner
+        spinner = emitter._active_renderable
         assert spinner is not None
         # Buffer keeps recording even with peek off…
         assert any(
@@ -143,7 +146,7 @@ class TestPeekToggle:
         for t in threads:
             t.join()
 
-        spinner = emitter._iteration_spinner
+        spinner = emitter._active_renderable
         assert spinner is not None
         # Each worker adds ``iterations`` whole copies of its line to the
         # scroll buffer.  If the lock is working, both substrings appear
@@ -183,7 +186,7 @@ class TestPeekToggle:
                 iteration=1,
             )
         )
-        spinner = emitter._iteration_spinner
+        spinner = emitter._active_renderable
         assert spinner is not None
         assert any(
             "[bold red]not markup[/]" in line.plain for line in spinner._scroll_lines
@@ -422,7 +425,7 @@ class TestPeekToggle:
         # Toggle back on — both the original and the catch-up event are
         # in the buffer, so the user sees current state, not stale state.
         emitter.toggle_peek()
-        panel = emitter._iteration_panel
+        panel = emitter._active_renderable
         assert panel is not None
         plains = [line.plain for line in panel._scroll_lines]
         assert any("seen-while-on.py" in p for p in plains)
@@ -458,7 +461,7 @@ class TestPeekToggle:
                 iteration=1,
             )
         )
-        panel = emitter._iteration_panel
+        panel = emitter._active_renderable
         assert panel is not None
         assert len(panel._scroll_lines) == 1
         before = list(panel._scroll_lines)
@@ -479,7 +482,7 @@ class TestPeekToggle:
         emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=1))
         # Toggle peek off — should set peek message on the spinner
         emitter.toggle_peek()
-        spinner = emitter._iteration_spinner
+        spinner = emitter._active_renderable
         assert spinner is not None
         assert spinner._peek_message is not None
         assert "peek off" in spinner._peek_message.plain
@@ -532,7 +535,7 @@ class TestStructuredPeek:
                 iteration=1,
             )
         )
-        spinner = emitter._iteration_spinner
+        spinner = emitter._active_renderable
         assert spinner is not None
         assert any("raw agent output" in line.plain for line in spinner._scroll_lines)
         emitter._stop_live()
@@ -560,7 +563,7 @@ class TestStructuredPeek:
                 iteration=1,
             )
         )
-        panel = emitter._iteration_panel
+        panel = emitter._active_renderable
         assert panel is not None
         assert len(panel._scroll_lines) == 1
         assert "Bash" in panel._scroll_lines[0].plain
@@ -583,7 +586,7 @@ class TestStructuredPeek:
                 iteration=1,
             )
         )
-        panel = emitter._iteration_panel
+        panel = emitter._active_renderable
         assert panel is not None
         assert any("fix the bug" in line.plain for line in panel._scroll_lines)
         emitter._stop_live()
@@ -604,7 +607,7 @@ class TestStructuredPeek:
                 iteration=1,
             )
         )
-        panel = emitter._iteration_panel
+        panel = emitter._active_renderable
         assert panel is not None
         assert len(panel._scroll_lines) == 1
         assert "let me think..." in panel._scroll_lines[0].plain
@@ -626,7 +629,7 @@ class TestStructuredPeek:
                 iteration=1,
             )
         )
-        panel = emitter._iteration_panel
+        panel = emitter._active_renderable
         assert panel is not None
         assert any("rate limit" in line.plain for line in panel._scroll_lines)
         assert any("rate_limited" in line.plain for line in panel._scroll_lines)
@@ -656,7 +659,7 @@ class TestStructuredPeek:
 
         # Monkeypatch the panel to raise
         with patch.object(
-            emitter._iteration_panel, "apply", side_effect=ValueError("parse boom")
+            emitter._active_renderable, "apply", side_effect=ValueError("parse boom")
         ):
             emitter.emit(
                 _make_event(
@@ -713,13 +716,13 @@ class TestStructuredPeek:
                 iteration=1,
             )
         )
-        panel = emitter._iteration_panel
+        panel = emitter._active_renderable
         assert panel is not None
         # Buffer captures activity even with peek off…
         assert len(panel._scroll_lines) == 1
         assert "Bash" in panel._scroll_lines[0].plain
         # …but the visibility flag was carried over from the disabled
-        # peek state by _start_live_unlocked.
+        # peek state by _create_panel_unlocked.
         assert panel._peek_visible is False
         emitter._stop_live()
 
@@ -746,7 +749,7 @@ class TestStructuredPeek:
                 iteration=1,
             )
         )
-        panel = emitter._iteration_panel
+        panel = emitter._active_renderable
         assert panel is not None
         assert any("tool error" in line.plain for line in panel._scroll_lines)
         assert any("File not found" in line.plain for line in panel._scroll_lines)
@@ -768,15 +771,15 @@ class TestIterationLifecycle:
         emitter, console = _capture_emitter()
         emitter.toggle_peek()  # enable peek (off by default for recording consoles)
 
-        # Verify the lock is held when _start_live_unlocked executes
+        # Verify the lock is held when _create_panel_unlocked executes
         lock_held_during_start = []
-        original_start = emitter._start_live_unlocked
+        original_start = emitter._create_panel_unlocked
 
         def instrumented_start():
             lock_held_during_start.append(emitter._console_lock.locked())
-            original_start()
+            return original_start()
 
-        emitter._start_live_unlocked = instrumented_start
+        emitter._create_panel_unlocked = instrumented_start
 
         barrier = threading.Barrier(2, timeout=5)
         peek_marker = "SPLICE_TEST_PEEK"
@@ -796,7 +799,7 @@ class TestIterationLifecycle:
         t.join()
         emitter._stop_live()
 
-        # _start_live_unlocked must have run while _console_lock was held
+        # _create_panel_unlocked must have run while _console_lock was held
         assert lock_held_during_start == [True]
 
         output = console.export_text()
@@ -1525,25 +1528,25 @@ def _populate_buffer(spinner, count: int, prefix: str = "line") -> None:
 class TestFullscreenPeekView:
     """Unit tests for the _FullscreenPeek renderable state model."""
 
-    def _make_source(self, count: int = 100) -> _IterationSpinner:
+    def _make_view(self, count: int = 100) -> _FullscreenPeek:
         spinner = _IterationSpinner()
         _populate_buffer(spinner, count)
-        return spinner
+        return _FullscreenPeek(_SinglePanelNavigator(spinner), 1)
 
     def test_default_follows_tail(self):
-        view = _FullscreenPeek(self._make_source(200))
+        view = self._make_view(200)
         assert view._auto_scroll is True
         assert view._offset == 0
 
     def test_scroll_up_disables_auto_scroll(self):
-        view = _FullscreenPeek(self._make_source(200))
+        view = self._make_view(200)
         view._console_height = 40
         view.scroll_up(5)
         assert view._auto_scroll is False
         assert view._offset == 5
 
     def test_scroll_down_back_to_bottom_re_enables_follow(self):
-        view = _FullscreenPeek(self._make_source(200))
+        view = self._make_view(200)
         view._console_height = 40
         view.scroll_up(10)
         assert view._auto_scroll is False
@@ -1552,24 +1555,21 @@ class TestFullscreenPeekView:
         assert view._offset == 0
 
     def test_scroll_up_clamped_to_top(self):
-        source = self._make_source(30)
-        view = _FullscreenPeek(source)
-        view._console_height = 40  # visible = 34 > 30, so max_offset = 0
+        view = self._make_view(30)
+        view._console_height = 40  # visible = 38 > 30, so max_offset = 0
         view.scroll_up(100)
         assert view._offset == 0
 
     def test_scroll_to_top_clamps_to_max_offset(self):
-        source = self._make_source(500)
-        view = _FullscreenPeek(source)
-        view._console_height = 40  # visible = 34
+        view = self._make_view(500)
+        view._console_height = 40  # visible = 38
         view.scroll_to_top()
-        # 500 total - 34 visible = 466
-        assert view._offset == 466
+        # 500 total - 38 visible = 462
+        assert view._offset == 462
         assert view._auto_scroll is False
 
     def test_scroll_to_bottom_re_enables_follow(self):
-        source = self._make_source(500)
-        view = _FullscreenPeek(source)
+        view = self._make_view(500)
         view._console_height = 40
         view.scroll_to_top()
         view.scroll_to_bottom()
@@ -1577,19 +1577,17 @@ class TestFullscreenPeekView:
         assert view._auto_scroll is True
 
     def test_render_shows_newest_by_default(self):
-        source = self._make_source(20)
-        view = _FullscreenPeek(source)
+        view = self._make_view(20)
         console = Console(record=True, width=120, height=15, force_terminal=True)
         console.print(view)
         output = console.export_text()
-        # With height 15 and chrome 6, visible ≈ 9, so the last lines
-        # (0019, 0018, …) should appear.
+        # With height 15 and chrome 2, visible = 13, so the last lines
+        # (0019 down to 0007) should appear.
         assert "line 0019" in output
         assert "line 0000" not in output
 
     def test_render_shows_top_after_scroll_to_top(self):
-        source = self._make_source(100)
-        view = _FullscreenPeek(source)
+        view = self._make_view(100)
         console = Console(record=True, width=120, height=15, force_terminal=True)
         # First render sets _console_height.
         console.print(view)
@@ -1601,8 +1599,7 @@ class TestFullscreenPeekView:
         assert "line 0099" not in output
 
     def test_render_pads_when_buffer_shorter_than_viewport(self):
-        source = self._make_source(3)
-        view = _FullscreenPeek(source)
+        view = self._make_view(3)
         console = Console(record=True, width=120, height=20, force_terminal=True)
         console.print(view)
         output = console.export_text()
@@ -1612,8 +1609,7 @@ class TestFullscreenPeekView:
         assert "exit" in output
 
     def test_empty_buffer_shows_waiting_message(self):
-        source = _IterationSpinner()
-        view = _FullscreenPeek(source)
+        view = _FullscreenPeek(_SinglePanelNavigator(_IterationSpinner()), 1)
         console = Console(record=True, width=120, height=15, force_terminal=True)
         console.print(view)
         assert "waiting for activity" in console.export_text()
@@ -1688,7 +1684,7 @@ class TestFullscreenPeekEmitter:
     def test_enter_without_iteration_prints_hint(self):
         emitter, console = _capture_emitter()
         assert emitter.enter_fullscreen() is False
-        assert "no active iteration" in console.export_text()
+        assert "no iterations" in console.export_text()
         assert emitter._fullscreen_view is None
 
     def test_enter_with_structured_iteration_creates_view(self):
@@ -1697,7 +1693,8 @@ class TestFullscreenPeekEmitter:
             assert emitter.enter_fullscreen() is True
             assert emitter._fullscreen_view is not None
             assert emitter._fullscreen_live is not None
-            assert emitter._fullscreen_view._source is emitter._iteration_panel
+            assert emitter._fullscreen_view._source is emitter._active_renderable
+            assert emitter._fullscreen_view.iteration_id == 1
         finally:
             emitter._stop_live()
 
@@ -1706,7 +1703,7 @@ class TestFullscreenPeekEmitter:
         try:
             assert emitter.enter_fullscreen() is True
             assert emitter._fullscreen_view is not None
-            assert emitter._fullscreen_view._source is emitter._iteration_spinner
+            assert emitter._fullscreen_view._source is emitter._active_renderable
         finally:
             emitter._stop_live()
 
@@ -1730,7 +1727,7 @@ class TestFullscreenPeekEmitter:
             assert emitter._fullscreen_live is None
             # Compact Live is back, still pointing at the same panel.
             assert emitter._live is not None
-            assert emitter._iteration_panel is not None
+            assert emitter._active_renderable is not None
         finally:
             emitter._stop_live()
 
@@ -1739,24 +1736,131 @@ class TestFullscreenPeekEmitter:
         emitter.exit_fullscreen()  # should not raise
         assert emitter._fullscreen_view is None
 
-    def test_iteration_end_tears_down_fullscreen(self):
-        """Ending an iteration while fullscreen is active must restore
-        the normal terminal — otherwise the user would be stuck in an
-        alt-screen showing buffer from a dead iteration."""
+    def test_iteration_end_keeps_fullscreen_and_archives_panel(self):
+        """Ending an iteration while fullscreen is active must NOT drop
+        the user out of the alt screen.  The finished panel moves into
+        the history ring buffer so the user can keep browsing it (and
+        any future iterations) via [ / ] without leaving fullscreen."""
         emitter, _ = self._make_emitter_with_iteration(structured=True)
-        emitter.enter_fullscreen()
-        emitter.emit(
-            _make_event(
-                EventType.ITERATION_COMPLETED,
-                iteration=1,
-                detail="completed (1s)",
-                log_file=None,
-                result_text=None,
+        try:
+            emitter.enter_fullscreen()
+            panel_before = emitter._active_renderable
+            assert panel_before is not None
+            emitter.emit(
+                _make_event(
+                    EventType.ITERATION_COMPLETED,
+                    iteration=1,
+                    detail="completed (1s)",
+                    log_file=None,
+                    result_text=None,
+                )
             )
-        )
-        assert emitter._fullscreen_view is None
-        assert emitter._fullscreen_live is None
-        assert emitter._iteration_panel is None
+            # Fullscreen still up.
+            assert emitter._fullscreen_view is not None
+            assert emitter._fullscreen_live is not None
+            # Active iteration cleared, but the panel lives on in history.
+            assert emitter._active_renderable is None
+            assert emitter._current_iteration is None
+            assert emitter._iteration_history.get(1) is panel_before
+            # Frozen with the right outcome — surfaced in the header.
+            assert panel_before._outcome == "completed"
+            assert panel_before._end is not None
+            # The fullscreen view still resolves to that same panel.
+            assert emitter._fullscreen_view._source is panel_before
+        finally:
+            emitter._stop_live()
+
+    def test_iteration_end_status_print_deferred_during_fullscreen(self):
+        """Status lines that would normally print at iteration end must
+        be deferred while fullscreen is active and replayed on exit so
+        the terminal scrollback eventually shows them."""
+        emitter, console = self._make_emitter_with_iteration(structured=True)
+        try:
+            emitter.enter_fullscreen()
+            emitter.emit(
+                _make_event(
+                    EventType.ITERATION_COMPLETED,
+                    iteration=1,
+                    detail="completed (1s)",
+                    log_file=None,
+                    result_text=None,
+                )
+            )
+            # Nothing printed yet — the deferred queue is non-empty.
+            assert emitter._deferred_renders, "iteration-end print should be deferred"
+            assert "Iteration 1 completed" not in console.export_text()
+            emitter.exit_fullscreen()
+            # Replayed on exit.
+            assert "Iteration 1 completed" in console.export_text()
+            assert not emitter._deferred_renders
+        finally:
+            emitter._stop_live()
+
+    def test_navigation_browses_archived_iterations(self):
+        """[ / ] move between iterations; previous iterations stay
+        browsable after they end."""
+        emitter, _ = self._make_emitter_with_iteration(structured=True)
+        try:
+            # Finish iter 1 inside fullscreen so it gets archived.
+            emitter.enter_fullscreen()
+            emitter.emit(
+                _make_event(
+                    EventType.ITERATION_COMPLETED,
+                    iteration=1,
+                    detail="completed (1s)",
+                    log_file=None,
+                    result_text=None,
+                )
+            )
+            # Start iter 2 — still inside fullscreen.
+            emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=2))
+            view = emitter._fullscreen_view
+            assert view is not None
+            # We started fullscreen on iter 1 and stayed there.
+            assert view.iteration_id == 1
+            assert emitter.iteration_ids() == [1, 2]
+            # ] moves forward to iter 2 (the live one).
+            emitter.handle_key(NEXT_ITERATION_KEY)
+            assert view.iteration_id == 2
+            assert emitter.is_live(2) is True
+            # ] again is a no-op (already on the newest).
+            emitter.handle_key(NEXT_ITERATION_KEY)
+            assert view.iteration_id == 2
+            # [ goes back to iter 1.
+            emitter.handle_key(PREV_ITERATION_KEY)
+            assert view.iteration_id == 1
+            # [ again is a no-op (already on the oldest).
+            emitter.handle_key(PREV_ITERATION_KEY)
+            assert view.iteration_id == 1
+        finally:
+            emitter._stop_live()
+
+    def test_history_eviction_protects_viewed_iteration(self):
+        """When more than _MAX_HISTORY_ITERATIONS finish during a
+        fullscreen session, the iteration the user is viewing must
+        survive — eviction skips it and drops the next-oldest instead."""
+        from ralphify._console_emitter import _MAX_HISTORY_ITERATIONS
+
+        emitter, _ = self._make_emitter_with_iteration(structured=True)
+        try:
+            emitter.enter_fullscreen()
+            # We're parked on iter 1 in fullscreen; finish enough
+            # iterations after it that iter 1 would normally be evicted.
+            for i in range(2, _MAX_HISTORY_ITERATIONS + 5):
+                emitter.emit(
+                    _make_event(
+                        EventType.ITERATION_COMPLETED,
+                        iteration=i - 1,
+                        detail="completed (1s)",
+                        log_file=None,
+                        result_text=None,
+                    )
+                ) if i > 2 else None
+                emitter.emit(_make_event(EventType.ITERATION_STARTED, iteration=i))
+            assert 1 in emitter._iteration_history
+            assert len(emitter._iteration_order) <= _MAX_HISTORY_ITERATIONS
+        finally:
+            emitter._stop_live()
 
     def test_activity_updates_buffer_while_fullscreen(self):
         """Agent activity events must keep populating the underlying
@@ -1827,7 +1931,7 @@ class TestFullscreenPeekEmitter:
     def test_handle_key_scroll_keys_move_offset(self):
         emitter, _ = self._make_emitter_with_iteration(structured=True)
         try:
-            panel = emitter._iteration_panel
+            panel = emitter._active_renderable
             assert panel is not None
             _populate_buffer(panel, 500)
             emitter.enter_fullscreen()
