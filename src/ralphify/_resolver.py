@@ -18,7 +18,7 @@ _NAME = NAME_RE.pattern  # inlined for readability inside verbose regexes
 
 # Pattern matching ``{{ args.<name> }}`` placeholders — used by resolve_args
 # to resolve arg placeholders in command run strings independently of commands.
-_ARGS_PATTERN = re.compile(
+_ARGS_RE = re.compile(
     rf"""
     \{{\{{              # opening literal {{{{
     \s*                 # optional whitespace
@@ -39,16 +39,16 @@ def resolve_args(prompt: str, user_args: dict[str, str]) -> str:
     placeholders so they don't leak into the assembled prompt.
     """
     if not user_args:
-        return _ARGS_PATTERN.sub("", prompt)
+        return _ARGS_RE.sub("", prompt)
 
     def _replace(match: re.Match) -> str:
         return user_args.get(match.group(1), "")
 
-    return _ARGS_PATTERN.sub(_replace, prompt)
+    return _ARGS_RE.sub(_replace, prompt)
 
 
 # Single pattern matching all placeholder kinds for single-pass resolution.
-_ALL_PATTERN = re.compile(
+_ALL_RE = re.compile(
     rf"""
     \{{\{{              # opening literal {{{{
     \s*                 # optional whitespace
@@ -89,4 +89,4 @@ def resolve_all(
         name = match.group(2)
         return lookups[kind].get(name, "")
 
-    return _ALL_PATTERN.sub(_replace, prompt)
+    return _ALL_RE.sub(_replace, prompt)

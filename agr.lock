@@ -12,10 +12,6 @@ source = "github"
 installed-name = "playwright-cli"
 
 [[skill]]
-path = "skills/release"
-installed-name = "release"
-
-[[skill]]
 handle = "computerlovetech/docs-audit"
 source = "github"
 commit = "5674fdd2eb72497761061cc0acd6623b76185832"
@@ -35,3 +31,18 @@ source = "github"
 commit = "9859f7bceb7a46af8482cabb9aa24e0d38a49413"
 content-hash = "sha256:fa1ce825fa7e11cd5aac55ee7eac5e9c918e3af113b7988fdbd281a319acc110"
 installed-name = "code-review"
+
+[[skill]]
+path = "skills/ralphify-release"
+installed-name = "ralphify-release"
+
+[[ralph]]
+path = "ralphs/bug-hunter"
+installed-name = "bug-hunter"
+
+[[ralph]]
+handle = "computerlovetech/ralphs/improve-codebase"
+source = "github"
+commit = "70a0dabf5a59ae1a3acaf50a9e619c83e174a35f"
+content-hash = "sha256:0afc55d5b2d4061fa82c270a147c66c8bc21589ab62c47d9747ddb5f382c708d"
+installed-name = "improve-codebase"

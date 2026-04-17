@@ -56,15 +56,19 @@ _UTF8_BOM = "\ufeff"
 # comments.  Used by _strip_html_comments to remove comments while
 # preserving any that appear inside code fences.
 #
-# Backreferences (\2 / \3) ensure the closing fence has the same number
-# of characters as the opening, so a ```` fence is not broken by an
+# Backreferences (\2 / \3) ensure the closing fence has *at least* as
+# many characters as the opening, so a ```` fence is not broken by an
 # inner ``` — the inner ``` is treated as content, not a fence boundary.
+# The trailing ```*`` / ``~*`` after each backreference consumes any
+# *extra* fence characters on the closing line so they are not
+# misinterpreted as a new opening fence (CommonMark allows the closing
+# fence to be longer than the opening).
 # The ``\n`` before each backreference requires the closing fence to
 # start on a new line, preventing inline backticks/tildes from being
 # mistaken for a closing fence (matching CommonMark's rule that closing
 # code fences must be on their own line).
 _FENCE_OR_COMMENT_RE = re.compile(
-    r"((`{3,}).*?\n[ \t]*\2|(~{3,}).*?\n[ \t]*\3)|<!--.*?-->",
+    r"((`{3,}).*?\n[ \t]*\2`*|(~{3,}).*?\n[ \t]*\3~*)|<!--.*?-->",
     re.DOTALL,
 )
 

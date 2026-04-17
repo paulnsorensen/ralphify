@@ -43,8 +43,9 @@ from ralphify import _console_emitter  # noqa: E402
 from ralphify._console_emitter import (  # noqa: E402
     ConsoleEmitter,
     _FullscreenPeek,
-    _IterationPanel,
     _IterationSpinner,
+    _LivePanelBase,
+    _SinglePanelNavigator,
 )
 from ralphify._events import (  # noqa: E402
     Event,
@@ -62,18 +63,14 @@ class _SnapshotConsoleEmitter(ConsoleEmitter):
 
     In snapshot mode we want a single, frozen rendering of the iteration
     panel — not a Live refresh loop that writes the panel to the record
-    console multiple times.  Overriding ``_start_live_unlocked`` creates
-    the panel/spinner but leaves ``_live=None``, so ``_on_agent_activity``
-    still routes to ``panel.apply()`` without triggering any draw.
+    console multiple times.  Overriding ``_start_compact_live_unlocked``
+    leaves ``_live=None`` so ``_on_agent_activity`` still routes to
+    ``panel.apply()`` without triggering any draw.
     """
 
-    def _start_live_unlocked(self) -> None:  # type: ignore[override]
-        if self._structured_agent:
-            self._iteration_panel = _IterationPanel()
-            self._iteration_spinner = None
-        else:
-            self._iteration_panel = None
-            self._iteration_spinner = _IterationSpinner()
+    def _start_compact_live_unlocked(  # type: ignore[override]
+        self, renderable: _LivePanelBase
+    ) -> None:
         self._live = None
 
 
@@ -290,7 +287,7 @@ def _snapshot_fullscreen_peek() -> None:
     panel = emitter._iteration_panel
     assert panel is not None
 
-    view = _FullscreenPeek(panel)
+    view = _FullscreenPeek(_SinglePanelNavigator(panel), 1)
     view._console_height = 40
     console.print(view)
     _save(console, "15_fullscreen_peek")
