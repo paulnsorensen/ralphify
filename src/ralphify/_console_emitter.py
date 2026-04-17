@@ -1376,14 +1376,26 @@ class ConsoleEmitter:
         Live for the currently-active iteration (if any).
         """
         with self._console_lock:
-            if self._fullscreen_view is None:
+            if not self._teardown_fullscreen_unlocked():
                 return
-            if self._fullscreen_live is not None:
-                self._fullscreen_live.stop()
-                self._fullscreen_live = None
-            self._fullscreen_view = None
-            self._flush_deferred_unlocked()
             self._restart_compact_unlocked()
+
+    def _teardown_fullscreen_unlocked(self) -> bool:
+        """Stop the fullscreen Live and clear fullscreen state.
+
+        Flushes any buffered prints so the terminal scrollback stays
+        consistent.  Returns True if fullscreen was active, False if it
+        was already inactive (caller can skip any follow-up steps).
+        Caller must hold _console_lock.
+        """
+        if self._fullscreen_view is None:
+            return False
+        if self._fullscreen_live is not None:
+            self._fullscreen_live.stop()
+            self._fullscreen_live = None
+        self._fullscreen_view = None
+        self._flush_deferred_unlocked()
+        return True
 
     def _restart_compact_unlocked(self) -> None:
         """Bring the compact Live back after a fullscreen exit.
@@ -1575,12 +1587,7 @@ class ConsoleEmitter:
             # Tear down everything — the run is done.  If the user is
             # still inside fullscreen, exit it first and replay buffered
             # prints so the terminal scrollback shows the full history.
-            if self._fullscreen_view is not None:
-                if self._fullscreen_live is not None:
-                    self._fullscreen_live.stop()
-                    self._fullscreen_live = None
-                self._fullscreen_view = None
-                self._flush_deferred_unlocked()
+            self._teardown_fullscreen_unlocked()
             self._stop_live_unlocked()
             if data["reason"] != STOP_COMPLETED:
                 return
