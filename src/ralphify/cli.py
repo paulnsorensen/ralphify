@@ -88,6 +88,18 @@ def _validate_name(name: str, context: str) -> None:
         )
 
 
+def _check_unique_name(name: str, seen: set[str], context: str) -> None:
+    """Validate *name* and ensure it has not appeared in *seen* yet.
+
+    Calls :func:`_validate_name` then exits with an error on duplicate.
+    *context* is used in both error messages (e.g. ``"Arg"`` or ``"Command"``).
+    """
+    _validate_name(name, context)
+    if name in seen:
+        _exit_error(f"Duplicate {context.lower()} name '{name}'.")
+    seen.add(name)
+
+
 BANNER = [
     ("██████╗░░█████╗░██╗░░░░░██████╗░██╗░░██╗██╗███████╗██╗░░░██╗", _brand.VIOLET),
     ("██╔══██╗██╔══██╗██║░░░░░██╔══██╗██║░░██║██║██╔════╝╚██╗░██╔╝", _brand.PURPLE),
@@ -282,10 +294,7 @@ def _validate_declared_args(raw_args: Any) -> list[str] | None:
         _exit_error(f"'{FIELD_ARGS}' items must be strings, got non-string value.")
     seen: set[str] = set()
     for name in raw_args:
-        _validate_name(name, "Arg")
-        if name in seen:
-            _exit_error(f"Duplicate arg name '{name}'.")
-        seen.add(name)
+        _check_unique_name(name, seen, "Arg")
     return raw_args
 
 
@@ -307,10 +316,7 @@ def _parse_command_items(raw_commands: list[dict[str, Any]]) -> list[Command]:
                 _exit_error(f"Command '{key}' must be a non-empty string.")
         cmd_name = cmd_def[CMD_FIELD_NAME]
         cmd_run = cmd_def[CMD_FIELD_RUN]
-        _validate_name(cmd_name, "Command")
-        if cmd_name in seen_names:
-            _exit_error(f"Duplicate command name '{cmd_name}'.")
-        seen_names.add(cmd_name)
+        _check_unique_name(cmd_name, seen_names, "Command")
         timeout = cmd_def.get(CMD_FIELD_TIMEOUT)
         if timeout is None:
             timeout = DEFAULT_COMMAND_TIMEOUT
