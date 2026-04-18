@@ -30,6 +30,8 @@ from ralphify._events import (
     PromptAssembledData,
     RunStartedData,
     RunStoppedData,
+    ToolUseData,
+    TurnApproachingLimitData,
 )
 from ralphify.adapters import select_adapter
 from ralphify._frontmatter import (
@@ -47,6 +49,7 @@ from ralphify._run_types import (
 )
 from ralphify._resolver import resolve_all, resolve_args
 from ralphify._runner import run_command
+from ralphify.hooks import CombinedAgentHook
 
 
 _PAUSE_POLL_INTERVAL = 0.25  # seconds between pause/resume checks
@@ -161,11 +164,54 @@ def _assemble_prompt(
     return prompt
 
 
+def _build_tool_use_bridge(
+    config: RunConfig,
+    iteration: int,
+    emit: BoundEmitter,
+    hook: CombinedAgentHook,
+) -> Any:
+    """Return the per-tool-use callback the agent layer invokes for each count.
+
+    The callback emits ``TOOL_USE``, fans out to ``hook.on_tool_use``, and
+    when the count reaches ``max_turns - max_turns_grace`` also emits
+    ``ITERATION_TURN_APPROACHING_LIMIT`` and fires
+    ``hook.on_turn_approaching_limit``.
+    """
+    max_turns = config.max_turns
+    grace_threshold = (
+        max_turns - config.max_turns_grace if max_turns is not None else None
+    )
+
+    def _on_tool_use(tool_name: str, count: int) -> None:
+        emit(
+            EventType.TOOL_USE,
+            ToolUseData(iteration=iteration, tool_name=tool_name, count=count),
+        )
+        hook.on_tool_use(iteration=iteration, tool_name=tool_name, count=count)
+        if (
+            grace_threshold is not None
+            and max_turns is not None
+            and count == grace_threshold
+        ):
+            emit(
+                EventType.ITERATION_TURN_APPROACHING_LIMIT,
+                TurnApproachingLimitData(
+                    iteration=iteration, count=count, max_turns=max_turns
+                ),
+            )
+            hook.on_turn_approaching_limit(
+                iteration=iteration, count=count, max_turns=max_turns
+            )
+
+    return _on_tool_use
+
+
 def _run_agent_phase(
     prompt: str,
     config: RunConfig,
     state: RunState,
     emit: BoundEmitter,
+    hook: CombinedAgentHook,
 ) -> tuple[bool, bool]:
     """Run the agent subprocess, update state counters, and emit the result event.
 
@@ -185,6 +231,7 @@ def _run_agent_phase(
         emit.agent_output_line(line, stream, state.iteration)
 
     on_output_line = _on_output_line if emit.wants_agent_output_lines() else None
+    on_tool_use = _build_tool_use_bridge(config, state.iteration, emit, hook)
 
     try:
 
@@ -202,6 +249,7 @@ def _run_agent_phase(
             iteration=state.iteration,
             on_activity=on_activity,
             on_output_line=on_output_line,
+            on_tool_use=on_tool_use,
             capture_result_text=True,
             capture_stdout=True,
             adapter=adapter,
@@ -219,6 +267,7 @@ def _run_agent_phase(
     )
     if promise_completed:
         state.promise_completed = True
+        hook.on_completion_signal(iteration=state.iteration, signal=completion_signal)
 
     if agent.turn_capped:
         # Turn-cap enforcement intentionally SIGTERMs the agent — the
@@ -232,6 +281,7 @@ def _run_agent_phase(
             f"turn-capped at {agent.tool_use_count}"
             f"{f'/{cap}' if cap is not None else ''} tool uses ({duration})"
         )
+        hook.on_turn_capped(iteration=state.iteration, count=agent.tool_use_count)
     elif agent.timed_out:
         state.mark_timed_out()
         event_type = EventType.ITERATION_TIMED_OUT
@@ -284,6 +334,7 @@ def _run_iteration(
     config: RunConfig,
     state: RunState,
     emit: BoundEmitter,
+    hook: CombinedAgentHook,
 ) -> tuple[bool, bool]:
     """Execute one iteration of the agent loop.
 
@@ -294,6 +345,7 @@ def _run_iteration(
     iteration = state.iteration
 
     emit(EventType.ITERATION_STARTED, IterationStartedData(iteration=iteration))
+    hook.on_iteration_started(iteration=iteration)
 
     command_outputs: dict[str, str] = {}
     if config.commands:
@@ -314,15 +366,24 @@ def _run_iteration(
                 count=len(command_outputs),
             ),
         )
+    hook.on_commands_completed(iteration=iteration, outputs=command_outputs)
 
     prompt = _assemble_prompt(config, state, command_outputs)
     emit(
         EventType.PROMPT_ASSEMBLED,
         PromptAssembledData(iteration=iteration, prompt_length=len(prompt)),
     )
+    hook.on_prompt_assembled(iteration=iteration, prompt=prompt)
 
     agent_succeeded, stop_for_completion_signal = _run_agent_phase(
-        prompt, config, state, emit
+        prompt, config, state, emit, hook
+    )
+    hook.on_iteration_completed(
+        iteration=iteration,
+        result={
+            "succeeded": agent_succeeded,
+            "promise_completed": stop_for_completion_signal,
+        },
     )
 
     if not agent_succeeded and config.stop_on_error:
@@ -359,6 +420,7 @@ def run_loop(
         emitter = NullEmitter()
 
     emit = BoundEmitter(emitter, state.run_id)
+    hook = CombinedAgentHook(list(config.hooks))
     state.status = RunStatus.RUNNING
     state.started_at = datetime.now(timezone.utc)
 
@@ -390,7 +452,7 @@ def run_loop(
             state.iteration += 1
 
             should_continue, stop_for_completion_signal = _run_iteration(
-                config, state, emit
+                config, state, emit, hook
             )
             if stop_for_completion_signal:
                 state.status = RunStatus.COMPLETED

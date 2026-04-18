@@ -35,6 +35,19 @@ from ralphify._events import (
     QueueEmitter,
     StopReason,
 )
+from ralphify.adapters import (
+    AdapterEvent,
+    AdapterEventKind,
+    CLIAdapter,
+    CountsWhat,
+    select_adapter,
+)
+from ralphify.hooks import (
+    AgentHook,
+    CombinedAgentHook,
+    NoOpAgentHook,
+    ShellAgentHook,
+)
 from ralphify.manager import ManagedRun, RunManager
 
 
@@ -48,18 +61,27 @@ def main() -> None:
 __all__ = [
     "__version__",
     "run_loop",
+    "AdapterEvent",
+    "AdapterEventKind",
+    "AgentHook",
     "BoundEmitter",
+    "CLIAdapter",
     "Command",
-    "RunConfig",
-    "RunState",
-    "RunStatus",
+    "CombinedAgentHook",
+    "CountsWhat",
     "Event",
     "EventEmitter",
     "EventType",
     "FanoutEmitter",
+    "ManagedRun",
+    "NoOpAgentHook",
     "NullEmitter",
     "QueueEmitter",
-    "StopReason",
-    "ManagedRun",
+    "RunConfig",
     "RunManager",
+    "RunState",
+    "RunStatus",
+    "ShellAgentHook",
+    "StopReason",
+    "select_adapter",
 ]

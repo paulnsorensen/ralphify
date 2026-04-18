@@ -481,6 +481,7 @@ class TestExecuteAgentDispatch:
             capture_stdout=False,
             adapter=ANY,
             max_turns=None,
+            on_tool_use=None,
         )
 
     def test_execute_agent_passes_capture_result_text_to_blocking_helper(
@@ -515,6 +516,7 @@ class TestExecuteAgentDispatch:
             capture_stdout=False,
             adapter=ANY,
             max_turns=None,
+            on_tool_use=None,
         )
 
 

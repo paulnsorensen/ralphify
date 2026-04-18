@@ -49,6 +49,15 @@ ActivityCallback = Callable[[dict[str, Any]], None]
 OutputLineCallback = Callable[[str, OutputStream], None]
 """Receives raw output lines with their stream name ("stdout"/"stderr")."""
 
+ToolUseCallback = Callable[[str, int], None]
+"""Receives ``(tool_name, running_count)`` for each tool-use event.
+
+Invoked by both the streaming path (as lines arrive) and the blocking
+path (after the subprocess exits, during post-hoc counting).  The
+callback is best-effort — exceptions are swallowed so a buggy
+subscriber cannot kill the agent loop.
+"""
+
 # Typed constants for the OutputStream literal so the type checker enforces
 # that only "stdout" / "stderr" ever reach ``on_output_line``.
 _STDOUT: OutputStream = "stdout"
@@ -319,6 +328,7 @@ def _read_agent_stream(
     capture_stdout: bool = True,
     adapter: CLIAdapter | None = None,
     max_turns: int | None = None,
+    on_tool_use: ToolUseCallback | None = None,
 ) -> _StreamResult:
     """Read the agent's JSON stream line-by-line until EOF or timeout.
 
@@ -427,6 +437,12 @@ def _read_agent_stream(
                 event = adapter.parse_event(line)
                 if event is not None and event.kind == "tool_use":
                     tool_use_count += 1
+                    if on_tool_use is not None:
+                        try:
+                            on_tool_use(event.name or "", tool_use_count)
+                        except Exception:
+                            # Best-effort fanout; draining must not stop.
+                            pass
                     if max_turns is not None and tool_use_count >= max_turns:
                         turn_capped = True
                         return _StreamResult(
@@ -464,6 +480,7 @@ def _run_agent_streaming(
     capture_stdout: bool = False,
     adapter: CLIAdapter | None = None,
     max_turns: int | None = None,
+    on_tool_use: ToolUseCallback | None = None,
 ) -> AgentResult:
     """Run the agent subprocess with line-by-line streaming of JSON output.
 
@@ -527,6 +544,7 @@ def _run_agent_streaming(
             capture_stdout=capture_stdout_text,
             adapter=adapter,
             max_turns=max_turns,
+            on_tool_use=on_tool_use,
         )
 
         if stream.timed_out or stream.turn_capped:
@@ -682,6 +700,7 @@ def _run_agent_blocking(
     capture_stdout: bool = False,
     adapter: CLIAdapter | None = None,
     max_turns: int | None = None,
+    on_tool_use: ToolUseCallback | None = None,
 ) -> AgentResult:
     """Run the agent subprocess and return the result.
 
@@ -783,7 +802,7 @@ def _run_agent_blocking(
     log_file = _write_log(log_dir, iteration, stdout, stderr)
 
     tool_use_count, turn_capped = _count_tool_uses_post_hoc(
-        adapter, max_turns, stdout_lines
+        adapter, max_turns, stdout_lines, on_tool_use=on_tool_use
     )
 
     return AgentResult(
@@ -803,6 +822,8 @@ def _count_tool_uses_post_hoc(
     adapter: CLIAdapter | None,
     max_turns: int | None,
     stdout_lines: list[str] | None,
+    *,
+    on_tool_use: ToolUseCallback | None = None,
 ) -> tuple[int, bool]:
     """Retroactively count tool-use events in captured stdout.
 
@@ -818,6 +839,12 @@ def _count_tool_uses_post_hoc(
         event = adapter.parse_event(line)
         if event is not None and event.kind == "tool_use":
             count += 1
+            if on_tool_use is not None:
+                try:
+                    on_tool_use(event.name or "", count)
+                except Exception:
+                    # Best-effort fanout; counting must not stop.
+                    pass
     turn_capped = max_turns is not None and count >= max_turns
     if turn_capped and max_turns is not None:
         warn(
@@ -836,6 +863,7 @@ def execute_agent(
     iteration: int,
     on_activity: ActivityCallback | None = None,
     on_output_line: OutputLineCallback | None = None,
+    on_tool_use: ToolUseCallback | None = None,
     capture_result_text: bool = False,
     capture_stdout: bool | None = None,
     adapter: CLIAdapter | None = None,
@@ -880,6 +908,7 @@ def execute_agent(
             capture_stdout=capture_stdout,
             adapter=adapter,
             max_turns=max_turns,
+            on_tool_use=on_tool_use,
         )
     return _run_agent_blocking(
         cmd,
@@ -892,4 +921,5 @@ def execute_agent(
         capture_stdout=capture_stdout,
         adapter=adapter,
         max_turns=max_turns,
+        on_tool_use=on_tool_use,
     )
