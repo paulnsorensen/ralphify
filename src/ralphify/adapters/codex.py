@@ -11,7 +11,13 @@ We map every tool-call event to ``AdapterEvent(kind="tool_use", ...)``
 so the turn-cap counter uses the same user-facing metric across CLIs.
 Turn boundaries surface as ``kind="turn"`` events for adapters that want
 them; they do not count against ``max_turns`` today (counts_what is
-``tool_use``, not ``turn``, for a unified metric — see spec Q13).
+``tool_use`` for a unified metric — see spec Q13).
+
+Event classification priority: ``TurnCompleted`` is a member of both
+``_TURN_EVENTS`` and ``_RESULT_EVENTS``; the result branch fires first so
+the terminal turn yields the final-assistant text the engine needs for
+completion-signal extraction.  Treating it as a plain turn boundary
+would drop that payload.
 """
 
 from __future__ import annotations
@@ -20,7 +26,7 @@ import json
 from pathlib import Path
 
 from ralphify._promise import has_promise_completion
-from ralphify.adapters import ADAPTERS, AdapterEvent, CountsWhat
+from ralphify.adapters._protocol import ADAPTERS, AdapterEvent, CountsWhat
 
 
 CODEX_BINARY_STEM = "codex"
@@ -42,7 +48,10 @@ class CodexAdapter:
     name: str = "codex"
     counts_what: CountsWhat = "tool_use"
     renders_structured: bool = True
-    supports_soft_windown: bool = True
+    # Phase 3 will flip this to True once ``install_wind_down_hook``
+    # actually writes a ``hooks.json`` PostToolUse entry.  Until then
+    # the flag stays False so the engine downgrades to hard-cap-only.
+    supports_soft_wind_down: bool = False
 
     def matches(self, cmd: list[str]) -> bool:
         if not cmd:
@@ -57,11 +66,14 @@ class CodexAdapter:
         return result
 
     def parse_event(self, line: str) -> AdapterEvent | None:
-        """Classify one JSONL line as turn / tool_use / message / result.
+        """Classify one JSONL line as tool_use / result / turn.
 
-        Unknown event types return ``AdapterEvent(kind="message", ...)`` so
-        callers can still render them (e.g. peek panel) without counting
-        them against the turn cap.  Malformed lines return ``None``.
+        Returns ``None`` for malformed lines, non-dict payloads, and
+        unknown event types — the engine treats ``None`` as "ignore
+        completely" so unclassified Codex events never count against
+        the turn cap.  ``TurnCompleted`` hits the result branch before
+        the turn branch (see module docstring) to preserve the final
+        payload for completion-signal extraction.
         """
         stripped = line.strip()
         if not stripped:
@@ -81,10 +93,14 @@ class CodexAdapter:
                 raw=parsed,
             )
         if event_type in _RESULT_EVENTS:
-            return AdapterEvent(kind="result", raw=parsed)
+            return AdapterEvent(
+                kind="result",
+                text=_event_text_payload(parsed),
+                raw=parsed,
+            )
         if event_type in _TURN_EVENTS:
             return AdapterEvent(kind="turn", raw=parsed)
-        return AdapterEvent(kind="message", raw=parsed)
+        return None
 
     def extract_completion_signal(self, stdout: str, user_signal: str) -> bool:
         """Scan every ``TurnCompleted`` / ``TaskComplete`` event for the promise tag.
@@ -143,7 +159,7 @@ def _tool_name(parsed: dict, event_type: str | None) -> str | None:
     command, ``CollabToolCall`` a tool name, ``McpToolCall`` a server +
     tool.  When no specific name is available, return the event type.
     """
-    for key in ("name", "tool", "tool_name"):
+    for key in ("name", "tool", "tool_name", "command"):
         value = parsed.get(key)
         if isinstance(value, str):
             return value

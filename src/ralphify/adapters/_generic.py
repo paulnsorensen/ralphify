@@ -3,13 +3,20 @@
 Returned by :func:`ralphify.adapters.select_adapter` when no specific
 adapter's ``matches`` returns True.  All capability flags are False, so
 the core loop treats sessions as blocking, untyped, and uncappable.
+
+The one capability GenericAdapter *does* provide is promise-tag
+detection: the ``<promise>{signal}</promise>`` escape hatch is a
+ralphify-wide protocol, not a Claude-only convention, so any adapter
+must be able to recognise it.  Generic scans raw stdout since it has
+no structured event stream to inspect.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from ralphify.adapters import AdapterEvent, CountsWhat
+from ralphify._promise import has_promise_completion
+from ralphify.adapters._protocol import AdapterEvent, CountsWhat
 
 
 class GenericAdapter:
@@ -18,7 +25,7 @@ class GenericAdapter:
     name: str = "generic"
     counts_what: CountsWhat = "none"
     renders_structured: bool = False
-    supports_soft_windown: bool = False
+    supports_soft_wind_down: bool = False
 
     def matches(self, cmd: list[str]) -> bool:
         return False
@@ -30,7 +37,7 @@ class GenericAdapter:
         return None
 
     def extract_completion_signal(self, stdout: str, user_signal: str) -> bool:
-        return False
+        return has_promise_completion(stdout, user_signal)
 
     def install_wind_down_hook(
         self,

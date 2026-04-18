@@ -21,7 +21,7 @@ import json
 from pathlib import Path
 
 from ralphify._promise import has_promise_completion
-from ralphify.adapters import ADAPTERS, AdapterEvent, CountsWhat
+from ralphify.adapters._protocol import ADAPTERS, AdapterEvent, CountsWhat
 
 
 CLAUDE_BINARY_STEM = "claude"
@@ -42,7 +42,11 @@ class ClaudeAdapter:
     name: str = "claude"
     counts_what: CountsWhat = "tool_use"
     renders_structured: bool = True
-    supports_soft_windown: bool = True
+    # Phase 3 will flip this to True once ``install_wind_down_hook``
+    # actually writes a ``settings.json`` PreToolUse hook.  Until then
+    # the flag stays False so the engine does not attempt to install
+    # anything and the runtime downgrades cleanly to hard-cap-only.
+    supports_soft_wind_down: bool = False
 
     def matches(self, cmd: list[str]) -> bool:
         if not cmd:
@@ -50,24 +54,29 @@ class ClaudeAdapter:
         return Path(cmd[0]).stem == CLAUDE_BINARY_STEM
 
     def build_command(self, cmd: list[str]) -> list[str]:
-        """Append stream-json flags, skipping any already present.
+        """Append stream-json flags, replacing any conflicting user values.
 
+        Strips any existing ``--output-format <value>`` pair and bare
+        ``--verbose`` token before appending the canonical flag set, so
+        ``claude --output-format text`` becomes
+        ``claude --output-format stream-json --verbose`` rather than a
+        double-flag command that relies on "last wins" parsing.
         Idempotent: running twice yields the same command.
         """
-        result = list(cmd)
-        for flag in _STREAM_FLAGS:
-            if flag not in result:
-                result.append(flag)
+        result = _strip_flag_pair(cmd, "--output-format")
+        result = [tok for tok in result if tok != "--verbose"]
+        result.extend(_STREAM_FLAGS)
         return result
 
     def parse_event(self, line: str) -> AdapterEvent | None:
         """Return a ``tool_use`` event for each assistant-emitted tool call.
 
-        Non-JSON lines, non-dict payloads, and events other than assistant
-        tool-use blocks return ``None``.  Each ``assistant`` message may
-        contain multiple tool_use blocks; callers receive the *first* one
-        — Claude's stream-json format emits one block per newline-delimited
-        message, so single-event dispatch matches the protocol.
+        Returns ``None`` for any line the adapter cannot classify: non-JSON,
+        non-dict payloads, non-assistant/non-result event types (``system``,
+        ``user``, ...), and assistant messages whose content has no
+        tool_use block.  The engine treats ``None`` as "ignore completely"
+        — no counting, no peek-panel render — so false classifications
+        never inflate the turn cap.
         """
         stripped = line.strip()
         if not stripped:
@@ -81,10 +90,18 @@ class ClaudeAdapter:
 
         event_type = parsed.get("type")
         if event_type == _EVENT_TYPE_RESULT:
-            return AdapterEvent(kind="result", raw=parsed)
+            result_value = parsed.get(_RESULT_FIELD)
+            text = result_value if isinstance(result_value, str) else None
+            return AdapterEvent(kind="result", text=text, raw=parsed)
         if event_type != _EVENT_TYPE_ASSISTANT:
-            return AdapterEvent(kind="message", raw=parsed)
+            return None
 
+        # Under-count rather than over-count: if an assistant message
+        # ever carries multiple tool_use blocks (rare — stream-json emits
+        # one block per message today), the first block wins and the
+        # rest are ignored.  Over-counting would inflate the turn cap
+        # and break FR-3's "hard cap" invariant; under-counting is a
+        # leniency the user can recover from by re-running.
         for block in _iter_content_blocks(parsed):
             if block.get("type") == _BLOCK_TYPE_TOOL_USE:
                 name = block.get("name")
@@ -93,17 +110,20 @@ class ClaudeAdapter:
                     name=name if isinstance(name, str) else None,
                     raw=parsed,
                 )
-        return AdapterEvent(kind="message", raw=parsed)
+        return None
 
     def extract_completion_signal(self, stdout: str, user_signal: str) -> bool:
-        """Scan the final ``result`` event for ``<promise>{signal}</promise>``.
+        """Return True when ``<promise>{signal}</promise>`` appears in output.
 
-        Claude's terminal ``result`` event carries the last assistant
-        message as a plain string; the promise tag may live anywhere in
-        that text.  Fallback: if no ``result`` event is found, scan the
-        entire stdout so promise detection still works when the stream
-        was truncated or the event order shifted.
+        Scans the raw stdout first — the promise tag is unambiguous markup
+        and a full-stream scan catches it whether it lives in a ``result``
+        event, an assistant text block, or a truncated stream where the
+        event order shifted.  Falls back to scanning the final ``result``
+        event's ``result`` field only when the stdout scan fails, so
+        adapters that share an escape-hatched promise format don't drift.
         """
+        if has_promise_completion(stdout, user_signal):
+            return True
         for line in reversed(stdout.splitlines()):
             stripped = line.strip()
             if not stripped:
@@ -118,7 +138,7 @@ class ClaudeAdapter:
                 and isinstance(parsed.get(_RESULT_FIELD), str)
             ):
                 return has_promise_completion(parsed[_RESULT_FIELD], user_signal)
-        return has_promise_completion(stdout, user_signal)
+        return False
 
     def install_wind_down_hook(
         self,
@@ -142,6 +162,26 @@ def _iter_content_blocks(raw: dict) -> list[dict]:
     if not isinstance(content, list):
         return []
     return [block for block in content if isinstance(block, dict)]
+
+
+def _strip_flag_pair(cmd: list[str], flag: str) -> list[str]:
+    """Return *cmd* with every ``flag <value>`` pair removed.
+
+    The token immediately following ``flag`` is treated as its value and
+    dropped along with ``flag``.  Used to sanitise user commands before
+    the adapter appends its own canonical flag set.
+    """
+    result: list[str] = []
+    skip_next = False
+    for token in cmd:
+        if skip_next:
+            skip_next = False
+            continue
+        if token == flag:
+            skip_next = True
+            continue
+        result.append(token)
+    return result
 
 
 ADAPTERS.append(ClaudeAdapter())

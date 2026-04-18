@@ -11,7 +11,7 @@ Capability matrix:
 - ``counts_what = "tool_use"`` with an alpha caveat — counting accuracy
   depends on ongoing schema discovery (see :file:`docs/agents.md`).
 - ``renders_structured = False`` — peek panel stays in raw-line mode.
-- ``supports_soft_windown = False`` — Copilot has no hook system as of
+- ``supports_soft_wind_down = False`` — Copilot has no hook system as of
   2026-04, so ``install_wind_down_hook`` raises :class:`NotImplementedError`
   (which the engine downgrades to hard-cap-only).
 """
@@ -22,7 +22,7 @@ import json
 from pathlib import Path
 
 from ralphify._promise import has_promise_completion
-from ralphify.adapters import ADAPTERS, AdapterEvent, CountsWhat
+from ralphify.adapters._protocol import ADAPTERS, AdapterEvent, CountsWhat
 
 
 COPILOT_BINARY_STEM = "copilot"
@@ -49,7 +49,7 @@ class CopilotAdapter:
     name: str = "copilot"
     counts_what: CountsWhat = "tool_use"
     renders_structured: bool = False
-    supports_soft_windown: bool = False
+    supports_soft_wind_down: bool = False
 
     def matches(self, cmd: list[str]) -> bool:
         if not cmd:
@@ -57,11 +57,25 @@ class CopilotAdapter:
         return Path(cmd[0]).stem == COPILOT_BINARY_STEM
 
     def build_command(self, cmd: list[str]) -> list[str]:
-        """Append ``--output-format json``.  Idempotent."""
-        result = list(cmd)
-        for flag in _OUTPUT_FORMAT_FLAGS:
-            if flag not in result:
-                result.append(flag)
+        """Append ``--output-format json``, replacing any conflicting value.
+
+        Strips any existing ``--output-format <value>`` pair before
+        appending the canonical JSON form, so
+        ``copilot --output-format markdown`` becomes
+        ``copilot --output-format json`` rather than a double-flag
+        command that relies on last-wins parsing.  Idempotent.
+        """
+        result: list[str] = []
+        skip_next = False
+        for token in cmd:
+            if skip_next:
+                skip_next = False
+                continue
+            if token == "--output-format":
+                skip_next = True
+                continue
+            result.append(token)
+        result.extend(_OUTPUT_FORMAT_FLAGS)
         return result
 
     def parse_event(self, line: str) -> AdapterEvent | None:
@@ -69,7 +83,10 @@ class CopilotAdapter:
 
         The Copilot event schema is ``[unverified]`` in the spec — this
         method intentionally errs on the side of *not* inventing events
-        so the turn cap is never inflated by false positives.
+        so the turn cap is never inflated by false positives.  Only the
+        canonical ``type`` key is accepted; ``event`` / ``kind`` are not
+        recognised because they have not been seen in captured output
+        and admitting them inflates the schema's surface area.
         """
         stripped = line.strip()
         if not stripped:
@@ -81,7 +98,7 @@ class CopilotAdapter:
         if not isinstance(parsed, dict):
             return None
 
-        event_type = parsed.get("type") or parsed.get("event") or parsed.get("kind")
+        event_type = parsed.get("type")
         if not isinstance(event_type, str):
             return None
 
@@ -93,7 +110,13 @@ class CopilotAdapter:
                 raw=parsed,
             )
         if event_type in _RESULT_EVENT_TYPES:
-            return AdapterEvent(kind="result", raw=parsed)
+            text = None
+            for key in ("result", "text", "content", "output", "message"):
+                value = parsed.get(key)
+                if isinstance(value, str):
+                    text = value
+                    break
+            return AdapterEvent(kind="result", text=text, raw=parsed)
         return None
 
     def extract_completion_signal(self, stdout: str, user_signal: str) -> bool:

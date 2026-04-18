@@ -19,7 +19,8 @@ This page shows how to configure the [`agent` frontmatter field](quick-reference
 |---|---|---|---|
 | [Claude Code](#claude-code) | Native (`-p`) | Yes — real-time activity tracking | No |
 | [Aider](#aider) | Via bash wrapper | No | Yes (`bash -c`) |
-| [Codex CLI](#codex-cli) | Native (`exec`) | No | No |
+| [Codex CLI](#codex-cli) | Native (`exec`) | Yes — JSONL events | No |
+| [Copilot CLI (alpha)](#copilot-cli-alpha) | Native | Best-effort JSON | No |
 | [Custom](#custom-wrapper-script) | You implement it | No | Yes (script) |
 
 If you're not sure which to pick: **start with Claude Code.** It has the deepest integration, the best autonomous coding capabilities, and is the default.
@@ -141,6 +142,25 @@ agent: codex exec --sandbox danger-full-access -
 | `exec` | Non-interactive mode — designed for piped/scripted use |
 | `--sandbox danger-full-access` | Full filesystem access for autonomous operation |
 | `-` | Read prompt from stdin |
+
+## Copilot CLI (alpha)
+
+The standalone [GitHub Copilot CLI](https://docs.github.com/en/copilot) `copilot` binary is supported as **alpha**. It went GA in February 2026 and ships a `--output-format json` mode, but its event schema is only loosely documented. Ralphify counts tool uses best-effort and degrades gracefully when a payload doesn't match the canonical shape.
+
+```markdown
+---
+agent: copilot
+max_turns: 5
+---
+```
+
+### Caveats
+
+- **Schema is best-effort.** The adapter only accepts events whose top-level `type` field matches a known value (`tool_use`, `tool_call`, `ToolCall`, `ToolUse`, `result`, `response`, `final`, `Final`, `Complete`). Alternate keys like `event` or `kind` are ignored so the turn counter can't be inflated by false positives.
+- **No hook system.** Copilot has no equivalent of Claude's `settings.json` PreToolUse hook or Codex's `hooks.json` PostToolUse hook. When `max_turns` is exceeded, ralphify hard-kills the iteration — there is no soft wind-down.
+- **No streaming UI.** The peek panel stays in raw-line mode for Copilot; structured activity tracking is not available.
+
+If Copilot's JSON output shape changes or your iteration consistently hits the cap without the adapter counting, please open an issue so we can tighten the schema mapping.
 
 ## Custom wrapper script
 

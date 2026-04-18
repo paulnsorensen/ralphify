@@ -7,47 +7,24 @@ import signal
 import subprocess
 import sys
 import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from helpers import MOCK_SUBPROCESS, fail_proc, make_mock_popen, ok_proc, timeout_proc
 
 from ralphify._agent import (
     AgentResult,
+    _count_tool_uses_post_hoc,
     _kill_process_group,
     _pump_stream,
     _read_agent_stream,
     _run_agent_blocking,
     _run_agent_streaming,
-    _supports_stream_json,
     _write_log,
     execute_agent,
 )
-
-
-class TestSupportsStreamJson:
-    def test_claude_binary(self):
-        assert _supports_stream_json(["claude", "-p"]) is True
-
-    def test_claude_absolute_path(self):
-        assert _supports_stream_json(["/usr/local/bin/claude", "-p"]) is True
-
-    def test_non_claude_binary(self):
-        assert _supports_stream_json(["aider", "--yes"]) is False
-
-    def test_empty_command(self):
-        assert _supports_stream_json([]) is False
-
-    def test_claude_like_name(self):
-        assert _supports_stream_json(["claude-code"]) is False
-
-    def test_claude_with_cmd_extension(self):
-        """On Windows, npm installs claude as claude.cmd — streaming must
-        still be detected."""
-        assert _supports_stream_json(["claude.cmd", "-p"]) is True
-
-    def test_claude_with_exe_extension(self):
-        assert _supports_stream_json(["claude.exe", "-p"]) is True
+from ralphify.adapters._generic import GenericAdapter
+from ralphify.adapters.claude import ClaudeAdapter
 
 
 class TestWriteLog:
@@ -449,8 +426,10 @@ class TestExecuteAgentDispatch:
 
     @patch(MOCK_SUBPROCESS)
     def test_dispatches_to_streaming_for_claude(self, mock_popen, monkeypatch):
-        """execute_agent uses the streaming path when the agent supports it."""
-        monkeypatch.setattr("ralphify._agent._supports_stream_json", lambda cmd: True)
+        """execute_agent uses the streaming path when the adapter renders structured."""
+        monkeypatch.setattr(
+            "ralphify._agent.select_adapter", lambda cmd: ClaudeAdapter()
+        )
         mock_popen.return_value = make_mock_popen(
             stdout_lines='{"type": "result", "result": "done"}\n',
             returncode=0,
@@ -474,7 +453,9 @@ class TestExecuteAgentDispatch:
         on_output_line = MagicMock()
         fake_streaming = MagicMock(return_value=AgentResult(returncode=0, elapsed=0.01))
 
-        monkeypatch.setattr("ralphify._agent._supports_stream_json", lambda cmd: True)
+        monkeypatch.setattr(
+            "ralphify._agent.select_adapter", lambda cmd: ClaudeAdapter()
+        )
         monkeypatch.setattr("ralphify._agent._run_agent_streaming", fake_streaming)
 
         execute_agent(
@@ -498,6 +479,8 @@ class TestExecuteAgentDispatch:
             on_output_line=on_output_line,
             capture_result_text=True,
             capture_stdout=False,
+            adapter=ANY,
+            max_turns=None,
         )
 
     def test_execute_agent_passes_capture_result_text_to_blocking_helper(
@@ -506,7 +489,9 @@ class TestExecuteAgentDispatch:
         on_output_line = MagicMock()
         fake_blocking = MagicMock(return_value=AgentResult(returncode=0, elapsed=0.01))
 
-        monkeypatch.setattr("ralphify._agent._supports_stream_json", lambda cmd: False)
+        monkeypatch.setattr(
+            "ralphify._agent.select_adapter", lambda cmd: GenericAdapter()
+        )
         monkeypatch.setattr("ralphify._agent._run_agent_blocking", fake_blocking)
 
         execute_agent(
@@ -528,6 +513,8 @@ class TestExecuteAgentDispatch:
             on_output_line=on_output_line,
             capture_result_text=True,
             capture_stdout=False,
+            adapter=ANY,
+            max_turns=None,
         )
 
 
@@ -678,6 +665,7 @@ class TestExecuteAgentStreaming:
             timeout=None,
             log_dir=None,
             iteration=1,
+            adapter=ClaudeAdapter(),
         )
 
         call_args = mock_popen.call_args
@@ -745,6 +733,7 @@ class TestExecuteAgentStreaming:
             log_dir=None,
             iteration=1,
             capture_result_text=True,
+            adapter=ClaudeAdapter(),
         )
 
         assert result.captured_stdout is None
@@ -1644,3 +1633,209 @@ class TestBoundedReaderThreadJoins:
                 f"{name} reader thread still alive after exception — "
                 "joins are not in the finally block"
             )
+
+
+def _tool_use_line(name: str = "Bash") -> str:
+    """Build one Claude assistant-message line carrying a tool_use block."""
+    import json as _json
+
+    return (
+        _json.dumps(
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [{"type": "tool_use", "name": name, "input": {}}]
+                },
+            }
+        )
+        + "\n"
+    )
+
+
+class TestReadAgentStreamTurnCap:
+    """Streaming-path tool-use counting and hard-cap short-circuit."""
+
+    def test_counts_tool_uses_with_claude_adapter(self):
+        stream = io.StringIO(_tool_use_line() + _tool_use_line() + _tool_use_line())
+        result = _read_agent_stream(
+            stream,
+            deadline=None,
+            on_activity=None,
+            adapter=ClaudeAdapter(),
+        )
+
+        assert result.tool_use_count == 3
+        assert result.turn_capped is False
+
+    def test_returns_early_when_cap_reached(self):
+        """At the Nth tool_use event the reader short-circuits — remaining
+        lines are not consumed and ``turn_capped`` is set."""
+        stream = io.StringIO(
+            _tool_use_line("A")
+            + _tool_use_line("B")
+            + _tool_use_line("C")  # cap (N=2) should trip before we get here
+        )
+        result = _read_agent_stream(
+            stream,
+            deadline=None,
+            on_activity=None,
+            adapter=ClaudeAdapter(),
+            max_turns=2,
+        )
+
+        assert result.turn_capped is True
+        assert result.tool_use_count == 2
+        assert result.timed_out is False
+
+    def test_no_adapter_skips_counting(self):
+        stream = io.StringIO(_tool_use_line())
+        result = _read_agent_stream(
+            stream, deadline=None, on_activity=None, max_turns=1
+        )
+
+        assert result.tool_use_count == 0
+        assert result.turn_capped is False
+
+    def test_max_turns_none_never_trips_cap(self):
+        stream = io.StringIO(_tool_use_line() * 5)
+        result = _read_agent_stream(
+            stream,
+            deadline=None,
+            on_activity=None,
+            adapter=ClaudeAdapter(),
+            max_turns=None,
+        )
+
+        assert result.tool_use_count == 5
+        assert result.turn_capped is False
+
+
+class TestRunAgentStreamingTurnCap:
+    """Integration of the streaming path with the hard cap — verifies
+    both the early return and the process-group kill."""
+
+    @patch("ralphify._agent._kill_process_group")
+    @patch(MOCK_SUBPROCESS)
+    def test_cap_triggers_kill_and_sets_turn_capped(self, mock_popen, mock_kill):
+        mock_popen.return_value = make_mock_popen(
+            stdout_lines=_tool_use_line("A") + _tool_use_line("B"),
+            returncode=0,
+        )
+
+        result = _run_agent_streaming(
+            ["claude", "-p"],
+            "prompt",
+            timeout=None,
+            log_dir=None,
+            iteration=1,
+            adapter=ClaudeAdapter(),
+            max_turns=1,
+        )
+
+        assert result.turn_capped is True
+        assert result.tool_use_count == 1
+        assert result.returncode == 0  # process reaped normally after SIGTERM
+        mock_kill.assert_called_once()
+
+    @patch("ralphify._agent._kill_process_group")
+    @patch(MOCK_SUBPROCESS)
+    def test_no_kill_when_under_cap(self, mock_popen, mock_kill):
+        mock_popen.return_value = make_mock_popen(
+            stdout_lines=_tool_use_line("A"),
+            returncode=0,
+        )
+
+        result = _run_agent_streaming(
+            ["claude", "-p"],
+            "prompt",
+            timeout=None,
+            log_dir=None,
+            iteration=1,
+            adapter=ClaudeAdapter(),
+            max_turns=5,
+        )
+
+        assert result.turn_capped is False
+        assert result.tool_use_count == 1
+        mock_kill.assert_not_called()
+
+
+class TestCountToolUsesPostHoc:
+    """Blocking-path retroactive count helper."""
+
+    def test_returns_zero_when_adapter_is_none(self):
+        count, capped = _count_tool_uses_post_hoc(None, 3, ["anything\n"])
+        assert count == 0
+        assert capped is False
+
+    def test_returns_zero_when_stdout_lines_is_none(self):
+        count, capped = _count_tool_uses_post_hoc(ClaudeAdapter(), 3, None)
+        assert count == 0
+        assert capped is False
+
+    def test_counts_all_tool_uses(self):
+        lines = [_tool_use_line("A"), _tool_use_line("B"), _tool_use_line("C")]
+        count, capped = _count_tool_uses_post_hoc(ClaudeAdapter(), None, lines)
+        assert count == 3
+        assert capped is False
+
+    def test_flags_cap_when_count_meets_max_turns(self):
+        lines = [_tool_use_line("A"), _tool_use_line("B"), _tool_use_line("C")]
+        count, capped = _count_tool_uses_post_hoc(ClaudeAdapter(), 2, lines)
+        assert count == 3
+        assert capped is True
+
+    def test_does_not_flag_when_under_cap(self):
+        lines = [_tool_use_line("A")]
+        count, capped = _count_tool_uses_post_hoc(ClaudeAdapter(), 5, lines)
+        assert count == 1
+        assert capped is False
+
+
+class TestRunAgentBlockingTurnCap:
+    """Blocking path: the agent has already exited by the time we count,
+    so ``turn_capped`` is observational — no SIGTERM is sent."""
+
+    @patch("ralphify._agent._kill_process_group")
+    @patch(MOCK_SUBPROCESS)
+    def test_retroactive_count_flags_cap(self, mock_popen, mock_kill):
+        mock_popen.return_value = make_mock_popen(
+            stdout_lines=(
+                _tool_use_line("A") + _tool_use_line("B") + _tool_use_line("C")
+            ),
+            returncode=0,
+        )
+
+        result = _run_agent_blocking(
+            ["echo"],
+            "prompt",
+            timeout=None,
+            log_dir=None,
+            iteration=1,
+            adapter=ClaudeAdapter(),
+            max_turns=2,
+        )
+
+        assert result.tool_use_count == 3
+        assert result.turn_capped is True
+        mock_kill.assert_not_called()
+
+    @patch(MOCK_SUBPROCESS)
+    def test_no_cap_flagged_when_under_max_turns(self, mock_popen):
+        mock_popen.return_value = make_mock_popen(
+            stdout_lines=_tool_use_line("A"),
+            returncode=0,
+        )
+
+        result = _run_agent_blocking(
+            ["echo"],
+            "prompt",
+            timeout=None,
+            log_dir=None,
+            iteration=1,
+            adapter=ClaudeAdapter(),
+            max_turns=5,
+        )
+
+        assert result.tool_use_count == 1
+        assert result.turn_capped is False

@@ -37,6 +37,7 @@ from ralphify._output import (
     collect_output,
     warn,
 )
+from ralphify.adapters import CLIAdapter, select_adapter
 
 # ── Callback type aliases ──────────────────────────────────────────────
 # Used across the streaming and blocking execution paths for callbacks
@@ -53,16 +54,9 @@ OutputLineCallback = Callable[[str, OutputStream], None]
 _STDOUT: OutputStream = "stdout"
 _STDERR: OutputStream = "stderr"
 
-# Agent binary name that supports --output-format stream-json.
-# Public because _console_emitter also needs this for display logic.
-CLAUDE_BINARY = "claude"
-
-# CLI flags appended when streaming mode is used.
-_OUTPUT_FORMAT_FLAG = "--output-format"
-_STREAM_FORMAT = "stream-json"
-_VERBOSE_FLAG = "--verbose"
-
 # JSON stream event types and fields for result extraction.
+# Kept as a generic stream-json helper — any adapter whose output uses
+# the same ``{"type": "result", "result": "..."}`` shape benefits.
 _RESULT_EVENT_TYPE = "result"
 _RESULT_FIELD = "result"
 
@@ -259,6 +253,12 @@ class AgentResult(ProcessResult):
     result_text: str | None = None
     captured_stdout: str | None = None
     captured_stderr: str | None = None
+    # Tool-use events counted by the adapter for this iteration.  ``0``
+    # when no adapter was active or the adapter's ``counts_what == "none"``.
+    tool_use_count: int = 0
+    # True when the cap was reached and the agent process was terminated
+    # (streaming) or the cap was exceeded post-hoc (blocking path).
+    turn_capped: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -268,6 +268,8 @@ class _StreamResult:
     stdout_lines: tuple[str, ...] | None
     result_text: str | None
     timed_out: bool
+    tool_use_count: int = 0
+    turn_capped: bool = False
 
 
 def _write_log(
@@ -286,19 +288,6 @@ def _write_log(
     log_file = log_dir / f"{iteration:0{_LOG_ITERATION_PAD_WIDTH}d}_{timestamp}.log"
     log_file.write_text(collect_output(stdout, stderr), encoding="utf-8")
     return log_file
-
-
-def _supports_stream_json(cmd: list[str]) -> bool:
-    """Return True if the agent command supports ``--output-format stream-json``.
-
-    Currently only Claude Code supports this protocol.  To add streaming
-    support for another agent, extend the check here — no other changes
-    needed since :func:`_run_agent_streaming` handles the protocol generically.
-    """
-    if not cmd:
-        return False
-    binary = Path(cmd[0]).stem
-    return binary == CLAUDE_BINARY
 
 
 def _readline_pump(
@@ -328,6 +317,8 @@ def _read_agent_stream(
     on_output_line: OutputLineCallback | None = None,
     *,
     capture_stdout: bool = True,
+    adapter: CLIAdapter | None = None,
+    max_turns: int | None = None,
 ) -> _StreamResult:
     """Read the agent's JSON stream line-by-line until EOF or timeout.
 
@@ -359,6 +350,9 @@ def _read_agent_stream(
     """
     stdout_lines: list[str] | None = [] if capture_stdout else None
     result_text: str | None = None
+    tool_use_count = 0
+    turn_capped = False
+    count_tool_use = adapter is not None and adapter.counts_what == "tool_use"
 
     line_q: queue.Queue[str | None] = queue.Queue()
     reader = threading.Thread(target=_readline_pump, args=(stdout, line_q), daemon=True)
@@ -384,6 +378,8 @@ def _read_agent_stream(
                 stdout_lines=tuple(stdout_lines) if stdout_lines is not None else None,
                 result_text=result_text,
                 timed_out=True,
+                tool_use_count=tool_use_count,
+                turn_capped=turn_capped,
             )
 
         if line is None:  # EOF sentinel from reader thread
@@ -391,6 +387,8 @@ def _read_agent_stream(
                 stdout_lines=tuple(stdout_lines) if stdout_lines is not None else None,
                 result_text=result_text,
                 timed_out=False,
+                tool_use_count=tool_use_count,
+                turn_capped=turn_capped,
             )
 
         if stdout_lines is not None:
@@ -420,6 +418,27 @@ def _read_agent_stream(
                         # Callback is best-effort; draining must not stop.
                         pass
 
+            # Adapter-driven tool-use counting runs alongside the JSON
+            # parse above so malformed adapter output (returns ``None``)
+            # or adapters that do not count (``counts_what == "none"``)
+            # are both no-ops — the stream reader never fails just because
+            # the adapter refuses an event.
+            if count_tool_use and adapter is not None:
+                event = adapter.parse_event(line)
+                if event is not None and event.kind == "tool_use":
+                    tool_use_count += 1
+                    if max_turns is not None and tool_use_count >= max_turns:
+                        turn_capped = True
+                        return _StreamResult(
+                            stdout_lines=tuple(stdout_lines)
+                            if stdout_lines is not None
+                            else None,
+                            result_text=result_text,
+                            timed_out=False,
+                            tool_use_count=tool_use_count,
+                            turn_capped=True,
+                        )
+
         # Also check deadline after processing — if the reader thread
         # already queued many lines, this prevents unbounded processing
         # past the deadline.
@@ -428,6 +447,8 @@ def _read_agent_stream(
                 stdout_lines=tuple(stdout_lines) if stdout_lines is not None else None,
                 result_text=result_text,
                 timed_out=True,
+                tool_use_count=tool_use_count,
+                turn_capped=turn_capped,
             )
 
 
@@ -441,6 +462,8 @@ def _run_agent_streaming(
     on_output_line: OutputLineCallback | None = None,
     capture_result_text: bool = False,
     capture_stdout: bool = False,
+    adapter: CLIAdapter | None = None,
+    max_turns: int | None = None,
 ) -> AgentResult:
     """Run the agent subprocess with line-by-line streaming of JSON output.
 
@@ -453,7 +476,7 @@ def _run_agent_streaming(
     stderr volume can't deadlock the child on a full OS pipe buffer while
     the main thread is reading stdout.
     """
-    stream_cmd = cmd + [_OUTPUT_FORMAT_FLAG, _STREAM_FORMAT, _VERBOSE_FLAG]
+    stream_cmd = adapter.build_command(cmd) if adapter is not None else list(cmd)
     start = time.monotonic()
     deadline = (start + timeout) if timeout is not None else None
 
@@ -502,9 +525,11 @@ def _run_agent_streaming(
             on_activity,
             on_output_line,
             capture_stdout=capture_stdout_text,
+            adapter=adapter,
+            max_turns=max_turns,
         )
 
-        if stream.timed_out:
+        if stream.timed_out or stream.turn_capped:
             _kill_process_group(proc)
         proc.wait()
     finally:
@@ -523,6 +548,8 @@ def _run_agent_streaming(
         timed_out=stream.timed_out,
         captured_stdout=stdout if capture_stdout_text else None,
         captured_stderr=stderr if capture_stderr_text else None,
+        tool_use_count=stream.tool_use_count,
+        turn_capped=stream.turn_capped,
     )
 
 
@@ -653,6 +680,8 @@ def _run_agent_blocking(
     on_output_line: OutputLineCallback | None = None,
     capture_result_text: bool = False,
     capture_stdout: bool = False,
+    adapter: CLIAdapter | None = None,
+    max_turns: int | None = None,
 ) -> AgentResult:
     """Run the agent subprocess and return the result.
 
@@ -677,7 +706,14 @@ def _run_agent_blocking(
     Raises ``FileNotFoundError`` if the command binary does not exist.
     """
     start = time.monotonic()
-    capture_stdout_text = log_dir is not None or capture_stdout
+    # When an adapter drives a retroactive tool-use count, we need stdout
+    # in memory after the process exits.  Force capture when a cap is set.
+    retroactive_count = (
+        adapter is not None
+        and adapter.counts_what == "tool_use"
+        and max_turns is not None
+    )
+    capture_stdout_text = log_dir is not None or capture_stdout or retroactive_count
     capture_stderr_text = log_dir is not None
     pipe_stdout = (
         capture_stdout_text or on_output_line is not None or capture_result_text
@@ -746,6 +782,10 @@ def _run_agent_blocking(
     stderr = "".join(stderr_lines) if stderr_lines is not None else None
     log_file = _write_log(log_dir, iteration, stdout, stderr)
 
+    tool_use_count, turn_capped = _count_tool_uses_post_hoc(
+        adapter, max_turns, stdout_lines
+    )
+
     return AgentResult(
         returncode=None if timed_out else returncode,
         elapsed=time.monotonic() - start,
@@ -754,7 +794,37 @@ def _run_agent_blocking(
         timed_out=timed_out,
         captured_stdout=stdout if capture_stdout_text else None,
         captured_stderr=stderr if capture_stderr_text else None,
+        tool_use_count=tool_use_count,
+        turn_capped=turn_capped,
     )
+
+
+def _count_tool_uses_post_hoc(
+    adapter: CLIAdapter | None,
+    max_turns: int | None,
+    stdout_lines: list[str] | None,
+) -> tuple[int, bool]:
+    """Retroactively count tool-use events in captured stdout.
+
+    The blocking path cannot kill mid-run, so when the user sets a cap
+    we tally after the process exits.  The returned ``turn_capped`` is
+    advisory — the agent has already finished — but the engine still
+    surfaces it so the console renders "⚠ turn-capped at N tool uses".
+    """
+    if adapter is None or adapter.counts_what != "tool_use" or stdout_lines is None:
+        return 0, False
+    count = 0
+    for line in stdout_lines:
+        event = adapter.parse_event(line)
+        if event is not None and event.kind == "tool_use":
+            count += 1
+    turn_capped = max_turns is not None and count >= max_turns
+    if turn_capped and max_turns is not None:
+        warn(
+            f"max_turns={max_turns} exceeded during blocking run "
+            f"(counted {count}); cap is observational in this execution mode."
+        )
+    return count, turn_capped
 
 
 def execute_agent(
@@ -768,25 +838,36 @@ def execute_agent(
     on_output_line: OutputLineCallback | None = None,
     capture_result_text: bool = False,
     capture_stdout: bool | None = None,
+    adapter: CLIAdapter | None = None,
+    max_turns: int | None = None,
 ) -> AgentResult:
     """Run the agent subprocess, auto-selecting streaming or blocking mode.
 
-    Uses streaming mode for agents that support ``--output-format stream-json``
-    (e.g. Claude Code); all other agents use the blocking path that drains
-    stdout and stderr via reader threads.  The *on_activity* callback is
-    only invoked in streaming mode; *on_output_line* fires for both modes
-    as raw lines arrive.
+    Dispatches on :attr:`CLIAdapter.renders_structured` — adapters that
+    emit structured JSON streams go through :func:`_run_agent_streaming`;
+    everything else uses :func:`_run_agent_blocking`, which drains stdout
+    and stderr via reader threads.  The *on_activity* callback is only
+    invoked in streaming mode; *on_output_line* fires for both modes as
+    raw lines arrive.
+
+    When *adapter* is supplied (or auto-selected from the registry), each
+    line of stdout is classified via :meth:`CLIAdapter.parse_event`.  If
+    *max_turns* is also set, the streaming path SIGTERMs the agent on the
+    Nth ``tool_use`` event; the blocking path counts retroactively and
+    flags ``turn_capped`` without killing (the process has already exited).
 
     This is the single entry point the engine should use — callers don't need
     to know which execution mode is selected.
     """
-    supports_stream_json = _supports_stream_json(cmd)
+    if adapter is None:
+        adapter = select_adapter(cmd)
+    uses_streaming = adapter.renders_structured
     if capture_stdout is None:
         capture_stdout = log_dir is not None or (
-            not supports_stream_json and on_output_line is None and capture_result_text
+            not uses_streaming and on_output_line is None and capture_result_text
         )
 
-    if supports_stream_json:
+    if uses_streaming:
         return _run_agent_streaming(
             cmd,
             prompt,
@@ -797,6 +878,8 @@ def execute_agent(
             on_output_line=on_output_line,
             capture_result_text=capture_result_text,
             capture_stdout=capture_stdout,
+            adapter=adapter,
+            max_turns=max_turns,
         )
     return _run_agent_blocking(
         cmd,
@@ -807,4 +890,6 @@ def execute_agent(
         on_output_line=on_output_line,
         capture_result_text=capture_result_text,
         capture_stdout=capture_stdout,
+        adapter=adapter,
+        max_turns=max_turns,
     )

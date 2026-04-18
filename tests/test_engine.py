@@ -311,8 +311,12 @@ class TestPromiseCompletionSignals:
     def test_structured_agents_ignore_raw_stdout_for_promise_detection(
         self, mock_execute_agent, tmp_path
     ):
+        # Claude's adapter scans only ``result`` events and unambiguous
+        # promise markup; a non-result status event carrying a ``<promise>``
+        # string must NOT trip completion.
         config = make_config(
             tmp_path,
+            agent="claude -p",
             max_iterations=2,
             stop_on_completion_signal=True,
         )
@@ -322,7 +326,8 @@ class TestPromiseCompletionSignals:
             returncode=0,
             elapsed=0.01,
             result_text="done without promise tag",
-            captured_stdout='{"type":"status","message":"<promise>RALPH_PROMISE_COMPLETE</promise>"}\n',
+            captured_stdout='{"type":"status","message":"nothing to see"}\n'
+            '{"type":"result","result":"final answer without tag"}\n',
         )
 
         run_loop(config, state, NullEmitter())
@@ -413,6 +418,31 @@ class TestRunLoopEvents:
 
         events = drain_events(q)
         assert EventType.ITERATION_TIMED_OUT in event_types(events)
+
+    @patch("ralphify.engine.execute_agent")
+    def test_turn_capped_event_emitted(self, mock_execute_agent, tmp_path):
+        """When the streaming hard-cap trips, the engine emits
+        ``ITERATION_TURN_CAPPED`` and marks the iteration completed — the cap
+        working as designed is not a failure."""
+        config = make_config(tmp_path, max_iterations=1, max_turns=3)
+        state = make_state()
+        q = QueueEmitter()
+        mock_execute_agent.return_value = AgentResult(
+            returncode=0,
+            elapsed=0.01,
+            tool_use_count=3,
+            turn_capped=True,
+        )
+
+        run_loop(config, state, q)
+
+        events = drain_events(q)
+        assert EventType.ITERATION_TURN_CAPPED in event_types(events)
+        assert EventType.ITERATION_FAILED not in event_types(events)
+        assert state.completed == 1
+        assert state.failed == 0
+        # Engine must forward the cap to execute_agent via max_turns kwarg
+        assert mock_execute_agent.call_args.kwargs["max_turns"] == 3
 
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_all_events_have_run_id(self, mock_run, tmp_path):

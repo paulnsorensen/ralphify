@@ -35,6 +35,15 @@ def test_build_command_is_idempotent() -> None:
     assert once == twice
 
 
+def test_build_command_replaces_conflicting_format() -> None:
+    """``--output-format markdown`` must be replaced, not duplicated."""
+    adapter = CopilotAdapter()
+    result = adapter.build_command(["copilot", "--output-format", "markdown"])
+    assert result.count("--output-format") == 1
+    assert "markdown" not in result
+    assert "json" in result
+
+
 def test_parse_tool_use_variants() -> None:
     adapter = CopilotAdapter()
     for event_type in ("tool_use", "tool_call", "ToolCall", "ToolUse"):
@@ -51,6 +60,15 @@ def test_parse_result_variants() -> None:
         event = adapter.parse_event(json.dumps({"type": event_type}))
         assert event is not None
         assert event.kind == "result"
+
+
+def test_parse_result_event_carries_text() -> None:
+    adapter = CopilotAdapter()
+    line = json.dumps({"type": "result", "result": "all done"})
+    event = adapter.parse_event(line)
+    assert event is not None
+    assert event.kind == "result"
+    assert event.text == "all done"
 
 
 def test_parse_unknown_returns_none() -> None:
@@ -71,13 +89,18 @@ def test_parse_malformed_returns_none() -> None:
     assert adapter.parse_event("") is None
 
 
-def test_parse_event_with_alternate_key_names() -> None:
-    """Covers ``event`` / ``kind`` alternative type keys."""
+def test_parse_event_rejects_alternate_type_keys() -> None:
+    """Only the canonical ``type`` key counts — ``event`` / ``kind`` do not.
+
+    Admitting alternative keys widens the schema beyond what has been
+    observed in captured output and risks double-counting if a future
+    Copilot release emits both keys on the same event.
+    """
     adapter = CopilotAdapter()
-    event = adapter.parse_event(json.dumps({"event": "tool_use", "name": "Bash"}))
-    assert event is not None
-    assert event.kind == "tool_use"
-    assert event.name == "Bash"
+    assert (
+        adapter.parse_event(json.dumps({"event": "tool_use", "name": "Bash"})) is None
+    )
+    assert adapter.parse_event(json.dumps({"kind": "tool_use", "name": "Bash"})) is None
 
 
 def test_extract_completion_signal_scans_stdout() -> None:
@@ -102,7 +125,7 @@ def test_capability_flags() -> None:
     assert adapter.name == "copilot"
     assert adapter.counts_what == "tool_use"
     assert adapter.renders_structured is False
-    assert adapter.supports_soft_windown is False
+    assert adapter.supports_soft_wind_down is False
 
 
 def test_registered_in_adapters_registry() -> None:

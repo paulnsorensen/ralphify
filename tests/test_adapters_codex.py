@@ -58,11 +58,19 @@ def test_parse_turn_events() -> None:
             assert event.kind == "turn"
 
 
-def test_parse_unknown_events_become_message() -> None:
+def test_parse_unknown_events_return_none() -> None:
+    """Unknown Codex event types must NOT inflate the turn cap."""
     adapter = CodexAdapter()
-    event = adapter.parse_event(json.dumps({"type": "SomethingNew"}))
+    assert adapter.parse_event(json.dumps({"type": "SomethingNew"})) is None
+
+
+def test_parse_result_event_carries_text() -> None:
+    adapter = CodexAdapter()
+    line = json.dumps({"type": "TaskComplete", "text": "finished"})
+    event = adapter.parse_event(line)
     assert event is not None
-    assert event.kind == "message"
+    assert event.kind == "result"
+    assert event.text == "finished"
 
 
 def test_parse_malformed_returns_none() -> None:
@@ -80,6 +88,16 @@ def test_parse_tool_call_nested_under_msg() -> None:
     assert event is not None
     assert event.kind == "tool_use"
     assert event.name == "git status"
+
+
+def test_parse_command_at_top_level() -> None:
+    """``CommandExecution`` events carry the command at the top level too."""
+    adapter = CodexAdapter()
+    line = json.dumps({"type": "CommandExecution", "command": "ls -la"})
+    event = adapter.parse_event(line)
+    assert event is not None
+    assert event.kind == "tool_use"
+    assert event.name == "ls -la"
 
 
 def test_parse_falls_back_to_event_type_for_name() -> None:
@@ -122,7 +140,8 @@ def test_capability_flags() -> None:
     assert adapter.name == "codex"
     assert adapter.counts_what == "tool_use"
     assert adapter.renders_structured is True
-    assert adapter.supports_soft_windown is True
+    # Phase 3 will flip this to True; Phase 1 lands hard-cap-only.
+    assert adapter.supports_soft_wind_down is False
 
 
 def test_registered_in_adapters_registry() -> None:

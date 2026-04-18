@@ -54,6 +54,15 @@ def test_build_command_preserves_user_flags() -> None:
     assert "stream-json" in result
 
 
+def test_build_command_replaces_conflicting_format() -> None:
+    """``--output-format text`` must be replaced by ``stream-json`` exactly once."""
+    adapter = ClaudeAdapter()
+    result = adapter.build_command(["claude", "--output-format", "text"])
+    assert result.count("--output-format") == 1
+    assert "text" not in result
+    assert "stream-json" in result
+
+
 def test_parse_tool_use_event() -> None:
     adapter = ClaudeAdapter()
     line = _assistant_event({"type": "tool_use", "name": "Bash", "input": {}})
@@ -68,14 +77,21 @@ def test_parse_result_event() -> None:
     event = adapter.parse_event(_result_event("done"))
     assert event is not None
     assert event.kind == "result"
+    assert event.text == "done"
 
 
 def test_parse_ignores_thinking_blocks() -> None:
+    """Assistant messages with no tool_use block must not be classified."""
     adapter = ClaudeAdapter()
     line = _assistant_event({"type": "thinking", "thinking": "planning..."})
-    event = adapter.parse_event(line)
-    assert event is not None
-    assert event.kind == "message"
+    assert adapter.parse_event(line) is None
+
+
+def test_parse_non_assistant_non_result_returns_none() -> None:
+    """System, user, and other event types must not be classified."""
+    adapter = ClaudeAdapter()
+    for event_type in ("system", "user", "something-else"):
+        assert adapter.parse_event(json.dumps({"type": event_type})) is None
 
 
 def test_parse_malformed_json_returns_none() -> None:
@@ -148,7 +164,8 @@ def test_capability_flags() -> None:
     assert adapter.name == "claude"
     assert adapter.counts_what == "tool_use"
     assert adapter.renders_structured is True
-    assert adapter.supports_soft_windown is True
+    # Phase 3 will flip this to True; Phase 1 lands hard-cap-only.
+    assert adapter.supports_soft_wind_down is False
 
 
 def test_registered_in_adapters_registry() -> None:
