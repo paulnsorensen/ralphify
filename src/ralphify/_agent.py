@@ -42,8 +42,6 @@ from ralphify._output import (
 from ralphify.adapters import CLIAdapter, select_adapter
 
 # ── Callback type aliases ──────────────────────────────────────────────
-# Used across the streaming and blocking execution paths for callbacks
-# that observe live agent output.
 
 ActivityCallback = Callable[[dict[str, Any]], None]
 """Receives parsed JSON activity dicts from the agent's stream."""
@@ -52,26 +50,19 @@ OutputLineCallback = Callable[[str, OutputStream], None]
 """Receives raw output lines with their stream name ("stdout"/"stderr")."""
 
 ToolUseCallback = Callable[[str, int], None]
-"""Receives ``(tool_name, running_count)`` for each tool-use event.
-
-Invoked by both the streaming path (as lines arrive) and the blocking
-path (after the subprocess exits, during post-hoc counting).  The
-callback is best-effort — exceptions are swallowed so a buggy
-subscriber cannot kill the agent loop.
+"""Invoked by both the streaming path (as lines arrive) and the blocking
+path (after the subprocess exits, during post-hoc counting).  Best-effort:
+exceptions are swallowed so a buggy subscriber cannot kill the agent loop.
 """
 
-# Typed constants for the OutputStream literal so the type checker enforces
-# that only "stdout" / "stderr" ever reach ``on_output_line``.
 _STDOUT: OutputStream = "stdout"
 _STDERR: OutputStream = "stderr"
 
-# JSON stream event types and fields for result extraction.
 # Kept as a generic stream-json helper — any adapter whose output uses
 # the same ``{"type": "result", "result": "..."}`` shape benefits.
 _RESULT_EVENT_TYPE = "result"
 _RESULT_FIELD = "result"
 
-# Log file naming — timestamp format and iteration zero-padding width.
 _LOG_TIMESTAMP_FORMAT = "%Y%m%d-%H%M%S"
 _LOG_ITERATION_PAD_WIDTH = 3
 

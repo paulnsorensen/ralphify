@@ -91,7 +91,6 @@ def _resolve_agent_payload(
     agent: str,
     message: str,
 ) -> dict[str, Any] | None:
-    """Return the agent-specific payload dict, or ``None`` for unknown agents."""
     if agent == CLAUDE:
         return _claude_payload(message)
     if agent == CODEX:

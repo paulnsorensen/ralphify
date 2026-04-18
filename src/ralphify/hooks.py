@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import logging
+import shlex
 import subprocess
 from typing import Any, Protocol, runtime_checkable
 
@@ -192,8 +193,6 @@ class ShellAgentHook(NoOpAgentHook):
         setattr(self, event, self._invoke)
 
     def _invoke(self, **payload: Any) -> None:
-        import shlex
-
         try:
             data = json.dumps(payload, default=str)
         except (TypeError, ValueError) as exc:

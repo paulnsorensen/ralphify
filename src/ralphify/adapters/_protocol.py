@@ -59,9 +59,7 @@ class CLIAdapter(Protocol):
     renders_structured: bool
     supports_soft_wind_down: bool
 
-    def matches(self, cmd: list[str]) -> bool:
-        """Return True if this adapter handles the given agent command."""
-        ...
+    def matches(self, cmd: list[str]) -> bool: ...
 
     def build_command(self, cmd: list[str]) -> list[str]:
         """Return the command with any adapter-required flags appended.
