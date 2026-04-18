@@ -32,6 +32,8 @@ from ralphify._frontmatter import (
     FIELD_ARGS,
     FIELD_COMMANDS,
     FIELD_CREDIT,
+    FIELD_COMPLETION_SIGNAL,
+    FIELD_STOP_ON_COMPLETION_SIGNAL,
     RALPH_MARKER,
     VALID_NAME_CHARS_MSG,
     parse_frontmatter,
@@ -39,6 +41,7 @@ from ralphify._frontmatter import (
 from ralphify._output import IS_WINDOWS
 from ralphify._run_types import (
     Command,
+    DEFAULT_COMPLETION_SIGNAL,
     DEFAULT_COMMAND_TIMEOUT,
     RunConfig,
     RunState,
@@ -56,13 +59,11 @@ app = typer.Typer()
 
 
 def _exit_error(msg: str) -> NoReturn:
-    """Print an error in red and exit with code 1."""
     _console.print(f"[red]{escape_markup(msg)}[/]")
     raise typer.Exit(1)
 
 
 def _is_nonempty_string(value: Any) -> bool:
-    """Return True if *value* is a non-empty string (after stripping whitespace)."""
     return isinstance(value, str) and bool(value.strip())
 
 
@@ -128,6 +129,10 @@ commands:
     run: git log --oneline -5
 args:
   - focus
+# Optional early exit: uncomment both lines and have the agent emit
+# <promise>COMPLETE</promise> when the task is done.
+# completion_signal: COMPLETE
+# stop_on_completion_signal: true
 ---
 
 You are an autonomous coding agent running in a loop. Each iteration
@@ -146,6 +151,7 @@ starts with a fresh context. Your progress lives in the code and git.
 <!-- Replace this section with your task description -->
 
 - Implement one thing per iteration
+- If you enable promise completion above, emit <promise>COMPLETE</promise> and exit
 - Run tests and fix failures before committing
 - Commit with a descriptive message and push
 """
@@ -202,7 +208,13 @@ def scaffold(
         help="Directory name. If omitted, creates RALPH.md in the current directory.",
     ),
 ) -> None:
-    """Scaffold a new ralph with a ready-to-customize template."""
+    """Scaffold a new ralph with a ready-to-customize template.
+
+    The template includes example commands and args plus an optional
+    completion-signal path you can enable with ``completion_signal`` and
+    ``stop_on_completion_signal`` when the agent should stop early by
+    emitting a matching ``<promise>...</promise>`` tag.
+    """
     if name:
         target_dir = Path.cwd() / name
         target_dir.mkdir(exist_ok=True)
@@ -218,6 +230,13 @@ def scaffold(
     _console.print(f"[green]Created[/] {escape_markup(str(rel))}")
     _console.print(
         f"[dim]Edit the file, then run:[/] ralph run {escape_markup(name or '.')}"
+    )
+    _console.print(
+        "[dim]Optional early exit:[/] uncomment "
+        f"{escape_markup(FIELD_COMPLETION_SIGNAL)} + "
+        f"{escape_markup(FIELD_STOP_ON_COMPLETION_SIGNAL)} "
+        "and emit "
+        f"{escape_markup('<promise>COMPLETE</promise>')}."
     )
 
 
@@ -428,6 +447,36 @@ def _validate_credit(raw_credit: Any) -> bool:
     return raw_credit
 
 
+def _validate_completion_signal(raw_signal: Any) -> str:
+    """Validate the inner ``<promise>...</promise>`` text from frontmatter."""
+    if raw_signal is None:
+        return DEFAULT_COMPLETION_SIGNAL
+    if not _is_nonempty_string(raw_signal):
+        _exit_error(f"'{FIELD_COMPLETION_SIGNAL}' must be a non-empty string.")
+    if raw_signal != raw_signal.strip():
+        _exit_error(
+            f"'{FIELD_COMPLETION_SIGNAL}' must not include leading or trailing whitespace."
+        )
+    if "<" in raw_signal or ">" in raw_signal:
+        _exit_error(
+            f"'{FIELD_COMPLETION_SIGNAL}' must be the text inside "
+            "<promise>...</promise>, not markup or a raw output fragment. "
+            "Example: completion_signal: COMPLETE"
+        )
+    return raw_signal
+
+
+def _validate_stop_on_completion_signal(raw_value: Any) -> bool:
+    """Validate the stop-on-completion-signal frontmatter field."""
+    if raw_value is None:
+        return False
+    if not isinstance(raw_value, bool):
+        _exit_error(
+            f"'{FIELD_STOP_ON_COMPLETION_SIGNAL}' must be true or false, got {raw_value!r}."
+        )
+    return raw_value
+
+
 def _validate_run_options(
     max_iterations: int | None,
     delay: float,
@@ -471,6 +520,10 @@ def _build_run_config(
         ralph_args = _parse_user_args(extra_args, declared_names)
 
     credit = _validate_credit(fm.get(FIELD_CREDIT))
+    completion_signal = _validate_completion_signal(fm.get(FIELD_COMPLETION_SIGNAL))
+    stop_on_completion_signal = _validate_stop_on_completion_signal(
+        fm.get(FIELD_STOP_ON_COMPLETION_SIGNAL)
+    )
 
     return RunConfig(
         agent=agent,
@@ -485,6 +538,8 @@ def _build_run_config(
         log_dir=Path(log_dir) if log_dir else None,
         project_root=Path.cwd(),
         credit=credit,
+        completion_signal=completion_signal,
+        stop_on_completion_signal=stop_on_completion_signal,
     )
 
 
@@ -533,6 +588,10 @@ def run(
     Extra flags (--name value) and positional args after the path are
     passed as user arguments.  Use {{ args.name }} placeholders in
     RALPH.md to reference them.
+
+    To stop before the iteration budget, set ``completion_signal`` and
+    ``stop_on_completion_signal`` in frontmatter and have the agent emit
+    the matching ``<promise>...</promise>`` tag.
 
     Keybindings (interactive terminal):
       p         Toggle live peek of agent output (on by default)
