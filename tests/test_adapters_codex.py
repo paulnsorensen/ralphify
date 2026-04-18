@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import json
-
-import pytest
+import sys
 
 from ralphify.adapters import select_adapter
 from ralphify.adapters.codex import CodexAdapter
@@ -129,10 +128,29 @@ def test_extract_completion_signal_scans_plain_output() -> None:
     )
 
 
-def test_install_wind_down_hook_raises_not_implemented(tmp_path) -> None:
+def test_install_wind_down_hook_writes_hooks_config_and_returns_env(tmp_path) -> None:
     adapter = CodexAdapter()
-    with pytest.raises(NotImplementedError):
-        adapter.install_wind_down_hook(tmp_path, tmp_path / "counter", 10, 2)
+    counter_path = tmp_path / "counter"
+    env = adapter.install_wind_down_hook(tmp_path, counter_path, 8, 3)
+
+    assert env == {"CODEX_HOME": str(tmp_path)}
+
+    hooks_payload = json.loads((tmp_path / "hooks.json").read_text(encoding="utf-8"))
+    post_tool_use = hooks_payload["PostToolUse"]
+    assert len(post_tool_use) == 1
+    matcher_group = post_tool_use[0]
+    assert matcher_group["matcher"] == "Bash"
+    inner_hook = matcher_group["hooks"][0]
+    assert inner_hook["type"] == "command"
+    command = inner_hook["command"]
+    assert sys.executable in command
+    assert "ralphify._wind_down_shim" in command
+    assert str(counter_path) in command
+    assert " 8 3 codex" in command
+
+    config_text = (tmp_path / "config.toml").read_text(encoding="utf-8")
+    assert "[features]" in config_text
+    assert "codex_hooks = true" in config_text
 
 
 def test_capability_flags() -> None:
@@ -140,8 +158,7 @@ def test_capability_flags() -> None:
     assert adapter.name == "codex"
     assert adapter.counts_what == "tool_use"
     assert adapter.renders_structured is True
-    # Phase 3 will flip this to True; Phase 1 lands hard-cap-only.
-    assert adapter.supports_soft_wind_down is False
+    assert adapter.supports_soft_wind_down is True
 
 
 def test_registered_in_adapters_registry() -> None:

@@ -18,8 +18,10 @@ from __future__ import annotations
 import json
 import os
 import queue
+import shutil
 import signal
 import subprocess
+import tempfile
 import threading
 import time
 from collections.abc import Callable
@@ -83,6 +85,17 @@ _THREAD_JOIN_TIMEOUT = 5.0
 
 # Seconds to wait for the agent process to exit after a kill signal.
 _PROCESS_WAIT_TIMEOUT = 5.0
+
+# Tempdir prefix for per-iteration wind-down hook config.  Surfaces in
+# ``$TMPDIR`` listings so users can spot stale dirs after a crash.
+_HOOK_TEMPDIR_PREFIX = "ralphify-"
+
+# Counter filename when ``log_dir`` is unset and the file lives inside
+# the per-iteration tempdir.  When ``log_dir`` is set, the counter lives
+# at ``<log_dir>/<iter>.turncount`` per FR-11.
+_COUNTER_FILENAME = "turncount"
+_COUNTER_LOG_SUFFIX = ".turncount"
+_COUNTER_PAD_WIDTH = _LOG_ITERATION_PAD_WIDTH
 
 
 def _extract_result_text_from_lines(lines: list[str] | None) -> str | None:
@@ -268,6 +281,29 @@ class AgentResult(ProcessResult):
     # True when the cap was reached and the agent process was terminated
     # (streaming) or the cap was exceeded post-hoc (blocking path).
     turn_capped: bool = False
+
+
+@dataclass(slots=True)
+class _WindDownContext:
+    """Per-iteration tempdir and counter state for soft wind-down hooks.
+
+    Built by :func:`_setup_wind_down` for adapters whose
+    ``supports_soft_wind_down`` is True and a ``max_turns`` cap is
+    configured.  Carries the env-var overrides the spawned agent needs,
+    plus the cleanup hook called from the streaming path's ``finally``.
+    """
+
+    tempdir: Path
+    counter_path: Path
+    env_overrides: dict[str, str]
+
+    def cleanup(self) -> None:
+        """Remove the counter file and tempdir; safe to call multiple times."""
+        try:
+            self.counter_path.unlink()
+        except (FileNotFoundError, OSError):
+            pass
+        shutil.rmtree(self.tempdir, ignore_errors=True)
 
 
 @dataclass(frozen=True, slots=True)
@@ -480,6 +516,7 @@ def _run_agent_streaming(
     capture_stdout: bool = False,
     adapter: CLIAdapter | None = None,
     max_turns: int | None = None,
+    max_turns_grace: int = 2,
     on_tool_use: ToolUseCallback | None = None,
 ) -> AgentResult:
     """Run the agent subprocess with line-by-line streaming of JSON output.
@@ -488,6 +525,12 @@ def _run_agent_streaming(
     Code).  Stream processing is delegated to :func:`_read_agent_stream`;
     this function owns the subprocess lifecycle (spawn, stdin delivery,
     timeout kill, and cleanup via ``try/finally``).
+
+    Soft wind-down setup (per-iteration tempdir + counter file +
+    adapter-supplied env overrides) is wired here so the spawned agent
+    inherits the hook config before any tool_use event fires; cleanup
+    runs in the same ``finally`` that reaps the subprocess so a crash
+    cannot leak files into ``$TMPDIR``.
 
     stderr is drained concurrently on a background reader thread so large
     stderr volume can't deadlock the child on a full OS pipe buffer while
@@ -505,15 +548,27 @@ def _run_agent_streaming(
     stderr_lines: list[str] | None = [] if capture_stderr_text else None
     stderr_thread: threading.Thread | None = None
 
-    proc = subprocess.Popen(
-        stream_cmd,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE if pipe_stderr else None,
-        **SUBPROCESS_TEXT_KWARGS,
-        **SESSION_KWARGS,
+    wind_down = _setup_wind_down(
+        adapter, max_turns, max_turns_grace, log_dir, iteration
     )
+    effective_on_tool_use = (
+        _wrap_tool_use_with_counter(wind_down.counter_path, on_tool_use)
+        if wind_down is not None
+        else on_tool_use
+    )
+    spawn_env = _build_spawn_env(wind_down)
+
+    proc: subprocess.Popen[str] | None = None
     try:
+        proc = subprocess.Popen(
+            stream_cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE if pipe_stderr else None,
+            env=spawn_env,
+            **SUBPROCESS_TEXT_KWARGS,
+            **SESSION_KWARGS,
+        )
         # Popen with PIPE guarantees non-None streams; guard explicitly
         # so the type checker narrows and -O mode cannot skip the check.
         if proc.stdin is None or proc.stdout is None:
@@ -544,14 +599,19 @@ def _run_agent_streaming(
             capture_stdout=capture_stdout_text,
             adapter=adapter,
             max_turns=max_turns,
-            on_tool_use=on_tool_use,
+            on_tool_use=effective_on_tool_use,
         )
 
         if stream.timed_out or stream.turn_capped:
             _kill_process_group(proc)
         proc.wait()
     finally:
-        _cleanup_agent(proc, stderr_thread, writer_thread)
+        try:
+            if proc is not None:
+                _cleanup_agent(proc, stderr_thread, writer_thread)
+        finally:
+            if wind_down is not None:
+                wind_down.cleanup()
 
     stdout = "".join(stream.stdout_lines) if stream.stdout_lines is not None else None
     stderr = "".join(stderr_lines) if stderr_lines is not None else None
@@ -569,6 +629,110 @@ def _run_agent_streaming(
         tool_use_count=stream.tool_use_count,
         turn_capped=stream.turn_capped,
     )
+
+
+def _setup_wind_down(
+    adapter: CLIAdapter | None,
+    max_turns: int | None,
+    max_turns_grace: int,
+    log_dir: Path | None,
+    iteration: int,
+) -> _WindDownContext | None:
+    """Build the wind-down context for one iteration, or ``None`` to skip.
+
+    Skips when no adapter is bound, when soft wind-down is unsupported,
+    when no cap is configured, or when the adapter raises
+    :class:`NotImplementedError` from its installer (treated as a
+    runtime downgrade to hard-cap-only per FR-5).  Cleanup of the
+    half-initialised tempdir on installer failure is best-effort — the
+    file lives under ``$TMPDIR`` and a stale ``ralphify-`` prefix is
+    trivially identifiable.
+    """
+    if adapter is None or not adapter.supports_soft_wind_down or max_turns is None:
+        return None
+    tempdir = Path(tempfile.mkdtemp(prefix=_HOOK_TEMPDIR_PREFIX))
+    counter_path = _resolve_counter_path(tempdir, log_dir, iteration)
+    counter_path.write_text("0", encoding="utf-8")
+    try:
+        env_overrides = adapter.install_wind_down_hook(
+            tempdir, counter_path, max_turns, max_turns_grace
+        )
+    except NotImplementedError:
+        try:
+            counter_path.unlink()
+        except (FileNotFoundError, OSError):
+            pass
+        shutil.rmtree(tempdir, ignore_errors=True)
+        warn(
+            f"adapter {adapter.name!r} declared supports_soft_wind_down "
+            "but raised NotImplementedError; falling back to hard-cap-only."
+        )
+        return None
+    return _WindDownContext(
+        tempdir=tempdir, counter_path=counter_path, env_overrides=env_overrides
+    )
+
+
+def _resolve_counter_path(tempdir: Path, log_dir: Path | None, iteration: int) -> Path:
+    """Return the per-iteration counter file path per FR-11.
+
+    Co-locating the file under ``log_dir`` (when configured) keeps a
+    crashed run's stale counter visible next to its log; otherwise the
+    file lives inside the hook tempdir and shares its lifecycle.
+    """
+    if log_dir is None:
+        return tempdir / _COUNTER_FILENAME
+    return log_dir / f"{iteration:0{_COUNTER_PAD_WIDTH}d}{_COUNTER_LOG_SUFFIX}"
+
+
+def _build_spawn_env(wind_down: _WindDownContext | None) -> dict[str, str] | None:
+    """Return the env dict passed to :class:`subprocess.Popen`.
+
+    Returns ``None`` when no overrides are needed so Popen inherits the
+    parent process environment unchanged — important on platforms where
+    PATH or HOME being copied vs inherited can subtly change child
+    behaviour.
+    """
+    if wind_down is None or not wind_down.env_overrides:
+        return None
+    env = os.environ.copy()
+    env.update(wind_down.env_overrides)
+    return env
+
+
+def _atomic_write_counter(path: Path, count: int) -> None:
+    """Write *count* to *path* via write-then-rename so hooks never see torn data.
+
+    The shim reads ``counter_path`` on every hook invocation; a partial
+    write would parse as ``0`` and silently suppress the wind-down
+    message.  ``os.replace`` is atomic on POSIX and Windows.
+    """
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(str(count), encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def _wrap_tool_use_with_counter(
+    counter_path: Path,
+    inner: ToolUseCallback | None,
+) -> ToolUseCallback:
+    """Return a callback that updates the counter file before delegating.
+
+    Counter writes happen first so the hook shim sees the freshest
+    count; the inner subscriber's exceptions cannot prevent the write.
+    """
+
+    def cb(name: str, count: int) -> None:
+        try:
+            _atomic_write_counter(counter_path, count)
+        except OSError:
+            # Counter file lost (tempdir reaped early?) — hard cap will
+            # still fire from the in-memory counter in _read_agent_stream.
+            pass
+        if inner is not None:
+            inner(name, count)
+
+    return cb
 
 
 def _pump_stream(
@@ -868,6 +1032,7 @@ def execute_agent(
     capture_stdout: bool | None = None,
     adapter: CLIAdapter | None = None,
     max_turns: int | None = None,
+    max_turns_grace: int = 2,
 ) -> AgentResult:
     """Run the agent subprocess, auto-selecting streaming or blocking mode.
 
@@ -908,6 +1073,7 @@ def execute_agent(
             capture_stdout=capture_stdout,
             adapter=adapter,
             max_turns=max_turns,
+            max_turns_grace=max_turns_grace,
             on_tool_use=on_tool_use,
         )
     return _run_agent_blocking(

@@ -254,6 +254,7 @@ def _run_agent_phase(
             capture_stdout=True,
             adapter=adapter,
             max_turns=config.max_turns,
+            max_turns_grace=config.max_turns_grace,
         )
     except FileNotFoundError as exc:
         raise FileNotFoundError(

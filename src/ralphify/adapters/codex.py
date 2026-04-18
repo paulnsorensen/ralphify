@@ -23,6 +23,7 @@ would drop that payload.
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 from ralphify._promise import has_promise_completion
@@ -41,6 +42,16 @@ _TOOL_CALL_EVENTS: frozenset[str] = frozenset(
 )
 _RESULT_EVENTS: frozenset[str] = frozenset({"TaskComplete", "TurnCompleted"})
 
+_HOOKS_FILENAME = "hooks.json"
+_CONFIG_FILENAME = "config.toml"
+_HOOK_EVENT = "PostToolUse"
+# Codex hooks only fire on the ``Bash`` tool today (documented limitation
+# in the spec) — sessions dominated by Edit/Write/MCP will never see
+# the soft wind-down message.  Hard cap via SIGTERM is unaffected.
+_HOOK_MATCHER = "Bash"
+_FEATURE_FLAG_TOML = "[features]\ncodex_hooks = true\n"
+_AGENT_KIND = "codex"
+
 
 class CodexAdapter:
     """Parses Codex's ``--json`` event stream."""
@@ -48,10 +59,7 @@ class CodexAdapter:
     name: str = "codex"
     counts_what: CountsWhat = "tool_use"
     renders_structured: bool = True
-    # Phase 3 will flip this to True once ``install_wind_down_hook``
-    # actually writes a ``hooks.json`` PostToolUse entry.  Until then
-    # the flag stays False so the engine downgrades to hard-cap-only.
-    supports_soft_wind_down: bool = False
+    supports_soft_wind_down: bool = True
 
     def matches(self, cmd: list[str]) -> bool:
         if not cmd:
@@ -133,10 +141,52 @@ class CodexAdapter:
         cap: int,
         grace: int,
     ) -> dict[str, str]:
-        raise NotImplementedError(
-            "Codex soft wind-down (hooks.json PostToolUse) is scheduled "
-            "for Phase 3 of the CLI adapter layer spec."
+        """Write Codex's ``hooks.json`` + ``config.toml`` and override ``CODEX_HOME``.
+
+        Codex's hook system is gated behind a feature flag in
+        ``config.toml``; this method writes both files atomically into
+        *tempdir* and points the CLI at it via ``CODEX_HOME`` so the
+        user's real ``~/.codex`` config stays untouched.
+        """
+        command = _build_shim_command(counter_path, cap, grace)
+        (tempdir / _HOOKS_FILENAME).write_text(
+            json.dumps(_build_hooks_payload(command), indent=2),
+            encoding="utf-8",
         )
+        (tempdir / _CONFIG_FILENAME).write_text(_FEATURE_FLAG_TOML, encoding="utf-8")
+        return {"CODEX_HOME": str(tempdir)}
+
+
+def _build_shim_command(counter_path: Path, cap: int, grace: int) -> str:
+    """Return the shell command Codex's hook runner executes.
+
+    Same convention as the Claude adapter: ``sys.executable`` invokes
+    the in-tree shim with the per-iteration counter and cap so the same
+    threshold logic applies across both CLIs.
+    """
+    return (
+        f"{sys.executable} -m ralphify._wind_down_shim "
+        f"{counter_path} {cap} {grace} {_AGENT_KIND}"
+    )
+
+
+def _build_hooks_payload(command: str) -> dict:
+    """Return the JSON dict written to ``hooks.json``.
+
+    Codex's hook schema mirrors Claude's: a top-level event-name key
+    maps to a list of matcher groups, each carrying an inner list of
+    ``{type, command}`` entries.
+    """
+    return {
+        _HOOK_EVENT: [
+            {
+                "matcher": _HOOK_MATCHER,
+                "hooks": [
+                    {"type": "command", "command": command},
+                ],
+            }
+        ]
+    }
 
 
 def _event_type(parsed: dict) -> str | None:

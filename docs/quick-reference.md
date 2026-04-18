@@ -80,6 +80,9 @@ Your instructions here. Use {{ args.dir }} for user arguments. <!-- (6) -->
 | `credit` | bool | no | Append co-author trailer instruction to prompt (default: `true`) |
 | `completion_signal` | string | no | Inner text for the completion promise tag. `COMPLETE` means the agent must emit `<promise>COMPLETE</promise>` (default inner text: `RALPH_PROMISE_COMPLETE`) |
 | `stop_on_completion_signal` | bool | no | Stop the loop early when the matching `<promise>...</promise>` tag is detected (default: `false`) |
+| `max_turns` | int | no | Hard cap on tool-use events per iteration. SIGTERMs the agent when reached. Adapter-dependent counting (Claude/Codex/Copilot only). |
+| `max_turns_grace` | int | no | Tool uses before `max_turns` at which to inject the [soft wind-down message](agents.md#soft-wind-down-before-max_turns) (default: `2`). Must be `< max_turns`. |
+| `hooks` | list | no | List of `{event, run}` shell hooks invoked at iteration boundaries. See [Lifecycle Hooks](hooks.md). |
 
 ### Command fields
 

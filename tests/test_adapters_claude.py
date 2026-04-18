@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import json
-
-import pytest
+import sys
 
 from ralphify.adapters import select_adapter
 from ralphify.adapters.claude import ClaudeAdapter
@@ -153,10 +152,35 @@ def test_extract_completion_signal_handles_empty_stdout() -> None:
     assert adapter.extract_completion_signal("", "DONE") is False
 
 
-def test_install_wind_down_hook_raises_not_implemented(tmp_path) -> None:
+def test_install_wind_down_hook_writes_settings_and_returns_env(tmp_path) -> None:
     adapter = ClaudeAdapter()
-    with pytest.raises(NotImplementedError):
-        adapter.install_wind_down_hook(tmp_path, tmp_path / "counter", 10, 2)
+    counter_path = tmp_path / "counter"
+    env = adapter.install_wind_down_hook(tmp_path, counter_path, 10, 2)
+
+    assert env == {"CLAUDE_CONFIG_DIR": str(tmp_path)}
+
+    settings = json.loads((tmp_path / "settings.json").read_text(encoding="utf-8"))
+    pre_tool_use = settings["hooks"]["PreToolUse"]
+    assert len(pre_tool_use) == 1
+    matcher_group = pre_tool_use[0]
+    assert matcher_group["matcher"] == "*"
+    inner_hook = matcher_group["hooks"][0]
+    assert inner_hook["type"] == "command"
+    command = inner_hook["command"]
+    assert sys.executable in command
+    assert "ralphify._wind_down_shim" in command
+    assert str(counter_path) in command
+    assert " 10 2 claude" in command
+
+
+def test_install_wind_down_hook_overwrites_existing_settings(tmp_path) -> None:
+    """Re-installing must replace any prior settings.json without merging."""
+    (tmp_path / "settings.json").write_text('{"stale": true}', encoding="utf-8")
+    adapter = ClaudeAdapter()
+    adapter.install_wind_down_hook(tmp_path, tmp_path / "counter", 5, 1)
+    settings = json.loads((tmp_path / "settings.json").read_text(encoding="utf-8"))
+    assert "stale" not in settings
+    assert "hooks" in settings
 
 
 def test_capability_flags() -> None:
@@ -164,8 +188,7 @@ def test_capability_flags() -> None:
     assert adapter.name == "claude"
     assert adapter.counts_what == "tool_use"
     assert adapter.renders_structured is True
-    # Phase 3 will flip this to True; Phase 1 lands hard-cap-only.
-    assert adapter.supports_soft_wind_down is False
+    assert adapter.supports_soft_wind_down is True
 
 
 def test_registered_in_adapters_registry() -> None:
