@@ -23,7 +23,8 @@ src/ralphify/           # All source code
 ├── engine.py           # Core run loop orchestration with structured event emission
 ├── manager.py          # Multi-run orchestration (concurrent runs via threads)
 ├── _resolver.py        # Template placeholder resolution ({{ commands.* }}, {{ args.* }}, {{ ralph.* }})
-├── _agent.py           # Run agent subprocesses (streaming + blocking modes, log writing)
+├── _agent.py           # Run agent subprocesses (streaming + blocking modes, log writing, soft wind-down setup)
+├── _wind_down_shim.py  # Stand-alone shim invoked by Claude/Codex hooks; reads counter file, emits payload
 ├── _run_types.py       # RunConfig, RunState, RunStatus, Command — shared data types
 ├── _runner.py          # Execute shell commands with timeout and capture output
 ├── _frontmatter.py     # Parse YAML frontmatter from RALPH.md, marker constants
@@ -31,7 +32,9 @@ src/ralphify/           # All source code
 ├── _events.py          # Event types, emitter protocol, and BoundEmitter convenience wrapper
 ├── _keypress.py        # Cross-platform single-keypress listener (powers the `p` peek toggle)
 ├── _output.py          # ProcessResult base class, subprocess constants (SESSION_KWARGS, SUBPROCESS_TEXT_KWARGS), format durations
-└── _brand.py           # Brand color constants shared across CLI and console rendering
+├── _brand.py           # Brand color constants shared across CLI and console rendering
+├── hooks.py            # AgentHook Protocol, CombinedAgentHook fanout, ShellAgentHook for RALPH.md hooks: field
+└── adapters/           # Pluggable per-CLI adapters (Claude/Codex/Copilot/Generic) — see below
 
 tests/                  # Pytest tests — one test file per module
 docs/                   # MkDocs site (Material theme) — user-facing documentation
@@ -141,6 +144,31 @@ The compact peek panel (`_IterationPanel` / `_IterationSpinner`) renders the mos
 ### Credit trailer
 
 When `credit` is `true` (the default), `engine.py:_assemble_prompt()` appends `_CREDIT_INSTRUCTION` to the prompt — a short instruction telling the agent to include a `Co-authored-by: Ralphify` trailer in git commits. Users can opt out with `credit: false` in frontmatter.
+
+### CLI adapters
+
+Each supported agent CLI lives in its own module under `src/ralphify/adapters/`:
+
+- `_protocol.py` — the `CLIAdapter` Protocol, `AdapterEvent` NamedTuple, and the `ADAPTERS` registry. Concrete adapters import from here, not from the package `__init__`, to avoid the circular import a package-level Protocol would create.
+- `_generic.py` — fallback adapter for unknown CLIs. All capability flags are False; `install_wind_down_hook` raises `NotImplementedError`.
+- `claude.py` — streams `--output-format stream-json --verbose`, parses assistant `tool_use` blocks, and installs a `PreToolUse` hook via `settings.json` + `CLAUDE_CONFIG_DIR`.
+- `codex.py` — streams JSONL, installs a `PostToolUse` hook via `hooks.json` + `config.toml` (`[features]\ncodex_hooks = true`) + `CODEX_HOME`. Hook only matches the `Bash` tool today; documented limitation.
+- `copilot.py` — best-effort tool-use counting; raises `NotImplementedError` from `install_wind_down_hook` so the engine downgrades to hard-cap-only mode.
+
+The registry is populated at first package import. Adding a new CLI means writing one adapter module and listing it in `_register_builtin_adapters()` — no edits to the engine, emitter, or subprocess machinery.
+
+### Soft wind-down lifecycle (`_agent.py` + `_wind_down_shim.py`)
+
+When `max_turns` is set and the active adapter advertises `supports_soft_wind_down = True`, `_run_agent_streaming` calls `_setup_wind_down(...)` which:
+
+1. `tempfile.mkdtemp(prefix="ralphify-")` creates a per-iteration tempdir.
+2. The counter file is written (`"0"`) at `<log_dir>/<iter>.turncount` if `log_dir` is configured, else `<tempdir>/turncount` (FR-11).
+3. `adapter.install_wind_down_hook(tempdir, counter_path, cap, grace)` writes the CLI's hook config files into the tempdir and returns env-var overrides (`CLAUDE_CONFIG_DIR` or `CODEX_HOME`).
+4. The streaming `on_tool_use` callback is wrapped so each event atomically rewrites `counter_path` (write-to-`.tmp` then `os.replace`) before delegating to user hooks.
+5. The hook command points at `python -m ralphify._wind_down_shim <counter_path> <cap> <grace> <agent>`. The shim re-reads the counter on every invocation and prints the wind-down JSON payload to stdout when `count >= max(cap - grace, 0)`. Failures (missing counter, unknown agent, parse errors) silently exit 0.
+6. A nested `try/finally` guarantees the tempdir and counter file are removed even when `Popen` raises or the iteration crashes (FR-7).
+
+If the installer raises `NotImplementedError` (Copilot, generic), `_setup_wind_down` cleans up the half-initialised tempdir, logs a one-time warning, and returns `None` — the iteration runs hard-cap-only.
 
 ### Subprocess result types
 

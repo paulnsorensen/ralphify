@@ -18,8 +18,10 @@ from __future__ import annotations
 import json
 import os
 import queue
+import shutil
 import signal
 import subprocess
+import tempfile
 import threading
 import time
 from collections.abc import Callable
@@ -37,10 +39,9 @@ from ralphify._output import (
     collect_output,
     warn,
 )
+from ralphify.adapters import CLIAdapter, select_adapter
 
 # ── Callback type aliases ──────────────────────────────────────────────
-# Used across the streaming and blocking execution paths for callbacks
-# that observe live agent output.
 
 ActivityCallback = Callable[[dict[str, Any]], None]
 """Receives parsed JSON activity dicts from the agent's stream."""
@@ -48,25 +49,20 @@ ActivityCallback = Callable[[dict[str, Any]], None]
 OutputLineCallback = Callable[[str, OutputStream], None]
 """Receives raw output lines with their stream name ("stdout"/"stderr")."""
 
-# Typed constants for the OutputStream literal so the type checker enforces
-# that only "stdout" / "stderr" ever reach ``on_output_line``.
+ToolUseCallback = Callable[[str, int], None]
+"""Invoked by both the streaming path (as lines arrive) and the blocking
+path (after the subprocess exits, during post-hoc counting).  Best-effort:
+exceptions are swallowed so a buggy subscriber cannot kill the agent loop.
+"""
+
 _STDOUT: OutputStream = "stdout"
 _STDERR: OutputStream = "stderr"
 
-# Agent binary name that supports --output-format stream-json.
-# Public because _console_emitter also needs this for display logic.
-CLAUDE_BINARY = "claude"
-
-# CLI flags appended when streaming mode is used.
-_OUTPUT_FORMAT_FLAG = "--output-format"
-_STREAM_FORMAT = "stream-json"
-_VERBOSE_FLAG = "--verbose"
-
-# JSON stream event types and fields for result extraction.
+# Kept as a generic stream-json helper — any adapter whose output uses
+# the same ``{"type": "result", "result": "..."}`` shape benefits.
 _RESULT_EVENT_TYPE = "result"
 _RESULT_FIELD = "result"
 
-# Log file naming — timestamp format and iteration zero-padding width.
 _LOG_TIMESTAMP_FORMAT = "%Y%m%d-%H%M%S"
 _LOG_ITERATION_PAD_WIDTH = 3
 
@@ -80,6 +76,17 @@ _THREAD_JOIN_TIMEOUT = 5.0
 
 # Seconds to wait for the agent process to exit after a kill signal.
 _PROCESS_WAIT_TIMEOUT = 5.0
+
+# Tempdir prefix for per-iteration wind-down hook config.  Surfaces in
+# ``$TMPDIR`` listings so users can spot stale dirs after a crash.
+_HOOK_TEMPDIR_PREFIX = "ralphify-"
+
+# Counter filename when ``log_dir`` is unset and the file lives inside
+# the per-iteration tempdir.  When ``log_dir`` is set, the counter lives
+# at ``<log_dir>/<iter>.turncount`` per FR-11.
+_COUNTER_FILENAME = "turncount"
+_COUNTER_LOG_SUFFIX = ".turncount"
+_COUNTER_PAD_WIDTH = _LOG_ITERATION_PAD_WIDTH
 
 
 def _extract_result_text_from_lines(lines: list[str] | None) -> str | None:
@@ -259,6 +266,35 @@ class AgentResult(ProcessResult):
     result_text: str | None = None
     captured_stdout: str | None = None
     captured_stderr: str | None = None
+    # Tool-use events counted by the adapter for this iteration.  ``0``
+    # when no adapter was active or the adapter's ``counts_what == "none"``.
+    tool_use_count: int = 0
+    # True when the cap was reached and the agent process was terminated
+    # (streaming) or the cap was exceeded post-hoc (blocking path).
+    turn_capped: bool = False
+
+
+@dataclass(slots=True)
+class _WindDownContext:
+    """Per-iteration tempdir and counter state for soft wind-down hooks.
+
+    Built by :func:`_setup_wind_down` for adapters whose
+    ``supports_soft_wind_down`` is True and a ``max_turns`` cap is
+    configured.  Carries the env-var overrides the spawned agent needs,
+    plus the cleanup hook called from the streaming path's ``finally``.
+    """
+
+    tempdir: Path
+    counter_path: Path
+    env_overrides: dict[str, str]
+
+    def cleanup(self) -> None:
+        """Remove the counter file and tempdir; safe to call multiple times."""
+        try:
+            self.counter_path.unlink()
+        except (FileNotFoundError, OSError):
+            pass
+        shutil.rmtree(self.tempdir, ignore_errors=True)
 
 
 @dataclass(frozen=True, slots=True)
@@ -268,6 +304,8 @@ class _StreamResult:
     stdout_lines: tuple[str, ...] | None
     result_text: str | None
     timed_out: bool
+    tool_use_count: int = 0
+    turn_capped: bool = False
 
 
 def _write_log(
@@ -286,19 +324,6 @@ def _write_log(
     log_file = log_dir / f"{iteration:0{_LOG_ITERATION_PAD_WIDTH}d}_{timestamp}.log"
     log_file.write_text(collect_output(stdout, stderr), encoding="utf-8")
     return log_file
-
-
-def _supports_stream_json(cmd: list[str]) -> bool:
-    """Return True if the agent command supports ``--output-format stream-json``.
-
-    Currently only Claude Code supports this protocol.  To add streaming
-    support for another agent, extend the check here — no other changes
-    needed since :func:`_run_agent_streaming` handles the protocol generically.
-    """
-    if not cmd:
-        return False
-    binary = Path(cmd[0]).stem
-    return binary == CLAUDE_BINARY
 
 
 def _readline_pump(
@@ -328,6 +353,9 @@ def _read_agent_stream(
     on_output_line: OutputLineCallback | None = None,
     *,
     capture_stdout: bool = True,
+    adapter: CLIAdapter | None = None,
+    max_turns: int | None = None,
+    on_tool_use: ToolUseCallback | None = None,
 ) -> _StreamResult:
     """Read the agent's JSON stream line-by-line until EOF or timeout.
 
@@ -359,6 +387,9 @@ def _read_agent_stream(
     """
     stdout_lines: list[str] | None = [] if capture_stdout else None
     result_text: str | None = None
+    tool_use_count = 0
+    turn_capped = False
+    count_tool_use = adapter is not None and adapter.counts_what == "tool_use"
 
     line_q: queue.Queue[str | None] = queue.Queue()
     reader = threading.Thread(target=_readline_pump, args=(stdout, line_q), daemon=True)
@@ -384,6 +415,8 @@ def _read_agent_stream(
                 stdout_lines=tuple(stdout_lines) if stdout_lines is not None else None,
                 result_text=result_text,
                 timed_out=True,
+                tool_use_count=tool_use_count,
+                turn_capped=turn_capped,
             )
 
         if line is None:  # EOF sentinel from reader thread
@@ -391,6 +424,8 @@ def _read_agent_stream(
                 stdout_lines=tuple(stdout_lines) if stdout_lines is not None else None,
                 result_text=result_text,
                 timed_out=False,
+                tool_use_count=tool_use_count,
+                turn_capped=turn_capped,
             )
 
         if stdout_lines is not None:
@@ -420,6 +455,33 @@ def _read_agent_stream(
                         # Callback is best-effort; draining must not stop.
                         pass
 
+            # Adapter-driven tool-use counting runs alongside the JSON
+            # parse above so malformed adapter output (returns ``None``)
+            # or adapters that do not count (``counts_what == "none"``)
+            # are both no-ops — the stream reader never fails just because
+            # the adapter refuses an event.
+            if count_tool_use and adapter is not None:
+                event = adapter.parse_event(line)
+                if event is not None and event.kind == "tool_use":
+                    tool_use_count += 1
+                    if on_tool_use is not None:
+                        try:
+                            on_tool_use(event.name or "", tool_use_count)
+                        except Exception:
+                            # Best-effort fanout; draining must not stop.
+                            pass
+                    if max_turns is not None and tool_use_count >= max_turns:
+                        turn_capped = True
+                        return _StreamResult(
+                            stdout_lines=tuple(stdout_lines)
+                            if stdout_lines is not None
+                            else None,
+                            result_text=result_text,
+                            timed_out=False,
+                            tool_use_count=tool_use_count,
+                            turn_capped=True,
+                        )
+
         # Also check deadline after processing — if the reader thread
         # already queued many lines, this prevents unbounded processing
         # past the deadline.
@@ -428,6 +490,8 @@ def _read_agent_stream(
                 stdout_lines=tuple(stdout_lines) if stdout_lines is not None else None,
                 result_text=result_text,
                 timed_out=True,
+                tool_use_count=tool_use_count,
+                turn_capped=turn_capped,
             )
 
 
@@ -441,6 +505,10 @@ def _run_agent_streaming(
     on_output_line: OutputLineCallback | None = None,
     capture_result_text: bool = False,
     capture_stdout: bool = False,
+    adapter: CLIAdapter | None = None,
+    max_turns: int | None = None,
+    max_turns_grace: int = 2,
+    on_tool_use: ToolUseCallback | None = None,
 ) -> AgentResult:
     """Run the agent subprocess with line-by-line streaming of JSON output.
 
@@ -449,11 +517,17 @@ def _run_agent_streaming(
     this function owns the subprocess lifecycle (spawn, stdin delivery,
     timeout kill, and cleanup via ``try/finally``).
 
+    Soft wind-down setup (per-iteration tempdir + counter file +
+    adapter-supplied env overrides) is wired here so the spawned agent
+    inherits the hook config before any tool_use event fires; cleanup
+    runs in the same ``finally`` that reaps the subprocess so a crash
+    cannot leak files into ``$TMPDIR``.
+
     stderr is drained concurrently on a background reader thread so large
     stderr volume can't deadlock the child on a full OS pipe buffer while
     the main thread is reading stdout.
     """
-    stream_cmd = cmd + [_OUTPUT_FORMAT_FLAG, _STREAM_FORMAT, _VERBOSE_FLAG]
+    stream_cmd = adapter.build_command(cmd) if adapter is not None else list(cmd)
     start = time.monotonic()
     deadline = (start + timeout) if timeout is not None else None
 
@@ -465,15 +539,27 @@ def _run_agent_streaming(
     stderr_lines: list[str] | None = [] if capture_stderr_text else None
     stderr_thread: threading.Thread | None = None
 
-    proc = subprocess.Popen(
-        stream_cmd,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE if pipe_stderr else None,
-        **SUBPROCESS_TEXT_KWARGS,
-        **SESSION_KWARGS,
+    wind_down = _setup_wind_down(
+        adapter, max_turns, max_turns_grace, log_dir, iteration
     )
+    effective_on_tool_use = (
+        _wrap_tool_use_with_counter(wind_down.counter_path, on_tool_use)
+        if wind_down is not None
+        else on_tool_use
+    )
+    spawn_env = _build_spawn_env(wind_down)
+
+    proc: subprocess.Popen[str] | None = None
     try:
+        proc = subprocess.Popen(
+            stream_cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE if pipe_stderr else None,
+            env=spawn_env,
+            **SUBPROCESS_TEXT_KWARGS,
+            **SESSION_KWARGS,
+        )
         # Popen with PIPE guarantees non-None streams; guard explicitly
         # so the type checker narrows and -O mode cannot skip the check.
         if proc.stdin is None or proc.stdout is None:
@@ -502,13 +588,21 @@ def _run_agent_streaming(
             on_activity,
             on_output_line,
             capture_stdout=capture_stdout_text,
+            adapter=adapter,
+            max_turns=max_turns,
+            on_tool_use=effective_on_tool_use,
         )
 
-        if stream.timed_out:
+        if stream.timed_out or stream.turn_capped:
             _kill_process_group(proc)
         proc.wait()
     finally:
-        _cleanup_agent(proc, stderr_thread, writer_thread)
+        try:
+            if proc is not None:
+                _cleanup_agent(proc, stderr_thread, writer_thread)
+        finally:
+            if wind_down is not None:
+                wind_down.cleanup()
 
     stdout = "".join(stream.stdout_lines) if stream.stdout_lines is not None else None
     stderr = "".join(stderr_lines) if stderr_lines is not None else None
@@ -523,7 +617,113 @@ def _run_agent_streaming(
         timed_out=stream.timed_out,
         captured_stdout=stdout if capture_stdout_text else None,
         captured_stderr=stderr if capture_stderr_text else None,
+        tool_use_count=stream.tool_use_count,
+        turn_capped=stream.turn_capped,
     )
+
+
+def _setup_wind_down(
+    adapter: CLIAdapter | None,
+    max_turns: int | None,
+    max_turns_grace: int,
+    log_dir: Path | None,
+    iteration: int,
+) -> _WindDownContext | None:
+    """Build the wind-down context for one iteration, or ``None`` to skip.
+
+    Skips when no adapter is bound, when soft wind-down is unsupported,
+    when no cap is configured, or when the adapter raises
+    :class:`NotImplementedError` from its installer (treated as a
+    runtime downgrade to hard-cap-only per FR-5).  Cleanup of the
+    half-initialised tempdir on installer failure is best-effort — the
+    file lives under ``$TMPDIR`` and a stale ``ralphify-`` prefix is
+    trivially identifiable.
+    """
+    if adapter is None or not adapter.supports_soft_wind_down or max_turns is None:
+        return None
+    tempdir = Path(tempfile.mkdtemp(prefix=_HOOK_TEMPDIR_PREFIX))
+    counter_path = _resolve_counter_path(tempdir, log_dir, iteration)
+    counter_path.write_text("0", encoding="utf-8")
+    try:
+        env_overrides = adapter.install_wind_down_hook(
+            tempdir, counter_path, max_turns, max_turns_grace
+        )
+    except NotImplementedError:
+        try:
+            counter_path.unlink()
+        except (FileNotFoundError, OSError):
+            pass
+        shutil.rmtree(tempdir, ignore_errors=True)
+        warn(
+            f"adapter {adapter.name!r} declared supports_soft_wind_down "
+            "but raised NotImplementedError; falling back to hard-cap-only."
+        )
+        return None
+    return _WindDownContext(
+        tempdir=tempdir, counter_path=counter_path, env_overrides=env_overrides
+    )
+
+
+def _resolve_counter_path(tempdir: Path, log_dir: Path | None, iteration: int) -> Path:
+    """Return the per-iteration counter file path per FR-11.
+
+    Co-locating the file under ``log_dir`` (when configured) keeps a
+    crashed run's stale counter visible next to its log; otherwise the
+    file lives inside the hook tempdir and shares its lifecycle.
+    """
+    if log_dir is None:
+        return tempdir / _COUNTER_FILENAME
+    return log_dir / f"{iteration:0{_COUNTER_PAD_WIDTH}d}{_COUNTER_LOG_SUFFIX}"
+
+
+def _build_spawn_env(wind_down: _WindDownContext | None) -> dict[str, str] | None:
+    """Return the env dict passed to :class:`subprocess.Popen`.
+
+    Returns ``None`` when no overrides are needed so Popen inherits the
+    parent process environment unchanged — important on platforms where
+    PATH or HOME being copied vs inherited can subtly change child
+    behaviour.
+    """
+    if wind_down is None or not wind_down.env_overrides:
+        return None
+    env = os.environ.copy()
+    env.update(wind_down.env_overrides)
+    return env
+
+
+def _atomic_write_counter(path: Path, count: int) -> None:
+    """Write *count* to *path* via write-then-rename so hooks never see torn data.
+
+    The shim reads ``counter_path`` on every hook invocation; a partial
+    write would parse as ``0`` and silently suppress the wind-down
+    message.  ``os.replace`` is atomic on POSIX and Windows.
+    """
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(str(count), encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def _wrap_tool_use_with_counter(
+    counter_path: Path,
+    inner: ToolUseCallback | None,
+) -> ToolUseCallback:
+    """Return a callback that updates the counter file before delegating.
+
+    Counter writes happen first so the hook shim sees the freshest
+    count; the inner subscriber's exceptions cannot prevent the write.
+    """
+
+    def cb(name: str, count: int) -> None:
+        try:
+            _atomic_write_counter(counter_path, count)
+        except OSError:
+            # Counter file lost (tempdir reaped early?) — hard cap will
+            # still fire from the in-memory counter in _read_agent_stream.
+            pass
+        if inner is not None:
+            inner(name, count)
+
+    return cb
 
 
 def _pump_stream(
@@ -653,6 +853,9 @@ def _run_agent_blocking(
     on_output_line: OutputLineCallback | None = None,
     capture_result_text: bool = False,
     capture_stdout: bool = False,
+    adapter: CLIAdapter | None = None,
+    max_turns: int | None = None,
+    on_tool_use: ToolUseCallback | None = None,
 ) -> AgentResult:
     """Run the agent subprocess and return the result.
 
@@ -677,7 +880,14 @@ def _run_agent_blocking(
     Raises ``FileNotFoundError`` if the command binary does not exist.
     """
     start = time.monotonic()
-    capture_stdout_text = log_dir is not None or capture_stdout
+    # When an adapter drives a retroactive tool-use count, we need stdout
+    # in memory after the process exits.  Force capture when a cap is set.
+    retroactive_count = (
+        adapter is not None
+        and adapter.counts_what == "tool_use"
+        and max_turns is not None
+    )
+    capture_stdout_text = log_dir is not None or capture_stdout or retroactive_count
     capture_stderr_text = log_dir is not None
     pipe_stdout = (
         capture_stdout_text or on_output_line is not None or capture_result_text
@@ -746,6 +956,10 @@ def _run_agent_blocking(
     stderr = "".join(stderr_lines) if stderr_lines is not None else None
     log_file = _write_log(log_dir, iteration, stdout, stderr)
 
+    tool_use_count, turn_capped = _count_tool_uses_post_hoc(
+        adapter, max_turns, stdout_lines, on_tool_use=on_tool_use
+    )
+
     return AgentResult(
         returncode=None if timed_out else returncode,
         elapsed=time.monotonic() - start,
@@ -754,7 +968,45 @@ def _run_agent_blocking(
         timed_out=timed_out,
         captured_stdout=stdout if capture_stdout_text else None,
         captured_stderr=stderr if capture_stderr_text else None,
+        tool_use_count=tool_use_count,
+        turn_capped=turn_capped,
     )
+
+
+def _count_tool_uses_post_hoc(
+    adapter: CLIAdapter | None,
+    max_turns: int | None,
+    stdout_lines: list[str] | None,
+    *,
+    on_tool_use: ToolUseCallback | None = None,
+) -> tuple[int, bool]:
+    """Retroactively count tool-use events in captured stdout.
+
+    The blocking path cannot kill mid-run, so when the user sets a cap
+    we tally after the process exits.  The returned ``turn_capped`` is
+    advisory — the agent has already finished — but the engine still
+    surfaces it so the console renders "⚠ turn-capped at N tool uses".
+    """
+    if adapter is None or adapter.counts_what != "tool_use" or stdout_lines is None:
+        return 0, False
+    count = 0
+    for line in stdout_lines:
+        event = adapter.parse_event(line)
+        if event is not None and event.kind == "tool_use":
+            count += 1
+            if on_tool_use is not None:
+                try:
+                    on_tool_use(event.name or "", count)
+                except Exception:
+                    # Best-effort fanout; counting must not stop.
+                    pass
+    turn_capped = max_turns is not None and count >= max_turns
+    if turn_capped and max_turns is not None:
+        warn(
+            f"max_turns={max_turns} exceeded during blocking run "
+            f"(counted {count}); cap is observational in this execution mode."
+        )
+    return count, turn_capped
 
 
 def execute_agent(
@@ -766,27 +1018,40 @@ def execute_agent(
     iteration: int,
     on_activity: ActivityCallback | None = None,
     on_output_line: OutputLineCallback | None = None,
+    on_tool_use: ToolUseCallback | None = None,
     capture_result_text: bool = False,
     capture_stdout: bool | None = None,
+    adapter: CLIAdapter | None = None,
+    max_turns: int | None = None,
+    max_turns_grace: int = 2,
 ) -> AgentResult:
     """Run the agent subprocess, auto-selecting streaming or blocking mode.
 
-    Uses streaming mode for agents that support ``--output-format stream-json``
-    (e.g. Claude Code); all other agents use the blocking path that drains
-    stdout and stderr via reader threads.  The *on_activity* callback is
-    only invoked in streaming mode; *on_output_line* fires for both modes
-    as raw lines arrive.
+    Dispatches on :attr:`CLIAdapter.renders_structured` — adapters that
+    emit structured JSON streams go through :func:`_run_agent_streaming`;
+    everything else uses :func:`_run_agent_blocking`, which drains stdout
+    and stderr via reader threads.  The *on_activity* callback is only
+    invoked in streaming mode; *on_output_line* fires for both modes as
+    raw lines arrive.
+
+    When *adapter* is supplied (or auto-selected from the registry), each
+    line of stdout is classified via :meth:`CLIAdapter.parse_event`.  If
+    *max_turns* is also set, the streaming path SIGTERMs the agent on the
+    Nth ``tool_use`` event; the blocking path counts retroactively and
+    flags ``turn_capped`` without killing (the process has already exited).
 
     This is the single entry point the engine should use — callers don't need
     to know which execution mode is selected.
     """
-    supports_stream_json = _supports_stream_json(cmd)
+    if adapter is None:
+        adapter = select_adapter(cmd)
+    uses_streaming = adapter.renders_structured
     if capture_stdout is None:
         capture_stdout = log_dir is not None or (
-            not supports_stream_json and on_output_line is None and capture_result_text
+            not uses_streaming and on_output_line is None and capture_result_text
         )
 
-    if supports_stream_json:
+    if uses_streaming:
         return _run_agent_streaming(
             cmd,
             prompt,
@@ -797,6 +1062,10 @@ def execute_agent(
             on_output_line=on_output_line,
             capture_result_text=capture_result_text,
             capture_stdout=capture_stdout,
+            adapter=adapter,
+            max_turns=max_turns,
+            max_turns_grace=max_turns_grace,
+            on_tool_use=on_tool_use,
         )
     return _run_agent_blocking(
         cmd,
@@ -807,4 +1076,7 @@ def execute_agent(
         on_output_line=on_output_line,
         capture_result_text=capture_result_text,
         capture_stdout=capture_stdout,
+        adapter=adapter,
+        max_turns=max_turns,
+        on_tool_use=on_tool_use,
     )

@@ -19,7 +19,8 @@ This page shows how to configure the [`agent` frontmatter field](quick-reference
 |---|---|---|---|
 | [Claude Code](#claude-code) | Native (`-p`) | Yes — real-time activity tracking | No |
 | [Aider](#aider) | Via bash wrapper | No | Yes (`bash -c`) |
-| [Codex CLI](#codex-cli) | Native (`exec`) | No | No |
+| [Codex CLI](#codex-cli) | Native (`exec`) | Yes — JSONL events | No |
+| [Copilot CLI (alpha)](#copilot-cli-alpha) | Native | Best-effort JSON | No |
 | [Custom](#custom-wrapper-script) | You implement it | No | Yes (script) |
 
 If you're not sure which to pick: **start with Claude Code.** It has the deepest integration, the best autonomous coding capabilities, and is the default.
@@ -99,6 +100,14 @@ This enables ralphify to:
 - Track agent activity in real time
 - Extract the final result text from the agent's response
 
+### Soft wind-down before `max_turns`
+
+When `max_turns` is set in your RALPH.md, ralphify writes a per-iteration `settings.json` into a fresh tempdir and spawns Claude with `CLAUDE_CONFIG_DIR=<tempdir>`. The settings file registers a `PreToolUse` hook that reads the live tool-use counter and injects a wind-down message via `additionalContext` once the count reaches `max_turns - max_turns_grace` (default grace: 2). The agent sees:
+
+> You have used N of M tool uses. Wrap up your work in the next 1-2 turns.
+
+This is purely advisory — the hard `max_turns` cap still SIGTERMs at the limit. The tempdir and counter file are cleaned up in a `try/finally` block, so a crashed iteration cannot leak files into `$TMPDIR` or interfere with your real `~/.claude` config.
+
 ## Aider
 
 [Aider](https://aider.chat) is an AI pair-programming tool that works with multiple LLM providers.
@@ -141,6 +150,32 @@ agent: codex exec --sandbox danger-full-access -
 | `exec` | Non-interactive mode — designed for piped/scripted use |
 | `--sandbox danger-full-access` | Full filesystem access for autonomous operation |
 | `-` | Read prompt from stdin |
+
+### Soft wind-down before `max_turns` (Bash-only)
+
+With `max_turns` set, ralphify writes a per-iteration `hooks.json` plus a `config.toml` (containing `[features]\ncodex_hooks = true`) into a tempdir and spawns Codex with `CODEX_HOME=<tempdir>`. A `PostToolUse` hook with matcher `"Bash"` reads the same shared counter as Claude and emits a `systemMessage` once `count >= max_turns - max_turns_grace`.
+
+!!! warning "Codex hook coverage is partial"
+    As of 2026-04 Codex hooks only fire on the `Bash` tool. Iterations that consist mostly of Edit/Write/MCP calls will not see the wind-down message; the hard `max_turns` cap still applies. Hooks are also documented as **disabled on Windows**, so the wind-down injection effectively no-ops there.
+
+## Copilot CLI (alpha)
+
+The standalone [GitHub Copilot CLI](https://docs.github.com/en/copilot) `copilot` binary is supported as **alpha**. It went GA in February 2026 and ships a `--output-format json` mode, but its event schema is only loosely documented. Ralphify counts tool uses best-effort and degrades gracefully when a payload doesn't match the canonical shape.
+
+```markdown
+---
+agent: copilot
+max_turns: 5
+---
+```
+
+### Caveats
+
+- **Schema is best-effort.** The adapter only accepts events whose top-level `type` field matches a known value (`tool_use`, `tool_call`, `ToolCall`, `ToolUse`, `result`, `response`, `final`, `Final`, `Complete`). Alternate keys like `event` or `kind` are ignored so the turn counter can't be inflated by false positives.
+- **No hook system.** Copilot has no equivalent of Claude's `settings.json` PreToolUse hook or Codex's `hooks.json` PostToolUse hook. The adapter sets `supports_soft_wind_down = False` and `install_wind_down_hook` raises `NotImplementedError` — ralphify catches this and downgrades to hard-cap-only mode with a one-time warning. There is no soft wind-down message before the cap; SIGTERM is the only signal.
+- **No streaming UI.** The peek panel stays in raw-line mode for Copilot; structured activity tracking is not available.
+
+If Copilot's JSON output shape changes or your iteration consistently hits the cap without the adapter counting, please open an issue so we can tighten the schema mapping.
 
 ## Custom wrapper script
 

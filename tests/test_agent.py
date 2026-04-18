@@ -7,47 +7,25 @@ import signal
 import subprocess
 import sys
 import time
-from unittest.mock import MagicMock, patch
+from pathlib import Path
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from helpers import MOCK_SUBPROCESS, fail_proc, make_mock_popen, ok_proc, timeout_proc
 
 from ralphify._agent import (
     AgentResult,
+    _count_tool_uses_post_hoc,
     _kill_process_group,
     _pump_stream,
     _read_agent_stream,
     _run_agent_blocking,
     _run_agent_streaming,
-    _supports_stream_json,
     _write_log,
     execute_agent,
 )
-
-
-class TestSupportsStreamJson:
-    def test_claude_binary(self):
-        assert _supports_stream_json(["claude", "-p"]) is True
-
-    def test_claude_absolute_path(self):
-        assert _supports_stream_json(["/usr/local/bin/claude", "-p"]) is True
-
-    def test_non_claude_binary(self):
-        assert _supports_stream_json(["aider", "--yes"]) is False
-
-    def test_empty_command(self):
-        assert _supports_stream_json([]) is False
-
-    def test_claude_like_name(self):
-        assert _supports_stream_json(["claude-code"]) is False
-
-    def test_claude_with_cmd_extension(self):
-        """On Windows, npm installs claude as claude.cmd — streaming must
-        still be detected."""
-        assert _supports_stream_json(["claude.cmd", "-p"]) is True
-
-    def test_claude_with_exe_extension(self):
-        assert _supports_stream_json(["claude.exe", "-p"]) is True
+from ralphify.adapters._generic import GenericAdapter
+from ralphify.adapters.claude import ClaudeAdapter
 
 
 class TestWriteLog:
@@ -449,8 +427,10 @@ class TestExecuteAgentDispatch:
 
     @patch(MOCK_SUBPROCESS)
     def test_dispatches_to_streaming_for_claude(self, mock_popen, monkeypatch):
-        """execute_agent uses the streaming path when the agent supports it."""
-        monkeypatch.setattr("ralphify._agent._supports_stream_json", lambda cmd: True)
+        """execute_agent uses the streaming path when the adapter renders structured."""
+        monkeypatch.setattr(
+            "ralphify._agent.select_adapter", lambda cmd: ClaudeAdapter()
+        )
         mock_popen.return_value = make_mock_popen(
             stdout_lines='{"type": "result", "result": "done"}\n',
             returncode=0,
@@ -474,7 +454,9 @@ class TestExecuteAgentDispatch:
         on_output_line = MagicMock()
         fake_streaming = MagicMock(return_value=AgentResult(returncode=0, elapsed=0.01))
 
-        monkeypatch.setattr("ralphify._agent._supports_stream_json", lambda cmd: True)
+        monkeypatch.setattr(
+            "ralphify._agent.select_adapter", lambda cmd: ClaudeAdapter()
+        )
         monkeypatch.setattr("ralphify._agent._run_agent_streaming", fake_streaming)
 
         execute_agent(
@@ -498,6 +480,10 @@ class TestExecuteAgentDispatch:
             on_output_line=on_output_line,
             capture_result_text=True,
             capture_stdout=False,
+            adapter=ANY,
+            max_turns=None,
+            max_turns_grace=2,
+            on_tool_use=None,
         )
 
     def test_execute_agent_passes_capture_result_text_to_blocking_helper(
@@ -506,7 +492,9 @@ class TestExecuteAgentDispatch:
         on_output_line = MagicMock()
         fake_blocking = MagicMock(return_value=AgentResult(returncode=0, elapsed=0.01))
 
-        monkeypatch.setattr("ralphify._agent._supports_stream_json", lambda cmd: False)
+        monkeypatch.setattr(
+            "ralphify._agent.select_adapter", lambda cmd: GenericAdapter()
+        )
         monkeypatch.setattr("ralphify._agent._run_agent_blocking", fake_blocking)
 
         execute_agent(
@@ -528,6 +516,9 @@ class TestExecuteAgentDispatch:
             on_output_line=on_output_line,
             capture_result_text=True,
             capture_stdout=False,
+            adapter=ANY,
+            max_turns=None,
+            on_tool_use=None,
         )
 
 
@@ -678,6 +669,7 @@ class TestExecuteAgentStreaming:
             timeout=None,
             log_dir=None,
             iteration=1,
+            adapter=ClaudeAdapter(),
         )
 
         call_args = mock_popen.call_args
@@ -745,6 +737,7 @@ class TestExecuteAgentStreaming:
             log_dir=None,
             iteration=1,
             capture_result_text=True,
+            adapter=ClaudeAdapter(),
         )
 
         assert result.captured_stdout is None
@@ -1644,3 +1637,536 @@ class TestBoundedReaderThreadJoins:
                 f"{name} reader thread still alive after exception — "
                 "joins are not in the finally block"
             )
+
+
+def _tool_use_line(name: str = "Bash") -> str:
+    """Build one Claude assistant-message line carrying a tool_use block."""
+    import json as _json
+
+    return (
+        _json.dumps(
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [{"type": "tool_use", "name": name, "input": {}}]
+                },
+            }
+        )
+        + "\n"
+    )
+
+
+class TestReadAgentStreamTurnCap:
+    """Streaming-path tool-use counting and hard-cap short-circuit."""
+
+    def test_counts_tool_uses_with_claude_adapter(self):
+        stream = io.StringIO(_tool_use_line() + _tool_use_line() + _tool_use_line())
+        result = _read_agent_stream(
+            stream,
+            deadline=None,
+            on_activity=None,
+            adapter=ClaudeAdapter(),
+        )
+
+        assert result.tool_use_count == 3
+        assert result.turn_capped is False
+
+    def test_returns_early_when_cap_reached(self):
+        """At the Nth tool_use event the reader short-circuits — remaining
+        lines are not consumed and ``turn_capped`` is set."""
+        stream = io.StringIO(
+            _tool_use_line("A")
+            + _tool_use_line("B")
+            + _tool_use_line("C")  # cap (N=2) should trip before we get here
+        )
+        result = _read_agent_stream(
+            stream,
+            deadline=None,
+            on_activity=None,
+            adapter=ClaudeAdapter(),
+            max_turns=2,
+        )
+
+        assert result.turn_capped is True
+        assert result.tool_use_count == 2
+        assert result.timed_out is False
+
+    def test_no_adapter_skips_counting(self):
+        stream = io.StringIO(_tool_use_line())
+        result = _read_agent_stream(
+            stream, deadline=None, on_activity=None, max_turns=1
+        )
+
+        assert result.tool_use_count == 0
+        assert result.turn_capped is False
+
+    def test_max_turns_none_never_trips_cap(self):
+        stream = io.StringIO(_tool_use_line() * 5)
+        result = _read_agent_stream(
+            stream,
+            deadline=None,
+            on_activity=None,
+            adapter=ClaudeAdapter(),
+            max_turns=None,
+        )
+
+        assert result.tool_use_count == 5
+        assert result.turn_capped is False
+
+
+class TestRunAgentStreamingTurnCap:
+    """Integration of the streaming path with the hard cap — verifies
+    both the early return and the process-group kill."""
+
+    @patch("ralphify._agent._kill_process_group")
+    @patch(MOCK_SUBPROCESS)
+    def test_cap_triggers_kill_and_sets_turn_capped(self, mock_popen, mock_kill):
+        mock_popen.return_value = make_mock_popen(
+            stdout_lines=_tool_use_line("A") + _tool_use_line("B"),
+            returncode=0,
+        )
+
+        result = _run_agent_streaming(
+            ["claude", "-p"],
+            "prompt",
+            timeout=None,
+            log_dir=None,
+            iteration=1,
+            adapter=ClaudeAdapter(),
+            max_turns=1,
+        )
+
+        assert result.turn_capped is True
+        assert result.tool_use_count == 1
+        assert result.returncode == 0  # process reaped normally after SIGTERM
+        mock_kill.assert_called_once()
+
+    @patch("ralphify._agent._kill_process_group")
+    @patch(MOCK_SUBPROCESS)
+    def test_no_kill_when_under_cap(self, mock_popen, mock_kill):
+        mock_popen.return_value = make_mock_popen(
+            stdout_lines=_tool_use_line("A"),
+            returncode=0,
+        )
+
+        result = _run_agent_streaming(
+            ["claude", "-p"],
+            "prompt",
+            timeout=None,
+            log_dir=None,
+            iteration=1,
+            adapter=ClaudeAdapter(),
+            max_turns=5,
+        )
+
+        assert result.turn_capped is False
+        assert result.tool_use_count == 1
+        mock_kill.assert_not_called()
+
+
+class TestCountToolUsesPostHoc:
+    """Blocking-path retroactive count helper."""
+
+    def test_returns_zero_when_adapter_is_none(self):
+        count, capped = _count_tool_uses_post_hoc(None, 3, ["anything\n"])
+        assert count == 0
+        assert capped is False
+
+    def test_returns_zero_when_stdout_lines_is_none(self):
+        count, capped = _count_tool_uses_post_hoc(ClaudeAdapter(), 3, None)
+        assert count == 0
+        assert capped is False
+
+    def test_counts_all_tool_uses(self):
+        lines = [_tool_use_line("A"), _tool_use_line("B"), _tool_use_line("C")]
+        count, capped = _count_tool_uses_post_hoc(ClaudeAdapter(), None, lines)
+        assert count == 3
+        assert capped is False
+
+    def test_flags_cap_when_count_meets_max_turns(self):
+        lines = [_tool_use_line("A"), _tool_use_line("B"), _tool_use_line("C")]
+        count, capped = _count_tool_uses_post_hoc(ClaudeAdapter(), 2, lines)
+        assert count == 3
+        assert capped is True
+
+    def test_does_not_flag_when_under_cap(self):
+        lines = [_tool_use_line("A")]
+        count, capped = _count_tool_uses_post_hoc(ClaudeAdapter(), 5, lines)
+        assert count == 1
+        assert capped is False
+
+
+class TestRunAgentBlockingTurnCap:
+    """Blocking path: the agent has already exited by the time we count,
+    so ``turn_capped`` is observational — no SIGTERM is sent."""
+
+    @patch("ralphify._agent._kill_process_group")
+    @patch(MOCK_SUBPROCESS)
+    def test_retroactive_count_flags_cap(self, mock_popen, mock_kill):
+        mock_popen.return_value = make_mock_popen(
+            stdout_lines=(
+                _tool_use_line("A") + _tool_use_line("B") + _tool_use_line("C")
+            ),
+            returncode=0,
+        )
+
+        result = _run_agent_blocking(
+            ["echo"],
+            "prompt",
+            timeout=None,
+            log_dir=None,
+            iteration=1,
+            adapter=ClaudeAdapter(),
+            max_turns=2,
+        )
+
+        assert result.tool_use_count == 3
+        assert result.turn_capped is True
+        mock_kill.assert_not_called()
+
+    @patch(MOCK_SUBPROCESS)
+    def test_no_cap_flagged_when_under_max_turns(self, mock_popen):
+        mock_popen.return_value = make_mock_popen(
+            stdout_lines=_tool_use_line("A"),
+            returncode=0,
+        )
+
+        result = _run_agent_blocking(
+            ["echo"],
+            "prompt",
+            timeout=None,
+            log_dir=None,
+            iteration=1,
+            adapter=ClaudeAdapter(),
+            max_turns=5,
+        )
+
+        assert result.tool_use_count == 1
+        assert result.turn_capped is False
+
+
+class TestWindDownLifecycle:
+    """Per-iteration tempdir, counter file, and env-override wiring (A11)."""
+
+    def test_setup_wind_down_returns_none_for_unsupported_adapter(self, tmp_path):
+        from ralphify._agent import _setup_wind_down
+
+        ctx = _setup_wind_down(GenericAdapter(), 5, 2, tmp_path, 1)
+
+        assert ctx is None
+
+    def test_setup_wind_down_returns_none_when_no_cap(self, tmp_path):
+        from ralphify._agent import _setup_wind_down
+
+        ctx = _setup_wind_down(ClaudeAdapter(), None, 2, tmp_path, 1)
+
+        assert ctx is None
+
+    def test_setup_wind_down_returns_none_for_no_adapter(self, tmp_path):
+        from ralphify._agent import _setup_wind_down
+
+        ctx = _setup_wind_down(None, 5, 2, tmp_path, 1)
+
+        assert ctx is None
+
+    def test_setup_wind_down_creates_tempdir_and_counter(self, tmp_path):
+        from ralphify._agent import _setup_wind_down
+
+        ctx = _setup_wind_down(ClaudeAdapter(), 5, 2, tmp_path, 1)
+
+        assert ctx is not None
+        try:
+            assert ctx.tempdir.exists()
+            assert ctx.tempdir.name.startswith("ralphify-")
+            assert ctx.counter_path.exists()
+            assert ctx.counter_path.read_text() == "0"
+            assert (ctx.tempdir / "settings.json").exists()
+            assert ctx.env_overrides == {"CLAUDE_CONFIG_DIR": str(ctx.tempdir)}
+        finally:
+            ctx.cleanup()
+
+    def test_setup_wind_down_counter_under_log_dir_when_set(self, tmp_path):
+        from ralphify._agent import _setup_wind_down
+
+        log_dir = tmp_path / "logs"
+        log_dir.mkdir()
+        ctx = _setup_wind_down(ClaudeAdapter(), 5, 2, log_dir, 7)
+
+        assert ctx is not None
+        try:
+            assert ctx.counter_path == log_dir / "007.turncount"
+            assert ctx.counter_path.exists()
+        finally:
+            ctx.cleanup()
+
+    def test_setup_wind_down_counter_under_tempdir_when_no_log_dir(self, tmp_path):
+        from ralphify._agent import _setup_wind_down
+
+        ctx = _setup_wind_down(ClaudeAdapter(), 5, 2, None, 1)
+
+        assert ctx is not None
+        try:
+            assert ctx.counter_path == ctx.tempdir / "turncount"
+        finally:
+            ctx.cleanup()
+
+    def test_setup_wind_down_handles_not_implemented_error(self, tmp_path):
+        from ralphify._agent import _setup_wind_down
+
+        class BrokenAdapter:
+            name = "broken"
+            counts_what = "tool_use"
+            renders_structured = False
+            supports_soft_wind_down = True
+
+            def matches(self, cmd):
+                return False
+
+            def build_command(self, cmd):
+                return list(cmd)
+
+            def parse_event(self, line):
+                return None
+
+            def extract_completion_signal(self, stdout, signal):
+                return False
+
+            def install_wind_down_hook(self, tempdir, counter_path, cap, grace):
+                raise NotImplementedError("nope")
+
+        before_dirs = set(p.name for p in tmp_path.iterdir())
+        ctx = _setup_wind_down(BrokenAdapter(), 5, 2, tmp_path, 1)
+
+        assert ctx is None
+        # Counter file under log_dir was removed during fallback cleanup.
+        assert set(p.name for p in tmp_path.iterdir()) == before_dirs
+
+    def test_wind_down_context_cleanup_removes_tempdir_and_counter(self, tmp_path):
+        from ralphify._agent import _setup_wind_down
+
+        ctx = _setup_wind_down(ClaudeAdapter(), 5, 2, tmp_path, 1)
+        assert ctx is not None
+        tempdir = ctx.tempdir
+        counter_path = ctx.counter_path
+
+        ctx.cleanup()
+
+        assert not tempdir.exists()
+        assert not counter_path.exists()
+
+    def test_wind_down_context_cleanup_is_idempotent(self, tmp_path):
+        from ralphify._agent import _setup_wind_down
+
+        ctx = _setup_wind_down(ClaudeAdapter(), 5, 2, tmp_path, 1)
+        assert ctx is not None
+        ctx.cleanup()
+        # Second call must not raise even though files are already gone.
+        ctx.cleanup()
+
+    def test_resolve_counter_path_uses_tempdir_when_no_log_dir(self, tmp_path):
+        from ralphify._agent import _resolve_counter_path
+
+        path = _resolve_counter_path(tmp_path, None, 5)
+
+        assert path == tmp_path / "turncount"
+
+    def test_resolve_counter_path_pads_iteration_when_log_dir(self, tmp_path):
+        from ralphify._agent import _resolve_counter_path
+
+        path = _resolve_counter_path(tmp_path, tmp_path, 42)
+
+        assert path == tmp_path / "042.turncount"
+
+    def test_atomic_write_counter_writes_value(self, tmp_path):
+        from ralphify._agent import _atomic_write_counter
+
+        target = tmp_path / "turncount"
+        _atomic_write_counter(target, 7)
+
+        assert target.read_text() == "7"
+
+    def test_atomic_write_counter_overwrites_existing(self, tmp_path):
+        from ralphify._agent import _atomic_write_counter
+
+        target = tmp_path / "turncount"
+        target.write_text("3")
+        _atomic_write_counter(target, 9)
+
+        assert target.read_text() == "9"
+        # No torn .tmp left behind.
+        assert not (tmp_path / "turncount.tmp").exists()
+
+    def test_build_spawn_env_returns_none_when_no_context(self):
+        from ralphify._agent import _build_spawn_env
+
+        assert _build_spawn_env(None) is None
+
+    def test_build_spawn_env_returns_none_when_no_overrides(self, tmp_path):
+        from ralphify._agent import _WindDownContext, _build_spawn_env
+
+        ctx = _WindDownContext(
+            tempdir=tmp_path, counter_path=tmp_path / "c", env_overrides={}
+        )
+
+        assert _build_spawn_env(ctx) is None
+
+    def test_build_spawn_env_merges_overrides_with_os_environ(self, tmp_path):
+        from ralphify._agent import _WindDownContext, _build_spawn_env
+
+        ctx = _WindDownContext(
+            tempdir=tmp_path,
+            counter_path=tmp_path / "c",
+            env_overrides={"CLAUDE_CONFIG_DIR": "/tmp/foo"},
+        )
+        env = _build_spawn_env(ctx)
+
+        assert env is not None
+        assert env["CLAUDE_CONFIG_DIR"] == "/tmp/foo"
+        # Inherited values from os.environ are present (PATH always set).
+        assert "PATH" in env
+
+    def test_wrap_tool_use_with_counter_writes_and_delegates(self, tmp_path):
+        from ralphify._agent import _wrap_tool_use_with_counter
+
+        counter = tmp_path / "turncount"
+        counter.write_text("0")
+        observed = []
+        wrapped = _wrap_tool_use_with_counter(
+            counter, lambda n, c: observed.append((n, c))
+        )
+
+        wrapped("Bash", 1)
+        wrapped("Edit", 2)
+
+        assert counter.read_text() == "2"
+        assert observed == [("Bash", 1), ("Edit", 2)]
+
+    def test_wrap_tool_use_with_counter_works_without_inner(self, tmp_path):
+        from ralphify._agent import _wrap_tool_use_with_counter
+
+        counter = tmp_path / "turncount"
+        counter.write_text("0")
+        wrapped = _wrap_tool_use_with_counter(counter, None)
+
+        wrapped("Bash", 4)
+
+        assert counter.read_text() == "4"
+
+    def test_wrap_tool_use_with_counter_swallows_oserror(self, tmp_path):
+        from ralphify._agent import _wrap_tool_use_with_counter
+
+        # Counter path under a non-existent dir — write will OSError but
+        # the inner subscriber must still fire.
+        bad_counter = tmp_path / "missing" / "turncount"
+        observed = []
+        wrapped = _wrap_tool_use_with_counter(
+            bad_counter, lambda n, c: observed.append(c)
+        )
+
+        wrapped("Bash", 1)
+
+        assert observed == [1]
+
+    def test_streaming_cleans_up_tempdir_on_success(self, tmp_path, monkeypatch):
+        from ralphify import _agent
+
+        created: list[Path] = []
+        real_mkdtemp = _agent.tempfile.mkdtemp
+
+        def tracking_mkdtemp(prefix: str = "") -> str:
+            path = real_mkdtemp(prefix=prefix, dir=str(tmp_path))
+            created.append(Path(path))
+            return path
+
+        monkeypatch.setattr(_agent.tempfile, "mkdtemp", tracking_mkdtemp)
+
+        log_dir = tmp_path / "logs"
+        log_dir.mkdir()
+        with patch(MOCK_SUBPROCESS) as mock_popen:
+            mock_popen.return_value = make_mock_popen(stdout_lines="", returncode=0)
+            _agent._run_agent_streaming(
+                ["claude", "-p"],
+                "prompt",
+                timeout=None,
+                log_dir=log_dir,
+                iteration=1,
+                adapter=ClaudeAdapter(),
+                max_turns=5,
+            )
+
+        assert created, "expected wind-down setup to mkdtemp"
+        assert all(not p.exists() for p in created)
+        assert not (log_dir / "001.turncount").exists()
+
+    def test_streaming_cleans_up_tempdir_when_subprocess_raises(
+        self, tmp_path, monkeypatch
+    ):
+        from ralphify import _agent
+
+        created: list[Path] = []
+        real_mkdtemp = _agent.tempfile.mkdtemp
+
+        def tracking_mkdtemp(prefix: str = "") -> str:
+            path = real_mkdtemp(prefix=prefix, dir=str(tmp_path))
+            created.append(Path(path))
+            return path
+
+        monkeypatch.setattr(_agent.tempfile, "mkdtemp", tracking_mkdtemp)
+
+        log_dir = tmp_path / "logs"
+        log_dir.mkdir()
+        with patch(MOCK_SUBPROCESS) as mock_popen:
+            mock_popen.side_effect = FileNotFoundError("claude not found")
+            with pytest.raises(FileNotFoundError):
+                _agent._run_agent_streaming(
+                    ["claude", "-p"],
+                    "prompt",
+                    timeout=None,
+                    log_dir=log_dir,
+                    iteration=1,
+                    adapter=ClaudeAdapter(),
+                    max_turns=5,
+                )
+
+        assert created, "expected wind-down setup to mkdtemp"
+        assert all(not p.exists() for p in created)
+        assert not (log_dir / "001.turncount").exists()
+
+    def test_streaming_passes_env_overrides_to_popen(self, tmp_path):
+        from ralphify._agent import _run_agent_streaming
+
+        with patch(MOCK_SUBPROCESS) as mock_popen:
+            mock_popen.return_value = make_mock_popen(stdout_lines="", returncode=0)
+            _run_agent_streaming(
+                ["claude", "-p"],
+                "prompt",
+                timeout=None,
+                log_dir=None,
+                iteration=1,
+                adapter=ClaudeAdapter(),
+                max_turns=5,
+            )
+
+            kwargs = mock_popen.call_args.kwargs
+            env = kwargs.get("env")
+            assert env is not None
+            assert "CLAUDE_CONFIG_DIR" in env
+            assert env["CLAUDE_CONFIG_DIR"].rsplit("/", 1)[-1].startswith("ralphify-")
+
+    def test_streaming_no_env_when_no_cap(self, tmp_path):
+        from ralphify._agent import _run_agent_streaming
+
+        with patch(MOCK_SUBPROCESS) as mock_popen:
+            mock_popen.return_value = make_mock_popen(stdout_lines="", returncode=0)
+            _run_agent_streaming(
+                ["claude", "-p"],
+                "prompt",
+                timeout=None,
+                log_dir=None,
+                iteration=1,
+                adapter=ClaudeAdapter(),
+                max_turns=None,
+            )
+
+            kwargs = mock_popen.call_args.kwargs
+            assert kwargs.get("env") is None

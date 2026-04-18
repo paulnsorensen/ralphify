@@ -32,6 +32,7 @@ from ralphify.engine import (
     _run_commands,
     run_loop,
 )
+from ralphify.hooks import NoOpAgentHook
 
 
 class TestRunLoop:
@@ -311,8 +312,12 @@ class TestPromiseCompletionSignals:
     def test_structured_agents_ignore_raw_stdout_for_promise_detection(
         self, mock_execute_agent, tmp_path
     ):
+        # Claude's adapter scans only ``result`` events and unambiguous
+        # promise markup; a non-result status event carrying a ``<promise>``
+        # string must NOT trip completion.
         config = make_config(
             tmp_path,
+            agent="claude -p",
             max_iterations=2,
             stop_on_completion_signal=True,
         )
@@ -322,7 +327,8 @@ class TestPromiseCompletionSignals:
             returncode=0,
             elapsed=0.01,
             result_text="done without promise tag",
-            captured_stdout='{"type":"status","message":"<promise>RALPH_PROMISE_COMPLETE</promise>"}\n',
+            captured_stdout='{"type":"status","message":"nothing to see"}\n'
+            '{"type":"result","result":"final answer without tag"}\n',
         )
 
         run_loop(config, state, NullEmitter())
@@ -413,6 +419,31 @@ class TestRunLoopEvents:
 
         events = drain_events(q)
         assert EventType.ITERATION_TIMED_OUT in event_types(events)
+
+    @patch("ralphify.engine.execute_agent")
+    def test_turn_capped_event_emitted(self, mock_execute_agent, tmp_path):
+        """When the streaming hard-cap trips, the engine emits
+        ``ITERATION_TURN_CAPPED`` and marks the iteration completed — the cap
+        working as designed is not a failure."""
+        config = make_config(tmp_path, max_iterations=1, max_turns=3)
+        state = make_state()
+        q = QueueEmitter()
+        mock_execute_agent.return_value = AgentResult(
+            returncode=0,
+            elapsed=0.01,
+            tool_use_count=3,
+            turn_capped=True,
+        )
+
+        run_loop(config, state, q)
+
+        events = drain_events(q)
+        assert EventType.ITERATION_TURN_CAPPED in event_types(events)
+        assert EventType.ITERATION_FAILED not in event_types(events)
+        assert state.completed == 1
+        assert state.failed == 0
+        # Engine must forward the cap to execute_agent via max_turns kwarg
+        assert mock_execute_agent.call_args.kwargs["max_turns"] == 3
 
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
     def test_all_events_have_run_id(self, mock_run, tmp_path):
@@ -1431,3 +1462,218 @@ class TestAgentOutputLineFiltering:
         assert output.count("first") == 0
         assert output.count("second") == 0
         assert output.count("third") == 0
+
+
+class _RecordingHook(NoOpAgentHook):
+    """Test hook that records every lifecycle call for assertions."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, dict]] = []
+
+    def on_iteration_started(self, *, iteration):
+        self.calls.append(("on_iteration_started", {"iteration": iteration}))
+
+    def on_commands_completed(self, *, iteration, outputs):
+        self.calls.append(
+            ("on_commands_completed", {"iteration": iteration, "outputs": outputs})
+        )
+
+    def on_prompt_assembled(self, *, iteration, prompt):
+        self.calls.append(
+            ("on_prompt_assembled", {"iteration": iteration, "prompt_len": len(prompt)})
+        )
+
+    def on_tool_use(self, *, iteration, tool_name, count):
+        self.calls.append(
+            (
+                "on_tool_use",
+                {"iteration": iteration, "tool_name": tool_name, "count": count},
+            )
+        )
+
+    def on_turn_approaching_limit(self, *, iteration, count, max_turns):
+        self.calls.append(
+            (
+                "on_turn_approaching_limit",
+                {"iteration": iteration, "count": count, "max_turns": max_turns},
+            )
+        )
+
+    def on_turn_capped(self, *, iteration, count):
+        self.calls.append(("on_turn_capped", {"iteration": iteration, "count": count}))
+
+    def on_iteration_completed(self, *, iteration, result):
+        self.calls.append(
+            ("on_iteration_completed", {"iteration": iteration, "result": result})
+        )
+
+    def on_completion_signal(self, *, iteration, signal):
+        self.calls.append(
+            ("on_completion_signal", {"iteration": iteration, "signal": signal})
+        )
+
+    def kinds(self) -> list[str]:
+        return [name for name, _ in self.calls]
+
+
+class TestHookFanout:
+    """Verify ``RunConfig.hooks`` are invoked at the right boundaries."""
+
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
+    def test_iteration_lifecycle_events_fire_in_order(self, _mock, tmp_path):
+        hook = _RecordingHook()
+        config = make_config(tmp_path, max_iterations=1, hooks=[hook])
+        state = make_state()
+
+        run_loop(config, state, NullEmitter())
+
+        kinds = hook.kinds()
+        # All four boundary events should fire, in this order.
+        assert kinds.index("on_iteration_started") < kinds.index(
+            "on_commands_completed"
+        )
+        assert kinds.index("on_commands_completed") < kinds.index("on_prompt_assembled")
+        assert kinds.index("on_prompt_assembled") < kinds.index(
+            "on_iteration_completed"
+        )
+
+    @patch(MOCK_RUN_COMMAND)
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
+    def test_on_commands_completed_receives_outputs(
+        self, _mock_popen, mock_run, tmp_path
+    ):
+        mock_run.return_value = ok_run_result(output="log-output")
+        hook = _RecordingHook()
+        commands = [Command(name="log", run="git log")]
+        config = make_config(
+            tmp_path, max_iterations=1, commands=commands, hooks=[hook]
+        )
+        state = make_state()
+
+        run_loop(config, state, NullEmitter())
+
+        commands_completed = [c for c in hook.calls if c[0] == "on_commands_completed"]
+        assert len(commands_completed) == 1
+        assert commands_completed[0][1]["outputs"] == {"log": "log-output"}
+
+    @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
+    def test_hook_exception_does_not_abort_run(self, _mock, tmp_path):
+        class _Boom(NoOpAgentHook):
+            def on_iteration_started(self, *, iteration):
+                raise RuntimeError("boom")
+
+        recording = _RecordingHook()
+        config = make_config(tmp_path, max_iterations=1, hooks=[_Boom(), recording])
+        state = make_state()
+
+        run_loop(config, state, NullEmitter())
+
+        assert state.completed == 1
+        # Even though the first hook raised, the second one received
+        # the full lifecycle.
+        assert "on_iteration_started" in recording.kinds()
+        assert "on_iteration_completed" in recording.kinds()
+
+    def test_on_turn_capped_fires_when_agent_hits_cap(self, monkeypatch, tmp_path):
+        hook = _RecordingHook()
+        config = make_config(tmp_path, max_iterations=1, max_turns=3, hooks=[hook])
+        state = make_state()
+
+        def _fake_execute(*_a, **_kw):
+            return AgentResult(
+                returncode=0,
+                elapsed=0.01,
+                tool_use_count=3,
+                turn_capped=True,
+            )
+
+        monkeypatch.setattr("ralphify.engine.execute_agent", _fake_execute)
+
+        run_loop(config, state, NullEmitter())
+
+        capped = [c for c in hook.calls if c[0] == "on_turn_capped"]
+        assert capped == [("on_turn_capped", {"iteration": 1, "count": 3})]
+
+    def test_on_completion_signal_fires_when_promise_detected(
+        self, monkeypatch, tmp_path
+    ):
+        hook = _RecordingHook()
+        config = make_config(
+            tmp_path,
+            max_iterations=2,
+            hooks=[hook],
+            stop_on_completion_signal=True,
+            completion_signal="DONE",
+        )
+        state = make_state()
+
+        def _fake_execute(*_a, **_kw):
+            return AgentResult(
+                returncode=0,
+                elapsed=0.01,
+                captured_stdout="yay <promise>DONE</promise>",
+            )
+
+        monkeypatch.setattr("ralphify.engine.execute_agent", _fake_execute)
+
+        run_loop(config, state, NullEmitter())
+
+        signals = [c for c in hook.calls if c[0] == "on_completion_signal"]
+        assert signals == [("on_completion_signal", {"iteration": 1, "signal": "DONE"})]
+
+    def test_on_tool_use_and_approaching_limit_fire_from_bridge(
+        self, monkeypatch, tmp_path
+    ):
+        hook = _RecordingHook()
+        config = make_config(
+            tmp_path, max_iterations=1, max_turns=5, max_turns_grace=2, hooks=[hook]
+        )
+        state = make_state()
+
+        def _fake_execute(*_a, **kw):
+            on_tool_use = kw.get("on_tool_use")
+            for i, name in enumerate(["Bash", "Edit", "Bash"], start=1):
+                if on_tool_use is not None:
+                    on_tool_use(name, i)
+            return AgentResult(returncode=0, elapsed=0.01, tool_use_count=3)
+
+        monkeypatch.setattr("ralphify.engine.execute_agent", _fake_execute)
+
+        run_loop(config, state, NullEmitter())
+
+        tool_uses = [c for c in hook.calls if c[0] == "on_tool_use"]
+        assert [c[1]["count"] for c in tool_uses] == [1, 2, 3]
+        assert tool_uses[0][1]["tool_name"] == "Bash"
+
+        approaching = [c for c in hook.calls if c[0] == "on_turn_approaching_limit"]
+        # Fires once when count reaches max_turns - grace = 3.
+        assert approaching == [
+            (
+                "on_turn_approaching_limit",
+                {"iteration": 1, "count": 3, "max_turns": 5},
+            )
+        ]
+
+    def test_tool_use_event_emitted_to_queue(self, monkeypatch, tmp_path):
+        config = make_config(tmp_path, max_iterations=1, max_turns=5)
+        state = make_state()
+        q = QueueEmitter()
+
+        def _fake_execute(*_a, **kw):
+            on_tool_use = kw.get("on_tool_use")
+            if on_tool_use is not None:
+                on_tool_use("Bash", 1)
+            return AgentResult(returncode=0, elapsed=0.01, tool_use_count=1)
+
+        monkeypatch.setattr("ralphify.engine.execute_agent", _fake_execute)
+
+        run_loop(config, state, q)
+
+        events = drain_events(q)
+        tool_use_events = events_of_type(events, EventType.TOOL_USE)
+        assert len(tool_use_events) == 1
+        assert tool_use_events[0].data == {
+            "iteration": 1,
+            "tool_name": "Bash",
+            "count": 1,
+        }

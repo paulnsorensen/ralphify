@@ -15,9 +15,9 @@ from ralphify._console_emitter import (
     _IterationPanel,
     _IterationSpinner,
     _SinglePanelNavigator,
+    _agent_renders_structured,
     _format_run_info,
     _format_summary,
-    _is_claude_command,
     _scrollbar_metrics,
     _shorten_path,
 )
@@ -820,6 +820,11 @@ class TestIterationLifecycle:
                 "failed with exit code 1",
             ),
             (EventType.ITERATION_TIMED_OUT, "timed out after 2m 0s", "timed out"),
+            (
+                EventType.ITERATION_TURN_CAPPED,
+                "turn-capped at 3/3 tool uses (5s)",
+                "turn-capped",
+            ),
         ],
     )
     def test_iteration_ended_shows_detail(self, event_type, detail, expected):
@@ -1499,24 +1504,35 @@ class TestIterationSpinnerScrollLines:
         assert "live output on" in output
 
 
-class TestIsClaudeCommand:
+class TestAgentRendersStructured:
     def test_claude_binary(self):
-        assert _is_claude_command("claude") is True
+        assert _agent_renders_structured("claude") is True
 
     def test_claude_with_flags(self):
-        assert _is_claude_command("claude --dangerously-skip-permissions") is True
+        assert (
+            _agent_renders_structured("claude --dangerously-skip-permissions") is True
+        )
 
     def test_claude_full_path(self):
-        assert _is_claude_command("/usr/local/bin/claude -p") is True
+        assert _agent_renders_structured("/usr/local/bin/claude -p") is True
 
-    def test_not_claude(self):
-        assert _is_claude_command("aider --yes") is False
+    def test_codex_structured(self):
+        # Codex emits structured events and opts into the peek panel.
+        assert _agent_renders_structured("codex exec") is True
+
+    def test_copilot_non_structured(self):
+        # Copilot stays in raw-line mode per its capability flags.
+        assert _agent_renders_structured("copilot") is False
+
+    def test_unknown_agent(self):
+        # Unknown binaries dispatch to GenericAdapter, which is raw.
+        assert _agent_renders_structured("aider --yes") is False
 
     def test_empty(self):
-        assert _is_claude_command("") is False
+        assert _agent_renders_structured("") is False
 
     def test_invalid_shlex(self):
-        assert _is_claude_command("claude 'unterminated") is False
+        assert _agent_renders_structured("claude 'unterminated") is False
 
 
 def _populate_buffer(spinner, count: int, prefix: str = "line") -> None:

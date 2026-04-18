@@ -42,8 +42,8 @@ from ralphify._events import (
     RunStoppedData,
 )
 from ralphify import _brand
-from ralphify._agent import CLAUDE_BINARY
 from ralphify._output import format_count, format_duration
+from ralphify.adapters import select_adapter
 
 _ICON_SUCCESS = "✓"
 _ICON_FAILURE = "✗"
@@ -51,6 +51,7 @@ _ICON_TIMEOUT = "⏱"
 _ICON_ARROW = "→"
 _ICON_DASH = "—"
 _ICON_PLAY = "▶"
+_ICON_TURN_CAPPED = "⚠"
 
 # Horizontal rule used to visually bracket the run summary at the bottom.
 _RULE_HEAVY = "──────────────────────"
@@ -106,18 +107,24 @@ _PEEK_OFF_MSG = (
     f"shift+{PEEK_TOGGLE_KEY} for full view[/]"
 )
 
-# ── Claude binary detection ───────────────────────────────────────────
+# ── Adapter-driven structured-render detection ────────────────────────
 
 
-def _is_claude_command(agent: str) -> bool:
-    """Return True if *agent* is a Claude Code command."""
+def _agent_renders_structured(agent: str) -> bool:
+    """Return True if the selected adapter for *agent* emits structured events.
+
+    Used by the emitter to decide whether to use the structured
+    iteration panel (tool-use / turn activity) versus the raw-stdout
+    spinner.  Falls back to ``False`` on an empty or unparseable command
+    so the emitter degrades gracefully instead of crashing.
+    """
     try:
         parts = shlex.split(agent)
     except ValueError:
         return False
     if not parts:
         return False
-    return Path(parts[0]).stem == CLAUDE_BINARY
+    return select_adapter(parts).renders_structured
 
 
 # ── Tool argument abbreviation ────────────────────────────────────────
@@ -1013,6 +1020,12 @@ class ConsoleEmitter:
                 icon=_ICON_TIMEOUT,
                 outcome="timed out",
             ),
+            EventType.ITERATION_TURN_CAPPED: partial(
+                self._on_iteration_ended,
+                color="yellow",
+                icon=_ICON_TURN_CAPPED,
+                outcome="turn-capped",
+            ),
             EventType.COMMANDS_COMPLETED: self._on_commands_completed,
             EventType.LOG_MESSAGE: self._on_log_message,
             EventType.RUN_STOPPED: self._on_run_stopped,
@@ -1248,7 +1261,7 @@ class ConsoleEmitter:
     def _on_run_started(self, data: RunStartedData) -> None:
         ralph_name = data["ralph_name"]
         agent = data["agent"]
-        self._structured_agent = _is_claude_command(agent)
+        self._structured_agent = _agent_renders_structured(agent)
         with self._console_lock:
             self._console.print(
                 f"\n[bold {_brand.PURPLE}]{_ICON_PLAY} Running:[/] [bold]{escape_markup(ralph_name)}[/]"
