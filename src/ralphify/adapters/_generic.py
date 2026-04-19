@@ -10,7 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ralphify._promise import has_promise_completion
-from ralphify.adapters import AdapterEvent, CountsWhat
+from ralphify.adapters._protocol import AdapterEvent, CountsWhat
 
 
 class GenericAdapter:

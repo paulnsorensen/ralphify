@@ -33,6 +33,8 @@ from ralphify._frontmatter import (
     FIELD_COMMANDS,
     FIELD_CREDIT,
     FIELD_COMPLETION_SIGNAL,
+    FIELD_MAX_TURNS,
+    FIELD_MAX_TURNS_GRACE,
     FIELD_STOP_ON_COMPLETION_SIGNAL,
     RALPH_MARKER,
     VALID_NAME_CHARS_MSG,
@@ -466,6 +468,41 @@ def _validate_completion_signal(raw_signal: Any) -> str:
     return raw_signal
 
 
+def _validate_max_turns(raw: Any) -> int | None:
+    """Validate the ``max_turns`` frontmatter field.
+
+    Returns ``None`` when absent (no cap).  Exits with an error when the
+    value is not a positive integer.
+    """
+    if raw is None:
+        return None
+    if isinstance(raw, bool) or not isinstance(raw, int) or raw < 1:
+        _exit_error(f"'{FIELD_MAX_TURNS}' must be a positive integer, got {raw!r}.")
+    return raw
+
+
+def _validate_max_turns_grace(raw: Any, max_turns: int | None) -> int:
+    """Validate the ``max_turns_grace`` field.
+
+    Defaults to ``2`` when absent.  Must be a non-negative integer and
+    strictly less than *max_turns* (when *max_turns* is set).
+    """
+    if raw is None:
+        grace = 2
+    elif isinstance(raw, bool) or not isinstance(raw, int) or raw < 0:
+        _exit_error(
+            f"'{FIELD_MAX_TURNS_GRACE}' must be a non-negative integer, got {raw!r}."
+        )
+    else:
+        grace = raw
+    if max_turns is not None and grace >= max_turns:
+        _exit_error(
+            f"'{FIELD_MAX_TURNS_GRACE}' ({grace}) must be less than "
+            f"'{FIELD_MAX_TURNS}' ({max_turns})."
+        )
+    return grace
+
+
 def _validate_stop_on_completion_signal(raw_value: Any) -> bool:
     """Validate the stop-on-completion-signal frontmatter field."""
     if raw_value is None:
@@ -524,6 +561,10 @@ def _build_run_config(
     stop_on_completion_signal = _validate_stop_on_completion_signal(
         fm.get(FIELD_STOP_ON_COMPLETION_SIGNAL)
     )
+    max_turns = _validate_max_turns(fm.get(FIELD_MAX_TURNS))
+    max_turns_grace = _validate_max_turns_grace(
+        fm.get(FIELD_MAX_TURNS_GRACE), max_turns
+    )
 
     return RunConfig(
         agent=agent,
@@ -540,6 +581,8 @@ def _build_run_config(
         credit=credit,
         completion_signal=completion_signal,
         stop_on_completion_signal=stop_on_completion_signal,
+        max_turns=max_turns,
+        max_turns_grace=max_turns_grace,
     )
 
 
