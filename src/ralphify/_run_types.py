@@ -104,6 +104,10 @@ class RunConfig:
     completion_signal: str = DEFAULT_COMPLETION_SIGNAL
     # Stop the run when the configured promise payload is observed.
     stop_on_completion_signal: bool = False
+    # Per-iteration tool-use cap; None disables the cap.
+    max_turns: int | None = None
+    # Soft wind-down fires at ``max_turns - max_turns_grace``.
+    max_turns_grace: int = 2
 
 
 @dataclass(slots=True)
