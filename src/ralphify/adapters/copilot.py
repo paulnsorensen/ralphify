@@ -24,7 +24,7 @@ import json
 from pathlib import Path
 
 from ralphify._promise import has_promise_completion
-from ralphify.adapters import ADAPTERS, AdapterEvent, CountsWhat
+from ralphify.adapters import ADAPTERS, AdapterEvent, CacheStats, CountsWhat
 
 
 COPILOT_BINARY_STEM = "copilot"
@@ -56,6 +56,12 @@ class CopilotAdapter:
     # Copilot runs on the blocking path with no stream parsing today; the
     # promise tag must be located somewhere in the captured stdout.
     requires_full_stdout_for_completion: bool = True
+    # Copilot exposes no cache-hit metrics today — its ``--output-format
+    # json`` event schema is loosely documented and carries no usage
+    # payload we can parse reliably.  ``extract_cache_stats`` returns
+    # ``None`` unconditionally; if caching happens server-side, we have
+    # no way to observe it.
+    supports_prompt_caching: bool = False
 
     def matches(self, cmd: list[str]) -> bool:
         if not cmd:
@@ -146,6 +152,11 @@ class CopilotAdapter:
             "Copilot CLI has no hook system as of 2026-04; max_turns "
             "will hard-kill without soft wind-down signal."
         )
+
+    def extract_cache_stats(self, raw: dict) -> CacheStats | None:
+        """No verified usage schema — always ``None``."""
+        del raw
+        return None
 
 
 ADAPTERS.append(CopilotAdapter())

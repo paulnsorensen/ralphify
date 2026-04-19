@@ -20,7 +20,7 @@ import json
 from pathlib import Path
 
 from ralphify._promise import has_promise_completion
-from ralphify.adapters import ADAPTERS, AdapterEvent, CountsWhat
+from ralphify.adapters import ADAPTERS, AdapterEvent, CacheStats, CountsWhat
 
 
 CODEX_BINARY_STEM = "codex"
@@ -53,6 +53,14 @@ class CodexAdapter:
     # ``agent.result_text``.  The full stdout buffer is currently the only
     # source for promise-tag scanning.
     requires_full_stdout_for_completion: bool = True
+    # OpenAI's Responses API caches automatically; usage events carry a
+    # ``cached_tokens`` field under ``input_tokens_details`` (Responses) or
+    # ``prompt_tokens_details`` (older Chat shape).  We surface the count
+    # as :class:`CacheStats`, with ``write_tokens=0`` because OpenAI does
+    # not distinguish a cache write from a regular miss.  Caching is
+    # fragile — routing stickiness across fresh ``codex exec`` invocations
+    # is not guaranteed — but when hits occur, this is where we see them.
+    supports_prompt_caching: bool = True
 
     def matches(self, cmd: list[str]) -> bool:
         if not cmd:
@@ -146,6 +154,33 @@ class CodexAdapter:
             "for Phase 3 of the CLI adapter layer spec."
         )
 
+    def extract_cache_stats(self, raw: dict) -> CacheStats | None:
+        """Extract :class:`CacheStats` from a Codex event's usage payload.
+
+        Codex emits usage data either on a dedicated ``TokenCount`` event or
+        nested inside a ``TurnCompleted`` event; both shapes surface the
+        same ``usage`` dict.  We check ``usage.input_tokens_details.cached_tokens``
+        first (the Responses API shape) and fall through to the older
+        ``prompt_tokens_details.cached_tokens`` layout, mirroring what the
+        Codex CLI has emitted across its 2025–2026 builds.
+
+        OpenAI does not distinguish a cache write from a regular miss, so
+        ``write_tokens`` is always ``0`` for this adapter — the total
+        prompt cost splits cleanly between cached and uncached input.
+        Returns ``None`` when no usage dict is present.
+        """
+        usage = _extract_usage_dict(raw)
+        if usage is None:
+            return None
+        prompt_tokens = _int_or_zero(
+            usage.get("input_tokens") or usage.get("prompt_tokens")
+        )
+        cached = _int_or_zero(_nested_cached_tokens(usage))
+        if prompt_tokens == 0 and cached == 0:
+            return None
+        uncached = max(prompt_tokens - cached, 0)
+        return CacheStats(read_tokens=cached, write_tokens=0, uncached_tokens=uncached)
+
 
 def _event_type(parsed: dict) -> str | None:
     """Return the Codex event type, whether top-level or nested under ``type``."""
@@ -193,6 +228,35 @@ def _event_text_payload(parsed: dict) -> str | None:
             if isinstance(value, str):
                 return value
     return None
+
+
+def _extract_usage_dict(raw: dict) -> dict | None:
+    """Return the ``usage`` dict from either top-level or nested ``msg.usage``."""
+    usage = raw.get("usage")
+    if isinstance(usage, dict):
+        return usage
+    msg = raw.get("msg")
+    if isinstance(msg, dict):
+        nested = msg.get("usage")
+        if isinstance(nested, dict):
+            return nested
+    return None
+
+
+def _nested_cached_tokens(usage: dict) -> object:
+    """Return the cached-tokens value from either Responses or Chat usage shapes."""
+    for container_key in ("input_tokens_details", "prompt_tokens_details"):
+        container = usage.get(container_key)
+        if isinstance(container, dict):
+            cached = container.get("cached_tokens")
+            if cached is not None:
+                return cached
+    return usage.get("cached_tokens")
+
+
+def _int_or_zero(value: object) -> int:
+    """Coerce a usage field to int; non-ints and booleans become zero."""
+    return value if isinstance(value, int) and not isinstance(value, bool) else 0
 
 
 ADAPTERS.append(CodexAdapter())

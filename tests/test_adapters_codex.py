@@ -152,6 +152,97 @@ def test_capability_flags() -> None:
     assert adapter.renders_structured_peek is False
     assert adapter.supports_soft_wind_down is True
     assert adapter.requires_full_stdout_for_completion is True
+    assert adapter.supports_prompt_caching is True
+
+
+def test_extract_cache_stats_responses_api_shape() -> None:
+    """Responses API emits input_tokens_details.cached_tokens."""
+    adapter = CodexAdapter()
+    raw = {
+        "type": "TokenCount",
+        "usage": {
+            "input_tokens": 10_000,
+            "output_tokens": 300,
+            "input_tokens_details": {"cached_tokens": 7500},
+        },
+    }
+    stats = adapter.extract_cache_stats(raw)
+    assert stats is not None
+    assert stats.read_tokens == 7500
+    assert stats.write_tokens == 0  # OpenAI does not split write vs miss
+    assert stats.uncached_tokens == 2500
+
+
+def test_extract_cache_stats_legacy_chat_shape() -> None:
+    """Older Codex builds emit prompt_tokens + prompt_tokens_details."""
+    adapter = CodexAdapter()
+    raw = {
+        "usage": {
+            "prompt_tokens": 1000,
+            "prompt_tokens_details": {"cached_tokens": 400},
+        },
+    }
+    stats = adapter.extract_cache_stats(raw)
+    assert stats is not None
+    assert stats.read_tokens == 400
+    assert stats.uncached_tokens == 600
+
+
+def test_extract_cache_stats_usage_nested_under_msg() -> None:
+    """Some Codex events wrap usage under ``msg.usage``."""
+    adapter = CodexAdapter()
+    raw = {
+        "type": "TurnCompleted",
+        "msg": {
+            "usage": {
+                "input_tokens": 500,
+                "input_tokens_details": {"cached_tokens": 500},
+            },
+        },
+    }
+    stats = adapter.extract_cache_stats(raw)
+    assert stats is not None
+    assert stats.read_tokens == 500
+    assert stats.uncached_tokens == 0
+
+
+def test_extract_cache_stats_returns_none_when_no_usage() -> None:
+    adapter = CodexAdapter()
+    assert adapter.extract_cache_stats({"type": "TurnStarted"}) is None
+    assert (
+        adapter.extract_cache_stats({"type": "CommandExecution", "command": "ls"})
+        is None
+    )
+
+
+def test_extract_cache_stats_returns_none_on_empty_usage() -> None:
+    adapter = CodexAdapter()
+    assert adapter.extract_cache_stats({"usage": {}}) is None
+    assert adapter.extract_cache_stats({"usage": {"input_tokens": 0}}) is None
+
+
+def test_extract_cache_stats_clamps_negative_uncached_to_zero() -> None:
+    """If cached_tokens exceeds input_tokens (shouldn't happen but defensive)."""
+    adapter = CodexAdapter()
+    raw = {
+        "usage": {
+            "input_tokens": 100,
+            "input_tokens_details": {"cached_tokens": 500},
+        },
+    }
+    stats = adapter.extract_cache_stats(raw)
+    assert stats is not None
+    assert stats.uncached_tokens == 0
+
+
+def test_extract_cache_stats_defensive_on_malformed_shapes() -> None:
+    adapter = CodexAdapter()
+    assert adapter.extract_cache_stats({"usage": "not a dict"}) is None
+    assert adapter.extract_cache_stats({"msg": "not a dict"}) is None
+    assert (
+        adapter.extract_cache_stats({"usage": {"input_tokens_details": "not dict"}})
+        is None
+    )
 
 
 def test_registered_in_adapters_registry() -> None:

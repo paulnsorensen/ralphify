@@ -39,6 +39,30 @@ class AdapterEvent(NamedTuple):
     raw: dict | None = None
 
 
+class CacheStats(NamedTuple):
+    """Prompt-cache token accounting for a single model call.
+
+    Counts are input-side tokens only (caching does not apply to output):
+
+    - ``read_tokens``    — input served from cache (the cheap tokens).
+    - ``write_tokens``   — input newly written to cache this call.  Claude
+      reports this as ``cache_creation_input_tokens``; APIs that do not
+      distinguish creation from a regular miss (e.g. OpenAI Responses)
+      report ``0`` here.
+    - ``uncached_tokens`` — input that bypassed cache entirely.
+
+    Total prompt tokens are ``read + write + uncached``.  A ratio of
+    ``read_tokens / (read + write + uncached)`` gives the effective cache
+    hit rate for that call.  Adapters return ``None`` from
+    :meth:`CLIAdapter.extract_cache_stats` when an event carries no usage
+    payload, so callers can distinguish "no data" from "zero cache hits".
+    """
+
+    read_tokens: int
+    write_tokens: int
+    uncached_tokens: int
+
+
 @runtime_checkable
 class CLIAdapter(Protocol):
     """Protocol every CLI adapter must satisfy.
@@ -54,6 +78,7 @@ class CLIAdapter(Protocol):
     renders_structured_peek: bool
     supports_soft_wind_down: bool
     requires_full_stdout_for_completion: bool
+    supports_prompt_caching: bool
 
     def matches(self, cmd: list[str]) -> bool:
         """Return True if this adapter handles the given agent command."""
@@ -110,6 +135,22 @@ class CLIAdapter(Protocol):
         """
         ...
 
+    def extract_cache_stats(self, raw: dict) -> CacheStats | None:
+        """Return prompt-cache token accounting for a single parsed event.
+
+        Called once per :class:`AdapterEvent` the caller wants stats for —
+        typically the terminal ``result`` event, but adapters that emit
+        per-turn usage may surface stats on every turn boundary too.
+        Returns ``None`` when *raw* has no usage payload (not every event
+        carries one).
+
+        Adapters with ``supports_prompt_caching`` set False MAY always
+        return ``None``; the flag signals "this CLI has no observable
+        caching story", whereas ``None`` from a capable adapter just means
+        "this particular event had no usage data".
+        """
+        ...
+
 
 ADAPTERS: list[CLIAdapter] = []
 """Adapter registry, populated at import time by concrete adapter modules.
@@ -153,6 +194,7 @@ __all__ = [
     "AdapterEvent",
     "AdapterEventKind",
     "CLIAdapter",
+    "CacheStats",
     "CountsWhat",
     "select_adapter",
 ]
