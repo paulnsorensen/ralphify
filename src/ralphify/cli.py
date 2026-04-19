@@ -27,12 +27,17 @@ from ralphify._frontmatter import (
     CMD_FIELD_NAME,
     CMD_FIELD_RUN,
     CMD_FIELD_TIMEOUT,
+    HOOK_FIELD_EVENT,
+    HOOK_FIELD_RUN,
     NAME_RE,
     FIELD_AGENT,
     FIELD_ARGS,
     FIELD_COMMANDS,
     FIELD_CREDIT,
     FIELD_COMPLETION_SIGNAL,
+    FIELD_HOOKS,
+    FIELD_MAX_TURNS,
+    FIELD_MAX_TURNS_GRACE,
     FIELD_STOP_ON_COMPLETION_SIGNAL,
     RALPH_MARKER,
     VALID_NAME_CHARS_MSG,
@@ -48,6 +53,7 @@ from ralphify._run_types import (
     generate_run_id,
 )
 from ralphify.engine import run_loop
+from ralphify.hooks import HOOK_EVENT_NAMES, AgentHook, ShellAgentHook
 
 if IS_WINDOWS:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -477,6 +483,77 @@ def _validate_stop_on_completion_signal(raw_value: Any) -> bool:
     return raw_value
 
 
+def _validate_max_turns(raw: Any) -> int | None:
+    """Validate the ``max_turns`` frontmatter field.
+
+    Returns ``None`` when absent (no cap).  Exits with an error when the
+    value is not a positive integer.
+    """
+    if raw is None:
+        return None
+    if isinstance(raw, bool) or not isinstance(raw, int) or raw < 1:
+        _exit_error(f"'{FIELD_MAX_TURNS}' must be a positive integer, got {raw!r}.")
+    return raw
+
+
+def _validate_max_turns_grace(raw: Any, max_turns: int | None) -> int:
+    """Validate the ``max_turns_grace`` field.
+
+    Defaults to ``2`` when absent.  Must be a non-negative integer and
+    strictly less than *max_turns* (when *max_turns* is set).
+    """
+    if raw is None:
+        grace = 2
+    elif isinstance(raw, bool) or not isinstance(raw, int) or raw < 0:
+        _exit_error(
+            f"'{FIELD_MAX_TURNS_GRACE}' must be a non-negative integer, got {raw!r}."
+        )
+    else:
+        grace = raw
+    if max_turns is not None and grace >= max_turns:
+        _exit_error(
+            f"'{FIELD_MAX_TURNS_GRACE}' ({grace}) must be less than "
+            f"'{FIELD_MAX_TURNS}' ({max_turns})."
+        )
+    return grace
+
+
+def _validate_hooks(raw: Any) -> list[AgentHook]:
+    """Validate the ``hooks`` frontmatter field and return :class:`ShellAgentHook` list.
+
+    The field is a list of ``{event, run}`` mappings.  Each ``event`` must
+    be one of the names in :data:`ralphify.hooks.HOOK_EVENT_NAMES`.
+    Returns an empty list when the field is absent.
+    """
+    if raw is None:
+        return []
+    if not isinstance(raw, list):
+        _exit_error(f"'{FIELD_HOOKS}' must be a list of {{event, run}} mappings.")
+    hooks: list[AgentHook] = []
+    for entry in raw:
+        if (
+            not isinstance(entry, dict)
+            or HOOK_FIELD_EVENT not in entry
+            or HOOK_FIELD_RUN not in entry
+        ):
+            _exit_error(
+                f"Each hook must have '{HOOK_FIELD_EVENT}' and '{HOOK_FIELD_RUN}' fields."
+            )
+        event = entry[HOOK_FIELD_EVENT]
+        command = entry[HOOK_FIELD_RUN]
+        if not _is_nonempty_string(event):
+            _exit_error(f"Hook '{HOOK_FIELD_EVENT}' must be a non-empty string.")
+        if event not in HOOK_EVENT_NAMES:
+            _exit_error(
+                f"Unknown hook event {event!r}. "
+                f"Valid events: {', '.join(sorted(HOOK_EVENT_NAMES))}."
+            )
+        if not _is_nonempty_string(command):
+            _exit_error(f"Hook '{HOOK_FIELD_RUN}' must be a non-empty string.")
+        hooks.append(ShellAgentHook(event=event, command=command))
+    return hooks
+
+
 def _validate_run_options(
     max_iterations: int | None,
     delay: float,
@@ -524,6 +601,11 @@ def _build_run_config(
     stop_on_completion_signal = _validate_stop_on_completion_signal(
         fm.get(FIELD_STOP_ON_COMPLETION_SIGNAL)
     )
+    max_turns = _validate_max_turns(fm.get(FIELD_MAX_TURNS))
+    max_turns_grace = _validate_max_turns_grace(
+        fm.get(FIELD_MAX_TURNS_GRACE), max_turns
+    )
+    hooks = _validate_hooks(fm.get(FIELD_HOOKS))
 
     return RunConfig(
         agent=agent,
@@ -538,6 +620,9 @@ def _build_run_config(
         log_dir=Path(log_dir) if log_dir else None,
         project_root=Path.cwd(),
         credit=credit,
+        max_turns=max_turns,
+        max_turns_grace=max_turns_grace,
+        hooks=hooks,
         completion_signal=completion_signal,
         stop_on_completion_signal=stop_on_completion_signal,
     )
