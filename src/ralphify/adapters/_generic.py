@@ -10,7 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ralphify._promise import has_promise_completion
-from ralphify.adapters import AdapterEvent, CountsWhat
+from ralphify.adapters import AdapterEvent, CacheStats, CountsWhat
 
 
 class GenericAdapter:
@@ -24,6 +24,9 @@ class GenericAdapter:
     # Untyped agents have no streaming result event; the engine must keep
     # the full stdout buffer if it wants promise detection.
     requires_full_stdout_for_completion: bool = True
+    # Unknown CLI — no schema to extract usage from, so treat caching as
+    # unobservable.  ``extract_cache_stats`` always returns ``None``.
+    supports_prompt_caching: bool = False
 
     def matches(self, cmd: list[str]) -> bool:
         return False
@@ -68,3 +71,8 @@ class GenericAdapter:
         raise NotImplementedError(
             "GenericAdapter does not support soft wind-down; max_turns will hard-kill."
         )
+
+    def extract_cache_stats(self, raw: dict) -> CacheStats | None:
+        """Unknown CLI — no parseable usage schema.  Always ``None``."""
+        del raw
+        return None

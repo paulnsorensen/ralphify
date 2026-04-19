@@ -41,3 +41,10 @@ def test_all_adapters_satisfy_protocol() -> None:
     """Runtime Protocol check catches shape regressions in any adapter."""
     for adapter in ADAPTERS:
         assert isinstance(adapter, CLIAdapter)
+
+
+def test_generic_adapter_has_no_cache_support() -> None:
+    generic = GenericAdapter()
+    assert generic.supports_prompt_caching is False
+    assert generic.extract_cache_stats({}) is None
+    assert generic.extract_cache_stats({"usage": {"input_tokens": 100}}) is None

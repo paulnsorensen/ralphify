@@ -21,7 +21,7 @@ import json
 from pathlib import Path
 
 from ralphify._promise import has_promise_completion
-from ralphify.adapters import ADAPTERS, AdapterEvent, CountsWhat
+from ralphify.adapters import ADAPTERS, AdapterEvent, CacheStats, CountsWhat
 
 
 CLAUDE_BINARY_STEM = "claude"
@@ -48,6 +48,13 @@ class ClaudeAdapter:
     # via the stream-json ``result`` event, so the engine does not need to
     # buffer the full stdout to scan for the promise tag.
     requires_full_stdout_for_completion: bool = False
+    # Claude Code auto-injects ``cache_control: ephemeral`` on the system
+    # prompt, CLAUDE.md, and tool defs.  Every assistant and result event
+    # carries a ``usage`` object with ``cache_creation_input_tokens`` and
+    # ``cache_read_input_tokens`` fields — we surface those as
+    # :class:`CacheStats` so ralph-loop iterations within the 5-minute TTL
+    # can be observed hitting cache.
+    supports_prompt_caching: bool = True
 
     def matches(self, cmd: list[str]) -> bool:
         if not cmd:
@@ -157,6 +164,32 @@ class ClaudeAdapter:
             "for Phase 3 of the CLI adapter layer spec."
         )
 
+    def extract_cache_stats(self, raw: dict) -> CacheStats | None:
+        """Extract ``CacheStats`` from a Claude stream-json event's usage block.
+
+        Usage lives at ``message.usage`` on ``assistant`` events and at
+        top-level ``usage`` on the terminal ``result`` event; both shapes
+        are accepted.  Returns ``None`` when no usage object is present or
+        has no readable integer fields — the caller can distinguish "event
+        had no usage" from zero-hit cache runs.
+
+        The three relevant fields are ``input_tokens`` (uncached input),
+        ``cache_creation_input_tokens`` (tokens written to cache this call),
+        and ``cache_read_input_tokens`` (tokens served from cache).  Missing
+        fields are treated as zero.
+        """
+        usage = _extract_usage_dict(raw)
+        if usage is None:
+            return None
+        read = _int_or_zero(usage.get("cache_read_input_tokens"))
+        write = _int_or_zero(usage.get("cache_creation_input_tokens"))
+        uncached = _int_or_zero(usage.get("input_tokens"))
+        if read == 0 and write == 0 and uncached == 0:
+            return None
+        return CacheStats(
+            read_tokens=read, write_tokens=write, uncached_tokens=uncached
+        )
+
 
 def _iter_content_blocks(raw: dict) -> list[dict]:
     """Return the ``message.content`` list, filtered to dict blocks only."""
@@ -167,6 +200,24 @@ def _iter_content_blocks(raw: dict) -> list[dict]:
     if not isinstance(content, list):
         return []
     return [block for block in content if isinstance(block, dict)]
+
+
+def _extract_usage_dict(raw: dict) -> dict | None:
+    """Return the usage dict from either top-level or nested ``message.usage``."""
+    usage = raw.get("usage")
+    if isinstance(usage, dict):
+        return usage
+    message = raw.get("message")
+    if isinstance(message, dict):
+        nested = message.get("usage")
+        if isinstance(nested, dict):
+            return nested
+    return None
+
+
+def _int_or_zero(value: object) -> int:
+    """Coerce a usage field to int; non-ints become zero."""
+    return value if isinstance(value, int) and not isinstance(value, bool) else 0
 
 
 ADAPTERS.append(ClaudeAdapter())

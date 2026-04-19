@@ -175,6 +175,94 @@ def test_capability_flags() -> None:
     assert adapter.renders_structured_peek is True
     assert adapter.supports_soft_wind_down is True
     assert adapter.requires_full_stdout_for_completion is False
+    assert adapter.supports_prompt_caching is True
+
+
+def test_extract_cache_stats_from_assistant_usage() -> None:
+    adapter = ClaudeAdapter()
+    raw = {
+        "type": "assistant",
+        "message": {
+            "content": [],
+            "usage": {
+                "input_tokens": 100,
+                "output_tokens": 50,
+                "cache_creation_input_tokens": 2000,
+                "cache_read_input_tokens": 8000,
+            },
+        },
+    }
+    stats = adapter.extract_cache_stats(raw)
+    assert stats is not None
+    assert stats.read_tokens == 8000
+    assert stats.write_tokens == 2000
+    assert stats.uncached_tokens == 100
+
+
+def test_extract_cache_stats_from_result_event_top_level_usage() -> None:
+    """Claude's terminal result event carries usage at the top level."""
+    adapter = ClaudeAdapter()
+    raw = {
+        "type": "result",
+        "result": "done",
+        "usage": {
+            "input_tokens": 5,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 12345,
+        },
+    }
+    stats = adapter.extract_cache_stats(raw)
+    assert stats is not None
+    assert stats.read_tokens == 12345
+    assert stats.write_tokens == 0
+    assert stats.uncached_tokens == 5
+
+
+def test_extract_cache_stats_returns_none_when_no_usage() -> None:
+    adapter = ClaudeAdapter()
+    assert adapter.extract_cache_stats({"type": "assistant"}) is None
+    assert (
+        adapter.extract_cache_stats({"type": "assistant", "message": {"content": []}})
+        is None
+    )
+
+
+def test_extract_cache_stats_returns_none_when_all_counts_zero() -> None:
+    """An empty usage object is indistinguishable from no-data; return None."""
+    adapter = ClaudeAdapter()
+    raw = {
+        "type": "assistant",
+        "message": {"usage": {"input_tokens": 0}},
+    }
+    assert adapter.extract_cache_stats(raw) is None
+
+
+def test_extract_cache_stats_treats_missing_fields_as_zero() -> None:
+    """Older Claude API responses may omit cache_* fields entirely."""
+    adapter = ClaudeAdapter()
+    raw = {
+        "type": "assistant",
+        "message": {"usage": {"input_tokens": 42}},
+    }
+    stats = adapter.extract_cache_stats(raw)
+    assert stats is not None
+    assert stats.read_tokens == 0
+    assert stats.write_tokens == 0
+    assert stats.uncached_tokens == 42
+
+
+def test_extract_cache_stats_defensive_on_malformed_shapes() -> None:
+    adapter = ClaudeAdapter()
+    assert adapter.extract_cache_stats({"usage": "not a dict"}) is None
+    assert adapter.extract_cache_stats({"message": "not a dict"}) is None
+    assert (
+        adapter.extract_cache_stats(
+            {"usage": {"input_tokens": "twelve", "cache_read_input_tokens": None}}
+        )
+        is None
+    )
+    # Booleans must not leak through as 1/0 — they are not real counts.
+    assert adapter.extract_cache_stats({"usage": {"input_tokens": True}}) is None
 
 
 def test_registered_in_adapters_registry() -> None:

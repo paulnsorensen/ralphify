@@ -122,6 +122,19 @@ def test_capability_flags() -> None:
     assert adapter.renders_structured_peek is False
     assert adapter.supports_soft_wind_down is False
     assert adapter.requires_full_stdout_for_completion is True
+    assert adapter.supports_prompt_caching is False
+
+
+def test_extract_cache_stats_always_returns_none() -> None:
+    """Copilot exposes no verified usage schema; never claim cache stats."""
+    adapter = CopilotAdapter()
+    assert adapter.extract_cache_stats({}) is None
+    assert (
+        adapter.extract_cache_stats(
+            {"usage": {"input_tokens": 1000, "cached_tokens": 500}}
+        )
+        is None
+    )
 
 
 def test_registered_in_adapters_registry() -> None:
