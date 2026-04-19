@@ -41,8 +41,11 @@ class CodexAdapter:
 
     name: str = "codex"
     counts_what: CountsWhat = "tool_use"
-    renders_structured: bool = True
-    supports_soft_windown: bool = True
+    # Codex emits structured JSON for parsing, but the console peek panel
+    # currently only understands Claude's stream-json schema. Keep raw-line
+    # rendering enabled until the emitter can render Codex events directly.
+    renders_structured: bool = False
+    supports_soft_wind_down: bool = True
 
     def matches(self, cmd: list[str]) -> bool:
         if not cmd:

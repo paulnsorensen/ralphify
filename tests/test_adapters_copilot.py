@@ -102,7 +102,7 @@ def test_capability_flags() -> None:
     assert adapter.name == "copilot"
     assert adapter.counts_what == "tool_use"
     assert adapter.renders_structured is False
-    assert adapter.supports_soft_windown is False
+    assert adapter.supports_soft_wind_down is False
 
 
 def test_registered_in_adapters_registry() -> None:

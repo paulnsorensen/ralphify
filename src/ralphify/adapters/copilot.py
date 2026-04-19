@@ -11,7 +11,7 @@ Capability matrix:
 - ``counts_what = "tool_use"`` with an alpha caveat — counting accuracy
   depends on ongoing schema discovery (see :file:`docs/agents.md`).
 - ``renders_structured = False`` — peek panel stays in raw-line mode.
-- ``supports_soft_windown = False`` — Copilot has no hook system as of
+- ``supports_soft_wind_down = False`` — Copilot has no hook system as of
   2026-04, so ``install_wind_down_hook`` raises :class:`NotImplementedError`
   (which the engine downgrades to hard-cap-only).
 """
@@ -49,7 +49,7 @@ class CopilotAdapter:
     name: str = "copilot"
     counts_what: CountsWhat = "tool_use"
     renders_structured: bool = False
-    supports_soft_windown: bool = False
+    supports_soft_wind_down: bool = False
 
     def matches(self, cmd: list[str]) -> bool:
         if not cmd:
@@ -57,11 +57,25 @@ class CopilotAdapter:
         return Path(cmd[0]).stem == COPILOT_BINARY_STEM
 
     def build_command(self, cmd: list[str]) -> list[str]:
-        """Append ``--output-format json``.  Idempotent."""
+        """Ensure ``--output-format json`` is present.
+
+        Idempotent: running twice yields the same command. If the caller
+        already supplied ``--output-format <other>``, the existing value is
+        overwritten with ``json`` — we cannot honor a user-chosen format
+        while still emitting a parseable event stream.
+        """
         result = list(cmd)
-        for flag in _OUTPUT_FORMAT_FLAGS:
-            if flag not in result:
-                result.append(flag)
+        output_format_flag, output_format_value = _OUTPUT_FORMAT_FLAGS
+        try:
+            format_index = result.index(output_format_flag)
+        except ValueError:
+            result.extend(_OUTPUT_FORMAT_FLAGS)
+        else:
+            value_index = format_index + 1
+            if value_index < len(result):
+                result[value_index] = output_format_value
+            else:
+                result.append(output_format_value)
         return result
 
     def parse_event(self, line: str) -> AdapterEvent | None:

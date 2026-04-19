@@ -27,8 +27,9 @@ from ralphify.adapters import ADAPTERS, AdapterEvent, CountsWhat
 CLAUDE_BINARY_STEM = "claude"
 """Binary stem (``Path(cmd[0]).stem``) that identifies the Claude CLI."""
 
-_STREAM_FLAGS: tuple[str, ...] = ("--output-format", "stream-json", "--verbose")
-"""Flags appended to the Claude command to request structured streaming."""
+_OUTPUT_FORMAT_FLAG = "--output-format"
+_OUTPUT_FORMAT_VALUE = "stream-json"
+_VERBOSE_FLAG = "--verbose"
 
 _EVENT_TYPE_ASSISTANT = "assistant"
 _EVENT_TYPE_RESULT = "result"
@@ -42,7 +43,7 @@ class ClaudeAdapter:
     name: str = "claude"
     counts_what: CountsWhat = "tool_use"
     renders_structured: bool = True
-    supports_soft_windown: bool = True
+    supports_soft_wind_down: bool = True
 
     def matches(self, cmd: list[str]) -> bool:
         if not cmd:
@@ -50,24 +51,40 @@ class ClaudeAdapter:
         return Path(cmd[0]).stem == CLAUDE_BINARY_STEM
 
     def build_command(self, cmd: list[str]) -> list[str]:
-        """Append stream-json flags, skipping any already present.
+        """Ensure ``--output-format stream-json --verbose`` is present.
 
-        Idempotent: running twice yields the same command.
+        Idempotent: running twice yields the same command. If the caller
+        already supplied ``--output-format <other>``, the existing value is
+        overwritten with ``stream-json`` — we cannot honor a user-chosen
+        format while still emitting a parseable event stream.
         """
         result = list(cmd)
-        for flag in _STREAM_FLAGS:
-            if flag not in result:
-                result.append(flag)
+        try:
+            format_index = result.index(_OUTPUT_FORMAT_FLAG)
+        except ValueError:
+            result.extend([_OUTPUT_FORMAT_FLAG, _OUTPUT_FORMAT_VALUE])
+        else:
+            value_index = format_index + 1
+            if value_index < len(result):
+                result[value_index] = _OUTPUT_FORMAT_VALUE
+            else:
+                result.append(_OUTPUT_FORMAT_VALUE)
+        if _VERBOSE_FLAG not in result:
+            result.append(_VERBOSE_FLAG)
         return result
 
     def parse_event(self, line: str) -> AdapterEvent | None:
-        """Return a ``tool_use`` event for each assistant-emitted tool call.
+        """Parse one stream-json line into an :class:`AdapterEvent`.
 
-        Non-JSON lines, non-dict payloads, and events other than assistant
-        tool-use blocks return ``None``.  Each ``assistant`` message may
-        contain multiple tool_use blocks; callers receive the *first* one
-        — Claude's stream-json format emits one block per newline-delimited
-        message, so single-event dispatch matches the protocol.
+        Empty lines, non-JSON payloads, and non-dict JSON return ``None``.
+        ``result`` events return ``AdapterEvent(kind="result")``. An
+        ``assistant`` event whose content contains a ``tool_use`` block
+        returns the first such block as ``AdapterEvent(kind="tool_use")``;
+        Claude emits one tool_use block per assistant message, so
+        single-event dispatch matches the protocol. Every other parsed
+        event dict — including non-tool-use ``assistant`` messages —
+        returns ``AdapterEvent(kind="message")`` so callers can still
+        render them without counting against the turn cap.
         """
         stripped = line.strip()
         if not stripped:

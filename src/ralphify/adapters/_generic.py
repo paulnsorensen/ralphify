@@ -19,7 +19,7 @@ class GenericAdapter:
     name: str = "generic"
     counts_what: CountsWhat = "none"
     renders_structured: bool = False
-    supports_soft_windown: bool = False
+    supports_soft_wind_down: bool = False
 
     def matches(self, cmd: list[str]) -> bool:
         return False

@@ -121,8 +121,8 @@ def test_capability_flags() -> None:
     adapter = CodexAdapter()
     assert adapter.name == "codex"
     assert adapter.counts_what == "tool_use"
-    assert adapter.renders_structured is True
-    assert adapter.supports_soft_windown is True
+    assert adapter.renders_structured is False
+    assert adapter.supports_soft_wind_down is True
 
 
 def test_registered_in_adapters_registry() -> None:

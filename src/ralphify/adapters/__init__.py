@@ -51,7 +51,7 @@ class CLIAdapter(Protocol):
     name: str
     counts_what: CountsWhat
     renders_structured: bool
-    supports_soft_windown: bool
+    supports_soft_wind_down: bool
 
     def matches(self, cmd: list[str]) -> bool:
         """Return True if this adapter handles the given agent command."""
@@ -89,7 +89,7 @@ class CLIAdapter(Protocol):
     ) -> dict[str, str]:
         """Write hook config files into *tempdir* and return env-var overrides.
 
-        Only called when ``supports_soft_windown`` is True.  Adapters that
+        Only called when ``supports_soft_wind_down`` is True.  Adapters that
         set the flag False may leave this unimplemented (a ``NotImplementedError``
         is acceptable and is treated as a runtime downgrade to hard-cap-only).
         """
