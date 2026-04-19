@@ -171,7 +171,7 @@ class TestPromiseCompletionSignals:
         mock_execute_agent.return_value = AgentResult(
             returncode=0,
             elapsed=0.01,
-            result_text="<promise>RALPH_PROMISE_COMPLETE</promise>",
+            captured_stdout="<promise>RALPH_PROMISE_COMPLETE</promise>\n",
         )
 
         run_loop(config, state, emitter)
@@ -210,7 +210,7 @@ class TestPromiseCompletionSignals:
         mock_execute_agent.return_value = AgentResult(
             returncode=0,
             elapsed=0.01,
-            result_text="<promise>CUSTOM_DONE</promise>",
+            captured_stdout="<promise>CUSTOM_DONE</promise>\n",
         )
 
         run_loop(config, state, emitter)
@@ -243,7 +243,7 @@ class TestPromiseCompletionSignals:
         mock_execute_agent.return_value = AgentResult(
             returncode=0,
             elapsed=0.01,
-            result_text="<promise>\n  CUSTOM\tDONE  \n</promise>",
+            captured_stdout="<promise>\n  CUSTOM\tDONE  \n</promise>\n",
         )
 
         run_loop(config, state, NullEmitter())
@@ -311,8 +311,12 @@ class TestPromiseCompletionSignals:
     def test_structured_agents_ignore_raw_stdout_for_promise_detection(
         self, mock_execute_agent, tmp_path
     ):
+        """ClaudeAdapter only looks at ``result`` events — embedded
+        promise tags inside ``status`` or ``assistant`` JSON messages
+        must not trigger early completion."""
         config = make_config(
             tmp_path,
+            agent="claude",
             max_iterations=2,
             stop_on_completion_signal=True,
         )

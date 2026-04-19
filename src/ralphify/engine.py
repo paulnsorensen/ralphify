@@ -9,7 +9,6 @@ The loop: run commands → assemble prompt → pipe to agent → repeat.
 
 from __future__ import annotations
 
-import json
 import shlex
 import traceback
 from datetime import datetime, timezone
@@ -39,7 +38,6 @@ from ralphify._frontmatter import (
     parse_frontmatter,
 )
 from ralphify._output import format_duration
-from ralphify._promise import has_promise_completion
 from ralphify._run_types import (
     Command,
     RunConfig,
@@ -48,6 +46,7 @@ from ralphify._run_types import (
 )
 from ralphify._resolver import resolve_all, resolve_args
 from ralphify._runner import run_command
+from ralphify.adapters import select_adapter
 
 
 _PAUSE_POLL_INTERVAL = 0.25  # seconds between pause/resume checks
@@ -179,32 +178,12 @@ def _run_agent_phase(
             f"Invalid agent command syntax: {config.agent!r}. {_field_hint(FIELD_AGENT)}"
         ) from exc
 
+    adapter = select_adapter(cmd)
     completion_signal = config.completion_signal
-    promise_completed_from_output = False
-    promise_scan_tail = ""
-    promise_scan_limit = max(4096, len(completion_signal) * 4 + 64)
-
-    def _record_promise_fragment(fragment: str) -> None:
-        nonlocal promise_completed_from_output, promise_scan_tail
-        if promise_completed_from_output or not fragment:
-            return
-        promise_scan_tail = (promise_scan_tail + fragment)[-promise_scan_limit:]
-        promise_completed_from_output = has_promise_completion(
-            promise_scan_tail, completion_signal
-        )
 
     def _on_output_line(line: str, stream: OutputStream) -> None:
         if emit.wants_agent_output_lines():
             emit.agent_output_line(line, stream, state.iteration)
-        if stream != "stdout":
-            return
-        stripped = line.strip()
-        if not stripped:
-            return
-        try:
-            json.loads(stripped)
-        except json.JSONDecodeError:
-            _record_promise_fragment(f"{line}\n")
 
     if emit.wants_agent_output_lines() or config.log_dir is not None:
         on_output_line = _on_output_line
@@ -225,9 +204,11 @@ def _run_agent_phase(
             timeout=config.timeout,
             log_dir=config.log_dir,
             iteration=state.iteration,
+            adapter=adapter,
             on_activity=on_activity,
             on_output_line=on_output_line,
             capture_result_text=True,
+            capture_stdout=True,
         )
     except FileNotFoundError as exc:
         raise FileNotFoundError(
@@ -235,12 +216,8 @@ def _run_agent_phase(
         ) from exc
 
     duration = format_duration(agent.elapsed)
-    completion_text = (
-        agent.result_text if agent.result_text is not None else agent.captured_stdout
-    )
-    promise_completed = agent.success and (
-        promise_completed_from_output
-        or has_promise_completion(completion_text, completion_signal)
+    promise_completed = agent.success and adapter.extract_completion_signal(
+        agent.captured_stdout or "", completion_signal
     )
     if promise_completed:
         state.promise_completed = True

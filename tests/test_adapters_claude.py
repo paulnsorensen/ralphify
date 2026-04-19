@@ -125,11 +125,13 @@ def test_extract_completion_signal_from_result_event() -> None:
     assert adapter.extract_completion_signal(stdout, "OTHER") is False
 
 
-def test_extract_completion_signal_falls_back_to_full_stdout() -> None:
+def test_extract_completion_signal_ignores_raw_stdout_without_result_event() -> None:
+    """Without a ``result`` event, ClaudeAdapter must not match promise
+    tags embedded in raw stdout — the structured protocol is the only
+    trusted source for completion signals."""
     adapter = ClaudeAdapter()
-    # No valid result event — completion tag embedded elsewhere
     stdout = "raw text <promise>MARKER</promise> trailing"
-    assert adapter.extract_completion_signal(stdout, "MARKER") is True
+    assert adapter.extract_completion_signal(stdout, "MARKER") is False
 
 
 def test_extract_completion_signal_handles_empty_stdout() -> None:

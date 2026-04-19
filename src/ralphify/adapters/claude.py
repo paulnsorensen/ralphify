@@ -100,9 +100,10 @@ class ClaudeAdapter:
 
         Claude's terminal ``result`` event carries the last assistant
         message as a plain string; the promise tag may live anywhere in
-        that text.  Fallback: if no ``result`` event is found, scan the
-        entire stdout so promise detection still works when the stream
-        was truncated or the event order shifted.
+        that text.  Only the ``result`` event is considered — raw JSON
+        from ``status`` or ``assistant`` messages can legitimately echo
+        ``<promise>...</promise>`` substrings that must not trigger
+        completion.
         """
         for line in reversed(stdout.splitlines()):
             stripped = line.strip()
@@ -118,7 +119,7 @@ class ClaudeAdapter:
                 and isinstance(parsed.get(_RESULT_FIELD), str)
             ):
                 return has_promise_completion(parsed[_RESULT_FIELD], user_signal)
-        return has_promise_completion(stdout, user_signal)
+        return False
 
     def install_wind_down_hook(
         self,

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from ralphify._promise import has_promise_completion
 from ralphify.adapters import AdapterEvent, CountsWhat
 
 
@@ -30,7 +31,14 @@ class GenericAdapter:
         return None
 
     def extract_completion_signal(self, stdout: str, user_signal: str) -> bool:
-        return False
+        """Scan the full stdout for the promise tag.
+
+        Unknown CLIs have no event schema to parse, so the whole-stdout
+        regex scan is the only reliable path.  Matches the current
+        engine-side behavior so switching to adapter-owned detection does
+        not regress promise completion for untyped agents.
+        """
+        return has_promise_completion(stdout, user_signal)
 
     def install_wind_down_hook(
         self,
