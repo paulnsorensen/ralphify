@@ -101,7 +101,8 @@ def test_capability_flags() -> None:
     adapter = CopilotAdapter()
     assert adapter.name == "copilot"
     assert adapter.counts_what == "tool_use"
-    assert adapter.renders_structured is False
+    assert adapter.supports_streaming is False
+    assert adapter.renders_structured_peek is False
     assert adapter.supports_soft_wind_down is False
 
 

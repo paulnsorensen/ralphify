@@ -149,7 +149,8 @@ def test_capability_flags() -> None:
     adapter = ClaudeAdapter()
     assert adapter.name == "claude"
     assert adapter.counts_what == "tool_use"
-    assert adapter.renders_structured is True
+    assert adapter.supports_streaming is True
+    assert adapter.renders_structured_peek is True
     assert adapter.supports_soft_wind_down is True
 
 

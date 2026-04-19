@@ -429,7 +429,7 @@ class TestExecuteAgentDispatch:
         structured output."""
         claude_adapter = select_adapter(["claude"])
         assert isinstance(claude_adapter, ClaudeAdapter)
-        monkeypatch.setattr(claude_adapter, "renders_structured", True)
+        monkeypatch.setattr(claude_adapter, "supports_streaming", True)
         mock_popen.return_value = make_mock_popen(
             stdout_lines='{"type": "result", "result": "done"}\n',
             returncode=0,
@@ -455,7 +455,7 @@ class TestExecuteAgentDispatch:
 
         claude_adapter = select_adapter(["claude"])
         assert isinstance(claude_adapter, ClaudeAdapter)
-        monkeypatch.setattr(claude_adapter, "renders_structured", True)
+        monkeypatch.setattr(claude_adapter, "supports_streaming", True)
         monkeypatch.setattr("ralphify._agent._run_agent_streaming", fake_streaming)
 
         execute_agent(
@@ -488,7 +488,7 @@ class TestExecuteAgentDispatch:
         fake_blocking = MagicMock(return_value=AgentResult(returncode=0, elapsed=0.01))
 
         # The autouse conftest fixture already forces every adapter's
-        # renders_structured flag to False, so ``echo`` falls into the
+        # supports_streaming flag to False, so ``echo`` falls into the
         # blocking path through the GenericAdapter fallback.
         monkeypatch.setattr("ralphify._agent._run_agent_blocking", fake_blocking)
 

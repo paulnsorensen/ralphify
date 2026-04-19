@@ -423,7 +423,7 @@ def _run_agent_streaming(
 ) -> AgentResult:
     """Run the agent subprocess with line-by-line streaming of JSON output.
 
-    Used for adapters whose ``renders_structured`` flag is True (e.g. Claude
+    Used for adapters whose ``supports_streaming`` flag is True (e.g. Claude
     Code's ``--output-format stream-json``, Codex's ``--json``).  The command
     list *must already include* any adapter-required flags —
     :func:`execute_agent` calls ``adapter.build_command`` before dispatching.
@@ -755,7 +755,7 @@ def execute_agent(
     """Run the agent subprocess, auto-selecting streaming or blocking mode.
 
     The *adapter* argument (or :func:`select_adapter` when omitted) decides
-    which execution path runs: adapters whose ``renders_structured`` flag is
+    which execution path runs: adapters whose ``supports_streaming`` flag is
     True take the line-streaming path that drives ``on_activity`` callbacks;
     all others take the blocking path with concurrent stdout/stderr drain.
     ``adapter.build_command(cmd)`` is applied before spawning, so the CLI
@@ -768,13 +768,13 @@ def execute_agent(
     if adapter is None:
         adapter = select_adapter(cmd)
     cmd = adapter.build_command(cmd)
-    renders_structured = adapter.renders_structured
+    supports_streaming = adapter.supports_streaming
     if capture_stdout is None:
         capture_stdout = log_dir is not None or (
-            not renders_structured and on_output_line is None and capture_result_text
+            not supports_streaming and on_output_line is None and capture_result_text
         )
 
-    if renders_structured:
+    if supports_streaming:
         return _run_agent_streaming(
             cmd,
             prompt,

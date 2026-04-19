@@ -18,7 +18,8 @@ class GenericAdapter:
 
     name: str = "generic"
     counts_what: CountsWhat = "none"
-    renders_structured: bool = False
+    supports_streaming: bool = False
+    renders_structured_peek: bool = False
     supports_soft_wind_down: bool = False
 
     def matches(self, cmd: list[str]) -> bool:

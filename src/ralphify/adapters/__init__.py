@@ -50,7 +50,8 @@ class CLIAdapter(Protocol):
 
     name: str
     counts_what: CountsWhat
-    renders_structured: bool
+    supports_streaming: bool
+    renders_structured_peek: bool
     supports_soft_wind_down: bool
 
     def matches(self, cmd: list[str]) -> bool:

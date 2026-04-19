@@ -42,7 +42,8 @@ class ClaudeAdapter:
 
     name: str = "claude"
     counts_what: CountsWhat = "tool_use"
-    renders_structured: bool = True
+    supports_streaming: bool = True
+    renders_structured_peek: bool = True
     supports_soft_wind_down: bool = True
 
     def matches(self, cmd: list[str]) -> bool:

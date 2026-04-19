@@ -10,7 +10,9 @@ Capability matrix:
 
 - ``counts_what = "tool_use"`` with an alpha caveat — counting accuracy
   depends on ongoing schema discovery (see :file:`docs/agents.md`).
-- ``renders_structured = False`` — peek panel stays in raw-line mode.
+- ``supports_streaming = False`` — event schema is unverified, so the
+  adapter falls through the blocking path and avoids per-line parsing.
+- ``renders_structured_peek = False`` — peek panel stays in raw-line mode.
 - ``supports_soft_wind_down = False`` — Copilot has no hook system as of
   2026-04, so ``install_wind_down_hook`` raises :class:`NotImplementedError`
   (which the engine downgrades to hard-cap-only).
@@ -48,7 +50,8 @@ class CopilotAdapter:
 
     name: str = "copilot"
     counts_what: CountsWhat = "tool_use"
-    renders_structured: bool = False
+    supports_streaming: bool = False
+    renders_structured_peek: bool = False
     supports_soft_wind_down: bool = False
 
     def matches(self, cmd: list[str]) -> bool:

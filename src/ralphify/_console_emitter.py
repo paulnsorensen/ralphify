@@ -109,19 +109,19 @@ _PEEK_OFF_MSG = (
 # ── Adapter-driven structured-output detection ────────────────────────
 
 
-def _agent_renders_structured(agent: str) -> bool:
-    """Return True if *agent*'s adapter emits structured peek-panel events.
+def _agent_renders_structured_peek(agent: str) -> bool:
+    """Return True if *agent*'s adapter feeds the structured peek panel.
 
     Drives the ``ConsoleEmitter`` choice between :class:`_IterationPanel`
     (structured) and :class:`_IterationSpinner` (raw).  Delegates to
-    :func:`select_adapter` so adding a new CLI with structured output
+    :func:`select_adapter` so adding a new CLI with peek-panel support
     requires no edits here.
     """
     try:
         cmd = shlex.split(agent)
     except ValueError:
         return False
-    return select_adapter(cmd).renders_structured
+    return select_adapter(cmd).renders_structured_peek
 
 
 # ── Tool argument abbreviation ────────────────────────────────────────
@@ -1252,7 +1252,7 @@ class ConsoleEmitter:
     def _on_run_started(self, data: RunStartedData) -> None:
         ralph_name = data["ralph_name"]
         agent = data["agent"]
-        self._structured_agent = _agent_renders_structured(agent)
+        self._structured_agent = _agent_renders_structured_peek(agent)
         with self._console_lock:
             self._console.print(
                 f"\n[bold {_brand.PURPLE}]{_ICON_PLAY} Running:[/] [bold]{escape_markup(ralph_name)}[/]"
