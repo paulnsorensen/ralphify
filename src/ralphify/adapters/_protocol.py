@@ -1,11 +1,12 @@
-"""Adapter Protocol, event type, and registry.
+"""Adapter Protocol and registry — the dependency-free core of the layer.
 
 Concrete adapter modules (:mod:`claude`, :mod:`codex`, :mod:`copilot`,
-:mod:`_generic`) import from here rather than from the package
-``__init__``.  The package ``__init__`` populates :data:`ADAPTERS` by
-importing concrete adapters, and those adapters need the Protocol
-before the ``__init__`` finishes executing — keeping the Protocol in a
-leaf module makes the import graph acyclic.
+:mod:`_generic`) import from here, not from the package ``__init__``.
+That prevents the circular-import risk a package-level Protocol would
+create: the ``__init__`` imports concrete adapters to populate
+:data:`ADAPTERS`, and those adapters need the Protocol *before* the
+package ``__init__`` finishes executing.  Splitting the Protocol into a
+leaf module keeps the import graph acyclic.
 """
 
 from __future__ import annotations

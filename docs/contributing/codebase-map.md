@@ -31,7 +31,10 @@ src/ralphify/           # All source code
 ├── _events.py          # Event types, emitter protocol, and BoundEmitter convenience wrapper
 ├── _keypress.py        # Cross-platform single-keypress listener (powers the `p` peek toggle)
 ├── _output.py          # ProcessResult base class, subprocess constants (SESSION_KWARGS, SUBPROCESS_TEXT_KWARGS), format durations
-└── _brand.py           # Brand color constants shared across CLI and console rendering
+├── _brand.py           # Brand color constants shared across CLI and console rendering
+├── hooks.py            # Agent lifecycle hooks — AgentHook Protocol, ShellAgentHook, CombinedAgentHook
+├── _wind_down_shim.py  # Module invoked by per-CLI hooks to nudge agents toward max_turns wind-down
+└── adapters/           # Per-CLI adapters (Claude, Codex, Copilot, Generic) — parse events, install wind-down hooks
 
 tests/                  # Pytest tests — one test file per module
 docs/                   # MkDocs site (Material theme) — user-facing documentation

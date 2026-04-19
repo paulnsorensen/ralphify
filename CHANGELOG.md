@@ -2,6 +2,18 @@
 
 All notable changes to ralphify are documented here.
 
+## Unreleased
+
+### Added
+
+- **CLI adapter layer** — pluggable `Adapter` protocol with implementations for Claude, Codex, Copilot, and a generic fallback. Adapters own command-line flag injection (e.g. Claude's `--output-format stream-json`, Codex's `--json`), per-CLI event parsing, and promise-tag completion detection.
+- **`max_turns` / `max_turns_grace` frontmatter fields** — cap the number of tool-use events per iteration. The agent is SIGTERM'd at `max_turns`; an optional soft wind-down message is injected `max_turns_grace` events earlier so Claude/Codex can hand off cleanly.
+- **Agent lifecycle hooks** — `AgentHook` protocol with `ShellAgentHook` (shell command) and `CombinedAgentHook` (fanout) implementations. Register via the `hooks` frontmatter field to observe iteration start/end, prompt assembly, tool use, turn cap, and completion events. See the new `docs/hooks.md` page.
+- **Per-CLI soft wind-down** — Claude's `PreToolUse` and Codex's `PostToolUse` hooks are installed into a per-iteration tempdir (`CLAUDE_CONFIG_DIR` / `CODEX_HOME` overrides) so the user's real config stays untouched.
+- **Codex example ralph** — `examples/codex/RALPH.md` demonstrates running Codex with `max_turns` and a `completion_signal`.
+
+---
+
 ## 0.4.0b3 — 2026-04-12
 
 ### Improved

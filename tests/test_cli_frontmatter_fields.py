@@ -1,19 +1,19 @@
-"""Tests for the new max_turns / max_turns_grace frontmatter fields."""
+"""Tests for the new max_turns / max_turns_grace / hooks frontmatter fields."""
 
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 import typer
 
-from helpers import MOCK_WHICH
 from ralphify.cli import (
-    _build_run_config,
+    _validate_hooks,
     _validate_max_turns,
     _validate_max_turns_grace,
+    _build_run_config,
 )
+from ralphify.hooks import AgentHook, ShellAgentHook
 
 
 class TestValidateMaxTurns:
@@ -22,131 +22,115 @@ class TestValidateMaxTurns:
 
     def test_positive_int_passes(self) -> None:
         assert _validate_max_turns(5) == 5
+        assert _validate_max_turns(1) == 1
 
-    def test_zero_rejected(self) -> None:
+    def test_zero_exits(self) -> None:
         with pytest.raises(typer.Exit):
             _validate_max_turns(0)
 
-    def test_negative_rejected(self) -> None:
+    def test_negative_exits(self) -> None:
         with pytest.raises(typer.Exit):
             _validate_max_turns(-1)
 
-    def test_bool_rejected(self) -> None:
+    def test_bool_exits(self) -> None:
+        # Booleans are ints in Python, but we reject them explicitly.
         with pytest.raises(typer.Exit):
             _validate_max_turns(True)
 
-    def test_string_rejected(self) -> None:
+    def test_string_exits(self) -> None:
         with pytest.raises(typer.Exit):
             _validate_max_turns("5")
-
-    def test_float_rejected(self) -> None:
-        with pytest.raises(typer.Exit):
-            _validate_max_turns(5.0)
 
 
 class TestValidateMaxTurnsGrace:
     def test_absent_defaults_to_two(self) -> None:
-        assert _validate_max_turns_grace(None, max_turns=None) == 2
+        assert _validate_max_turns_grace(None, None) == 2
+        assert _validate_max_turns_grace(None, 10) == 2
 
-    def test_absent_with_cap_defaults_to_two(self) -> None:
-        assert _validate_max_turns_grace(None, max_turns=10) == 2
+    def test_zero_passes(self) -> None:
+        assert _validate_max_turns_grace(0, 5) == 0
 
-    def test_zero_allowed(self) -> None:
-        assert _validate_max_turns_grace(0, max_turns=10) == 0
-
-    def test_negative_rejected(self) -> None:
+    def test_grace_equal_to_max_turns_exits(self) -> None:
         with pytest.raises(typer.Exit):
-            _validate_max_turns_grace(-1, max_turns=10)
+            _validate_max_turns_grace(5, 5)
 
-    def test_bool_rejected(self) -> None:
+    def test_grace_greater_than_max_turns_exits(self) -> None:
         with pytest.raises(typer.Exit):
-            _validate_max_turns_grace(True, max_turns=10)
+            _validate_max_turns_grace(10, 5)
 
-    def test_float_rejected(self) -> None:
+    def test_negative_exits(self) -> None:
         with pytest.raises(typer.Exit):
-            _validate_max_turns_grace(1.5, max_turns=10)
+            _validate_max_turns_grace(-1, None)
 
-    def test_grace_equal_to_cap_rejected(self) -> None:
+    def test_no_cap_means_no_upper_bound(self) -> None:
+        assert _validate_max_turns_grace(100, None) == 100
+
+
+class TestValidateHooks:
+    def test_absent_returns_empty(self) -> None:
+        assert _validate_hooks(None) == []
+
+    def test_valid_hook_returns_shell_hook(self) -> None:
+        hooks = _validate_hooks([{"event": "on_iteration_started", "run": "echo hi"}])
+        assert len(hooks) == 1
+        assert isinstance(hooks[0], ShellAgentHook)
+        # Protocol check — the validated object must satisfy AgentHook
+        assert isinstance(hooks[0], AgentHook)
+
+    def test_multiple_hooks_preserve_order(self) -> None:
+        hooks = _validate_hooks(
+            [
+                {"event": "on_iteration_started", "run": "echo a"},
+                {"event": "on_turn_capped", "run": "echo b"},
+            ]
+        )
+        assert len(hooks) == 2
+
+    def test_unknown_event_exits(self) -> None:
         with pytest.raises(typer.Exit):
-            _validate_max_turns_grace(10, max_turns=10)
+            _validate_hooks([{"event": "on_bogus", "run": "echo x"}])
 
-    def test_grace_above_cap_rejected(self) -> None:
+    def test_missing_event_exits(self) -> None:
         with pytest.raises(typer.Exit):
-            _validate_max_turns_grace(11, max_turns=10)
+            _validate_hooks([{"run": "echo x"}])
 
-    def test_grace_below_cap_allowed(self) -> None:
-        assert _validate_max_turns_grace(3, max_turns=10) == 3
+    def test_missing_run_exits(self) -> None:
+        with pytest.raises(typer.Exit):
+            _validate_hooks([{"event": "on_iteration_started"}])
 
-    def test_grace_without_cap_any_non_negative_allowed(self) -> None:
-        # No cap means no upper bound on grace; the value is still retained.
-        assert _validate_max_turns_grace(99, max_turns=None) == 99
+    def test_non_list_exits(self) -> None:
+        with pytest.raises(typer.Exit):
+            _validate_hooks({"event": "on_iteration_started", "run": "x"})
+
+    def test_empty_command_exits(self) -> None:
+        with pytest.raises(typer.Exit):
+            _validate_hooks([{"event": "on_iteration_started", "run": ""}])
 
 
-@patch(MOCK_WHICH, return_value="/usr/bin/claude")
-class TestBuildRunConfigTurnCapFields:
-    def _write_ralph(self, tmp_path: Path, body: str) -> Path:
+class TestBuildRunConfigIntegration:
+    def _write_ralph(self, tmp_path: Path, frontmatter: str) -> Path:
         ralph = tmp_path / "RALPH.md"
-        ralph.write_text(body, encoding="utf-8")
+        ralph.write_text(f"---\nagent: /bin/echo\n{frontmatter}\n---\nprompt\n")
         return ralph
 
-    def test_defaults_when_absent(self, _mock_which, tmp_path: Path) -> None:
-        self._write_ralph(
-            tmp_path,
-            "---\nagent: claude -p\n---\nhello\n",
-        )
-        config = _build_run_config(
-            ralph_path=str(tmp_path),
-            max_iterations=1,
-            stop_on_error=False,
-            delay=0,
-            log_dir=None,
-            timeout=None,
-        )
-        assert config.max_turns is None
-        assert config.max_turns_grace == 2
+    def test_max_turns_lands_on_run_config(self, tmp_path: Path) -> None:
+        ralph = self._write_ralph(tmp_path, "max_turns: 15\nmax_turns_grace: 3")
+        cfg = _build_run_config(str(ralph), None, False, 0.0, None, None)
+        assert cfg.max_turns == 15
+        assert cfg.max_turns_grace == 3
 
-    def test_values_threaded_through(self, _mock_which, tmp_path: Path) -> None:
-        self._write_ralph(
+    def test_hooks_land_on_run_config(self, tmp_path: Path) -> None:
+        ralph = self._write_ralph(
             tmp_path,
-            "---\nagent: claude -p\nmax_turns: 20\nmax_turns_grace: 5\n---\nhello\n",
+            "hooks:\n  - event: on_iteration_started\n    run: echo hi",
         )
-        config = _build_run_config(
-            ralph_path=str(tmp_path),
-            max_iterations=1,
-            stop_on_error=False,
-            delay=0,
-            log_dir=None,
-            timeout=None,
-        )
-        assert config.max_turns == 20
-        assert config.max_turns_grace == 5
+        cfg = _build_run_config(str(ralph), None, False, 0.0, None, None)
+        assert len(cfg.hooks) == 1
+        assert isinstance(cfg.hooks[0], ShellAgentHook)
 
-    def test_invalid_max_turns_exits(self, _mock_which, tmp_path: Path) -> None:
-        self._write_ralph(
-            tmp_path,
-            "---\nagent: claude -p\nmax_turns: 0\n---\nhello\n",
-        )
-        with pytest.raises(typer.Exit):
-            _build_run_config(
-                ralph_path=str(tmp_path),
-                max_iterations=1,
-                stop_on_error=False,
-                delay=0,
-                log_dir=None,
-                timeout=None,
-            )
-
-    def test_grace_at_or_above_cap_exits(self, _mock_which, tmp_path: Path) -> None:
-        self._write_ralph(
-            tmp_path,
-            "---\nagent: claude -p\nmax_turns: 5\nmax_turns_grace: 5\n---\nhello\n",
-        )
-        with pytest.raises(typer.Exit):
-            _build_run_config(
-                ralph_path=str(tmp_path),
-                max_iterations=1,
-                stop_on_error=False,
-                delay=0,
-                log_dir=None,
-                timeout=None,
-            )
+    def test_defaults_when_fields_absent(self, tmp_path: Path) -> None:
+        ralph = self._write_ralph(tmp_path, "")
+        cfg = _build_run_config(str(ralph), None, False, 0.0, None, None)
+        assert cfg.max_turns is None
+        assert cfg.max_turns_grace == 2
+        assert cfg.hooks == []

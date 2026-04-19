@@ -12,9 +12,11 @@ loop can gracefully degrade when a CLI lacks structured output or hook
 injection.  Process lifecycle (spawn, SIGTERM at cap, reap) stays in
 ``_agent.py``; adapters only observe.
 
-The Protocol, :class:`AdapterEvent`, and :data:`ADAPTERS` live in
-:mod:`_protocol` so concrete adapter modules can depend on them
-without cycling through this package's ``__init__``.
+The Protocol, registry, and supporting types live in
+:mod:`ralphify.adapters._protocol` so concrete adapter modules can
+import them without triggering this package ``__init__`` — which imports
+those same concrete adapters to populate the registry.  This package
+module just re-exports the public surface and runs the registration.
 """
 
 from __future__ import annotations

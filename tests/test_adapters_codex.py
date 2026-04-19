@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
 
 from ralphify.adapters import select_adapter
 from ralphify.adapters.codex import CodexAdapter
@@ -138,10 +137,23 @@ def test_extract_completion_signal_returns_false_when_stdout_missing() -> None:
     )
 
 
-def test_install_wind_down_hook_raises_not_implemented(tmp_path) -> None:
+def test_install_wind_down_hook_writes_hooks_json(tmp_path) -> None:
+    import json as _json
+
     adapter = CodexAdapter()
-    with pytest.raises(NotImplementedError):
-        adapter.install_wind_down_hook(tmp_path, tmp_path / "counter", 10, 2)
+    counter = tmp_path / "counter"
+    env = adapter.install_wind_down_hook(tmp_path, counter, 10, 2)
+    assert env["CODEX_HOME"] == str(tmp_path)
+    hooks = _json.loads((tmp_path / "hooks.json").read_text(encoding="utf-8"))
+    entries = hooks["PostToolUse"]
+    assert entries[0]["matcher"] == "*"
+    command = entries[0]["hooks"][0]["command"]
+    assert "ralphify._wind_down_shim" in command
+    assert str(counter) in command
+    assert command.rstrip().endswith("codex")
+    config = (tmp_path / "config.toml").read_text(encoding="utf-8")
+    assert "[experimental]" in config
+    assert "hooks = true" in config
 
 
 def test_capability_flags() -> None:
