@@ -132,13 +132,21 @@ class TestPromiseCompletionSignals:
     def test_tagged_promise_does_not_stop_by_default(
         self, mock_execute_agent, tmp_path
     ):
+        """Without ``stop_on_completion_signal`` the loop must run all iterations.
+
+        A non-streaming adapter (here ``echo`` → GenericAdapter) only sees
+        promise completion when the engine elects to capture stdout, which
+        in turn requires either logging or the explicit opt-in.  Skipping
+        the buffer is the whole point of the gating, so
+        ``state.promise_completed`` legitimately stays False here.
+        """
         config = make_config(tmp_path, max_iterations=3)
         state = make_state()
         emitter = NullEmitter()
         mock_execute_agent.return_value = AgentResult(
             returncode=0,
             elapsed=0.01,
-            captured_stdout="<promise>RALPH_PROMISE_COMPLETE</promise>\n",
+            captured_stdout=None,
         )
 
         run_loop(config, state, emitter)
@@ -147,7 +155,7 @@ class TestPromiseCompletionSignals:
         assert state.completed == 3
         assert state.failed == 0
         assert state.status == RunStatus.COMPLETED
-        assert state.promise_completed is True
+        assert state.promise_completed is False
         assert [
             call.kwargs["on_output_line"] for call in mock_execute_agent.call_args_list
         ] == [None, None, None]
@@ -155,6 +163,80 @@ class TestPromiseCompletionSignals:
             call.kwargs["capture_result_text"]
             for call in mock_execute_agent.call_args_list
         ] == [True, True, True]
+        # Generic adapter requires full stdout, but the user didn't opt in
+        # and no log dir is set — capture should stay off to avoid
+        # buffering verbose agent output.
+        assert [
+            call.kwargs["capture_stdout"] for call in mock_execute_agent.call_args_list
+        ] == [False, False, False]
+
+    @patch("ralphify.engine.execute_agent")
+    def test_capture_stdout_off_for_streaming_adapter_without_logging(
+        self, mock_execute_agent, tmp_path
+    ):
+        """Claude exposes ``result_text`` directly; the engine must not
+        force-buffer the full stdout transcript even when the user opts
+        into ``stop_on_completion_signal``."""
+        config = make_config(
+            tmp_path,
+            agent="claude",
+            max_iterations=1,
+            stop_on_completion_signal=True,
+        )
+        state = make_state()
+
+        mock_execute_agent.return_value = AgentResult(
+            returncode=0,
+            elapsed=0.01,
+            result_text="<promise>RALPH_PROMISE_COMPLETE</promise>",
+        )
+
+        run_loop(config, state, NullEmitter())
+
+        assert mock_execute_agent.call_args.kwargs["capture_stdout"] is False
+        assert state.promise_completed is True
+
+    @patch("ralphify.engine.execute_agent")
+    def test_capture_stdout_on_for_blocking_adapter_with_opt_in(
+        self, mock_execute_agent, tmp_path
+    ):
+        """Generic / Copilot adapters need the full stdout buffer to
+        scan for the promise tag — engine must opt in when the user
+        opts into completion signalling."""
+        config = make_config(
+            tmp_path,
+            max_iterations=1,
+            stop_on_completion_signal=True,
+        )
+        state = make_state()
+
+        mock_execute_agent.return_value = AgentResult(
+            returncode=0,
+            elapsed=0.01,
+            captured_stdout="<promise>RALPH_PROMISE_COMPLETE</promise>\n",
+        )
+
+        run_loop(config, state, NullEmitter())
+
+        assert mock_execute_agent.call_args.kwargs["capture_stdout"] is True
+        assert state.promise_completed is True
+
+    @patch("ralphify.engine.execute_agent")
+    def test_capture_stdout_on_when_log_dir_set(self, mock_execute_agent, tmp_path):
+        """Logging always needs the buffer regardless of completion signal."""
+        log_dir = tmp_path / "logs"
+        config = make_config(tmp_path, max_iterations=1, log_dir=log_dir)
+        state = make_state()
+
+        mock_execute_agent.return_value = AgentResult(
+            returncode=0,
+            elapsed=0.01,
+            captured_stdout="anything\n",
+        )
+
+        run_loop(config, state, NullEmitter())
+
+        assert mock_execute_agent.call_args.kwargs["capture_stdout"] is True
 
     @patch("ralphify.engine.execute_agent")
     def test_tagged_promise_stops_early_when_enabled(
@@ -171,7 +253,7 @@ class TestPromiseCompletionSignals:
         mock_execute_agent.return_value = AgentResult(
             returncode=0,
             elapsed=0.01,
-            result_text="<promise>RALPH_PROMISE_COMPLETE</promise>",
+            captured_stdout="<promise>RALPH_PROMISE_COMPLETE</promise>\n",
         )
 
         run_loop(config, state, emitter)
@@ -210,7 +292,7 @@ class TestPromiseCompletionSignals:
         mock_execute_agent.return_value = AgentResult(
             returncode=0,
             elapsed=0.01,
-            result_text="<promise>CUSTOM_DONE</promise>",
+            captured_stdout="<promise>CUSTOM_DONE</promise>\n",
         )
 
         run_loop(config, state, emitter)
@@ -243,7 +325,7 @@ class TestPromiseCompletionSignals:
         mock_execute_agent.return_value = AgentResult(
             returncode=0,
             elapsed=0.01,
-            result_text="<promise>\n  CUSTOM\tDONE  \n</promise>",
+            captured_stdout="<promise>\n  CUSTOM\tDONE  \n</promise>\n",
         )
 
         run_loop(config, state, NullEmitter())
@@ -311,8 +393,12 @@ class TestPromiseCompletionSignals:
     def test_structured_agents_ignore_raw_stdout_for_promise_detection(
         self, mock_execute_agent, tmp_path
     ):
+        """ClaudeAdapter only looks at ``result`` events — embedded
+        promise tags inside ``status`` or ``assistant`` JSON messages
+        must not trigger early completion."""
         config = make_config(
             tmp_path,
+            agent="claude",
             max_iterations=2,
             stop_on_completion_signal=True,
         )

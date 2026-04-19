@@ -37,6 +37,7 @@ from ralphify._output import (
     collect_output,
     warn,
 )
+from ralphify.adapters import CLIAdapter, select_adapter
 
 # ── Callback type aliases ──────────────────────────────────────────────
 # Used across the streaming and blocking execution paths for callbacks
@@ -52,15 +53,6 @@ OutputLineCallback = Callable[[str, OutputStream], None]
 # that only "stdout" / "stderr" ever reach ``on_output_line``.
 _STDOUT: OutputStream = "stdout"
 _STDERR: OutputStream = "stderr"
-
-# Agent binary name that supports --output-format stream-json.
-# Public because _console_emitter also needs this for display logic.
-CLAUDE_BINARY = "claude"
-
-# CLI flags appended when streaming mode is used.
-_OUTPUT_FORMAT_FLAG = "--output-format"
-_STREAM_FORMAT = "stream-json"
-_VERBOSE_FLAG = "--verbose"
 
 # JSON stream event types and fields for result extraction.
 _RESULT_EVENT_TYPE = "result"
@@ -288,19 +280,6 @@ def _write_log(
     return log_file
 
 
-def _supports_stream_json(cmd: list[str]) -> bool:
-    """Return True if the agent command supports ``--output-format stream-json``.
-
-    Currently only Claude Code supports this protocol.  To add streaming
-    support for another agent, extend the check here — no other changes
-    needed since :func:`_run_agent_streaming` handles the protocol generically.
-    """
-    if not cmd:
-        return False
-    binary = Path(cmd[0]).stem
-    return binary == CLAUDE_BINARY
-
-
 def _readline_pump(
     stdout: IO[str],
     line_queue: queue.Queue[str | None],
@@ -444,16 +423,19 @@ def _run_agent_streaming(
 ) -> AgentResult:
     """Run the agent subprocess with line-by-line streaming of JSON output.
 
-    Used for agents that support ``--output-format stream-json`` (e.g. Claude
-    Code).  Stream processing is delegated to :func:`_read_agent_stream`;
-    this function owns the subprocess lifecycle (spawn, stdin delivery,
-    timeout kill, and cleanup via ``try/finally``).
+    Used for adapters whose ``supports_streaming`` flag is True (e.g. Claude
+    Code's ``--output-format stream-json``, Codex's ``--json``).  The command
+    list *must already include* any adapter-required flags —
+    :func:`execute_agent` calls ``adapter.build_command`` before dispatching.
+
+    Stream processing is delegated to :func:`_read_agent_stream`; this
+    function owns the subprocess lifecycle (spawn, stdin delivery, timeout
+    kill, and cleanup via ``try/finally``).
 
     stderr is drained concurrently on a background reader thread so large
     stderr volume can't deadlock the child on a full OS pipe buffer while
     the main thread is reading stdout.
     """
-    stream_cmd = cmd + [_OUTPUT_FORMAT_FLAG, _STREAM_FORMAT, _VERBOSE_FLAG]
     start = time.monotonic()
     deadline = (start + timeout) if timeout is not None else None
 
@@ -466,7 +448,7 @@ def _run_agent_streaming(
     stderr_thread: threading.Thread | None = None
 
     proc = subprocess.Popen(
-        stream_cmd,
+        cmd,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE if pipe_stderr else None,
@@ -764,6 +746,7 @@ def execute_agent(
     timeout: float | None,
     log_dir: Path | None,
     iteration: int,
+    adapter: CLIAdapter | None = None,
     on_activity: ActivityCallback | None = None,
     on_output_line: OutputLineCallback | None = None,
     capture_result_text: bool = False,
@@ -771,22 +754,27 @@ def execute_agent(
 ) -> AgentResult:
     """Run the agent subprocess, auto-selecting streaming or blocking mode.
 
-    Uses streaming mode for agents that support ``--output-format stream-json``
-    (e.g. Claude Code); all other agents use the blocking path that drains
-    stdout and stderr via reader threads.  The *on_activity* callback is
-    only invoked in streaming mode; *on_output_line* fires for both modes
-    as raw lines arrive.
+    The *adapter* argument (or :func:`select_adapter` when omitted) decides
+    which execution path runs: adapters whose ``supports_streaming`` flag is
+    True take the line-streaming path that drives ``on_activity`` callbacks;
+    all others take the blocking path with concurrent stdout/stderr drain.
+    ``adapter.build_command(cmd)`` is applied before spawning, so the CLI
+    receives any flags the adapter requires (e.g. Claude's
+    ``--output-format stream-json --verbose`` or Codex's ``--json``).
 
     This is the single entry point the engine should use — callers don't need
     to know which execution mode is selected.
     """
-    supports_stream_json = _supports_stream_json(cmd)
+    if adapter is None:
+        adapter = select_adapter(cmd)
+    cmd = adapter.build_command(cmd)
+    supports_streaming = adapter.supports_streaming
     if capture_stdout is None:
         capture_stdout = log_dir is not None or (
-            not supports_stream_json and on_output_line is None and capture_result_text
+            not supports_streaming and on_output_line is None and capture_result_text
         )
 
-    if supports_stream_json:
+    if supports_streaming:
         return _run_agent_streaming(
             cmd,
             prompt,

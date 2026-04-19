@@ -19,35 +19,11 @@ from ralphify._agent import (
     _read_agent_stream,
     _run_agent_blocking,
     _run_agent_streaming,
-    _supports_stream_json,
     _write_log,
     execute_agent,
 )
-
-
-class TestSupportsStreamJson:
-    def test_claude_binary(self):
-        assert _supports_stream_json(["claude", "-p"]) is True
-
-    def test_claude_absolute_path(self):
-        assert _supports_stream_json(["/usr/local/bin/claude", "-p"]) is True
-
-    def test_non_claude_binary(self):
-        assert _supports_stream_json(["aider", "--yes"]) is False
-
-    def test_empty_command(self):
-        assert _supports_stream_json([]) is False
-
-    def test_claude_like_name(self):
-        assert _supports_stream_json(["claude-code"]) is False
-
-    def test_claude_with_cmd_extension(self):
-        """On Windows, npm installs claude as claude.cmd — streaming must
-        still be detected."""
-        assert _supports_stream_json(["claude.cmd", "-p"]) is True
-
-    def test_claude_with_exe_extension(self):
-        assert _supports_stream_json(["claude.exe", "-p"]) is True
+from ralphify.adapters import select_adapter
+from ralphify.adapters.claude import ClaudeAdapter
 
 
 class TestWriteLog:
@@ -449,8 +425,11 @@ class TestExecuteAgentDispatch:
 
     @patch(MOCK_SUBPROCESS)
     def test_dispatches_to_streaming_for_claude(self, mock_popen, monkeypatch):
-        """execute_agent uses the streaming path when the agent supports it."""
-        monkeypatch.setattr("ralphify._agent._supports_stream_json", lambda cmd: True)
+        """execute_agent uses the streaming path when the adapter renders
+        structured output."""
+        claude_adapter = select_adapter(["claude"])
+        assert isinstance(claude_adapter, ClaudeAdapter)
+        monkeypatch.setattr(claude_adapter, "supports_streaming", True)
         mock_popen.return_value = make_mock_popen(
             stdout_lines='{"type": "result", "result": "done"}\n',
             returncode=0,
@@ -474,7 +453,9 @@ class TestExecuteAgentDispatch:
         on_output_line = MagicMock()
         fake_streaming = MagicMock(return_value=AgentResult(returncode=0, elapsed=0.01))
 
-        monkeypatch.setattr("ralphify._agent._supports_stream_json", lambda cmd: True)
+        claude_adapter = select_adapter(["claude"])
+        assert isinstance(claude_adapter, ClaudeAdapter)
+        monkeypatch.setattr(claude_adapter, "supports_streaming", True)
         monkeypatch.setattr("ralphify._agent._run_agent_streaming", fake_streaming)
 
         execute_agent(
@@ -489,7 +470,7 @@ class TestExecuteAgentDispatch:
         )
 
         fake_streaming.assert_called_once_with(
-            ["claude", "-p"],
+            claude_adapter.build_command(["claude", "-p"]),
             "prompt",
             None,
             None,
@@ -506,7 +487,9 @@ class TestExecuteAgentDispatch:
         on_output_line = MagicMock()
         fake_blocking = MagicMock(return_value=AgentResult(returncode=0, elapsed=0.01))
 
-        monkeypatch.setattr("ralphify._agent._supports_stream_json", lambda cmd: False)
+        # The autouse conftest fixture already forces every adapter's
+        # supports_streaming flag to False, so ``echo`` falls into the
+        # blocking path through the GenericAdapter fallback.
         monkeypatch.setattr("ralphify._agent._run_agent_blocking", fake_blocking)
 
         execute_agent(
@@ -670,10 +653,12 @@ class TestExecuteAgentStreaming:
         proc.stdin.close.assert_called_once()
 
     @patch(MOCK_SUBPROCESS)
-    def test_adds_stream_json_flags(self, mock_popen):
+    def test_passes_cmd_verbatim_to_popen(self, mock_popen):
+        """_run_agent_streaming no longer appends its own flags — the caller
+        (via ``adapter.build_command``) owns CLI flags now."""
         mock_popen.return_value = make_mock_popen(returncode=0)
         _run_agent_streaming(
-            ["claude", "-p"],
+            ["claude", "-p", "--output-format", "stream-json", "--verbose"],
             "prompt",
             timeout=None,
             log_dir=None,
@@ -682,9 +667,13 @@ class TestExecuteAgentStreaming:
 
         call_args = mock_popen.call_args
         cmd = call_args[0][0]
-        assert "--output-format" in cmd
-        assert "stream-json" in cmd
-        assert "--verbose" in cmd
+        assert cmd == [
+            "claude",
+            "-p",
+            "--output-format",
+            "stream-json",
+            "--verbose",
+        ]
 
     @patch(MOCK_SUBPROCESS)
     def test_writes_log_on_success(self, mock_popen, tmp_path):
@@ -752,13 +741,7 @@ class TestExecuteAgentStreaming:
         assert result.result_text is None
 
         call_args = mock_popen.call_args
-        assert call_args.args[0] == [
-            "claude",
-            "-p",
-            "--output-format",
-            "stream-json",
-            "--verbose",
-        ]
+        assert call_args.args[0] == ["claude", "-p"]
         call_kwargs = call_args[1]
         assert call_kwargs.get("stdin") == subprocess.PIPE
         assert call_kwargs.get("stdout") == subprocess.PIPE
