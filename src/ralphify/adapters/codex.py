@@ -48,6 +48,11 @@ class CodexAdapter:
     # the emitter can render Codex events directly.
     renders_structured_peek: bool = False
     supports_soft_wind_down: bool = True
+    # Codex's terminal text lives inside ``TaskComplete`` / ``TurnCompleted``
+    # events, which the streaming reader does not extract into
+    # ``agent.result_text``.  The full stdout buffer is currently the only
+    # source for promise-tag scanning.
+    requires_full_stdout_for_completion: bool = True
 
     def matches(self, cmd: list[str]) -> bool:
         if not cmd:
@@ -91,14 +96,28 @@ class CodexAdapter:
             return AdapterEvent(kind="turn", raw=parsed)
         return AdapterEvent(kind="message", raw=parsed)
 
-    def extract_completion_signal(self, stdout: str, user_signal: str) -> bool:
+    def extract_completion_signal(
+        self,
+        *,
+        result_text: str | None,
+        stdout: str | None,
+        user_signal: str,
+    ) -> bool:
         """Scan every ``TurnCompleted`` / ``TaskComplete`` event for the promise tag.
 
         Codex does not carry a single terminal ``result`` string the way
         Claude does; completion may be spread across assistant text in
         multiple events.  Falling back to a whole-stdout scan is safe
         because promise tags are explicit and non-ambiguous markup.
+
+        *result_text* is unused — Codex never populates it through the
+        streaming reader (no ``{"type":"result"}`` lines).  The engine
+        opts into ``requires_full_stdout_for_completion`` to make sure
+        *stdout* is supplied when promise detection is requested.
         """
+        del result_text
+        if stdout is None:
+            return False
         if has_promise_completion(stdout, user_signal):
             return True
         for line in stdout.splitlines():

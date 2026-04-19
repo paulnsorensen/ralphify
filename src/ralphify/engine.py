@@ -190,6 +190,16 @@ def _run_agent_phase(
     else:
         on_output_line = None
 
+    # Capture full stdout only when somebody downstream actually needs the
+    # bytes — log writing, or promise detection for adapters that cannot
+    # work from ``agent.result_text`` alone.  Without this gate every
+    # iteration would buffer the entire transcript even for verbose
+    # streaming agents, regressing memory vs the prior tail-scan path.
+    capture_stdout_for_promise = (
+        config.stop_on_completion_signal and adapter.requires_full_stdout_for_completion
+    )
+    capture_stdout = config.log_dir is not None or capture_stdout_for_promise
+
     try:
 
         def on_activity(data: dict[str, Any]) -> None:
@@ -208,7 +218,7 @@ def _run_agent_phase(
             on_activity=on_activity,
             on_output_line=on_output_line,
             capture_result_text=True,
-            capture_stdout=True,
+            capture_stdout=capture_stdout,
         )
     except FileNotFoundError as exc:
         raise FileNotFoundError(
@@ -217,7 +227,9 @@ def _run_agent_phase(
 
     duration = format_duration(agent.elapsed)
     promise_completed = agent.success and adapter.extract_completion_signal(
-        agent.captured_stdout or "", completion_signal
+        result_text=agent.result_text,
+        stdout=agent.captured_stdout,
+        user_signal=completion_signal,
     )
     if promise_completed:
         state.promise_completed = True

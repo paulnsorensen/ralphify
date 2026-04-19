@@ -113,30 +113,52 @@ def test_parse_skips_first_non_tool_use_block() -> None:
     assert event.name == "Edit"
 
 
-def test_extract_completion_signal_from_result_event() -> None:
+def test_extract_completion_signal_from_result_text() -> None:
     adapter = ClaudeAdapter()
-    stdout = "\n".join(
-        [
-            _assistant_event({"type": "text", "text": "hi"}),
-            _result_event("<promise>DONE</promise>"),
-        ]
+    result_text = "<promise>DONE</promise>"
+    assert (
+        adapter.extract_completion_signal(
+            result_text=result_text, stdout=None, user_signal="DONE"
+        )
+        is True
     )
-    assert adapter.extract_completion_signal(stdout, "DONE") is True
-    assert adapter.extract_completion_signal(stdout, "OTHER") is False
+    assert (
+        adapter.extract_completion_signal(
+            result_text=result_text, stdout=None, user_signal="OTHER"
+        )
+        is False
+    )
 
 
-def test_extract_completion_signal_ignores_raw_stdout_without_result_event() -> None:
-    """Without a ``result`` event, ClaudeAdapter must not match promise
-    tags embedded in raw stdout — the structured protocol is the only
-    trusted source for completion signals."""
+def test_extract_completion_signal_ignores_raw_stdout() -> None:
+    """ClaudeAdapter only inspects ``result_text``; the streaming reader
+    extracts the terminal assistant message there.  Promise tags embedded
+    in raw stdout (e.g. ``status`` or ``assistant`` JSON) must not trigger
+    completion."""
     adapter = ClaudeAdapter()
     stdout = "raw text <promise>MARKER</promise> trailing"
-    assert adapter.extract_completion_signal(stdout, "MARKER") is False
+    assert (
+        adapter.extract_completion_signal(
+            result_text=None, stdout=stdout, user_signal="MARKER"
+        )
+        is False
+    )
 
 
-def test_extract_completion_signal_handles_empty_stdout() -> None:
+def test_extract_completion_signal_handles_missing_result_text() -> None:
     adapter = ClaudeAdapter()
-    assert adapter.extract_completion_signal("", "DONE") is False
+    assert (
+        adapter.extract_completion_signal(
+            result_text=None, stdout=None, user_signal="DONE"
+        )
+        is False
+    )
+    assert (
+        adapter.extract_completion_signal(
+            result_text="", stdout=None, user_signal="DONE"
+        )
+        is False
+    )
 
 
 def test_install_wind_down_hook_raises_not_implemented(tmp_path) -> None:
@@ -152,6 +174,7 @@ def test_capability_flags() -> None:
     assert adapter.supports_streaming is True
     assert adapter.renders_structured_peek is True
     assert adapter.supports_soft_wind_down is True
+    assert adapter.requires_full_stdout_for_completion is False
 
 
 def test_registered_in_adapters_registry() -> None:

@@ -99,15 +99,42 @@ def test_extract_completion_signal_from_stream() -> None:
             json.dumps({"type": "TaskComplete", "text": "<promise>DONE</promise>"}),
         ]
     )
-    assert adapter.extract_completion_signal(stream, "DONE") is True
-    assert adapter.extract_completion_signal(stream, "OTHER") is False
+    assert (
+        adapter.extract_completion_signal(
+            result_text=None, stdout=stream, user_signal="DONE"
+        )
+        is True
+    )
+    assert (
+        adapter.extract_completion_signal(
+            result_text=None, stdout=stream, user_signal="OTHER"
+        )
+        is False
+    )
 
 
 def test_extract_completion_signal_scans_plain_output() -> None:
     adapter = CodexAdapter()
     assert (
-        adapter.extract_completion_signal("some <promise>HI</promise> text", "HI")
+        adapter.extract_completion_signal(
+            result_text=None,
+            stdout="some <promise>HI</promise> text",
+            user_signal="HI",
+        )
         is True
+    )
+
+
+def test_extract_completion_signal_returns_false_when_stdout_missing() -> None:
+    """When the engine elects not to capture stdout, Codex cannot detect
+    completion — the streaming reader does not populate ``result_text``
+    for Codex's ``TaskComplete`` event shape."""
+    adapter = CodexAdapter()
+    assert (
+        adapter.extract_completion_signal(
+            result_text=None, stdout=None, user_signal="DONE"
+        )
+        is False
     )
 
 
@@ -124,6 +151,7 @@ def test_capability_flags() -> None:
     assert adapter.supports_streaming is True
     assert adapter.renders_structured_peek is False
     assert adapter.supports_soft_wind_down is True
+    assert adapter.requires_full_stdout_for_completion is True
 
 
 def test_registered_in_adapters_registry() -> None:

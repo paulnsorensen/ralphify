@@ -53,6 +53,7 @@ class CLIAdapter(Protocol):
     supports_streaming: bool
     renders_structured_peek: bool
     supports_soft_wind_down: bool
+    requires_full_stdout_for_completion: bool
 
     def matches(self, cmd: list[str]) -> bool:
         """Return True if this adapter handles the given agent command."""
@@ -73,11 +74,24 @@ class CLIAdapter(Protocol):
         """
         ...
 
-    def extract_completion_signal(self, stdout: str, user_signal: str) -> bool:
+    def extract_completion_signal(
+        self,
+        *,
+        result_text: str | None,
+        stdout: str | None,
+        user_signal: str,
+    ) -> bool:
         """Return True if the agent's final output contains the completion signal.
 
         The signal is wrapped in ``<promise>...</promise>`` markup; the
         inner text equals ``user_signal``.
+
+        Adapters receive both the streaming-extracted *result_text* (the
+        terminal assistant message, when the streaming path could parse one)
+        and the full *stdout* buffer (only present when the engine chose to
+        capture it).  Adapters with ``requires_full_stdout_for_completion``
+        set False MUST be able to detect completion from *result_text* alone;
+        engines may pass ``stdout=None`` to skip the memory cost.
         """
         ...
 

@@ -34,7 +34,6 @@ _VERBOSE_FLAG = "--verbose"
 _EVENT_TYPE_ASSISTANT = "assistant"
 _EVENT_TYPE_RESULT = "result"
 _BLOCK_TYPE_TOOL_USE = "tool_use"
-_RESULT_FIELD = "result"
 
 
 class ClaudeAdapter:
@@ -45,6 +44,10 @@ class ClaudeAdapter:
     supports_streaming: bool = True
     renders_structured_peek: bool = True
     supports_soft_wind_down: bool = True
+    # Claude's final assistant text already arrives as ``agent.result_text``
+    # via the stream-json ``result`` event, so the engine does not need to
+    # buffer the full stdout to scan for the promise tag.
+    requires_full_stdout_for_completion: bool = False
 
     def matches(self, cmd: list[str]) -> bool:
         if not cmd:
@@ -113,31 +116,34 @@ class ClaudeAdapter:
                 )
         return AdapterEvent(kind="message", raw=parsed)
 
-    def extract_completion_signal(self, stdout: str, user_signal: str) -> bool:
-        """Scan the final ``result`` event for ``<promise>{signal}</promise>``.
+    def extract_completion_signal(
+        self,
+        *,
+        result_text: str | None,
+        stdout: str | None,
+        user_signal: str,
+    ) -> bool:
+        """Scan the streaming-extracted result text for ``<promise>{signal}</promise>``.
 
         Claude's terminal ``result`` event carries the last assistant
-        message as a plain string; the promise tag may live anywhere in
-        that text.  Only the ``result`` event is considered — raw JSON
-        from ``status`` or ``assistant`` messages can legitimately echo
+        message as a plain string, which the streaming reader already
+        captures into :attr:`AgentResult.result_text`.  Using *result_text*
+        directly avoids buffering the full stdout — large transcripts can
+        run into many megabytes per iteration.
+
+        Only the parsed result text is considered — raw JSON from
+        ``status`` or ``assistant`` messages can legitimately echo
         ``<promise>...</promise>`` substrings that must not trigger
         completion.
+
+        *stdout* is unused (Claude does not need a fallback because the
+        streaming path always populates *result_text* on a successful run);
+        it stays in the signature for protocol parity.
         """
-        for line in reversed(stdout.splitlines()):
-            stripped = line.strip()
-            if not stripped:
-                continue
-            try:
-                parsed = json.loads(stripped)
-            except json.JSONDecodeError:
-                continue
-            if (
-                isinstance(parsed, dict)
-                and parsed.get("type") == _EVENT_TYPE_RESULT
-                and isinstance(parsed.get(_RESULT_FIELD), str)
-            ):
-                return has_promise_completion(parsed[_RESULT_FIELD], user_signal)
-        return False
+        del stdout
+        if result_text is None:
+            return False
+        return has_promise_completion(result_text, user_signal)
 
     def install_wind_down_hook(
         self,

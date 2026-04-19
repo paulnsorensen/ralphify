@@ -53,6 +53,9 @@ class CopilotAdapter:
     supports_streaming: bool = False
     renders_structured_peek: bool = False
     supports_soft_wind_down: bool = False
+    # Copilot runs on the blocking path with no stream parsing today; the
+    # promise tag must be located somewhere in the captured stdout.
+    requires_full_stdout_for_completion: bool = True
 
     def matches(self, cmd: list[str]) -> bool:
         if not cmd:
@@ -113,12 +116,23 @@ class CopilotAdapter:
             return AdapterEvent(kind="result", raw=parsed)
         return None
 
-    def extract_completion_signal(self, stdout: str, user_signal: str) -> bool:
+    def extract_completion_signal(
+        self,
+        *,
+        result_text: str | None,
+        stdout: str | None,
+        user_signal: str,
+    ) -> bool:
         """Scan the entire stdout for the promise tag.
 
         Without a verified event schema there is no reliable per-event
         extraction path; the whole-stdout scan is the safest fallback.
+        *result_text* is unused — Copilot runs on the blocking path and
+        does not produce a streaming result event today.
         """
+        del result_text
+        if stdout is None:
+            return False
         return has_promise_completion(stdout, user_signal)
 
     def install_wind_down_hook(
