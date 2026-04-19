@@ -24,7 +24,7 @@ import json
 from pathlib import Path
 
 from ralphify._promise import has_promise_completion
-from ralphify.adapters import ADAPTERS, AdapterEvent, CountsWhat
+from ralphify.adapters._protocol import ADAPTERS, AdapterEvent, CountsWhat
 
 
 COPILOT_BINARY_STEM = "copilot"
