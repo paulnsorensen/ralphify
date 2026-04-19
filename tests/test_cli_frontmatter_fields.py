@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 import typer
 
+from helpers import MOCK_WHICH
 from ralphify.cli import (
     _build_run_config,
     _validate_max_turns,
@@ -80,13 +82,14 @@ class TestValidateMaxTurnsGrace:
         assert _validate_max_turns_grace(99, max_turns=None) == 99
 
 
+@patch(MOCK_WHICH, return_value="/usr/bin/claude")
 class TestBuildRunConfigTurnCapFields:
     def _write_ralph(self, tmp_path: Path, body: str) -> Path:
         ralph = tmp_path / "RALPH.md"
         ralph.write_text(body, encoding="utf-8")
         return ralph
 
-    def test_defaults_when_absent(self, tmp_path: Path) -> None:
+    def test_defaults_when_absent(self, _mock_which, tmp_path: Path) -> None:
         self._write_ralph(
             tmp_path,
             "---\nagent: claude -p\n---\nhello\n",
@@ -102,7 +105,7 @@ class TestBuildRunConfigTurnCapFields:
         assert config.max_turns is None
         assert config.max_turns_grace == 2
 
-    def test_values_threaded_through(self, tmp_path: Path) -> None:
+    def test_values_threaded_through(self, _mock_which, tmp_path: Path) -> None:
         self._write_ralph(
             tmp_path,
             "---\nagent: claude -p\nmax_turns: 20\nmax_turns_grace: 5\n---\nhello\n",
@@ -118,7 +121,7 @@ class TestBuildRunConfigTurnCapFields:
         assert config.max_turns == 20
         assert config.max_turns_grace == 5
 
-    def test_invalid_max_turns_exits(self, tmp_path: Path) -> None:
+    def test_invalid_max_turns_exits(self, _mock_which, tmp_path: Path) -> None:
         self._write_ralph(
             tmp_path,
             "---\nagent: claude -p\nmax_turns: 0\n---\nhello\n",
@@ -133,7 +136,7 @@ class TestBuildRunConfigTurnCapFields:
                 timeout=None,
             )
 
-    def test_grace_at_or_above_cap_exits(self, tmp_path: Path) -> None:
+    def test_grace_at_or_above_cap_exits(self, _mock_which, tmp_path: Path) -> None:
         self._write_ralph(
             tmp_path,
             "---\nagent: claude -p\nmax_turns: 5\nmax_turns_grace: 5\n---\nhello\n",
