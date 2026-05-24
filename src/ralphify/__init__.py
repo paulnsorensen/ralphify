@@ -62,10 +62,15 @@ def main() -> None:
     """Entry point for the ``ralph`` CLI (called by the console script)."""
     try:
         from ralphify.cli import app
-    except ImportError as exc:  # rich/typer not installed
-        raise SystemExit(
-            "The `ralph` CLI requires the [cli] extra: pip install 'ralphify[cli]'"
-        ) from exc
+    except ModuleNotFoundError as exc:
+        # Only a genuinely-absent CLI dependency gets the install hint; any
+        # other missing module is a real bug inside ralphify.cli, so re-raise
+        # it rather than masking it behind the [cli]-extra message.
+        if exc.name in {"rich", "typer"}:
+            raise SystemExit(
+                "The `ralph` CLI requires the [cli] extra: pip install 'ralphify[cli]'"
+            ) from exc
+        raise
 
     app()
 

@@ -176,9 +176,13 @@ class RunManager:
 
         Returns the finished run IDs.  Returns ``[]`` if *timeout* elapses
         before any finish.  Unknown IDs are ignored (never reported as
-        finished).
+        finished); when *run_ids* is empty or none are registered, returns
+        ``[]`` immediately rather than blocking forever (nothing can wake it).
         """
         deadline = None if timeout is None else time.monotonic() + timeout
+        with self._lock:
+            if not any(run_id in self._runs for run_id in run_ids):
+                return []
         with self._done:
             while True:
                 finished = self._finished_ids(run_ids)
@@ -196,11 +200,16 @@ class RunManager:
     ) -> bool:
         """Block until every run in *run_ids* finishes or *timeout* elapses.
 
-        Returns ``True`` iff all finished.  Unknown IDs can never finish,
-        so a list containing one returns ``False`` on timeout.
+        Returns ``True`` iff all finished.  Unknown IDs can never finish, so
+        if any ID in *run_ids* is not registered this returns ``False``
+        immediately rather than blocking forever.  An empty *run_ids* is
+        vacuously satisfied and returns ``True``.
         """
         deadline = None if timeout is None else time.monotonic() + timeout
         target = set(run_ids)
+        with self._lock:
+            if not all(run_id in self._runs for run_id in run_ids):
+                return False
         with self._done:
             while True:
                 if set(self._finished_ids(run_ids)) >= target:

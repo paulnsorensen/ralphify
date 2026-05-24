@@ -60,8 +60,11 @@ class TestMain:
         real_import = builtins.__import__
 
         def fake_import(name, *args, **kwargs):
-            if name == "ralphify.cli" or name.startswith("typer") or name == "rich":
-                raise ImportError(f"No module named {name!r}")
+            # Emulate an absent CLI dependency: Python reports the missing
+            # *top-level* package, so name= is "typer"/"rich" even for submodules.
+            top = name.split(".")[0]
+            if top in {"typer", "rich"}:
+                raise ModuleNotFoundError(f"No module named {top!r}", name=top)
             return real_import(name, *args, **kwargs)
 
         # Drop any cached CLI module so the import is re-attempted.
@@ -71,6 +74,32 @@ class TestMain:
         try:
             with patch.object(builtins, "__import__", side_effect=fake_import):
                 with pytest.raises(SystemExit, match=r"ralphify\[cli\]"):
+                    main()
+        finally:
+            sys.modules.update(saved)
+
+    def test_main_reraises_unrelated_import_error(self):
+        """A real import bug inside ralphify.cli (not a missing CLI dep) must
+        propagate, not be masked behind the [cli]-extra hint."""
+        import sys
+        from ralphify import main
+
+        real_import = builtins.__import__
+
+        def fake_import(name, *args, **kwargs):
+            if name == "ralphify.cli":
+                raise ModuleNotFoundError(
+                    "No module named 'ralphify._does_not_exist'",
+                    name="ralphify._does_not_exist",
+                )
+            return real_import(name, *args, **kwargs)
+
+        saved = {
+            k: sys.modules.pop(k) for k in list(sys.modules) if k == "ralphify.cli"
+        }
+        try:
+            with patch.object(builtins, "__import__", side_effect=fake_import):
+                with pytest.raises(ModuleNotFoundError, match="_does_not_exist"):
                     main()
         finally:
             sys.modules.update(saved)

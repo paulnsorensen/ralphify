@@ -13,6 +13,21 @@ from ralphify._run_types import RUN_ID_LENGTH, RunResult, RunStatus
 from ralphify.manager import ManagedRun, RunManager
 
 
+def _returns_without_blocking(fn, timeout=2.0):
+    """Run *fn* in a watchdog thread; fail if it doesn't return in *timeout*.
+
+    Lets us assert the wait helpers never block on empty/unknown run_ids
+    with ``timeout=None`` (the infinite-hang regression) without risking a
+    hung test run if the guard is ever removed.
+    """
+    box = {}
+    thread = threading.Thread(target=lambda: box.update(result=fn()), daemon=True)
+    thread.start()
+    thread.join(timeout)
+    assert not thread.is_alive(), "wait helper blocked instead of returning"
+    return box["result"]
+
+
 class TestRunManagerCreateRun:
     def test_create_run_returns_managed_run(self, tmp_path):
         manager = RunManager()
@@ -302,6 +317,23 @@ class TestRunManagerWaitForAny:
         manager = RunManager()
         assert manager.wait_for_any([], timeout=0.05) == []
 
+    def test_wait_for_any_empty_run_ids_no_timeout_returns_immediately(self):
+        # Regression: empty run_ids with timeout=None must NOT block forever.
+        # Nothing can ever notify the condition for an empty set, so the only
+        # honest answer is an immediate [].
+        manager = RunManager()
+        assert _returns_without_blocking(lambda: manager.wait_for_any([])) == []
+
+    def test_wait_for_any_all_unknown_no_timeout_returns_immediately(self):
+        # Regression: all-unknown IDs with timeout=None must not hang.
+        manager = RunManager()
+        assert (
+            _returns_without_blocking(
+                lambda: manager.wait_for_any(["ghost1", "ghost2"])
+            )
+            == []
+        )
+
 
 class TestRunManagerWaitForAll:
     @patch(MOCK_SUBPROCESS, side_effect=ok_proc)
@@ -337,6 +369,14 @@ class TestRunManagerWaitForAll:
         # Vacuously satisfied: no runs to wait on, so all (zero) are finished.
         manager = RunManager()
         assert manager.wait_for_all([], timeout=0.05) is True
+
+    def test_wait_for_all_unknown_id_no_timeout_returns_immediately(self):
+        # Regression: an unknown ID can never finish, so wait_for_all with
+        # timeout=None must return False immediately instead of blocking forever.
+        manager = RunManager()
+        assert (
+            _returns_without_blocking(lambda: manager.wait_for_all(["ghost"])) is False
+        )
 
 
 class TestRunManagerGetResult:

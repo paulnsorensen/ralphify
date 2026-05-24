@@ -18,7 +18,6 @@ from typing import (
     Protocol,
     TypedDict,
     TypeVar,
-    cast,
     runtime_checkable,
 )
 
@@ -183,8 +182,13 @@ class LogMessageData(TypedDict):
     traceback: NotRequired[str]
 
 
+class NoData(TypedDict):
+    """Empty payload for events that carry no data (e.g. ``RUN_PAUSED``)."""
+
+
 EventData = (
-    RunStartedData
+    NoData
+    | RunStartedData
     | RunStoppedData
     | IterationStartedData
     | IterationEndedData
@@ -203,7 +207,7 @@ EventData = (
 
 # Plain TypeVar (no PEP 696 default) — the Python floor is 3.11; the
 # ``default=`` arg needs 3.13+ or a runtime typing_extensions dep, which
-# would fight curd 1's pyyaml-only core. Bare ``Event`` references resolve
+# would fight the pyyaml-only core. Bare ``Event`` references resolve
 # to the EventData bound.
 DataT = TypeVar("DataT", bound="EventData")
 
@@ -310,7 +314,7 @@ class BoundEmitter:
         event: Event[EventData] = Event(
             type=event_type,
             run_id=self._run_id,
-            data=data if data is not None else cast(EventData, {}),
+            data=data if data is not None else NoData(),
         )
         self._emitter.emit(event)
 
