@@ -1,5 +1,9 @@
 """Tests for ralphify.__init__ — version fallback and main() entry point."""
 
+import builtins
+
+import pytest
+
 from unittest.mock import patch, MagicMock
 
 
@@ -46,3 +50,27 @@ class TestMain:
         from ralphify import main
 
         assert callable(main)
+
+    def test_main_raises_actionable_error_without_cli_extra(self):
+        """When rich/typer are absent, importing the CLI fails and main() exits
+        with a message pointing at the [cli] extra."""
+        import sys
+        from ralphify import main
+
+        real_import = builtins.__import__
+
+        def fake_import(name, *args, **kwargs):
+            if name == "ralphify.cli" or name.startswith("typer") or name == "rich":
+                raise ImportError(f"No module named {name!r}")
+            return real_import(name, *args, **kwargs)
+
+        # Drop any cached CLI module so the import is re-attempted.
+        saved = {
+            k: sys.modules.pop(k) for k in list(sys.modules) if k == "ralphify.cli"
+        }
+        try:
+            with patch.object(builtins, "__import__", side_effect=fake_import):
+                with pytest.raises(SystemExit, match=r"ralphify\[cli\]"):
+                    main()
+        finally:
+            sys.modules.update(saved)
