@@ -48,12 +48,6 @@ _SETTINGS_FILENAME = "settings.json"
 _HOOK_EVENT = "PreToolUse"
 """Claude hook stage that fires before each tool invocation."""
 
-_HOOK_MATCHER = "*"
-"""Wildcard matcher — wind-down should fire regardless of which tool is about to run."""
-
-_AGENT_KIND = "claude"
-"""Argument passed to the wind-down shim so it picks the Claude payload shape."""
-
 
 class ClaudeAdapter:
     """Parses Claude's stream-json output and supports soft wind-down."""
@@ -211,7 +205,7 @@ def _build_shim_command(counter_path: Path, cap: int, grace: int) -> str:
     """
     return (
         f"{sys.executable} -m ralphify._wind_down_shim "
-        f"{counter_path} {cap} {grace} {_AGENT_KIND}"
+        f"{counter_path} {cap} {grace} claude"
     )
 
 
@@ -227,7 +221,7 @@ def _build_settings_payload(command: str) -> dict:
         "hooks": {
             _HOOK_EVENT: [
                 {
-                    "matcher": _HOOK_MATCHER,
+                    "matcher": "*",  # fire on every tool
                     "hooks": [
                         {"type": "command", "command": command},
                     ],

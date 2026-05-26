@@ -46,17 +46,19 @@ _HOOKS_FILENAME = "hooks.json"
 """File Codex reads from ``$CODEX_HOME`` to discover hook scripts."""
 
 _CONFIG_FILENAME = "config.toml"
-"""Codex config file; hooks are gated behind an experimental flag."""
+"""Codex config file; the hooks feature is enabled here via the ``[features]`` table."""
 
 _HOOK_EVENT = "PostToolUse"
 """Codex hook stage that fires after each tool invocation — the earliest
 deterministic point where the counter file has an authoritative value."""
 
-_HOOK_MATCHER = "*"
-_AGENT_KIND = "codex"
+_FEATURE_FLAG_TOML = "[features]\nhooks = true\n"
+"""Minimal config.toml body that enables the hook runner.
 
-_FEATURE_FLAG_TOML = "[experimental]\nhooks = true\n"
-"""Minimal config.toml body that enables the hook runner."""
+Codex reads the hooks feature flag from the ``[features]`` table (maturity
+Stable, default ``true``); writing it explicitly keeps the per-iteration
+``CODEX_HOME`` self-contained regardless of the user's real config.
+"""
 
 
 class CodexAdapter:
@@ -188,7 +190,7 @@ def _build_shim_command(counter_path: Path, cap: int, grace: int) -> str:
     """Return the shell command Codex's hook runner executes."""
     return (
         f"{sys.executable} -m ralphify._wind_down_shim "
-        f"{counter_path} {cap} {grace} {_AGENT_KIND}"
+        f"{counter_path} {cap} {grace} codex"
     )
 
 
@@ -197,7 +199,7 @@ def _build_hooks_payload(command: str) -> dict:
     return {
         _HOOK_EVENT: [
             {
-                "matcher": _HOOK_MATCHER,
+                "matcher": "*",  # fire on every tool
                 "hooks": [
                     {"type": "command", "command": command},
                 ],

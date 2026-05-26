@@ -353,8 +353,12 @@ def _build_tool_use_bridge(
     if max_turns is None and hooks is None:
         return None
 
+    # Clamp the grace below the cap.  ``RunConfig`` does not reject a grace
+    # >= max_turns the way the CLI does, so an unclamped value would make
+    # the threshold <= 0 and fire ITERATION_TURN_APPROACHING_LIMIT on the
+    # first tool use.  Mirrors the wind-down shim's clamp.
     approaching_threshold = (
-        (max_turns - max_turns_grace)
+        (max_turns - min(max_turns_grace, max(max_turns - 1, 0)))
         if max_turns is not None and max_turns_grace > 0
         else None
     )

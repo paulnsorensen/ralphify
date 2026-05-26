@@ -157,7 +157,10 @@ def test_install_wind_down_hook_writes_hooks_json(tmp_path) -> None:
     assert str(counter) in command
     assert command.rstrip().endswith("codex")
     config = (tmp_path / "config.toml").read_text(encoding="utf-8")
-    assert "[experimental]" in config
+    # Codex reads the hooks feature flag from the [features] table (Stable,
+    # default-on); an [experimental] table would be ignored.
+    assert "[features]" in config
+    assert "[experimental]" not in config
     assert "hooks = true" in config
 
 

@@ -16,6 +16,7 @@ Two execution modes are supported:
 from __future__ import annotations
 
 import json
+import logging
 import os
 import queue
 import shutil
@@ -25,6 +26,7 @@ import tempfile
 import threading
 import time
 from collections.abc import Callable
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -40,6 +42,11 @@ from ralphify._output import (
     warn,
 )
 from ralphify.adapters import CLIAdapter, select_adapter
+
+_log = logging.getLogger(__name__)
+
+_counter_write_failure_logged = False
+"""Module-level latch so the wind-down counter write failure logs only once."""
 
 # ── Callback type aliases ──────────────────────────────────────────────
 # Used across the streaming and blocking execution paths for callbacks
@@ -768,7 +775,17 @@ def _run_agent_blocking(
     Raises ``FileNotFoundError`` if the command binary does not exist.
     """
     start = time.monotonic()
-    capture_stdout_text = log_dir is not None or capture_stdout
+    # Blocking-path adapters count tool uses post-hoc by re-scanning the
+    # captured stdout (see _count_tool_uses_post_hoc), so a cap is only
+    # enforceable when the bytes are buffered.  Force buffering when a cap
+    # is set on a tool-use-counting adapter, otherwise tool_use_count would
+    # always be 0 and turn_capped would never fire.
+    needs_post_hoc_count = (
+        max_turns is not None
+        and adapter is not None
+        and adapter.counts_what == "tool_use"
+    )
+    capture_stdout_text = log_dir is not None or capture_stdout or needs_post_hoc_count
     capture_stderr_text = log_dir is not None
     pipe_stdout = (
         capture_stdout_text or on_output_line is not None or capture_result_text
@@ -1005,6 +1022,11 @@ def _setup_wind_down(
         return None
     if not adapter.supports_soft_wind_down:
         return None
+    # Clamp the grace below the cap.  A grace >= max_turns is reachable via
+    # the library API (RunConfig does not validate it the way the CLI does);
+    # left unclamped the shim's threshold (max(cap - grace, 0)) collapses to
+    # 0 and injects the wind-down nudge on the very first tool use.
+    effective_grace = min(max_turns_grace, max(max_turns - 1, 0))
     tempdir = Path(tempfile.mkdtemp(prefix=_HOOK_TEMPDIR_PREFIX))
     counter_path = _resolve_counter_path(log_dir, iteration, tempdir)
     _atomic_write_counter(counter_path, 0)
@@ -1013,9 +1035,14 @@ def _setup_wind_down(
             tempdir=tempdir,
             counter_path=counter_path,
             cap=max_turns,
-            grace=max_turns_grace,
+            grace=effective_grace,
         )
     except NotImplementedError:
+        # counter_path may live in log_dir rather than the tempdir, so
+        # removing the tempdir alone would orphan the "0" counter file in
+        # the log directory.  Remove it explicitly, best-effort.
+        with suppress(OSError):
+            counter_path.unlink(missing_ok=True)
         shutil.rmtree(tempdir, ignore_errors=True)
         return None
     return _WindDownContext(
@@ -1041,14 +1068,24 @@ def _atomic_write_counter(counter_path: Path, value: int) -> None:
     """Write *value* to *counter_path* via rename so readers never see a partial int.
 
     Best-effort: on any I/O failure the caller proceeds without wind-down
-    state — the warning subscription is advisory, not required.
+    state — the warning subscription is advisory, not required.  The first
+    failure is logged once at WARNING so a silently-disabled wind-down is
+    greppable; subsequent failures stay quiet to avoid per-iteration spam.
     """
+    global _counter_write_failure_logged
     try:
         tmp_path = counter_path.with_name(counter_path.name + ".tmp")
         tmp_path.write_text(str(value), encoding="utf-8")
         os.replace(tmp_path, counter_path)
-    except OSError:
-        pass
+    except OSError as exc:
+        if not _counter_write_failure_logged:
+            _counter_write_failure_logged = True
+            _log.warning(
+                "soft wind-down counter write to %s failed (%s); "
+                "wind-down will not fire this run",
+                counter_path,
+                exc,
+            )
 
 
 def _wrap_tool_use_with_counter(
@@ -1065,8 +1102,7 @@ def _wrap_tool_use_with_counter(
 
     def _wrapped(name: str, count: int) -> None:
         _atomic_write_counter(counter_path, count)
-        if on_tool_use is not None:
-            on_tool_use(name, count)
+        _call_safely(on_tool_use, name, count)
 
     return _wrapped
 
